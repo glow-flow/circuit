@@ -1,0 +1,169 @@
+import React, { useCallback, useMemo } from 'react';
+import ReactFlow, {
+  Background,
+  Controls,
+  BackgroundVariant,
+  ReactFlowInstance,
+  ReactFlowProvider,
+  ConnectionLineType,
+  ConnectionMode,
+  Edge,
+} from 'reactflow';
+import { useCircuitStore } from '../../store/useCircuitStore';
+import { ComponentType } from '../../types/circuit';
+import { BatteryNode } from './nodes/BatteryNode';
+import { ResistorNode } from './nodes/ResistorNode';
+import { BulbNode } from './nodes/BulbNode';
+import { SwitchNode } from './nodes/SwitchNode';
+import { GroundNode } from './nodes/GroundNode';
+import { VoltmeterNode } from './nodes/VoltmeterNode';
+import { AmmeterNode } from './nodes/AmmeterNode';
+import { WaypointNode } from './nodes/WaypointNode';
+import { WireEdge } from './WireEdge';
+
+interface CircuitCanvasInnerProps {
+  reactFlowWrapper: React.RefObject<HTMLDivElement | null>;
+}
+
+const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrapper }) => {
+  const nodes = useCircuitStore((state) => state.nodes);
+  const edges = useCircuitStore((state) => state.edges);
+  const onNodesChange = useCircuitStore((state) => state.onNodesChange);
+  const onEdgesChange = useCircuitStore((state) => state.onEdgesChange);
+  const onConnect = useCircuitStore((state) => state.onConnect);
+  const addComponent = useCircuitStore((state) => state.addComponent);
+  const selectNode = useCircuitStore((state) => state.selectNode);
+  const splitEdgeWithWaypoint = useCircuitStore((state) => state.splitEdgeWithWaypoint);
+
+  const [reactFlowInstance, setReactFlowInstance] = React.useState<ReactFlowInstance | null>(null);
+
+  const nodeTypes = useMemo(
+    () => ({
+      battery: BatteryNode,
+      resistor: ResistorNode,
+      bulb: BulbNode,
+      switch: SwitchNode,
+      ground: GroundNode,
+      voltmeter: VoltmeterNode,
+      ammeter: AmmeterNode,
+      waypoint: WaypointNode,
+    }),
+    []
+  );
+
+  const edgeTypes = useMemo(
+    () => ({
+      wire: WireEdge,
+      default: WireEdge,
+    }),
+    []
+  );
+
+  const defaultEdgeOptions = useMemo(
+    () => ({
+      type: 'wire',
+      animated: false,
+    }),
+    []
+  );
+
+  const connectionLineStyle = useMemo(
+    () => ({
+      stroke: '#38BDF8',
+      strokeWidth: 3,
+      strokeLinecap: 'round' as const,
+    }),
+    []
+  );
+
+  const onDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  }, []);
+
+  const onDrop = useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault();
+
+      const componentType = event.dataTransfer.getData(
+        'application/reactflow'
+      ) as ComponentType | '';
+
+      if (!componentType || !reactFlowInstance || !reactFlowWrapper.current) {
+        return;
+      }
+
+      const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
+      const position = reactFlowInstance.screenToFlowPosition({
+        x: event.clientX - reactFlowBounds.left,
+        y: event.clientY - reactFlowBounds.top,
+      });
+
+      addComponent(componentType, position);
+    },
+    [reactFlowInstance, addComponent, reactFlowWrapper]
+  );
+
+  // Allow double-clicking any edge directly to insert a Waypoint anchor bend
+  const onEdgeDoubleClick = useCallback(
+    (event: React.MouseEvent, edge: Edge) => {
+      if (!reactFlowInstance) return;
+      const clickPosition = reactFlowInstance.screenToFlowPosition({
+        x: event.clientX,
+        y: event.clientY,
+      });
+      splitEdgeWithWaypoint(edge.id, clickPosition);
+    },
+    [reactFlowInstance, splitEdgeWithWaypoint]
+  );
+
+  return (
+    <div className="w-full h-full relative" ref={reactFlowWrapper}>
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onConnect={onConnect}
+        onInit={setReactFlowInstance}
+        onDrop={onDrop}
+        onDragOver={onDragOver}
+        onEdgeDoubleClick={onEdgeDoubleClick}
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        defaultEdgeOptions={defaultEdgeOptions}
+        connectionLineType={ConnectionLineType.Bezier}
+        connectionMode={ConnectionMode.Loose}
+        connectionLineStyle={connectionLineStyle}
+        onNodeClick={(_, node) => selectNode(node.id)}
+        onPaneClick={() => selectNode(null)}
+        fitView
+        snapToGrid
+        snapGrid={[15, 15]}
+        deleteKeyCode={['Backspace', 'Delete']}
+        className="bg-void-950"
+      >
+        <Background
+          variant={BackgroundVariant.Dots}
+          gap={20}
+          size={1.5}
+          color="#27272A"
+        />
+        <Controls
+          className="!bg-void-900 !border !border-white/10 !rounded-lg !overflow-hidden [&>button]:!bg-void-900 [&>button]:!border-b [&>button]:!border-white/10 [&>button]:!text-slate-300 hover:[&>button]:!bg-void-800"
+          showInteractive={false}
+        />
+      </ReactFlow>
+    </div>
+  );
+};
+
+export const CircuitCanvas: React.FC = () => {
+  const reactFlowWrapper = React.useRef<HTMLDivElement | null>(null);
+
+  return (
+    <ReactFlowProvider>
+      <CircuitCanvasInner reactFlowWrapper={reactFlowWrapper} />
+    </ReactFlowProvider>
+  );
+};

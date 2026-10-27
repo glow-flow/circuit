@@ -1,0 +1,184 @@
+import { describe, it, expect } from 'vitest';
+import { solveCircuitMNA, solveLinearSystem } from '../mnaSolver';
+import { UnionFind } from '../unionFind';
+import { CircuitElementData, WireConnection } from '../../types/circuit';
+
+describe('UnionFind Data Structure', () => {
+  it('correctly unites elements and performs path compression', () => {
+    const uf = new UnionFind();
+    uf.makeSet('A');
+    uf.makeSet('B');
+    uf.makeSet('C');
+    uf.makeSet('D');
+
+    uf.union('A', 'B');
+    uf.union('C', 'D');
+
+    expect(uf.find('A')).toBe(uf.find('B'));
+    expect(uf.find('C')).toBe(uf.find('D'));
+    expect(uf.find('A')).not.toBe(uf.find('C'));
+
+    // Merge the two clusters
+    uf.union('B', 'C');
+    expect(uf.find('A')).toBe(uf.find('D'));
+  });
+});
+
+describe('Linear System Solver (Gaussian Elimination with Partial Pivoting)', () => {
+  it('solves a 2x2 system accurately', () => {
+    // 2x + y = 5
+    // x + 3y = 5
+    // Solution: x = 2, y = 1
+    const A = [
+      [2, 1],
+      [1, 3],
+    ];
+    const b = [5, 5];
+    const x = solveLinearSystem(A, b);
+
+    expect(x[0]).toBeCloseTo(2, 4);
+    expect(x[1]).toBeCloseTo(1, 4);
+  });
+});
+
+describe('Modified Nodal Analysis (MNA) Physics Engine', () => {
+  it('correctly solves Ohm Law for 9V Battery and 100 Ohm Resistor', () => {
+    const battery: CircuitElementData = {
+      id: 'bat_1',
+      type: 'battery',
+      label: '9V Battery',
+      voltage: 9.0,
+    };
+
+    const resistor: CircuitElementData = {
+      id: 'res_1',
+      type: 'resistor',
+      label: '100Ω Resistor',
+      resistance: 100,
+    };
+
+    const wires: WireConnection[] = [
+      { id: 'w1', source: 'bat_1', sourceHandle: 'pos', target: 'res_1', targetHandle: 'p1' },
+      { id: 'w2', source: 'res_1', sourceHandle: 'p2', target: 'bat_1', targetHandle: 'neg' },
+    ];
+
+    const result = solveCircuitMNA({
+      components: [battery, resistor],
+      wires,
+    });
+
+    expect(result.isShortCircuit).toBe(false);
+    expect(result.branchCurrents['bat_1']).toBeDefined();
+    // I = V / (R + R_int) = 9 / 100.05 ≈ 0.08995 A
+    expect(Math.abs(result.branchCurrents['bat_1'])).toBeCloseTo(0.08995, 3);
+    expect(Math.abs(result.branchCurrents['res_1'])).toBeCloseTo(0.08995, 3);
+  });
+
+  it('correctly detects short circuit condition when current exceeds 10A', () => {
+    const battery: CircuitElementData = {
+      id: 'bat_1',
+      type: 'battery',
+      label: '9V Battery',
+      voltage: 9.0,
+    };
+
+    // Low resistance dead short path (0.2 Ohm -> I ≈ 45A > 10A)
+    const shortResistor: CircuitElementData = {
+      id: 'short_res',
+      type: 'resistor',
+      label: 'Shorted Path',
+      resistance: 0.1,
+    };
+
+    const wires: WireConnection[] = [
+      { id: 'w1', source: 'bat_1', sourceHandle: 'pos', target: 'short_res', targetHandle: 'p1' },
+      { id: 'w2', source: 'short_res', sourceHandle: 'p2', target: 'bat_1', targetHandle: 'neg' },
+    ];
+
+    const result = solveCircuitMNA({
+      components: [battery, shortResistor],
+      wires,
+    });
+
+    expect(result.isShortCircuit).toBe(true);
+    expect(result.shortCircuitBranches).toContain('bat_1');
+    expect(Math.abs(result.branchCurrents['bat_1'])).toBeGreaterThan(10.0);
+  });
+
+  it('handles open switch preventing current flow', () => {
+    const battery: CircuitElementData = {
+      id: 'bat_1',
+      type: 'battery',
+      label: '9V Battery',
+      voltage: 9.0,
+    };
+
+    const lightBulb: CircuitElementData = {
+      id: 'bulb_1',
+      type: 'bulb',
+      label: 'Light Bulb',
+      resistance: 15,
+    };
+
+    const switchComp: CircuitElementData = {
+      id: 'sw_1',
+      type: 'switch',
+      label: 'SPST Switch',
+      isOpen: true, // OPEN SWITCH
+    };
+
+    const wires: WireConnection[] = [
+      { id: 'w1', source: 'bat_1', sourceHandle: 'pos', target: 'sw_1', targetHandle: 'p1' },
+      { id: 'w2', source: 'sw_1', sourceHandle: 'p2', target: 'bulb_1', targetHandle: 'p1' },
+      { id: 'w3', source: 'bulb_1', sourceHandle: 'p2', target: 'bat_1', targetHandle: 'neg' },
+    ];
+
+    const result = solveCircuitMNA({
+      components: [battery, lightBulb, switchComp],
+      wires,
+    });
+
+    expect(result.isShortCircuit).toBe(false);
+    // Current should be negligibly tiny (~ nanoamperes)
+    expect(Math.abs(result.branchCurrents['bulb_1'])).toBeLessThan(1e-6);
+  });
+
+  it('preserves complete electrical continuity when inserting a Waypoint anchor node', () => {
+    const battery: CircuitElementData = {
+      id: 'bat_1',
+      type: 'battery',
+      voltage: 9.0,
+      label: '9V Battery',
+    };
+
+    const resistor: CircuitElementData = {
+      id: 'res_1',
+      type: 'resistor',
+      resistance: 100,
+      label: '100Ω Resistor',
+    };
+
+    const waypoint: CircuitElementData = {
+      id: 'wp_1',
+      type: 'waypoint',
+      label: 'Anchor',
+    };
+
+    // Wires go: Battery (+) -> Waypoint (p1) -> Waypoint (p2) -> Resistor (p1) -> Battery (-)
+    const wires: WireConnection[] = [
+      { id: 'w1', source: 'bat_1', sourceHandle: 'pos', target: 'wp_1', targetHandle: 'p1' },
+      { id: 'w2', source: 'wp_1', sourceHandle: 'p2', target: 'res_1', targetHandle: 'p1' },
+      { id: 'w3', source: 'res_1', sourceHandle: 'p2', target: 'bat_1', targetHandle: 'neg' },
+    ];
+
+    const result = solveCircuitMNA({
+      components: [battery, resistor, waypoint],
+      wires,
+    });
+
+    // Current should exactly match the direct circuit without waypoint (0.08995 A)
+    expect(result.isShortCircuit).toBe(false);
+    expect(Math.abs(result.branchCurrents['bat_1'])).toBeCloseTo(0.08995, 3);
+    expect(Math.abs(result.branchCurrents['res_1'])).toBeCloseTo(0.08995, 3);
+  });
+});
