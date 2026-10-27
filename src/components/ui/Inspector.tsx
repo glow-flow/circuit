@@ -1,9 +1,17 @@
 import React from 'react';
 import * as Slider from '@radix-ui/react-slider';
-import { Sliders, Trash2, Cpu, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { Sliders, Trash2, Cpu, ShieldCheck, AlertTriangle, X } from 'lucide-react';
 import { useCircuitStore } from '../../store/useCircuitStore';
 
-export const Inspector: React.FC = () => {
+interface InspectorProps {
+  isMobileDrawer?: boolean;
+  onCloseMobile?: () => void;
+}
+
+export const Inspector: React.FC<InspectorProps> = ({
+  isMobileDrawer = false,
+  onCloseMobile,
+}) => {
   const nodes = useCircuitStore((state) => state.nodes);
   const edges = useCircuitStore((state) => state.edges);
   const selectedNodeId = useCircuitStore((state) => state.selectedNodeId);
@@ -14,10 +22,14 @@ export const Inspector: React.FC = () => {
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId);
 
+  const containerClasses = isMobileDrawer
+    ? 'flex flex-col max-h-[70dvh] w-full bg-void-900 border-t border-white/15 rounded-t-2xl shadow-2xl select-none overflow-hidden'
+    : 'hidden md:flex w-80 bg-void-900 border-l border-white/10 flex-col h-full shrink-0 select-none';
+
   if (!selectedNode) {
     // Global Circuit Telemetry View
     return (
-      <aside className="w-80 bg-void-900 border-l border-white/10 flex flex-col h-full shrink-0 select-none">
+      <aside className={containerClasses}>
         <div className="p-3.5 border-b border-white/10 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Cpu className="w-4 h-4 text-electric-400" />
@@ -25,9 +37,20 @@ export const Inspector: React.FC = () => {
               Circuit Inspector
             </h2>
           </div>
-          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-void-850 text-slate-400 border border-white/5">
-            Global
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-void-850 text-slate-400 border border-white/5">
+              Global
+            </span>
+            {isMobileDrawer && onCloseMobile && (
+              <button
+                onClick={onCloseMobile}
+                className="p-1.5 rounded-lg bg-void-850 text-slate-400 hover:text-white border border-white/10 active:scale-95"
+                aria-label="Close inspector"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="p-4 space-y-4 flex-1 overflow-y-auto">
@@ -84,7 +107,7 @@ export const Inspector: React.FC = () => {
           <div className="p-3 rounded-xl bg-void-950/50 border border-white/5 text-[11px] text-slate-400 space-y-1.5">
             <div className="font-semibold text-slate-300">Quick Tip:</div>
             <p>
-              Click any component on the canvas to inspect its real-time voltage drop, adjust
+              Tap any component on the canvas to inspect its real-time voltage drop, adjust
               internal resistance, or modify power supply voltage.
             </p>
           </div>
@@ -98,21 +121,35 @@ export const Inspector: React.FC = () => {
   const branchCurrent = Math.abs(simulation.branchCurrents[selectedNode.id] ?? 0);
 
   return (
-    <aside className="w-80 bg-void-900 border-l border-white/10 flex flex-col h-full shrink-0 select-none">
+    <aside className={containerClasses}>
       <div className="p-3.5 border-b border-white/10 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Sliders className="w-4 h-4 text-electric-400" />
-          <h2 className="text-xs font-bold text-slate-200 uppercase tracking-wider">
+        <div className="flex items-center gap-2 min-w-0">
+          <Sliders className="w-4 h-4 text-electric-400 shrink-0" />
+          <h2 className="text-xs font-bold text-slate-200 uppercase tracking-wider truncate">
             {componentData.label}
           </h2>
         </div>
-        <button
-          onClick={() => removeComponent(selectedNode.id)}
-          className="p-1.5 rounded-lg bg-void-850 hover:bg-red-950/60 text-slate-400 hover:text-red-400 border border-white/5 transition-colors active:scale-95"
-          title="Delete Component"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            onClick={() => {
+              removeComponent(selectedNode.id);
+              if (isMobileDrawer && onCloseMobile) onCloseMobile();
+            }}
+            className="p-1.5 rounded-lg bg-void-850 hover:bg-red-950/60 text-slate-400 hover:text-red-400 border border-white/5 transition-colors active:scale-95"
+            title="Delete Component"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+          {isMobileDrawer && onCloseMobile && (
+            <button
+              onClick={onCloseMobile}
+              className="p-1.5 rounded-lg bg-void-850 text-slate-400 hover:text-white border border-white/10 active:scale-95"
+              aria-label="Close inspector"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="p-4 space-y-5 flex-1 overflow-y-auto">
@@ -143,6 +180,7 @@ export const Inspector: React.FC = () => {
                   : `${branchCurrent.toFixed(3)} A`}
               </span>
             </div>
+
             {componentData.type === 'resistor' && (
               <div className="flex justify-between items-center">
                 <span className="text-slate-400 font-sans text-[11px]">Voltage Drop:</span>
@@ -173,17 +211,17 @@ export const Inspector: React.FC = () => {
               </span>
             </div>
             <Slider.Root
-              className="relative flex items-center select-none touch-none w-full h-5 cursor-pointer"
+              className="relative flex items-center select-none touch-none w-full h-6 cursor-pointer"
               value={[componentData.voltage ?? 9]}
               min={1}
               max={48}
               step={0.5}
               onValueChange={([val]) => updateComponentData(selectedNode.id, { voltage: val })}
             >
-              <Slider.Track className="bg-void-950 relative grow rounded-full h-1.5 border border-white/10">
+              <Slider.Track className="bg-void-950 relative grow rounded-full h-2 border border-white/10">
                 <Slider.Range className="absolute bg-electric-500 rounded-full h-full" />
               </Slider.Track>
-              <Slider.Thumb className="block w-4 h-4 bg-white rounded-full shadow-md focus:outline-none focus:ring-2 focus:ring-electric-500 transition-transform active:scale-125" />
+              <Slider.Thumb className="block w-5 h-5 bg-white rounded-full shadow-md focus:outline-none focus:ring-2 focus:ring-electric-500 transition-transform active:scale-125" />
             </Slider.Root>
           </div>
         )}
@@ -198,17 +236,17 @@ export const Inspector: React.FC = () => {
               </span>
             </div>
             <Slider.Root
-              className="relative flex items-center select-none touch-none w-full h-5 cursor-pointer"
+              className="relative flex items-center select-none touch-none w-full h-6 cursor-pointer"
               value={[componentData.resistance ?? 100]}
               min={1}
               max={1000}
               step={1}
               onValueChange={([val]) => updateComponentData(selectedNode.id, { resistance: val })}
             >
-              <Slider.Track className="bg-void-950 relative grow rounded-full h-1.5 border border-white/10">
+              <Slider.Track className="bg-void-950 relative grow rounded-full h-2 border border-white/10">
                 <Slider.Range className="absolute bg-amber-500 rounded-full h-full" />
               </Slider.Track>
-              <Slider.Thumb className="block w-4 h-4 bg-white rounded-full shadow-md focus:outline-none focus:ring-2 focus:ring-amber-500 transition-transform active:scale-125" />
+              <Slider.Thumb className="block w-5 h-5 bg-white rounded-full shadow-md focus:outline-none focus:ring-2 focus:ring-amber-500 transition-transform active:scale-125" />
             </Slider.Root>
           </div>
         )}
@@ -223,17 +261,17 @@ export const Inspector: React.FC = () => {
               </span>
             </div>
             <Slider.Root
-              className="relative flex items-center select-none touch-none w-full h-5 cursor-pointer"
+              className="relative flex items-center select-none touch-none w-full h-6 cursor-pointer"
               value={[componentData.resistance ?? 20]}
               min={5}
               max={100}
               step={1}
               onValueChange={([val]) => updateComponentData(selectedNode.id, { resistance: val })}
             >
-              <Slider.Track className="bg-void-950 relative grow rounded-full h-1.5 border border-white/10">
+              <Slider.Track className="bg-void-950 relative grow rounded-full h-2 border border-white/10">
                 <Slider.Range className="absolute bg-yellow-400 rounded-full h-full" />
               </Slider.Track>
-              <Slider.Thumb className="block w-4 h-4 bg-white rounded-full shadow-md focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-transform active:scale-125" />
+              <Slider.Thumb className="block w-5 h-5 bg-white rounded-full shadow-md focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-transform active:scale-125" />
             </Slider.Root>
           </div>
         )}

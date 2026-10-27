@@ -1,13 +1,22 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { PlusCircle, Sliders, Activity } from 'lucide-react';
 import { Header } from './components/ui/Header';
 import { SidebarPalette } from './components/ui/SidebarPalette';
 import { CircuitCanvas } from './components/canvas/CircuitCanvas';
 import { Inspector } from './components/ui/Inspector';
 import { useCircuitStore } from './store/useCircuitStore';
 
+type MobileSheetType = 'none' | 'palette' | 'inspector';
+
 export const App: React.FC = () => {
   const loadPreset = useCircuitStore((state) => state.loadPreset);
   const nodes = useCircuitStore((state) => state.nodes);
+  const selectedNodeId = useCircuitStore((state) => state.selectedNodeId);
+  const simulation = useCircuitStore((state) => state.simulation);
+
+  const [activeMobileSheet, setActiveMobileSheet] = useState<MobileSheetType>('none');
+
+  const selectedNode = nodes.find((n) => n.id === selectedNodeId);
 
   // Initialize with the Simple Lamp & Switch circuit preset on first mount
   useEffect(() => {
@@ -16,24 +25,99 @@ export const App: React.FC = () => {
     }
   }, [loadPreset, nodes.length]);
 
+  const toggleMobileSheet = (sheet: MobileSheetType) => {
+    setActiveMobileSheet((prev) => (prev === sheet ? 'none' : sheet));
+  };
+
   return (
-    <div className="flex flex-col h-screen min-h-[100dvh] w-screen bg-void-950 text-slate-100 overflow-hidden font-sans">
+    <div className="flex flex-col h-[100dvh] w-screen bg-void-950 text-slate-100 overflow-hidden font-sans">
       {/* Top Utility Header */}
       <Header />
 
       {/* Main Workspace Layout */}
-      <div className="flex flex-1 min-h-0 relative">
-        {/* Left Component Palette */}
+      <div className="flex flex-1 min-h-0 relative w-full overflow-hidden">
+        {/* Desktop Left Component Palette */}
         <SidebarPalette />
 
-        {/* Central React Flow Canvas */}
-        <main className="flex-1 relative h-full">
+        {/* Central React Flow Canvas (Full width on mobile, center column on desktop) */}
+        <main className="flex-1 relative h-full w-full min-w-0">
           <CircuitCanvas />
+
+          {/* Floating Quick-Edit Pill on Mobile when a component is selected */}
+          {selectedNode && activeMobileSheet === 'none' && (
+            <div className="md:hidden absolute top-3 left-1/2 -translate-x-1/2 z-20">
+              <button
+                onClick={() => setActiveMobileSheet('inspector')}
+                className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-electric-600/95 text-white text-xs font-semibold shadow-glow border border-electric-400/50 active:scale-95 transition-transform"
+              >
+                <Sliders className="w-3.5 h-3.5" />
+                <span>Edit {selectedNode.data.label}</span>
+              </button>
+            </div>
+          )}
         </main>
 
-        {/* Right Inspector & Telemetry */}
+        {/* Desktop Right Inspector & Telemetry */}
         <Inspector />
+
+        {/* Mobile Slide-Up Bottom Sheet Overlay */}
+        {activeMobileSheet !== 'none' && (
+          <div className="md:hidden fixed inset-0 z-40 flex flex-col justify-end bg-black/60 backdrop-blur-xs">
+            <div
+              className="flex-1"
+              onClick={() => setActiveMobileSheet('none')}
+              aria-hidden="true"
+            />
+            {activeMobileSheet === 'palette' && (
+              <SidebarPalette
+                isMobileDrawer
+                onCloseMobile={() => setActiveMobileSheet('none')}
+              />
+            )}
+            {activeMobileSheet === 'inspector' && (
+              <Inspector
+                isMobileDrawer
+                onCloseMobile={() => setActiveMobileSheet('none')}
+              />
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Mobile Bottom Navigation Bar */}
+      <nav className="md:hidden h-14 bg-void-900 border-t border-white/10 px-3 flex items-center justify-between gap-2 z-30 shrink-0 select-none">
+        <button
+          type="button"
+          onClick={() => toggleMobileSheet('palette')}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all active:scale-95 ${
+            activeMobileSheet === 'palette'
+              ? 'bg-electric-500/20 border-electric-500 text-electric-400'
+              : 'bg-void-850 border-white/10 text-slate-200'
+          }`}
+        >
+          <PlusCircle className="w-4 h-4 text-electric-400" />
+          <span>Add Part</span>
+        </button>
+
+        {/* Center Live Power Readout */}
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-void-950 border border-white/5 text-[11px] font-mono text-slate-300">
+          <Activity className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+          <span>{simulation.totalPowerDrawn.toFixed(2)}W</span>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => toggleMobileSheet('inspector')}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all active:scale-95 ${
+            activeMobileSheet === 'inspector' || selectedNode
+              ? 'bg-electric-500/20 border-electric-500/50 text-electric-400'
+              : 'bg-void-850 border-white/10 text-slate-200'
+          }`}
+        >
+          <Sliders className="w-4 h-4 text-electric-400" />
+          <span>{selectedNode ? 'Tune Node' : 'Inspector'}</span>
+        </button>
+      </nav>
     </div>
   );
 };

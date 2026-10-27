@@ -138,6 +138,9 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
         onNodeClick={(_, node) => selectNode(node.id)}
         onPaneClick={() => selectNode(null)}
         fitView
+        fitViewOptions={{ padding: 0.25 }}
+        minZoom={0.25}
+        maxZoom={2.5}
         snapToGrid
         snapGrid={[15, 15]}
         deleteKeyCode={['Backspace', 'Delete']}
