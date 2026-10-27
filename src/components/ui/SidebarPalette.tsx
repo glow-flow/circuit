@@ -10,6 +10,7 @@ import {
   Info,
 } from 'lucide-react';
 import { ComponentType } from '../../types/circuit';
+import { useCircuitStore } from '../../store/useCircuitStore';
 
 interface PaletteItem {
   type: ComponentType;
@@ -75,9 +76,18 @@ const PALETTE_ITEMS: PaletteItem[] = [
 ];
 
 export const SidebarPalette: React.FC = () => {
+  const addComponent = useCircuitStore((state) => state.addComponent);
+
   const onDragStart = (event: React.DragEvent, nodeType: ComponentType) => {
     event.dataTransfer.setData('application/reactflow', nodeType);
     event.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleItemClick = (type: ComponentType) => {
+    // Mobile-friendly tap to spawn on canvas
+    const offsetX = 240 + Math.floor(Math.random() * 100);
+    const offsetY = 140 + Math.floor(Math.random() * 100);
+    addComponent(type, { x: offsetX, y: offsetY });
   };
 
   return (
@@ -87,7 +97,7 @@ export const SidebarPalette: React.FC = () => {
           Component Palette
         </h2>
         <p className="text-[11px] text-slate-400 mt-0.5">
-          Drag components onto the canvas
+          Drag or tap to add to canvas
         </p>
       </div>
 
@@ -96,6 +106,7 @@ export const SidebarPalette: React.FC = () => {
           <div
             key={item.type}
             onDragStart={(e) => onDragStart(e, item.type)}
+            onClick={() => handleItemClick(item.type)}
             draggable
             className="group flex items-start gap-2.5 p-2.5 rounded-xl bg-void-950/70 border border-white/5 hover:border-electric-500/40 hover:bg-void-850 cursor-grab active:cursor-grabbing transition-all duration-150 active:scale-95 shadow-sm"
           >
