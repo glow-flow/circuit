@@ -207,14 +207,14 @@ export const Inspector: React.FC<InspectorProps> = ({
             <div className="flex justify-between items-center">
               <label className="text-xs font-semibold text-slate-300">Battery Potential</label>
               <span className="text-xs font-mono font-bold text-electric-400">
-                {componentData.voltage ?? 9} V
+                {(componentData.voltage ?? 1.5).toFixed(1)} V
               </span>
             </div>
             <Slider.Root
               className="relative flex items-center select-none touch-none w-full h-6 cursor-pointer"
-              value={[componentData.voltage ?? 9]}
-              min={1}
-              max={48}
+              value={[componentData.voltage ?? 1.5]}
+              min={1.5}
+              max={24}
               step={0.5}
               onValueChange={([val]) => updateComponentData(selectedNode.id, { voltage: val })}
             >
@@ -223,6 +223,58 @@ export const Inspector: React.FC<InspectorProps> = ({
               </Slider.Track>
               <Slider.Thumb className="block w-5 h-5 bg-white rounded-full shadow-md focus:outline-none focus:ring-2 focus:ring-electric-500 transition-transform active:scale-125" />
             </Slider.Root>
+          </div>
+        )}
+
+        {/* Battery Holder Controls */}
+        {componentData.type === 'battery-holder' && (
+          <div className="space-y-3 bg-void-950 rounded-xl p-3 border border-white/5">
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-semibold text-slate-300">Inserted AA Cells</span>
+              <span className="text-xs font-mono font-bold text-emerald-400">
+                {componentData.batteryCount ?? (componentData.hasBattery ? 2 : 0)} / 2 Cells
+              </span>
+            </div>
+            <div className="flex justify-between items-center text-xs font-mono">
+              <span className="text-slate-400 font-sans text-[11px]">Series Output:</span>
+              <span className="text-electric-400 font-bold">
+                {(
+                  (componentData.batteryCount ?? (componentData.hasBattery ? 2 : 0)) * 1.5
+                ).toFixed(1)}{' '}
+                V
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Drag a <b>1.5V AA Battery</b> onto this holder on the canvas to snap it into the
+              spring slot (auto-rotates 180° for series alignment), or use the controls below:
+            </p>
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                disabled={(componentData.batteryCount ?? 0) >= 2}
+                onClick={() => {
+                  const nextCount = Math.min(2, (componentData.batteryCount ?? 0) + 1);
+                  updateComponentData(selectedNode.id, {
+                    hasBattery: true,
+                    batteryCount: nextCount,
+                    voltage: nextCount * 1.5,
+                  });
+                }}
+                className="py-2 px-2.5 rounded-lg text-xs font-semibold bg-electric-500/15 text-electric-400 border border-electric-500/30 hover:bg-electric-500/25 disabled:opacity-40 active:scale-95 transition-all"
+              >
+                + Insert AA (1.5V)
+              </button>
+              <button
+                type="button"
+                disabled={(componentData.batteryCount ?? 0) <= 0}
+                onClick={() =>
+                  useCircuitStore.getState().ejectBatteryFromHolder(selectedNode.id)
+                }
+                className="py-2 px-2.5 rounded-lg text-xs font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30 hover:bg-amber-500/25 disabled:opacity-40 active:scale-95 transition-all"
+              >
+                Eject AA Cell
+              </button>
+            </div>
           </div>
         )}
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   Battery,
+  BatteryCharging,
   Activity,
   Lightbulb,
   ToggleLeft,
@@ -25,11 +26,19 @@ interface PaletteItem {
 const PALETTE_ITEMS: PaletteItem[] = [
   {
     type: 'battery',
-    label: 'DC Voltage Source',
+    label: '1.5V AA Battery',
     category: 'Sources',
-    description: 'Provides constant DC voltage (default 9V)',
+    description: 'Single 1.5V AA cell. Drag onto Holder or wire directly',
     icon: <Battery className="w-4 h-4 text-electric-400" />,
-    badge: 'Source',
+    badge: '1.5V',
+  },
+  {
+    type: 'battery-holder',
+    label: 'Dual AA Holder',
+    category: 'Sources',
+    description: 'Wadah 2x baterai AA seri (1.5V / 3.0V) dengan pegas',
+    icon: <BatteryCharging className="w-4 h-4 text-emerald-400" />,
+    badge: 'Holder',
   },
   {
     type: 'resistor',

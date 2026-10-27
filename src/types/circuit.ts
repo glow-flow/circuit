@@ -7,6 +7,7 @@
 
 export type ComponentType = 
   | 'battery'
+  | 'battery-holder'
   | 'resistor'
   | 'bulb'
   | 'switch'
@@ -27,10 +28,12 @@ export interface CircuitElementData {
   type: ComponentType;
   label: string;
   // Electrical properties
-  voltage?: number;       // For battery (Volts)
+  voltage?: number;       // For battery / battery-holder (Volts)
   resistance?: number;    // For resistor, bulb, ammeter (Ohms)
   powerRating?: number;   // For bulb (Watts)
   isOpen?: boolean;       // For switch
+  hasBattery?: boolean;   // For battery-holder: whether AA battery is inserted
+  batteryCount?: number;  // For battery-holder: number of 1.5V AA cells inserted (0, 1, or 2)
   
   // Real-time calculated simulation results
   calculatedVoltage?: number;  // Voltage drop across component (V)

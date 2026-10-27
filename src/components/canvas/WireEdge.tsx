@@ -9,6 +9,7 @@ import { useCircuitStore } from '../../store/useCircuitStore';
 export const WireEdge: React.FC<EdgeProps> = ({
   id,
   source,
+  target,
   sourceX,
   sourceY,
   targetX,
@@ -25,7 +26,10 @@ export const WireEdge: React.FC<EdgeProps> = ({
   const isShortCircuit = simulation.isShortCircuit;
 
   // Derive current through this wire by checking source or target component current
-  const sourceCurrent = Math.abs(simulation.branchCurrents[source] ?? 0);
+  const sourceCurrent = Math.max(
+    Math.abs(simulation.branchCurrents[source] ?? 0),
+    Math.abs(simulation.branchCurrents[target] ?? 0)
+  );
   const hasCurrent = sourceCurrent > 0.0001;
 
   const [edgePath, labelX, labelY] = getBezierPath({

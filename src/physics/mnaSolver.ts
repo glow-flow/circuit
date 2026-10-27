@@ -28,7 +28,7 @@ import { CircuitElementData, WireConnection, SimulationResult } from '../types/c
 import { UnionFind } from './unionFind';
 
 export const SHORT_CIRCUIT_CURRENT_THRESHOLD = 10.0; // Amperes threshold for short-circuit trip
-const BATTERY_INTERNAL_RESISTANCE = 0.05; // 50mΩ internal resistance to prevent infinite current singularity
+const BATTERY_INTERNAL_RESISTANCE = 0.05; // 50mΩ internal resistance per cell to prevent singularity
 const SWITCH_CLOSED_RESISTANCE = 0.001; // 1mΩ closed switch resistance
 const SWITCH_OPEN_RESISTANCE = 1e9; // 1GΩ open switch resistance
 const AMMETER_INTERNAL_RESISTANCE = 0.001; // 1mΩ ammeter resistance
@@ -38,6 +38,44 @@ export interface CircuitGraphInput {
   components: CircuitElementData[];
   wires: WireConnection[];
   explicitGroundNetId?: string;
+}
+
+/**
+ * Determines whether a component currently acts as an active independent DC voltage source.
+ * Supports both individual AA batteries (1.5V) and loaded Battery Holders (1.5V / 3.0V).
+ * 
+ * @param component - Circuit component data
+ * @returns True if component supplies active EMF voltage
+ */
+export function isActiveVoltageSource(component: CircuitElementData): boolean {
+  if (component.type === 'battery') {
+    return (component.voltage ?? 1.5) > 0;
+  }
+  if (component.type === 'battery-holder') {
+    const cellCount = component.batteryCount ?? (component.hasBattery ? 2 : 0);
+    return Boolean(component.hasBattery && cellCount > 0);
+  }
+  return false;
+}
+
+/**
+ * Computes the nominal open-circuit EMF voltage of a voltage source component.
+ * - Single AA Battery ('battery'): defaults to 1.5V
+ * - Dual AA Battery Holder ('battery-holder'): 1.5V per series cell (2 cells = 3.0V)
+ * 
+ * @param component - Circuit component data
+ * @returns Nominal voltage in Volts
+ */
+export function getVoltageSourceNominalVoltage(component: CircuitElementData): number {
+  if (component.type === 'battery') {
+    return component.voltage ?? 1.5;
+  }
+  if (component.type === 'battery-holder') {
+    if (!component.hasBattery) return 0;
+    const cellCount = component.batteryCount ?? 2;
+    return component.voltage ?? cellCount * 1.5;
+  }
+  return 0;
 }
 
 /**
@@ -62,7 +100,6 @@ export function solveLinearSystem(
 
   // Forward elimination with partial pivoting
   for (let pivotIndex = 0; pivotIndex < dimensionSize; pivotIndex++) {
-    // Locate the row with the largest pivot in the current column
     let maximumRowIndex = pivotIndex;
     let maximumPivotValue = Math.abs(augmentedMatrix[pivotIndex][pivotIndex]);
 
@@ -180,7 +217,6 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
     const uniqueNets = Array.from(uniqueNetSet);
 
     if (uniqueNets.length <= 1) {
-      // No complete circuit or only one net
       return {
         nodeVoltages: {},
         branchCurrents: {},
@@ -195,7 +231,6 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
     let selectedGroundNet = explicitGroundNetId;
 
     if (!selectedGroundNet) {
-      // Check if a dedicated GroundNode exists
       const groundComponent = components.find((c) => c.type === 'ground');
       if (groundComponent) {
         selectedGroundNet = pinToNetMap.get(`${groundComponent.id}:gnd`);
@@ -203,15 +238,14 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
     }
 
     if (!selectedGroundNet) {
-      // Fallback: pick the negative terminal of the first active battery
-      const firstBattery = components.find((c) => c.type === 'battery');
-      if (firstBattery) {
-        selectedGroundNet = pinToNetMap.get(`${firstBattery.id}:neg`);
+      // Fallback: pick the negative terminal of the first active voltage source
+      const firstActiveSource = components.find((c) => isActiveVoltageSource(c));
+      if (firstActiveSource) {
+        selectedGroundNet = pinToNetMap.get(`${firstActiveSource.id}:neg`);
       }
     }
 
     if (!selectedGroundNet) {
-      // Ultimate fallback: pick the first available net
       selectedGroundNet = uniqueNets[0];
     }
 
@@ -224,8 +258,8 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
 
     const nonGroundNetCount = nonGroundNets.length;
 
-    // 3. Identify Independent Voltage Sources (Batteries)
-    const voltageSourceComponents = components.filter((c) => c.type === 'battery');
+    // 3. Identify Independent Voltage Sources (Batteries and Loaded Battery Holders)
+    const voltageSourceComponents = components.filter((c) => isActiveVoltageSource(c));
     const voltageSourceCount = voltageSourceComponents.length;
 
     // Total MNA matrix size = (Non-ground nets) + (Voltage sources)
@@ -248,8 +282,17 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
     );
     const constantVector: number[] = new Array(matrixDimension).fill(0);
 
-    // 4. Populate Conductance Submatrix G (Passive Components)
+    // 4. Populate Conductance Submatrix G (Passive Components Only)
     for (const component of components) {
+      if (
+        component.type === 'battery' ||
+        component.type === 'battery-holder' ||
+        component.type === 'ground' ||
+        component.type === 'waypoint'
+      ) {
+        continue;
+      }
+
       const pinKeys = getComponentPinIdentifiers(component);
       if (pinKeys.length < 2) continue;
 
@@ -279,15 +322,15 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
     }
 
     // 5. Populate B, C, D Matrices and Vector e (Voltage Sources)
-    voltageSourceComponents.forEach((battery, batteryIndex) => {
-      const voltageSourceRowIndex = nonGroundNetCount + batteryIndex;
-      const positiveNet = pinToNetMap.get(`${battery.id}:pos`)!;
-      const negativeNet = pinToNetMap.get(`${battery.id}:neg`)!;
+    voltageSourceComponents.forEach((sourceComp, sourceIndex) => {
+      const voltageSourceRowIndex = nonGroundNetCount + sourceIndex;
+      const positiveNet = pinToNetMap.get(`${sourceComp.id}:pos`)!;
+      const negativeNet = pinToNetMap.get(`${sourceComp.id}:neg`)!;
 
       const positiveNetIndex = netToIndexMap.get(positiveNet);
       const negativeNetIndex = netToIndexMap.get(negativeNet);
 
-      // B matrix: KCL contribution of battery current
+      // B matrix: KCL contribution of source current
       // C matrix: KVL relationship V_pos - V_neg = V_src
       if (positiveNetIndex !== undefined) {
         coefficientMatrix[positiveNetIndex][voltageSourceRowIndex] += 1;
@@ -298,12 +341,14 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
         coefficientMatrix[voltageSourceRowIndex][negativeNetIndex] -= 1;
       }
 
-      // D matrix: Series internal resistance of battery to guarantee well-conditioned matrix
-      // V_pos - V_neg - R_internal * I = V_battery
-      coefficientMatrix[voltageSourceRowIndex][voltageSourceRowIndex] = -BATTERY_INTERNAL_RESISTANCE;
+      // D matrix: Series internal resistance to guarantee well-conditioned matrix
+      const cellCount =
+        sourceComp.type === 'battery-holder' ? (sourceComp.batteryCount ?? 2) : 1;
+      coefficientMatrix[voltageSourceRowIndex][voltageSourceRowIndex] =
+        -(BATTERY_INTERNAL_RESISTANCE * Math.max(1, cellCount));
 
-      // Vector e: Nominal DC battery voltage
-      constantVector[voltageSourceRowIndex] = battery.voltage ?? 9.0;
+      // Vector e: Nominal DC voltage
+      constantVector[voltageSourceRowIndex] = getVoltageSourceNominalVoltage(sourceComp);
     });
 
     // 6. Solve the Linear System
@@ -323,25 +368,40 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
     let isOverallShortCircuit = false;
     let totalPowerDrawn = 0;
 
-    // Voltage source currents directly from solution vector
-    voltageSourceComponents.forEach((battery, batteryIndex) => {
-      const sourceCurrentIndex = nonGroundNetCount + batteryIndex;
-      const batteryCurrent = solution[sourceCurrentIndex] ?? 0;
-      const absoluteCurrent = Math.abs(batteryCurrent);
+    // Default 0 current for unloaded battery holders
+    for (const component of components) {
+      if (component.type === 'battery-holder' && !isActiveVoltageSource(component)) {
+        branchCurrentMap[component.id] = 0;
+      }
+    }
 
-      branchCurrentMap[battery.id] = batteryCurrent;
+    // Voltage source currents directly from solution vector
+    voltageSourceComponents.forEach((sourceComp, sourceIndex) => {
+      const sourceCurrentIndex = nonGroundNetCount + sourceIndex;
+      const sourceCurrent = solution[sourceCurrentIndex] ?? 0;
+      const absoluteCurrent = Math.abs(sourceCurrent);
+
+      branchCurrentMap[sourceComp.id] = sourceCurrent;
 
       if (absoluteCurrent > SHORT_CIRCUIT_CURRENT_THRESHOLD) {
         isOverallShortCircuit = true;
-        shortCircuitBranches.push(battery.id);
+        shortCircuitBranches.push(sourceComp.id);
       }
 
-      totalPowerDrawn += (battery.voltage ?? 9.0) * absoluteCurrent;
+      const nominalVoltage = getVoltageSourceNominalVoltage(sourceComp);
+      totalPowerDrawn += nominalVoltage * absoluteCurrent;
     });
 
     // Passive component currents and voltages
     for (const component of components) {
-      if (component.type === 'battery' || component.type === 'ground' || component.type === 'waypoint') continue;
+      if (
+        component.type === 'battery' ||
+        component.type === 'battery-holder' ||
+        component.type === 'ground' ||
+        component.type === 'waypoint'
+      ) {
+        continue;
+      }
 
       const pinKeys = getComponentPinIdentifiers(component);
       if (pinKeys.length < 2) continue;
@@ -363,6 +423,48 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
       }
     }
 
+    // 9. Propagate branch currents through Waypoint nodes so bent wire segments glow seamlessly
+    const componentTypeMap = new Map<string, string>();
+    for (const component of components) {
+      componentTypeMap.set(component.id, component.type);
+    }
+
+    for (const component of components) {
+      if (component.type !== 'waypoint') continue;
+
+      // BFS along connected wires to find the non-waypoint endpoint's current
+      const visitedIds = new Set<string>([component.id]);
+      const queue: string[] = [component.id];
+      let resolvedCurrent = 0;
+
+      while (queue.length > 0) {
+        const currentId = queue.shift()!;
+        for (const wire of wires) {
+          const neighborId =
+            wire.source === currentId
+              ? wire.target
+              : wire.target === currentId
+              ? wire.source
+              : null;
+
+          if (!neighborId || visitedIds.has(neighborId)) continue;
+          visitedIds.add(neighborId);
+
+          const neighborType = componentTypeMap.get(neighborId);
+          if (neighborType && neighborType !== 'waypoint' && neighborType !== 'ground') {
+            const candidateCurrent = branchCurrentMap[neighborId] ?? 0;
+            if (Math.abs(candidateCurrent) > Math.abs(resolvedCurrent)) {
+              resolvedCurrent = candidateCurrent;
+            }
+          } else if (neighborType === 'waypoint') {
+            queue.push(neighborId);
+          }
+        }
+      }
+
+      branchCurrentMap[component.id] = resolvedCurrent;
+    }
+
     return {
       nodeVoltages: nodeVoltageMap,
       branchCurrents: branchCurrentMap,
@@ -372,7 +474,6 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
       timestamp: Date.now(),
     };
   } catch (error) {
-    // Robust error recovery: Return safe fallback state instead of crashing
     return {
       nodeVoltages: {},
       branchCurrents: {},
@@ -393,6 +494,7 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
 export function getComponentPinIdentifiers(component: CircuitElementData): string[] {
   switch (component.type) {
     case 'battery':
+    case 'battery-holder':
       return [`${component.id}:pos`, `${component.id}:neg`];
     case 'resistor':
     case 'bulb':
@@ -431,7 +533,6 @@ export function getComponentEffectiveResistance(component: CircuitElementData): 
     case 'resistor':
       return Math.max(0.1, component.resistance ?? 100);
     case 'bulb':
-      // Typical educational incandescent bulb resistance ~ 10-25 Ohms
       return Math.max(0.1, component.resistance ?? 15);
     case 'switch':
       return component.isOpen ? SWITCH_OPEN_RESISTANCE : SWITCH_CLOSED_RESISTANCE;

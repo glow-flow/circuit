@@ -180,5 +180,61 @@ describe('Modified Nodal Analysis (MNA) Physics Engine', () => {
     expect(result.isShortCircuit).toBe(false);
     expect(Math.abs(result.branchCurrents['bat_1'])).toBeCloseTo(0.08995, 3);
     expect(Math.abs(result.branchCurrents['res_1'])).toBeCloseTo(0.08995, 3);
+    // And the waypoint itself must receive the propagated branch current so split wires glow
+    expect(Math.abs(result.branchCurrents['wp_1'])).toBeCloseTo(0.08995, 3);
+  });
+
+  it('calculates 3.0V output for Dual AA BatteryHolderNode with 2 series cells and 0A when empty', () => {
+    const emptyHolder: CircuitElementData = {
+      id: 'holder_1',
+      type: 'battery-holder',
+      hasBattery: false,
+      batteryCount: 0,
+      label: 'Empty Dual AA Holder',
+    };
+
+    const resistor: CircuitElementData = {
+      id: 'res_1',
+      type: 'resistor',
+      resistance: 10,
+      label: '10Ω Load',
+    };
+
+    const wires: WireConnection[] = [
+      { id: 'w1', source: 'holder_1', sourceHandle: 'pos', target: 'res_1', targetHandle: 'p1' },
+      { id: 'w2', source: 'res_1', sourceHandle: 'p2', target: 'holder_1', targetHandle: 'neg' },
+    ];
+
+    // 1. Empty holder -> 0A
+    const emptyResult = solveCircuitMNA({
+      components: [emptyHolder, resistor],
+      wires,
+    });
+    expect(Math.abs(emptyResult.branchCurrents['res_1'] ?? 0)).toBe(0);
+
+    // 2. 1 AA cell inserted -> 1.5V across 10.05Ω ≈ 0.14925A
+    const singleCellHolder: CircuitElementData = {
+      ...emptyHolder,
+      hasBattery: true,
+      batteryCount: 1,
+    };
+    const singleCellResult = solveCircuitMNA({
+      components: [singleCellHolder, resistor],
+      wires,
+    });
+    expect(Math.abs(singleCellResult.branchCurrents['res_1'])).toBeCloseTo(1.5 / 10.05, 3);
+
+    // 3. 2 AA cells in series -> 3.0V across (10Ω + 2 * 0.05Ω internal resistance = 10.10Ω) ≈ 0.29703A
+    const dualCellHolder: CircuitElementData = {
+      ...emptyHolder,
+      hasBattery: true,
+      batteryCount: 2,
+    };
+    const dualCellResult = solveCircuitMNA({
+      components: [dualCellHolder, resistor],
+      wires,
+    });
+    expect(Math.abs(dualCellResult.branchCurrents['res_1'])).toBeCloseTo(3.0 / 10.1, 3);
   });
 });
+

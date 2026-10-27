@@ -40,6 +40,8 @@ interface CircuitState {
   addComponent: (type: ComponentType, position: { x: number; y: number }) => void;
   updateComponentData: (id: string, partialData: Partial<CircuitElementData>) => void;
   removeComponent: (id: string) => void;
+  insertBatteryIntoHolder: (batteryNodeId: string, holderNodeId: string) => void;
+  ejectBatteryFromHolder: (holderNodeId: string) => void;
   splitEdgeWithWaypoint: (edgeId: string, position: { x: number; y: number }) => void;
   selectNode: (id: string | null) => void;
   toggleSwitch: (id: string) => void;
@@ -150,13 +152,22 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
 
     switch (type) {
       case 'battery':
-        defaultData = { ...defaultData, voltage: 9.0, label: '9V Battery' };
+        defaultData = { ...defaultData, voltage: 1.5, label: '1.5V AA Battery' };
+        break;
+      case 'battery-holder':
+        defaultData = {
+          ...defaultData,
+          hasBattery: false,
+          batteryCount: 0,
+          voltage: 0,
+          label: 'Dual AA Holder',
+        };
         break;
       case 'resistor':
         defaultData = { ...defaultData, resistance: 100, label: '100Ω Resistor' };
         break;
       case 'bulb':
-        defaultData = { ...defaultData, resistance: 20, powerRating: 5.0, label: 'Light Bulb' };
+        defaultData = { ...defaultData, resistance: 10, powerRating: 5.0, label: 'Light Bulb' };
         break;
       case 'switch':
         defaultData = { ...defaultData, isOpen: false, label: 'SPST Switch' };
@@ -250,6 +261,110 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     });
   },
 
+  insertBatteryIntoHolder: (batteryNodeId: string, holderNodeId: string) => {
+    const currentNodes = get().nodes;
+    const holderNode = currentNodes.find(
+      (n) => n.id === holderNodeId && n.data.type === 'battery-holder'
+    );
+    const batteryNode = currentNodes.find(
+      (n) => n.id === batteryNodeId && n.data.type === 'battery'
+    );
+
+    if (!holderNode || !batteryNode) return;
+
+    const currentCount = holderNode.data.batteryCount ?? (holderNode.data.hasBattery ? 2 : 0);
+    if (currentCount >= 2) return; // Holder already full (max 2 AA cells)
+
+    const nextCount = Math.min(2, currentCount + 1);
+    const nextVoltage = nextCount * 1.5;
+
+    // Remove the dropped BatteryNode and any edges connected to it
+    const nextEdges = get().edges.filter(
+      (edge) => edge.source !== batteryNodeId && edge.target !== batteryNodeId
+    );
+    const nextNodes = currentNodes
+      .filter((node) => node.id !== batteryNodeId)
+      .map((node) => {
+        if (node.id === holderNodeId) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              hasBattery: true,
+              batteryCount: nextCount,
+              voltage: nextVoltage,
+            },
+          };
+        }
+        return node;
+      });
+
+    const { simulation, updatedNodes } = recalculateCircuit(nextNodes, nextEdges);
+
+    set({
+      nodes: updatedNodes,
+      edges: nextEdges,
+      simulation,
+      selectedNodeId: holderNodeId,
+    });
+  },
+
+  ejectBatteryFromHolder: (holderNodeId: string) => {
+    const currentNodes = get().nodes;
+    const holderNode = currentNodes.find(
+      (n) => n.id === holderNodeId && n.data.type === 'battery-holder'
+    );
+    if (!holderNode) return;
+
+    const currentCount = holderNode.data.batteryCount ?? (holderNode.data.hasBattery ? 2 : 0);
+    if (currentCount <= 0) return;
+
+    const nextCount = Math.max(0, currentCount - 1);
+    const nextVoltage = nextCount * 1.5;
+
+    const ejectedId = `battery_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`;
+    const ejectedBatteryNode: Node<CircuitElementData> = {
+      id: ejectedId,
+      type: 'battery',
+      position: {
+        x: holderNode.position.x - 160,
+        y: holderNode.position.y + (currentCount === 2 ? 0 : 40),
+      },
+      data: {
+        id: ejectedId,
+        type: 'battery',
+        voltage: 1.5,
+        label: '1.5V AA Battery',
+      },
+    };
+
+    const nextNodes = [
+      ...currentNodes.map((node) => {
+        if (node.id === holderNodeId) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              hasBattery: nextCount > 0,
+              batteryCount: nextCount,
+              voltage: nextVoltage,
+            },
+          };
+        }
+        return node;
+      }),
+      ejectedBatteryNode,
+    ];
+
+    const { simulation, updatedNodes } = recalculateCircuit(nextNodes, get().edges);
+
+    set({
+      nodes: updatedNodes,
+      simulation,
+      selectedNodeId: holderNodeId,
+    });
+  },
+
   splitEdgeWithWaypoint: (edgeId: string, position: { x: number; y: number }) => {
     const currentEdges = get().edges;
     const targetEdge = currentEdges.find((e) => e.id === edgeId);
@@ -335,28 +450,41 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     if (presetName === 'simple-lamp') {
       presetNodes = [
         {
-          id: 'bat_1',
+          id: 'bat_extra',
           type: 'battery',
-          position: { x: 100, y: 150 },
-          data: { id: 'bat_1', type: 'battery', voltage: 9, label: '9V Battery' },
+          position: { x: -80, y: 155 },
+          data: { id: 'bat_extra', type: 'battery', voltage: 1.5, label: '1.5V AA Cell' },
+        },
+        {
+          id: 'holder_1',
+          type: 'battery-holder',
+          position: { x: 100, y: 120 },
+          data: {
+            id: 'holder_1',
+            type: 'battery-holder',
+            hasBattery: true,
+            batteryCount: 2,
+            voltage: 3.0,
+            label: 'Dual AA Holder',
+          },
         },
         {
           id: 'sw_1',
           type: 'switch',
-          position: { x: 300, y: 80 },
+          position: { x: 320, y: 75 },
           data: { id: 'sw_1', type: 'switch', isOpen: false, label: 'Power Switch' },
         },
         {
           id: 'bulb_1',
           type: 'bulb',
-          position: { x: 500, y: 150 },
-          data: { id: 'bulb_1', type: 'bulb', resistance: 20, label: '20Ω Bulb' },
+          position: { x: 520, y: 135 },
+          data: { id: 'bulb_1', type: 'bulb', resistance: 5, label: '3V Lamp (5Ω)' },
         },
       ];
       presetEdges = [
-        { id: 'e1', source: 'bat_1', sourceHandle: 'pos', target: 'sw_1', targetHandle: 'p1', type: 'wire' },
+        { id: 'e1', source: 'holder_1', sourceHandle: 'pos', target: 'sw_1', targetHandle: 'p1', type: 'wire' },
         { id: 'e2', source: 'sw_1', sourceHandle: 'p2', target: 'bulb_1', targetHandle: 'p1', type: 'wire' },
-        { id: 'e3', source: 'bulb_1', sourceHandle: 'p2', target: 'bat_1', targetHandle: 'neg', type: 'wire' },
+        { id: 'e3', source: 'bulb_1', sourceHandle: 'p2', target: 'holder_1', targetHandle: 'neg', type: 'wire' },
       ];
     } else if (presetName === 'voltage-divider') {
       presetNodes = [
