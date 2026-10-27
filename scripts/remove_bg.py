@@ -14,50 +14,53 @@ from PIL import Image, ImageFilter
 
 def process_image_background(input_path: str, output_path: str) -> None:
     """
-    Removes black background from solid electrical components and outputs clean RGBA PNG.
-    Uses edge-aware luminance thresholding with smooth alpha feathering.
+    Removes black background from solid electrical components, eliminates dark halos,
+    and tightly crops transparent margins so components scale accurately in UI slots.
     """
     print(f"Processing: {input_path} -> {output_path}")
     image = Image.open(input_path).convert("RGBA")
     width, height = image.size
-    
-    # Check if rembg is available, otherwise perform high-fidelity color matting
-    try:
-        import rembg
-        print("Using rembg engine...")
-        result = rembg.remove(image)
-        result.save(output_path, "PNG")
-        print(f"Successfully saved {output_path} with rembg.")
-        return
-    except ImportError:
-        print("Using Pillow high-fidelity luma-chroma matting engine...")
-
-    # Load pixel data
     pixels = image.load()
-    
-    # Create mask for solid background extraction
-    # Black background has R, G, B near 0 (threshold < 15)
-    # We apply a smooth transition between 10 and 35 for ultra-clean anti-aliased edges
+
+    min_x, min_y = width, height
+    max_x, max_y = 0, 0
+
     for y in range(height):
         for x in range(width):
             r, g, b, a = pixels[x, y]
-            
-            # Brightness / max channel
             max_channel = max(r, g, b)
-            
-            if max_channel <= 8:
-                # Fully transparent background
+
+            if max_channel <= 22:
                 pixels[x, y] = (0, 0, 0, 0)
-            elif max_channel < 30:
-                # Smooth antialiasing gradient for borders
-                alpha_factor = (max_channel - 8) / (30 - 8)
+            elif max_channel < 55:
+                alpha_factor = (max_channel - 22) / (55 - 22)
                 new_alpha = int(alpha_factor * 255)
                 pixels[x, y] = (r, g, b, new_alpha)
             else:
-                # Solid foreground component
                 pixels[x, y] = (r, g, b, 255)
-                
-    # Save processed image with full alpha channel
+
+            # Track tight bounding box of solid pixels
+            if pixels[x, y][3] > 60:
+                if x < min_x:
+                    min_x = x
+                if y < min_y:
+                    min_y = y
+                if x > max_x:
+                    max_x = x
+                if y > max_y:
+                    max_y = y
+
+    if min_x < max_x and min_y < max_y:
+        pad = 6
+        crop_box = (
+            max(0, min_x - pad),
+            max(0, min_y - pad),
+            min(width, max_x + 1 + pad),
+            min(height, max_y + 1 + pad),
+        )
+        image = image.crop(crop_box)
+        print(f"Cropped {os.path.basename(input_path)} to {image.size} (box={crop_box})")
+
     image.save(output_path, "PNG")
     print(f"Successfully processed and saved: {output_path}")
 

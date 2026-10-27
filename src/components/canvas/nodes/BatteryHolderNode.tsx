@@ -1,44 +1,88 @@
 import React, { useState } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
-import { BatteryCharging, Zap, AlertTriangle, RotateCcw, Plus } from 'lucide-react';
-import { CircuitElementData } from '../../../types/circuit';
+import { BatteryCharging, Plus, RotateCcw, Zap } from 'lucide-react';
+import { CircuitElementData, ComponentType } from '../../../types/circuit';
 import { useCircuitStore } from '../../../store/useCircuitStore';
+import { TRANSLATIONS } from '../../../i18n/translations';
 
 /**
- * BatteryHolderNode (Dual AA Series Holder - 0V / 1.5V / 3.0V).
- * 
- * Features:
- * - Displays processed /assets/processed/battery-holder.png
- * - Accepts dragged BatteryNode (1.5V AA) from canvas or palette
- * - Auto-rotates battery 180deg so (-) terminal presses against the coil spring
- *   and (+) terminal touches the flat contact plate
- * - Transparent SVG coil spring overlay that compresses with transform: scaleY(0.6)
- *   when hasBattery is true
+ * SVG Metallic Coil Spring Overlay for Battery Holder Chambers.
+ * Animates with `transform: scaleY(0.6)` when a battery is inserted into the slot.
  */
+const SpringOverlay: React.FC<{
+  isCompressed: boolean;
+  anchorOrigin: 'top' | 'bottom';
+  className?: string;
+}> = ({ isCompressed, anchorOrigin, className = '' }) => (
+  <svg
+    viewBox="0 0 40 36"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className={`pointer-events-none transition-transform duration-300 ease-out ${className}`}
+    style={{
+      transform: isCompressed ? 'scaleY(0.6)' : 'scaleY(1)',
+      transformOrigin: anchorOrigin === 'bottom' ? 'center bottom' : 'center top',
+    }}
+  >
+    <path
+      d="M5 3H35L7 10L33 17L9 24L31 31L12 34H28"
+      stroke="#E2E8F0"
+      strokeWidth="3.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M5 3H35L7 10L33 17L9 24L31 31L12 34H28"
+      stroke="#94A3B8"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 export const BatteryHolderNode: React.FC<NodeProps<CircuitElementData>> = ({
   id,
   data,
   selected,
 }) => {
-  const simulation = useCircuitStore((state) => state.simulation);
   const updateComponentData = useCircuitStore((state) => state.updateComponentData);
   const ejectBatteryFromHolder = useCircuitStore((state) => state.ejectBatteryFromHolder);
+  const language = useCircuitStore((state) => state.language);
+  const t = TRANSLATIONS[language].nodes.holder;
 
   const [isDragOver, setIsDragOver] = useState(false);
 
-  const batteryCount = data.batteryCount ?? (data.hasBattery ? 2 : 0);
-  const hasBattery = Boolean(data.hasBattery && batteryCount > 0);
-  const hasSlot1 = hasBattery && batteryCount >= 1;
-  const hasSlot2 = hasBattery && batteryCount >= 2;
+  const batteryCount = Math.min(2, Math.max(0, data.batteryCount ?? (data.hasBattery ? 2 : 0)));
+  const hasBattery = batteryCount > 0;
+  const hasSlot1 = batteryCount >= 1;
+  const hasSlot2 = batteryCount >= 2;
 
-  const totalVoltage = hasBattery ? batteryCount * 1.5 : 0.0;
-  const current = simulation.branchCurrents[id] ?? 0;
-  const isShortCircuit = simulation.shortCircuitBranches.includes(id);
+  const outputVoltage = batteryCount * 1.5;
+  const current = Math.abs(data.calculatedCurrent ?? 0);
+  const isShorted = data.isShortCircuit;
 
-  // Allow dropping a 'battery' directly from the SidebarPalette onto this holder
+  const handleInsertBattery = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (batteryCount >= 2) return;
+    const nextCount = Math.min(2, batteryCount + 1);
+    updateComponentData(id, {
+      hasBattery: true,
+      batteryCount: nextCount,
+      voltage: nextCount * 1.5,
+    });
+  };
+
+  const handleEjectBattery = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (batteryCount <= 0) return;
+    ejectBatteryFromHolder(id);
+  };
+
+  // Support dragging a Battery item directly from SidebarPalette onto the Holder
   const handleDragOver = (e: React.DragEvent) => {
-    const draggedType = e.dataTransfer.getData('application/reactflow');
-    if (draggedType === 'battery' || e.dataTransfer.types.includes('application/reactflow')) {
+    const draggedType = e.dataTransfer.getData('application/reactflow') as ComponentType | '';
+    if (draggedType === 'battery' && batteryCount < 2) {
       e.preventDefault();
       e.stopPropagation();
       e.dataTransfer.dropEffect = 'move';
@@ -51,11 +95,11 @@ export const BatteryHolderNode: React.FC<NodeProps<CircuitElementData>> = ({
   };
 
   const handleDrop = (e: React.DragEvent) => {
-    setIsDragOver(false);
-    const draggedType = e.dataTransfer.getData('application/reactflow');
-    if (draggedType === 'battery') {
+    const draggedType = e.dataTransfer.getData('application/reactflow') as ComponentType | '';
+    if (draggedType === 'battery' && batteryCount < 2) {
       e.preventDefault();
       e.stopPropagation();
+      setIsDragOver(false);
       const nextCount = Math.min(2, batteryCount + 1);
       updateComponentData(id, {
         hasBattery: true,
@@ -65,221 +109,215 @@ export const BatteryHolderNode: React.FC<NodeProps<CircuitElementData>> = ({
     }
   };
 
-  const handleQuickAddBattery = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const nextCount = Math.min(2, batteryCount + 1);
-    updateComponentData(id, {
-      hasBattery: true,
-      batteryCount: nextCount,
-      voltage: nextCount * 1.5,
-    });
-  };
-
-  const handleEject = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    ejectBatteryFromHolder(id);
-  };
-
   return (
     <div
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`relative rounded-xl border bg-void-900 px-4 py-3 shadow-2xl transition-all duration-200 min-w-[195px] ${
-        isDragOver
-          ? 'border-neon-400 ring-4 ring-neon-500/30 scale-105'
+      className={`relative rounded-xl bg-void-900 border-2 transition-all duration-200 p-3 min-w-[196px] select-none ${
+        isShorted
+          ? 'border-danger-500 shadow-glow-danger animate-pulse'
+          : isDragOver
+          ? 'border-emerald-400 shadow-[0_0_25px_rgba(16,185,129,0.45)] scale-[1.03]'
           : selected
-          ? 'border-electric-500 shadow-glow'
+          ? 'border-electric-500 shadow-glow-blue'
           : 'border-white/10 hover:border-white/20'
-      } ${isShortCircuit ? 'border-danger-500 shadow-glow-danger animate-pulse' : ''}`}
+      }`}
     >
-      {/* Positive Terminal Handle (Top) */}
-      <div className="absolute -top-3 left-1/2 -translate-x-1/2 flex flex-col items-center z-20">
-        <span className="text-[10px] font-bold text-red-400 font-mono select-none drop-shadow">
-          +
-        </span>
-        <Handle
-          type="source"
-          position={Position.Top}
-          id="pos"
-          className="handle-positive !bg-red-500 !border-red-300 !w-3 !h-3"
-        />
+      {/* Positive Terminal Handle (Top Red Lead) */}
+      <Handle
+        type="source"
+        position={Position.Top}
+        id="pos"
+        className="!bg-red-500 !border-red-200 !w-4 !h-4 !-top-2"
+      />
+      <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] font-mono font-bold text-red-400 pointer-events-none whitespace-nowrap">
+        + ({outputVoltage.toFixed(1)}V)
       </div>
 
       {/* Header */}
-      <div className="flex items-center justify-between gap-2 mb-1.5">
+      <div className="flex items-center justify-between gap-2 mb-2">
         <div className="flex items-center gap-1.5">
-          <div className="p-1 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+          <div className="p-1.5 rounded-lg bg-electric-500/10 border border-electric-500/30 text-electric-400">
             <BatteryCharging className="w-4 h-4" />
           </div>
-          <span className="text-xs font-semibold text-slate-200 tracking-tight">
-            AA Holder (2x)
+          <span className="text-xs font-semibold text-slate-100 tracking-tight">
+            {t.title}
           </span>
         </div>
-        {isShortCircuit ? (
-          <div className="flex items-center gap-1 text-danger-500 text-[10px] font-bold uppercase animate-bounce">
-            <AlertTriangle className="w-3.5 h-3.5" /> Short
-          </div>
-        ) : (
+        {hasBattery && (
           <Zap
             className={`w-3.5 h-3.5 ${
-              hasBattery ? 'text-cyan-400 fill-cyan-400/30' : 'text-slate-600'
+              isShorted
+                ? 'text-danger-500'
+                : current > 0
+                ? 'text-electric-400 animate-pulse'
+                : 'text-emerald-400'
             }`}
           />
         )}
       </div>
 
-      {/* Interactive Dual-Slot Holder Graphic with Spring SVG & Auto-Rotated Batteries */}
-      <div className="relative flex justify-center items-center py-1 my-1">
-        <div className="relative w-32 h-36 flex items-center justify-center">
-          {/* Base Processed Holder Image */}
+      {/* Visual Dual AA Holder Container calibrated to cropped battery-holder.png (491x733) */}
+      <div className="relative flex justify-center items-center my-1 py-1 bg-void-950/60 rounded-lg border border-white/5">
+        <div className="relative w-[136px] h-[203px] flex items-center justify-center">
+          {/* Base Battery Holder Image (tightly cropped 491x733) */}
           <img
             src="/assets/processed/battery-holder.png"
-            alt="Dual AA Battery Holder"
-            className="w-full h-full object-contain pointer-events-none select-none drop-shadow-lg"
+            alt={t.title}
+            className="w-full h-full object-fill pointer-events-none select-none drop-shadow-[0_4px_10px_rgba(0,0,0,0.7)]"
+            draggable={false}
           />
 
-          {/* SLOT 1 (Left Chamber): Flat contact at TOP, Spring at BOTTOM */}
-          <div className="absolute left-[23%] top-[14%] bottom-[14%] w-[24%] flex flex-col items-center justify-between pointer-events-none">
-            {/* Flat Top Contact Plate (+) */}
-            <div className="w-4 h-1 bg-slate-300/80 rounded-full" />
-
-            {/* Inserted AA Battery in Slot 1 (Oriented 0deg: + top, - bottom on spring) */}
-            {hasSlot1 && (
-              <img
-                src="/assets/processed/battery-aa.png"
-                alt="AA Cell 1"
-                className="w-full h-[76%] object-contain z-10 transition-all duration-300 drop-shadow-md"
-                style={{ transform: 'rotate(0deg)' }}
-              />
-            )}
-
-            {/* Transparent SVG Coil Spring Overlay at Bottom of Slot 1 */}
-            <svg
-              viewBox="0 0 36 28"
-              className="w-6 h-6 text-slate-300/90 overflow-visible transition-transform duration-300 ease-out origin-bottom"
+          {/* ================= LEFT CHAMBER (SLOT 1) ================= */}
+          {/* Mask native uncompressed bottom spring when battery 1 is inserted */}
+          {hasSlot1 && (
+            <div
+              className="absolute bg-[#32353B] rounded-xs pointer-events-none"
               style={{
-                transform: hasSlot1 ? 'scaleY(0.6)' : 'scaleY(1)',
+                left: '14%',
+                top: '68%',
+                width: '31%',
+                height: '19%',
               }}
-            >
-              <path
-                d="M 10 2 L 26 5 L 8 10 L 28 15 L 6 20 L 29 25 L 4 27"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </div>
+            />
+          )}
 
-          {/* SLOT 2 (Right Chamber): Spring at TOP, Flat contact at BOTTOM */}
-          <div className="absolute right-[23%] top-[14%] bottom-[14%] w-[24%] flex flex-col items-center justify-between pointer-events-none">
-            {/* Transparent SVG Coil Spring Overlay at Top of Slot 2 */}
-            <svg
-              viewBox="0 0 36 28"
-              className="w-6 h-6 text-slate-300/90 overflow-visible transition-transform duration-300 ease-out origin-top"
+          {/* Animated Bottom Spring for Slot 1 (- terminal at bottom, + plate at top) */}
+          <SpringOverlay
+            isCompressed={hasSlot1}
+            anchorOrigin="bottom"
+            className="absolute left-[15.5%] bottom-[13%] w-[28%] h-[17%] z-10"
+          />
+
+          {/* Slot 1 AA Battery: Upright (0 deg) so (+) button touches top flat plate and (-) touches bottom spring */}
+          {hasSlot1 && (
+            <img
+              src="/assets/processed/battery-aa.png"
+              alt="AA Cell 1 (1.5V)"
+              draggable={false}
+              className="absolute left-[13.5%] top-[13.5%] w-[32%] h-[63.5%] object-fill z-20 pointer-events-none drop-shadow-[0_3px_6px_rgba(0,0,0,0.85)] transition-all duration-300"
+            />
+          )}
+
+          {/* ================= RIGHT CHAMBER (SLOT 2) ================= */}
+          {/* Mask native uncompressed top spring when battery 2 is inserted */}
+          {hasSlot2 && (
+            <div
+              className="absolute bg-[#32353B] rounded-xs pointer-events-none"
               style={{
-                transform: hasSlot2 ? 'scaleY(0.6)' : 'scaleY(1)',
+                left: '55%',
+                top: '13%',
+                width: '31%',
+                height: '19%',
               }}
-            >
-              <path
-                d="M 4 1 L 29 3 L 6 8 L 28 13 L 8 18 L 26 23 L 10 26"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            />
+          )}
 
-            {/* Inserted AA Battery in Slot 2: AUTO-ROTATED 180deg so (-) presses top spring and (+) touches bottom flat plate */}
-            {hasSlot2 && (
-              <img
-                src="/assets/processed/battery-aa.png"
-                alt="AA Cell 2 (Rotated 180°)"
-                className="w-full h-[76%] object-contain z-10 transition-all duration-300 drop-shadow-md"
-                style={{ transform: 'rotate(180deg)' }}
-              />
-            )}
+          {/* Animated Top Spring for Slot 2 (- spring at top, + flat plate at bottom) */}
+          <SpringOverlay
+            isCompressed={hasSlot2}
+            anchorOrigin="top"
+            className="absolute left-[56.5%] top-[13%] w-[28%] h-[17%] z-10"
+          />
 
-            {/* Flat Bottom Contact Plate (+) */}
-            <div className="w-4 h-1 bg-slate-300/80 rounded-full" />
-          </div>
+          {/* Slot 2 AA Battery: Auto-rotated 180deg so (-) flat end presses top spring and (+) button touches bottom plate */}
+          {hasSlot2 && (
+            <img
+              src="/assets/processed/battery-aa.png"
+              alt="AA Cell 2 (1.5V Rotated 180°)"
+              draggable={false}
+              style={{ transform: 'rotate(180deg)' }}
+              className="absolute left-[54.5%] top-[23%] w-[32%] h-[63.5%] object-fill z-20 pointer-events-none drop-shadow-[0_3px_6px_rgba(0,0,0,0.85)] transition-all duration-300"
+            />
+          )}
+
+          {/* Drop Zone Highlight Overlay */}
+          {isDragOver && (
+            <div className="absolute inset-0 rounded-lg bg-emerald-500/20 border border-dashed border-emerald-400 flex items-center justify-center z-30 pointer-events-none">
+              <span className="text-[10px] font-mono font-bold text-emerald-200 bg-void-950/90 px-2 py-1 rounded text-center">
+                {t.dropNow}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Quick Action Bar for Inserting / Ejecting AA Cells */}
-      <div className="flex items-center justify-between gap-1.5 mb-2">
+      {/* Interactive Slot Controls (for both touch/mobile and desktop) */}
+      <div className="flex items-center justify-between gap-1.5 mt-2 mb-2">
         <span className="text-[10px] font-mono text-slate-400">
-          Cells: <b className="text-cyan-400">{batteryCount}/2 AA</b>
+          {t.filledCount}{' '}
+          <b className="text-slate-200">{batteryCount}/2 AA</b>
         </span>
         <div className="flex items-center gap-1">
           {batteryCount < 2 && (
             <button
               type="button"
-              onClick={handleQuickAddBattery}
-              title="Insert 1.5V AA Battery into slot"
-              className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-[9px] font-semibold text-cyan-300 transition-all active:scale-95 cursor-pointer"
+              onClick={handleInsertBattery}
+              title="Insert 1.5V AA Battery"
+              className="px-2 py-0.5 rounded bg-electric-500/15 hover:bg-electric-500/25 text-electric-400 border border-electric-500/30 text-[10px] font-mono font-semibold flex items-center gap-0.5 active:scale-95 transition-all"
             >
-              <Plus className="w-2.5 h-2.5" /> 1.5V
+              <Plus className="w-3 h-3" />
+              1.5V
             </button>
           )}
-          {hasBattery && (
+          {batteryCount > 0 && (
             <button
               type="button"
-              onClick={handleEject}
-              title="Eject AA Battery back to canvas"
-              className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-void-800 hover:bg-void-700 border border-white/10 text-[9px] text-slate-300 transition-all active:scale-95 cursor-pointer"
+              onClick={handleEjectBattery}
+              title="Eject 1.5V AA Battery"
+              className="px-2 py-0.5 rounded bg-void-800 hover:bg-void-700 text-slate-300 border border-white/10 text-[10px] font-mono flex items-center gap-0.5 active:scale-95 transition-all"
             >
-              <RotateCcw className="w-2.5 h-2.5" /> Eject
+              <RotateCcw className="w-2.5 h-2.5" />
+              {t.ejectBtn}
             </button>
           )}
         </div>
       </div>
 
       {/* Telemetry Readout */}
-      <div className="bg-void-950/80 rounded-lg p-2 border border-white/5 space-y-1">
-        <div className="flex justify-between items-baseline">
-          <span className="text-[10px] text-slate-400 font-medium">Output EMF:</span>
+      <div className="bg-void-950 rounded-lg p-2 border border-white/5 font-mono text-xs space-y-1">
+        <div className="flex justify-between items-center">
+          <span className="text-slate-400 text-[10px]">{t.outputVoltage}</span>
           <span
-            className={`text-xs font-mono font-bold ${
-              hasBattery ? 'text-cyan-400' : 'text-slate-500'
+            className={`font-semibold ${
+              hasBattery ? 'text-electric-400' : 'text-slate-500'
             }`}
           >
-            {totalVoltage.toFixed(1)} V {batteryCount === 2 ? '(Series)' : ''}
+            {outputVoltage.toFixed(1)} V{' '}
+            {batteryCount === 2
+              ? t.seriesTag
+              : batteryCount === 1
+              ? t.singleTag
+              : t.emptyTag}
           </span>
         </div>
-        <div className="flex justify-between items-baseline">
-          <span className="text-[10px] text-slate-400 font-medium">Current:</span>
+        <div className="flex justify-between items-center">
+          <span className="text-slate-400 text-[10px]">{t.current}</span>
           <span
-            className={`text-xs font-mono font-semibold ${
-              isShortCircuit
+            className={
+              isShorted
                 ? 'text-danger-500 font-bold'
-                : Math.abs(current) > 0.001
-                ? 'text-electric-400'
-                : 'text-slate-500'
-            }`}
+                : 'text-neon-400 font-semibold'
+            }
           >
-            {Math.abs(current) < 1
-              ? `${(Math.abs(current) * 1000).toFixed(0)} mA`
-              : `${Math.abs(current).toFixed(2)} A`}
+            {current < 1
+              ? `${(current * 1000).toFixed(0)} mA`
+              : `${current.toFixed(2)} A`}
           </span>
         </div>
       </div>
 
-      {/* Negative Terminal Handle (Bottom) */}
-      <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 flex flex-col items-center z-20">
-        <Handle
-          type="source"
-          position={Position.Bottom}
-          id="neg"
-          className="handle-negative !bg-blue-500 !border-blue-300 !w-3 !h-3"
-        />
-        <span className="text-[10px] font-bold text-blue-400 font-mono select-none drop-shadow">
-          -
-        </span>
+      {/* Negative Terminal Handle (Bottom Black Lead) */}
+      <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-mono font-bold text-slate-400 pointer-events-none">
+        - (0V)
       </div>
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="neg"
+        className="!bg-blue-500 !border-blue-200 !w-4 !h-4 !-bottom-2"
+      />
     </div>
   );
 };

@@ -23,6 +23,7 @@ import {
   WireConnection,
 } from '../types/circuit';
 import { solveCircuitMNA } from '../physics/mnaSolver';
+import { AppLanguage } from '../i18n/translations';
 
 interface CircuitState {
   nodes: Node<CircuitElementData>[];
@@ -30,6 +31,7 @@ interface CircuitState {
   selectedNodeId: string | null;
   simulation: SimulationResult;
   isSimulating: boolean;
+  language: AppLanguage;
 
   // React Flow Handlers
   onNodesChange: (changes: NodeChange[]) => void;
@@ -37,6 +39,7 @@ interface CircuitState {
   onConnect: (connection: Connection) => void;
 
   // Circuit Operations
+  setLanguage: (language: AppLanguage) => void;
   addComponent: (type: ComponentType, position: { x: number; y: number }) => void;
   updateComponentData: (id: string, partialData: Partial<CircuitElementData>) => void;
   removeComponent: (id: string) => void;
@@ -104,6 +107,11 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   selectedNodeId: null,
   simulation: DEFAULT_SIMULATION,
   isSimulating: true,
+  language: 'id',
+
+  setLanguage: (language: AppLanguage) => {
+    set({ language });
+  },
 
   onNodesChange: (changes: NodeChange[]) => {
     set({
@@ -144,6 +152,7 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
 
   addComponent: (type: ComponentType, position: { x: number; y: number }) => {
     const componentId = `${type}_${Date.now()}`;
+    const isId = get().language === 'id';
     let defaultData: CircuitElementData = {
       id: componentId,
       type,
@@ -152,7 +161,11 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
 
     switch (type) {
       case 'battery':
-        defaultData = { ...defaultData, voltage: 1.5, label: '1.5V AA Battery' };
+        defaultData = {
+          ...defaultData,
+          voltage: 1.5,
+          label: isId ? 'Baterai AA 1.5V' : '1.5V AA Battery',
+        };
         break;
       case 'battery-holder':
         defaultData = {
@@ -160,26 +173,48 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
           hasBattery: false,
           batteryCount: 0,
           voltage: 0,
-          label: 'Dual AA Holder',
+          label: isId ? 'Wadah Baterai AA' : 'Dual AA Holder',
         };
         break;
       case 'resistor':
-        defaultData = { ...defaultData, resistance: 100, label: '100Ω Resistor' };
+        defaultData = {
+          ...defaultData,
+          resistance: 100,
+          label: isId ? 'Resistor 100Ω' : '100Ω Resistor',
+        };
         break;
       case 'bulb':
-        defaultData = { ...defaultData, resistance: 10, powerRating: 5.0, label: 'Light Bulb' };
+        defaultData = {
+          ...defaultData,
+          resistance: 10,
+          powerRating: 5.0,
+          label: isId ? 'Lampu Bohlam' : 'Light Bulb',
+        };
         break;
       case 'switch':
-        defaultData = { ...defaultData, isOpen: false, label: 'SPST Switch' };
+        defaultData = {
+          ...defaultData,
+          isOpen: false,
+          label: isId ? 'Saklar Listrik' : 'SPST Switch',
+        };
         break;
       case 'ground':
-        defaultData = { ...defaultData, label: '0V Earth Ground' };
+        defaultData = {
+          ...defaultData,
+          label: isId ? 'Ground (0V)' : '0V Earth Ground',
+        };
         break;
       case 'voltmeter':
-        defaultData = { ...defaultData, label: 'Digital Voltmeter' };
+        defaultData = {
+          ...defaultData,
+          label: isId ? 'Voltmeter Digital' : 'Digital Voltmeter',
+        };
         break;
       case 'ammeter':
-        defaultData = { ...defaultData, label: 'Digital Ammeter' };
+        defaultData = {
+          ...defaultData,
+          label: isId ? 'Amperemeter Digital' : 'Digital Ammeter',
+        };
         break;
     }
 

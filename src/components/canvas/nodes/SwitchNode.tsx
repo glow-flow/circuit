@@ -3,9 +3,13 @@ import { Handle, Position, NodeProps } from 'reactflow';
 import { ToggleLeft, ToggleRight } from 'lucide-react';
 import { CircuitElementData } from '../../../types/circuit';
 import { useCircuitStore } from '../../../store/useCircuitStore';
+import { TRANSLATIONS } from '../../../i18n/translations';
 
 export const SwitchNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, selected }) => {
   const toggleSwitch = useCircuitStore((state) => state.toggleSwitch);
+  const language = useCircuitStore((state) => state.language);
+  const t = TRANSLATIONS[language].nodes.switch;
+
   const isOpen = data.isOpen ?? false;
 
   const handleToggle = (e: React.MouseEvent) => {
@@ -15,7 +19,7 @@ export const SwitchNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, 
 
   return (
     <div
-      className={`relative rounded-xl border bg-void-900 px-4 py-3 shadow-2xl transition-all duration-150 min-w-[150px] ${
+      className={`relative rounded-xl border bg-void-900 px-4 py-3 shadow-2xl transition-all duration-150 min-w-[164px] ${
         selected ? 'border-electric-500 shadow-glow' : 'border-white/10 hover:border-white/20'
       }`}
     >
@@ -25,21 +29,21 @@ export const SwitchNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, 
           type="source"
           position={Position.Left}
           id="p1"
-          className="!bg-void-800 !border-slate-400"
+          className="!bg-void-800 !border-slate-400 !w-3.5 !h-3.5"
         />
       </div>
 
       {/* Header */}
       <div className="flex items-center justify-between gap-2 mb-2">
-        <span className="text-xs font-semibold text-slate-200 tracking-tight">SPST Switch</span>
+        <span className="text-xs font-semibold text-slate-200 tracking-tight">{t.title}</span>
         <span
-          className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-semibold ${
+          className={`text-[9px] font-mono px-1.5 py-0.5 rounded font-semibold ${
             isOpen
               ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
               : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
           }`}
         >
-          {isOpen ? 'OPEN' : 'CLOSED'}
+          {isOpen ? t.openBadge : t.closedBadge}
         </span>
       </div>
 
@@ -47,13 +51,13 @@ export const SwitchNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, 
       <button
         onClick={handleToggle}
         className="w-full flex flex-col items-center justify-center p-2 rounded-lg bg-void-950/80 border border-white/5 hover:border-white/20 active:scale-95 transition-all cursor-pointer group"
-        title="Click to toggle switch state"
+        title={isOpen ? t.clickToClose : t.clickToOpen}
       >
         <svg width="70" height="30" viewBox="0 0 70 30" className="stroke-current">
           {/* Terminal points */}
           <circle cx="15" cy="15" r="3.5" fill="#3B82F6" stroke="none" />
           <circle cx="55" cy="15" r="3.5" fill="#3B82F6" stroke="none" />
-          
+
           {/* Switch Blade Arm */}
           {isOpen ? (
             <line
@@ -81,8 +85,12 @@ export const SwitchNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, 
         </svg>
 
         <div className="flex items-center gap-1 mt-1 text-[10px] text-slate-400 group-hover:text-slate-200">
-          {isOpen ? <ToggleLeft className="w-3.5 h-3.5 text-amber-400" /> : <ToggleRight className="w-3.5 h-3.5 text-emerald-400" />}
-          <span>Toggle Switch</span>
+          {isOpen ? (
+            <ToggleLeft className="w-3.5 h-3.5 text-amber-400" />
+          ) : (
+            <ToggleRight className="w-3.5 h-3.5 text-emerald-400" />
+          )}
+          <span>{isOpen ? t.clickToClose : t.clickToOpen}</span>
         </div>
       </button>
 
@@ -92,7 +100,7 @@ export const SwitchNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, 
           type="source"
           position={Position.Right}
           id="p2"
-          className="!bg-void-800 !border-slate-400"
+          className="!bg-void-800 !border-slate-400 !w-3.5 !h-3.5"
         />
       </div>
     </div>

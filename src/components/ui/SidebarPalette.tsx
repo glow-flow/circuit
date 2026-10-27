@@ -13,77 +13,7 @@ import {
 } from 'lucide-react';
 import { ComponentType } from '../../types/circuit';
 import { useCircuitStore } from '../../store/useCircuitStore';
-
-interface PaletteItem {
-  type: ComponentType;
-  label: string;
-  category: string;
-  description: string;
-  icon: React.ReactNode;
-  badge?: string;
-}
-
-const PALETTE_ITEMS: PaletteItem[] = [
-  {
-    type: 'battery',
-    label: '1.5V AA Battery',
-    category: 'Sources',
-    description: 'Single 1.5V AA cell. Drag onto Holder or wire directly',
-    icon: <Battery className="w-4 h-4 text-electric-400" />,
-    badge: '1.5V',
-  },
-  {
-    type: 'battery-holder',
-    label: 'Dual AA Holder',
-    category: 'Sources',
-    description: 'Wadah 2x baterai AA seri (1.5V / 3.0V) dengan pegas',
-    icon: <BatteryCharging className="w-4 h-4 text-emerald-400" />,
-    badge: 'Holder',
-  },
-  {
-    type: 'resistor',
-    label: 'Resistor',
-    category: 'Passive Loads',
-    description: 'Limits current according to Ohm’s Law (100Ω)',
-    icon: <Activity className="w-4 h-4 text-amber-400" />,
-  },
-  {
-    type: 'bulb',
-    label: 'Incandescent Lamp',
-    category: 'Passive Loads',
-    description: 'Lights up dynamically based on dissipated power (I²R)',
-    icon: <Lightbulb className="w-4 h-4 text-yellow-300" />,
-    badge: 'Glows',
-  },
-  {
-    type: 'switch',
-    label: 'SPST Switch',
-    category: 'Controls',
-    description: 'Toggleable contact blade to open/close circuits',
-    icon: <ToggleLeft className="w-4 h-4 text-emerald-400" />,
-  },
-  {
-    type: 'ground',
-    label: 'Earth Ground (0V)',
-    category: 'Reference',
-    description: 'Defines 0V potential reference point',
-    icon: <Minimize2 className="w-4 h-4 text-emerald-400" />,
-  },
-  {
-    type: 'voltmeter',
-    label: 'Digital Voltmeter',
-    category: 'Meters',
-    description: 'High impedance (10MΩ) voltage probe',
-    icon: <Gauge className="w-4 h-4 text-electric-400" />,
-  },
-  {
-    type: 'ammeter',
-    label: 'Digital Ammeter',
-    category: 'Meters',
-    description: 'In-line series current meter (1mΩ)',
-    icon: <Zap className="w-4 h-4 text-neon-400" />,
-  },
-];
+import { TRANSLATIONS } from '../../i18n/translations';
 
 interface SidebarPaletteProps {
   isMobileDrawer?: boolean;
@@ -95,6 +25,68 @@ export const SidebarPalette: React.FC<SidebarPaletteProps> = ({
   onCloseMobile,
 }) => {
   const addComponent = useCircuitStore((state) => state.addComponent);
+  const language = useCircuitStore((state) => state.language);
+  const t = TRANSLATIONS[language].palette;
+
+  const paletteItems: {
+    type: ComponentType;
+    label: string;
+    description: string;
+    icon: React.ReactNode;
+    badge?: string;
+  }[] = [
+    {
+      type: 'battery',
+      label: t.items.battery.label,
+      description: t.items.battery.description,
+      icon: <Battery className="w-4 h-4 text-electric-400" />,
+      badge: t.items.battery.badge,
+    },
+    {
+      type: 'battery-holder',
+      label: t.items.holder.label,
+      description: t.items.holder.description,
+      icon: <BatteryCharging className="w-4 h-4 text-emerald-400" />,
+      badge: t.items.holder.badge,
+    },
+    {
+      type: 'resistor',
+      label: t.items.resistor.label,
+      description: t.items.resistor.description,
+      icon: <Activity className="w-4 h-4 text-amber-400" />,
+    },
+    {
+      type: 'bulb',
+      label: t.items.bulb.label,
+      description: t.items.bulb.description,
+      icon: <Lightbulb className="w-4 h-4 text-yellow-300" />,
+      badge: t.items.bulb.badge,
+    },
+    {
+      type: 'switch',
+      label: t.items.switch.label,
+      description: t.items.switch.description,
+      icon: <ToggleLeft className="w-4 h-4 text-emerald-400" />,
+    },
+    {
+      type: 'ground',
+      label: t.items.ground.label,
+      description: t.items.ground.description,
+      icon: <Minimize2 className="w-4 h-4 text-emerald-400" />,
+    },
+    {
+      type: 'voltmeter',
+      label: t.items.voltmeter.label,
+      description: t.items.voltmeter.description,
+      icon: <Gauge className="w-4 h-4 text-electric-400" />,
+    },
+    {
+      type: 'ammeter',
+      label: t.items.ammeter.label,
+      description: t.items.ammeter.description,
+      icon: <Zap className="w-4 h-4 text-neon-400" />,
+    },
+  ];
 
   const onDragStart = (event: React.DragEvent, nodeType: ComponentType) => {
     event.dataTransfer.setData('application/reactflow', nodeType);
@@ -102,7 +94,6 @@ export const SidebarPalette: React.FC<SidebarPaletteProps> = ({
   };
 
   const handleItemClick = (type: ComponentType) => {
-    // Spawn on canvas with slight jitter so multiple taps don't overlap
     const offsetX = 200 + Math.floor(Math.random() * 120);
     const offsetY = 120 + Math.floor(Math.random() * 120);
     addComponent(type, { x: offsetX, y: offsetY });
@@ -113,15 +104,13 @@ export const SidebarPalette: React.FC<SidebarPaletteProps> = ({
 
   if (isMobileDrawer) {
     return (
-      <div className="flex flex-col max-h-[70dvh] bg-void-900 border-t border-white/15 rounded-t-2xl shadow-2xl select-none overflow-hidden">
+      <div className="flex flex-col max-h-[72dvh] bg-void-900 border-t border-white/15 rounded-t-2xl shadow-2xl select-none overflow-hidden">
         <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
           <div>
             <h2 className="text-xs font-bold text-slate-100 uppercase tracking-wider">
-              Add Circuit Component
+              {t.title}
             </h2>
-            <p className="text-[11px] text-slate-400">
-              Tap any part below to place it onto the canvas
-            </p>
+            <p className="text-[11px] text-slate-400">{t.subtitleMobile}</p>
           </div>
           {onCloseMobile && (
             <button
@@ -135,7 +124,7 @@ export const SidebarPalette: React.FC<SidebarPaletteProps> = ({
         </div>
 
         <div className="flex-1 overflow-y-auto p-3 grid grid-cols-1 xs:grid-cols-2 gap-2">
-          {PALETTE_ITEMS.map((item) => (
+          {paletteItems.map((item) => (
             <button
               key={item.type}
               type="button"
@@ -171,15 +160,13 @@ export const SidebarPalette: React.FC<SidebarPaletteProps> = ({
     <aside className="hidden md:flex w-64 bg-void-900 border-r border-white/10 flex-col h-full shrink-0 select-none">
       <div className="p-3.5 border-b border-white/10">
         <h2 className="text-xs font-bold text-slate-200 uppercase tracking-wider">
-          Component Palette
+          {t.title}
         </h2>
-        <p className="text-[11px] text-slate-400 mt-0.5">
-          Drag or click to add to canvas
-        </p>
+        <p className="text-[11px] text-slate-400 mt-0.5">{t.subtitleDesktop}</p>
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
-        {PALETTE_ITEMS.map((item) => (
+        {paletteItems.map((item) => (
           <div
             key={item.type}
             onDragStart={(e) => onDragStart(e, item.type)}
@@ -213,10 +200,10 @@ export const SidebarPalette: React.FC<SidebarPaletteProps> = ({
       <div className="p-3 border-t border-white/10 bg-void-950/50 space-y-1.5">
         <div className="flex items-start gap-2 text-[11px] text-slate-400">
           <Info className="w-3.5 h-3.5 text-electric-400 shrink-0 mt-0.5" />
-          <span>Connect pins by dragging wires.</span>
+          <span>{t.tipConnect}</span>
         </div>
         <div className="text-[10px] text-sky-400/90 pl-5 leading-tight">
-          💡 Double-click any wire to add an <b>Anchor Bend</b>. Drag it to bend or curl the cable!
+          {t.tipWaypoint}
         </div>
       </div>
     </aside>

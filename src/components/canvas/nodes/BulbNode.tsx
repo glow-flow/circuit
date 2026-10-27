@@ -3,18 +3,21 @@ import { Handle, Position, NodeProps } from 'reactflow';
 import { Lightbulb, RotateCcw } from 'lucide-react';
 import { CircuitElementData } from '../../../types/circuit';
 import { useCircuitStore } from '../../../store/useCircuitStore';
+import { TRANSLATIONS } from '../../../i18n/translations';
 
 export const BulbNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, selected }) => {
   const simulation = useCircuitStore((state) => state.simulation);
   const updateComponentData = useCircuitStore((state) => state.updateComponentData);
+  const language = useCircuitStore((state) => state.language);
+  const t = TRANSLATIONS[language].nodes.bulb;
 
   const current = Math.abs(simulation.branchCurrents[id] ?? 0);
-  const resistance = data.resistance ?? 20;
+  const resistance = data.resistance ?? 10;
   const power = current * current * resistance; // Watts (P = I²R)
   const isBlown = data.isBlown || current > 2.5;
 
-  // Normalized brightness factor between 0.0 and 1.0 (reaches full glow around 3-5 Watts)
-  const brightness = Math.min(1.0, power / 4.0);
+  // Normalized brightness factor between 0.0 and 1.0 (reaches full glow around 1.5 - 3 Watts)
+  const brightness = Math.min(1.0, power / 1.8);
 
   const handleResetBulb = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -23,7 +26,7 @@ export const BulbNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, se
 
   return (
     <div
-      className={`relative rounded-xl border bg-void-900 px-4 py-3 shadow-2xl transition-all duration-150 min-w-[170px] ${
+      className={`relative rounded-xl border bg-void-900 px-4 py-3 shadow-2xl transition-all duration-150 min-w-[172px] ${
         selected ? 'border-electric-500 shadow-glow' : 'border-white/10 hover:border-white/20'
       } ${isBlown ? 'border-red-900/60' : ''}`}
     >
@@ -33,7 +36,7 @@ export const BulbNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, se
           type="source"
           position={Position.Left}
           id="p1"
-          className="!bg-void-800 !border-amber-400 !w-3 !h-3"
+          className="!bg-void-800 !border-amber-400 !w-3.5 !h-3.5"
         />
       </div>
 
@@ -51,12 +54,14 @@ export const BulbNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, se
           >
             <Lightbulb className="w-4 h-4" />
           </div>
-          <span className="text-xs font-semibold text-slate-200 tracking-tight">Lamp Bulb</span>
+          <span className="text-xs font-semibold text-slate-200 tracking-tight">
+            {t.title} ({resistance}Ω)
+          </span>
         </div>
         {isBlown && (
           <button
             onClick={handleResetBulb}
-            title="Reset blown filament"
+            title={t.replaceBtn}
             className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-950/80 hover:bg-red-900 border border-red-800 text-[9px] text-red-200 transition-colors cursor-pointer"
           >
             <RotateCcw className="w-2.5 h-2.5" /> Reset
@@ -69,7 +74,7 @@ export const BulbNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, se
         <div className="relative w-28 h-28 flex items-center justify-center">
           <img
             src="/assets/bulb-on.png"
-            alt="Lamp Bulb"
+            alt={t.title}
             className="w-full h-full object-contain pointer-events-none select-none"
             style={{
               mixBlendMode: 'screen',
@@ -77,9 +82,9 @@ export const BulbNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, se
               filter: isBlown
                 ? 'grayscale(100%) brightness(0.5)'
                 : brightness > 0.05
-                ? `brightness(${1 + brightness * 0.4}) saturate(1.2)`
+                ? `brightness(${1 + brightness * 0.45}) saturate(1.25)`
                 : 'grayscale(85%) brightness(0.45)',
-              opacity: isBlown ? 0.3 : brightness > 0 ? Math.min(1.0, 0.5 + brightness * 0.5) : 0.5,
+              opacity: isBlown ? 0.3 : brightness > 0 ? Math.min(1.0, 0.55 + brightness * 0.45) : 0.5,
             }}
           />
         </div>
@@ -88,7 +93,7 @@ export const BulbNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, se
       {/* Metrics */}
       <div className="bg-void-950/80 rounded-lg p-2 border border-white/5 space-y-1 text-[10px] font-mono">
         <div className="flex justify-between items-baseline">
-          <span className="text-slate-400 font-sans">Brightness:</span>
+          <span className="text-slate-400 font-sans">{t.brightness}</span>
           <span
             className={
               isBlown
@@ -98,15 +103,15 @@ export const BulbNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, se
                 : 'text-slate-500'
             }
           >
-            {isBlown ? '0% (Burned)' : `${(brightness * 100).toFixed(0)}%`}
+            {isBlown ? t.overloaded : `${(brightness * 100).toFixed(0)}%`}
           </span>
         </div>
         <div className="flex justify-between items-baseline">
-          <span className="text-slate-400 font-sans">Power:</span>
+          <span className="text-slate-400 font-sans">{t.power}</span>
           <span className="text-slate-200">{power.toFixed(2)} W</span>
         </div>
         <div className="flex justify-between items-baseline">
-          <span className="text-slate-400 font-sans">Current:</span>
+          <span className="text-slate-400 font-sans">{t.current}</span>
           <span className="text-electric-400">
             {current < 1 ? `${(current * 1000).toFixed(0)} mA` : `${current.toFixed(2)} A`}
           </span>
@@ -119,7 +124,7 @@ export const BulbNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, se
           type="source"
           position={Position.Right}
           id="p2"
-          className="!bg-void-800 !border-amber-400 !w-3 !h-3"
+          className="!bg-void-800 !border-amber-400 !w-3.5 !h-3.5"
         />
       </div>
     </div>

@@ -5,6 +5,7 @@ import { SidebarPalette } from './components/ui/SidebarPalette';
 import { CircuitCanvas } from './components/canvas/CircuitCanvas';
 import { Inspector } from './components/ui/Inspector';
 import { useCircuitStore } from './store/useCircuitStore';
+import { TRANSLATIONS } from './i18n/translations';
 
 type MobileSheetType = 'none' | 'palette' | 'inspector';
 
@@ -13,6 +14,9 @@ export const App: React.FC = () => {
   const nodes = useCircuitStore((state) => state.nodes);
   const selectedNodeId = useCircuitStore((state) => state.selectedNodeId);
   const simulation = useCircuitStore((state) => state.simulation);
+  const language = useCircuitStore((state) => state.language);
+
+  const t = TRANSLATIONS[language].mobileNav;
 
   const [activeMobileSheet, setActiveMobileSheet] = useState<MobileSheetType>('none');
 
@@ -51,7 +55,9 @@ export const App: React.FC = () => {
                 className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-electric-600/95 text-white text-xs font-semibold shadow-glow border border-electric-400/50 active:scale-95 transition-transform"
               >
                 <Sliders className="w-3.5 h-3.5" />
-                <span>Edit {selectedNode.data.label}</span>
+                <span>
+                  {language === 'id' ? 'Atur' : 'Edit'} {selectedNode.data.label}
+                </span>
               </button>
             </div>
           )}
@@ -96,7 +102,7 @@ export const App: React.FC = () => {
           }`}
         >
           <PlusCircle className="w-4 h-4 text-electric-400" />
-          <span>Add Part</span>
+          <span>{t.addPart}</span>
         </button>
 
         {/* Center Live Power Readout */}
@@ -115,7 +121,7 @@ export const App: React.FC = () => {
           }`}
         >
           <Sliders className="w-4 h-4 text-electric-400" />
-          <span>{selectedNode ? 'Tune Node' : 'Inspector'}</span>
+          <span>{t.inspector}</span>
         </button>
       </nav>
     </div>

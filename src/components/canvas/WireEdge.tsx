@@ -1,6 +1,47 @@
 import React from 'react';
-import { BaseEdge, EdgeProps, getBezierPath, useReactFlow } from 'reactflow';
+import { BaseEdge, EdgeProps, getBezierPath, Position, useReactFlow } from 'reactflow';
 import { useCircuitStore } from '../../store/useCircuitStore';
+
+/**
+ * Computes natural tangent orientation for Waypoint anchor nodes so wires
+ * never cross or form a figure-8 loop when routed right-to-left or vertically.
+ * Time Complexity: O(1)
+ */
+function resolveWaypointPositions(
+  source: string,
+  target: string,
+  sourceX: number,
+  sourceY: number,
+  targetX: number,
+  targetY: number,
+  defaultSourcePos: Position,
+  defaultTargetPos: Position
+): { effectiveSourcePos: Position; effectiveTargetPos: Position } {
+  const dx = targetX - sourceX;
+  const dy = targetY - sourceY;
+  const isHorizontal = Math.abs(dx) >= Math.abs(dy);
+
+  let effectiveSourcePos = defaultSourcePos;
+  let effectiveTargetPos = defaultTargetPos;
+
+  if (source.startsWith('wp_')) {
+    if (isHorizontal) {
+      effectiveSourcePos = dx >= 0 ? Position.Right : Position.Left;
+    } else {
+      effectiveSourcePos = dy >= 0 ? Position.Bottom : Position.Top;
+    }
+  }
+
+  if (target.startsWith('wp_')) {
+    if (isHorizontal) {
+      effectiveTargetPos = dx >= 0 ? Position.Left : Position.Right;
+    } else {
+      effectiveTargetPos = dy >= 0 ? Position.Top : Position.Bottom;
+    }
+  }
+
+  return { effectiveSourcePos, effectiveTargetPos };
+}
 
 /**
  * Custom Wire Edge with dynamic current glow, animated electron flow,
@@ -32,13 +73,25 @@ export const WireEdge: React.FC<EdgeProps> = ({
   );
   const hasCurrent = sourceCurrent > 0.0001;
 
+  const { effectiveSourcePos, effectiveTargetPos } = resolveWaypointPositions(
+    source,
+    target,
+    sourceX,
+    sourceY,
+    targetX,
+    targetY,
+    sourcePosition,
+    targetPosition
+  );
+
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,
-    sourcePosition,
+    sourcePosition: effectiveSourcePos,
     targetX,
     targetY,
-    targetPosition,
+    targetPosition: effectiveTargetPos,
+    curvature: 0.25,
   });
 
   // Solid, high-contrast permanent wire styling
