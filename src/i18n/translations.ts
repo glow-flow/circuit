@@ -136,6 +136,16 @@ export interface TranslationDictionary {
     switchOpenBtn: string;
     switchClosedBtn: string;
   };
+  wire: {
+    cutWire: string;
+    cutWireShort: string;
+    wireSelected: string;
+    wireResistance: string;
+    idealWire: string;
+    tapToCut: string;
+    deleteWireSuccess: string;
+    fromTo: string;
+  };
 }
 
 export const TRANSLATIONS: Record<AppLanguage, TranslationDictionary> = {
@@ -300,6 +310,16 @@ export const TRANSLATIONS: Record<AppLanguage, TranslationDictionary> = {
       switchOpenBtn: 'Saklar TERBUKA / Mati (Klik untuk Nyalakan)',
       switchClosedBtn: 'Saklar TERTUTUP / Nyala (Klik untuk Matikan)',
     },
+    wire: {
+      cutWire: 'Gunting / Putus Kabel',
+      cutWireShort: 'Putus Kabel',
+      wireSelected: 'Kabel Rangkaian Terpilih',
+      wireResistance: 'Hambatan Kabel:',
+      idealWire: '0.00 Ω (Ideal / Lossless)',
+      tapToCut: 'Ketuk tombol merah untuk memutus kabel ini',
+      deleteWireSuccess: 'Kabel berhasil diputus!',
+      fromTo: 'Menghubungkan:',
+    },
   },
   en: {
     header: {
@@ -461,6 +481,16 @@ export const TRANSLATIONS: Record<AppLanguage, TranslationDictionary> = {
       switchStateLabel: 'Switch State',
       switchOpenBtn: 'Switch is OPEN / OFF (Click to Turn ON)',
       switchClosedBtn: 'Switch is CLOSED / ON (Click to Turn OFF)',
+    },
+    wire: {
+      cutWire: 'Cut / Remove Wire',
+      cutWireShort: 'Cut Wire',
+      wireSelected: 'Selected Wire Edge',
+      wireResistance: 'Wire Resistance:',
+      idealWire: '0.00 Ω (Ideal / Lossless)',
+      tapToCut: 'Tap the red button to cut this wire',
+      deleteWireSuccess: 'Wire successfully removed!',
+      fromTo: 'Connecting:',
     },
   },
 };

@@ -236,5 +236,40 @@ describe('Modified Nodal Analysis (MNA) Physics Engine', () => {
     });
     expect(Math.abs(dualCellResult.branchCurrents['res_1'])).toBeCloseTo(3.0 / 10.1, 3);
   });
+
+  it('correctly drops current to 0A when a wire is cut / removed', () => {
+    const battery: CircuitElementData = {
+      id: 'bat_1',
+      type: 'battery',
+      voltage: 1.5,
+      label: '1.5V Battery',
+    };
+    const lamp: CircuitElementData = {
+      id: 'lamp_1',
+      type: 'bulb',
+      resistance: 10,
+      label: 'Light Bulb',
+    };
+    const completeWires: WireConnection[] = [
+      { id: 'w1', source: 'bat_1', sourceHandle: 'pos', target: 'lamp_1', targetHandle: 'p1' },
+      { id: 'w2', source: 'lamp_1', sourceHandle: 'p2', target: 'bat_1', targetHandle: 'neg' },
+    ];
+
+    // Circuit closed: current flows
+    const closedCircuit = solveCircuitMNA({
+      components: [battery, lamp],
+      wires: completeWires,
+    });
+    expect(Math.abs(closedCircuit.branchCurrents['lamp_1'])).toBeGreaterThan(0.1);
+
+    // Cut/remove wire w1
+    const cutWires = completeWires.filter((w) => w.id !== 'w1');
+    const openCircuit = solveCircuitMNA({
+      components: [battery, lamp],
+      wires: cutWires,
+    });
+    expect(Math.abs(openCircuit.branchCurrents['lamp_1'] ?? 0)).toBe(0);
+  });
 });
+
 

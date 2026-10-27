@@ -1,6 +1,8 @@
 import React from 'react';
 import { BaseEdge, EdgeProps, getBezierPath, Position, useReactFlow } from 'reactflow';
+import { Scissors } from 'lucide-react';
 import { useCircuitStore } from '../../store/useCircuitStore';
+import { TRANSLATIONS } from '../../i18n/translations';
 
 /**
  * Computes natural tangent orientation for Waypoint anchor nodes so wires
@@ -45,7 +47,8 @@ function resolveWaypointPositions(
 
 /**
  * Custom Wire Edge with dynamic current glow, animated electron flow,
- * permanent high-contrast visibility, and double-click waypoint bend creation.
+ * permanent high-contrast visibility, interactive click-to-select,
+ * one-tap wire cutting/removal button, and double-click waypoint bend creation.
  */
 export const WireEdge: React.FC<EdgeProps> = ({
   id,
@@ -57,14 +60,21 @@ export const WireEdge: React.FC<EdgeProps> = ({
   targetY,
   sourcePosition,
   targetPosition,
+  selected,
   style = {},
   markerEnd,
 }) => {
   const simulation = useCircuitStore((state) => state.simulation);
   const splitEdgeWithWaypoint = useCircuitStore((state) => state.splitEdgeWithWaypoint);
+  const selectedEdgeId = useCircuitStore((state) => state.selectedEdgeId);
+  const selectEdge = useCircuitStore((state) => state.selectEdge);
+  const removeEdge = useCircuitStore((state) => state.removeEdge);
+  const language = useCircuitStore((state) => state.language);
+  const t = TRANSLATIONS[language].wire;
   const reactFlow = useReactFlow();
 
   const isShortCircuit = simulation.isShortCircuit;
+  const isWireSelected = selected || selectedEdgeId === id;
 
   // Derive current through this wire by checking source or target component current
   const sourceCurrent = Math.max(
@@ -100,7 +110,11 @@ export const WireEdge: React.FC<EdgeProps> = ({
   let glowFilter: string | undefined = undefined;
   let animationSpeed = '0s';
 
-  if (isShortCircuit) {
+  if (isWireSelected) {
+    strokeColor = '#F59E0B'; // Highlight amber for selected wire
+    strokeWidth = 4;
+    glowFilter = 'drop-shadow(0 0 10px rgba(245, 158, 11, 0.8))';
+  } else if (isShortCircuit) {
     strokeColor = '#EF4444'; // Neon danger red
     strokeWidth = 3.5;
     glowFilter = 'drop-shadow(0 0 10px rgba(239, 68, 68, 0.9))';
@@ -111,6 +125,18 @@ export const WireEdge: React.FC<EdgeProps> = ({
     const speed = Math.max(0.4, 2.0 / Math.max(1, sourceCurrent * 10));
     animationSpeed = `${speed.toFixed(2)}s`;
   }
+
+  // Handle single-click to select this wire
+  const handleClick = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    selectEdge(id);
+  };
+
+  // Handle cutting/removing wire
+  const handleCutWire = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    removeEdge(id);
+  };
 
   // Handle double-click to add a Waypoint Node (Anchor point)
   const handleDoubleClick = (event: React.MouseEvent) => {
@@ -141,8 +167,20 @@ export const WireEdge: React.FC<EdgeProps> = ({
         }}
       />
 
+      {/* Outer focus halo when wire is actively selected */}
+      {isWireSelected && (
+        <path
+          d={edgePath}
+          fill="none"
+          stroke="#FBBF24"
+          strokeWidth={8}
+          strokeOpacity={0.25}
+          className="pointer-events-none animate-pulse"
+        />
+      )}
+
       {/* Animated electron flow pulse when current flows through circuit */}
-      {hasCurrent && !isShortCircuit && (
+      {hasCurrent && !isShortCircuit && !isWireSelected && (
         <path
           d={edgePath}
           fill="none"
@@ -166,34 +204,57 @@ export const WireEdge: React.FC<EdgeProps> = ({
         />
       )}
 
-      {/* Invisible thick hit-area path for easy double-clicking to add waypoints */}
+      {/* Invisible thick hit-area path for easy tap/click to select or double-click to add waypoints */}
       <path
         d={edgePath}
         fill="none"
         stroke="transparent"
-        strokeWidth={24}
+        strokeWidth={32}
         className="cursor-pointer pointer-events-auto"
+        onClick={handleClick}
         onDoubleClick={handleDoubleClick}
       />
 
-      {/* Current badge on wire */}
-      {hasCurrent && (
+      {/* Quick Action Button directly on the wire when selected: Cut / Remove Wire */}
+      {isWireSelected ? (
+        <foreignObject
+          width={130}
+          height={32}
+          x={labelX - 65}
+          y={labelY - 16}
+          className="pointer-events-auto z-50 overflow-visible"
+        >
+          <div className="flex items-center justify-center h-full">
+            <button
+              type="button"
+              onClick={handleCutWire}
+              title={t.cutWire}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-600 hover:bg-red-500 text-white font-semibold text-[11px] shadow-[0_0_15px_rgba(239,68,68,0.7)] border border-red-300 active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+            >
+              <Scissors className="w-3.5 h-3.5" />
+              <span>{t.cutWireShort}</span>
+            </button>
+          </div>
+        </foreignObject>
+      ) : hasCurrent ? (
+        /* Current badge on wire when active and not selected (tapping it also selects wire) */
         <foreignObject
           width={64}
           height={24}
           x={labelX - 32}
           y={labelY - 12}
-          className="pointer-events-none"
+          className="pointer-events-auto cursor-pointer"
+          onClick={handleClick}
         >
           <div className="flex items-center justify-center h-full">
-            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-void-950/95 border border-white/20 text-sky-300 font-semibold shadow-md">
+            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-void-950/95 border border-white/20 text-sky-300 font-semibold shadow-md hover:border-amber-400 hover:text-amber-300 transition-colors">
               {sourceCurrent < 1
                 ? `${(sourceCurrent * 1000).toFixed(0)}mA`
                 : `${sourceCurrent.toFixed(2)}A`}
             </span>
           </div>
         </foreignObject>
-      )}
+      ) : null}
     </>
   );
 };

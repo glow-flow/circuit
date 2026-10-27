@@ -35,6 +35,7 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
   const onConnect = useCircuitStore((state) => state.onConnect);
   const addComponent = useCircuitStore((state) => state.addComponent);
   const selectNode = useCircuitStore((state) => state.selectNode);
+  const selectEdge = useCircuitStore((state) => state.selectEdge);
   const splitEdgeWithWaypoint = useCircuitStore((state) => state.splitEdgeWithWaypoint);
   const insertBatteryIntoHolder = useCircuitStore((state) => state.insertBatteryIntoHolder);
 
@@ -174,8 +175,18 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
         connectionLineType={ConnectionLineType.Bezier}
         connectionMode={ConnectionMode.Loose}
         connectionLineStyle={connectionLineStyle}
-        onNodeClick={(_, node) => selectNode(node.id)}
-        onPaneClick={() => selectNode(null)}
+        onNodeClick={(_, node) => {
+          selectEdge(null);
+          selectNode(node.id);
+        }}
+        onEdgeClick={(_, edge) => {
+          selectNode(null);
+          selectEdge(edge.id);
+        }}
+        onPaneClick={() => {
+          selectNode(null);
+          selectEdge(null);
+        }}
         fitView
         fitViewOptions={{ padding: 0.25 }}
         minZoom={0.25}

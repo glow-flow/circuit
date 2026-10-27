@@ -1,6 +1,6 @@
 import React from 'react';
 import * as Slider from '@radix-ui/react-slider';
-import { Sliders, Trash2, Cpu, ShieldCheck, AlertTriangle, X, BookOpen } from 'lucide-react';
+import { Sliders, Trash2, Cpu, ShieldCheck, AlertTriangle, X, BookOpen, Scissors } from 'lucide-react';
 import { useCircuitStore } from '../../store/useCircuitStore';
 import { TRANSLATIONS } from '../../i18n/translations';
 
@@ -16,19 +16,105 @@ export const Inspector: React.FC<InspectorProps> = ({
   const nodes = useCircuitStore((state) => state.nodes);
   const edges = useCircuitStore((state) => state.edges);
   const selectedNodeId = useCircuitStore((state) => state.selectedNodeId);
+  const selectedEdgeId = useCircuitStore((state) => state.selectedEdgeId);
   const updateComponentData = useCircuitStore((state) => state.updateComponentData);
   const removeComponent = useCircuitStore((state) => state.removeComponent);
+  const removeEdge = useCircuitStore((state) => state.removeEdge);
   const toggleSwitch = useCircuitStore((state) => state.toggleSwitch);
   const simulation = useCircuitStore((state) => state.simulation);
   const language = useCircuitStore((state) => state.language);
 
   const t = TRANSLATIONS[language].inspector;
+  const wireT = TRANSLATIONS[language].wire;
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId);
+  const selectedEdge = edges.find((e) => e.id === selectedEdgeId);
 
   const containerClasses = isMobileDrawer
     ? 'flex flex-col max-h-[75dvh] w-full bg-void-900 border-t border-white/15 rounded-t-2xl shadow-2xl select-none overflow-hidden'
     : 'hidden md:flex w-80 bg-void-900 border-l border-white/10 flex-col h-full shrink-0 select-none';
+
+  // Wire Selected View
+  if (!selectedNode && selectedEdge) {
+    const sourceNode = nodes.find((n) => n.id === selectedEdge.source);
+    const targetNode = nodes.find((n) => n.id === selectedEdge.target);
+    const wireCurrent = Math.max(
+      Math.abs(simulation.branchCurrents[selectedEdge.source] ?? 0),
+      Math.abs(simulation.branchCurrents[selectedEdge.target] ?? 0)
+    );
+
+    return (
+      <aside className={containerClasses}>
+        <div className="p-3.5 border-b border-white/10 flex items-center justify-between">
+          <div className="flex items-center gap-2 min-w-0">
+            <Scissors className="w-4 h-4 text-red-400 shrink-0" />
+            <h2 className="text-xs font-bold text-slate-200 uppercase tracking-wider truncate">
+              {wireT.wireSelected}
+            </h2>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={() => {
+                removeEdge(selectedEdge.id);
+                if (isMobileDrawer && onCloseMobile) onCloseMobile();
+              }}
+              className="p-1.5 rounded-lg bg-red-950/60 hover:bg-red-900 text-red-400 border border-red-500/30 transition-colors active:scale-95"
+              title={wireT.cutWire}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+            {isMobileDrawer && onCloseMobile && (
+              <button
+                onClick={onCloseMobile}
+                className="p-1.5 rounded-lg bg-void-850 text-slate-400 hover:text-white border border-white/10 active:scale-95"
+                aria-label="Close inspector"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="p-4 space-y-4 flex-1 overflow-y-auto">
+          <div className="bg-void-950 rounded-xl p-3 border border-white/5 space-y-2.5 font-mono text-xs">
+            <div className="text-[10px] text-slate-400 font-sans uppercase tracking-wider font-semibold">
+              {t.liveTelemetry}
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-slate-400 font-sans text-[11px]">{t.branchCurrent}</span>
+              <span className="text-electric-400 font-bold">
+                {wireCurrent < 1
+                  ? `${(wireCurrent * 1000).toFixed(1)} mA`
+                  : `${wireCurrent.toFixed(3)} A`}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-slate-400 font-sans text-[11px]">{wireT.wireResistance}</span>
+              <span className="text-emerald-400">{wireT.idealWire}</span>
+            </div>
+            <div className="flex justify-between items-center pt-2 border-t border-white/5 text-[11px] font-sans">
+              <span className="text-slate-400">{wireT.fromTo}</span>
+              <span className="text-slate-200 truncate max-w-[150px]">
+                {sourceNode?.data.label ?? 'Pin'} → {targetNode?.data.label ?? 'Pin'}
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              removeEdge(selectedEdge.id);
+              if (isMobileDrawer && onCloseMobile) onCloseMobile();
+            }}
+            className="w-full py-2.5 px-3 rounded-xl font-semibold text-xs bg-red-600 hover:bg-red-500 text-white shadow-lg border border-red-400/50 flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer"
+          >
+            <Scissors className="w-4 h-4" />
+            <span>{wireT.cutWire}</span>
+          </button>
+        </div>
+      </aside>
+    );
+  }
 
   if (!selectedNode) {
     // Global Circuit Telemetry & Grade 9 IPA Formula View

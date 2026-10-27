@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { PlusCircle, Sliders, Activity } from 'lucide-react';
+import { PlusCircle, Sliders, Activity, Scissors } from 'lucide-react';
 import { Header } from './components/ui/Header';
 import { SidebarPalette } from './components/ui/SidebarPalette';
 import { CircuitCanvas } from './components/canvas/CircuitCanvas';
@@ -13,10 +13,13 @@ export const App: React.FC = () => {
   const loadPreset = useCircuitStore((state) => state.loadPreset);
   const nodes = useCircuitStore((state) => state.nodes);
   const selectedNodeId = useCircuitStore((state) => state.selectedNodeId);
+  const selectedEdgeId = useCircuitStore((state) => state.selectedEdgeId);
+  const removeEdge = useCircuitStore((state) => state.removeEdge);
   const simulation = useCircuitStore((state) => state.simulation);
   const language = useCircuitStore((state) => state.language);
 
   const t = TRANSLATIONS[language].mobileNav;
+  const wireT = TRANSLATIONS[language].wire;
 
   const [activeMobileSheet, setActiveMobileSheet] = useState<MobileSheetType>('none');
 
@@ -58,6 +61,19 @@ export const App: React.FC = () => {
                 <span>
                   {language === 'id' ? 'Atur' : 'Edit'} {selectedNode.data.label}
                 </span>
+              </button>
+            </div>
+          )}
+
+          {/* Floating Quick-Cut Wire Pill on Mobile when a wire is selected */}
+          {selectedEdgeId && activeMobileSheet === 'none' && (
+            <div className="md:hidden absolute top-3 left-1/2 -translate-x-1/2 z-20">
+              <button
+                onClick={() => removeEdge(selectedEdgeId)}
+                className="flex items-center gap-2 px-4 py-2 rounded-full bg-red-600 text-white text-xs font-bold shadow-[0_0_20px_rgba(239,68,68,0.7)] border border-red-300 active:scale-95 transition-transform animate-bounce"
+              >
+                <Scissors className="w-4 h-4" />
+                <span>{wireT.cutWire}</span>
               </button>
             </div>
           )}

@@ -29,6 +29,7 @@ interface CircuitState {
   nodes: Node<CircuitElementData>[];
   edges: Edge[];
   selectedNodeId: string | null;
+  selectedEdgeId: string | null;
   simulation: SimulationResult;
   isSimulating: boolean;
   language: AppLanguage;
@@ -43,10 +44,12 @@ interface CircuitState {
   addComponent: (type: ComponentType, position: { x: number; y: number }) => void;
   updateComponentData: (id: string, partialData: Partial<CircuitElementData>) => void;
   removeComponent: (id: string) => void;
+  removeEdge: (edgeId: string) => void;
   insertBatteryIntoHolder: (batteryNodeId: string, holderNodeId: string) => void;
   ejectBatteryFromHolder: (holderNodeId: string) => void;
   splitEdgeWithWaypoint: (edgeId: string, position: { x: number; y: number }) => void;
   selectNode: (id: string | null) => void;
+  selectEdge: (id: string | null) => void;
   toggleSwitch: (id: string) => void;
   clearCanvas: () => void;
   setIsSimulating: (isSimulating: boolean) => void;
@@ -105,6 +108,7 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   nodes: [],
   edges: [],
   selectedNodeId: null,
+  selectedEdgeId: null,
   simulation: DEFAULT_SIMULATION,
   isSimulating: true,
   language: 'id',
@@ -122,10 +126,12 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   onEdgesChange: (changes: EdgeChange[]) => {
     const nextEdges = applyEdgeChanges(changes, get().edges);
     const { simulation, updatedNodes } = recalculateCircuit(get().nodes, nextEdges);
+    const isSelectedEdgeStillPresent = nextEdges.some((e) => e.id === get().selectedEdgeId);
     set({
       edges: nextEdges,
       simulation,
       nodes: updatedNodes,
+      selectedEdgeId: isSelectedEdgeStillPresent ? get().selectedEdgeId : null,
     });
   },
 
@@ -449,8 +455,44 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     });
   },
 
+  /**
+   * Removes a wire connection between components and immediately recalculates the circuit.
+   * Time Complexity: O(E) where E is the number of wire edges (typically < 50).
+   * @param edgeId Unique identifier of the edge to be removed
+   */
+  removeEdge: (edgeId: string) => {
+    const currentEdges = get().edges;
+    const nextEdges = currentEdges.filter((edge) => edge.id !== edgeId);
+    if (nextEdges.length === currentEdges.length) return; // Edge not found
+
+    const nextSelectedEdgeId = get().selectedEdgeId === edgeId ? null : get().selectedEdgeId;
+    const { simulation, updatedNodes } = recalculateCircuit(get().nodes, nextEdges);
+
+    set({
+      edges: nextEdges,
+      simulation,
+      nodes: updatedNodes,
+      selectedEdgeId: nextSelectedEdgeId,
+    });
+  },
+
   selectNode: (id: string | null) => {
-    set({ selectedNodeId: id });
+    set({
+      selectedNodeId: id,
+      selectedEdgeId: id ? null : get().selectedEdgeId,
+      edges: id ? get().edges.map((edge) => ({ ...edge, selected: false })) : get().edges,
+    });
+  },
+
+  selectEdge: (id: string | null) => {
+    set({
+      selectedEdgeId: id,
+      selectedNodeId: id ? null : get().selectedNodeId,
+      edges: get().edges.map((edge) => ({
+        ...edge,
+        selected: edge.id === id,
+      })),
+    });
   },
 
   toggleSwitch: (id: string) => {
@@ -465,6 +507,7 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       nodes: [],
       edges: [],
       selectedNodeId: null,
+      selectedEdgeId: null,
       simulation: DEFAULT_SIMULATION,
     });
   },
