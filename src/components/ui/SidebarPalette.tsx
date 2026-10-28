@@ -107,7 +107,10 @@ export const SidebarPalette: React.FC<SidebarPaletteProps> = ({
 
   if (isMobileDrawer) {
     return (
-      <div className="flex flex-col h-[min(78dvh,620px)] bg-void-900 border-t border-white/15 rounded-t-2xl shadow-2xl select-none overflow-hidden">
+      <div
+        id="tour-panel-komponen"
+        className="flex flex-col h-[min(78dvh,620px)] bg-void-900 border-t border-white/15 rounded-t-2xl shadow-2xl select-none overflow-hidden"
+      >
         <div className="px-4 pt-3 pb-2 flex items-center justify-between">
           <div className="min-w-0">
             <h2 className="text-sm font-bold text-slate-100 tracking-tight">{t.title}</h2>
@@ -129,8 +132,16 @@ export const SidebarPalette: React.FC<SidebarPaletteProps> = ({
     );
   }
 
+  const desktopPanelId =
+    typeof window !== 'undefined' && window.innerWidth < 768
+      ? undefined
+      : 'tour-panel-komponen';
+
   return (
-    <aside className="hidden md:flex w-72 bg-void-900 border-r border-white/10 flex-col h-full shrink-0 select-none">
+    <aside
+      id={desktopPanelId}
+      className="hidden md:flex w-72 bg-void-900 border-r border-white/10 flex-col h-full shrink-0 select-none"
+    >
       <div className="px-3.5 pt-3.5 pb-2">
         <h2 className="text-sm font-bold text-slate-100 tracking-tight">{t.title}</h2>
         <p className="text-[11px] text-slate-400 mt-0.5">{t.subtitleDesktop}</p>

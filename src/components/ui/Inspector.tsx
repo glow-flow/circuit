@@ -35,6 +35,11 @@ export const Inspector: React.FC<InspectorProps> = ({
     ? 'flex flex-col max-h-[75dvh] w-full bg-void-900 border-t border-white/15 rounded-t-2xl shadow-2xl select-none overflow-hidden'
     : 'hidden md:flex w-80 bg-void-900 border-l border-white/10 flex-col h-full shrink-0 select-none';
 
+  const panelId =
+    isMobileDrawer || typeof window === 'undefined' || window.innerWidth >= 768
+      ? 'tour-panel-inspector'
+      : undefined;
+
   // Wire Selected View
   if (!selectedNode && selectedEdge) {
     const sourceNode = nodes.find((n) => n.id === selectedEdge.source);
@@ -45,7 +50,7 @@ export const Inspector: React.FC<InspectorProps> = ({
     );
 
     return (
-      <aside className={containerClasses}>
+      <aside id={panelId} className={containerClasses}>
         <div className="p-3.5 border-b border-white/10 flex items-center justify-between">
           <div className="flex items-center gap-2 min-w-0">
             <Scissors className="w-4 h-4 text-red-400 shrink-0" />
@@ -120,7 +125,7 @@ export const Inspector: React.FC<InspectorProps> = ({
   if (!selectedNode) {
     // Global Circuit Telemetry & Grade 9 IPA Formula View
     return (
-      <aside className={containerClasses}>
+      <aside id={panelId} className={containerClasses}>
         <div className="p-3.5 border-b border-white/10 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Cpu className="w-4 h-4 text-electric-400" />

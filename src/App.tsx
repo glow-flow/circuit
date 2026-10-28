@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { PlusCircle, Sliders, Activity, Scissors, Pin } from 'lucide-react';
 import { Header } from './components/ui/Header';
 import { SidebarPalette } from './components/ui/SidebarPalette';
 import { CircuitCanvas } from './components/canvas/CircuitCanvas';
 import { Inspector } from './components/ui/Inspector';
-import { TutorialModal } from './components/ui/TutorialModal';
+import { WelcomeModal } from './components/ui/WelcomeModal';
 import { useCircuitStore } from './store/useCircuitStore';
 import { TRANSLATIONS } from './i18n/translations';
 import { hasSeenTutorial } from './utils/presetStorage';
+import { registerTourMobileSheetController, TourMobileSheetState } from './utils/tour';
 
-type MobileSheetType = 'none' | 'palette' | 'inspector';
+type MobileSheetType = TourMobileSheetState;
 
 export const App: React.FC = () => {
   const loadPreset = useCircuitStore((state) => state.loadPreset);
@@ -25,7 +27,7 @@ export const App: React.FC = () => {
   const wireT = TRANSLATIONS[language].wire;
 
   const [activeMobileSheet, setActiveMobileSheet] = useState<MobileSheetType>('none');
-  const [isTutorialOpen, setIsTutorialOpen] = useState<boolean>(() => !hasSeenTutorial());
+  const [isWelcomeOpen, setIsWelcomeOpen] = useState<boolean>(() => !hasSeenTutorial());
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId);
 
@@ -36,6 +38,16 @@ export const App: React.FC = () => {
     }
   }, [loadPreset, nodes.length]);
 
+  // Register mobile bottom-sheet controller so driver.js can open/close drawers during the tour
+  useEffect(() => {
+    registerTourMobileSheetController((nextSheet) => {
+      flushSync(() => {
+        setActiveMobileSheet(nextSheet);
+      });
+    });
+    return () => registerTourMobileSheetController(null);
+  }, []);
+
   const toggleMobileSheet = (sheet: MobileSheetType) => {
     setActiveMobileSheet((prev) => (prev === sheet ? 'none' : sheet));
   };
@@ -43,7 +55,7 @@ export const App: React.FC = () => {
   return (
     <div className="flex flex-col h-[100dvh] w-screen bg-void-950 text-slate-100 overflow-hidden font-sans">
       {/* Top Utility Header */}
-      <Header onOpenTutorial={() => setIsTutorialOpen(true)} />
+      <Header />
 
       {/* Main Workspace Layout */}
       <div className="flex flex-1 min-h-0 relative w-full overflow-hidden">
@@ -51,7 +63,10 @@ export const App: React.FC = () => {
         <SidebarPalette />
 
         {/* Central React Flow Canvas (Full width on mobile, center column on desktop) */}
-        <main className="flex-1 relative h-full w-full min-w-0">
+        <main
+          id="tour-canvas-area"
+          className="flex-1 relative h-full w-full min-w-0"
+        >
           <CircuitCanvas />
 
           {/* Floating Quick-Edit Pill on Mobile when a component is selected */}
@@ -120,8 +135,9 @@ export const App: React.FC = () => {
       </div>
 
       {/* Mobile Bottom Navigation Bar */}
-      <nav className="md:hidden h-14 bg-void-900 border-t border-white/10 px-3 flex items-center justify-between gap-2 z-30 shrink-0 select-none">
+      <nav className="tour-mobile-nav md:hidden h-14 bg-void-900 border-t border-white/10 px-3 flex items-center justify-between gap-2 z-30 shrink-0 select-none">
         <button
+          id="tour-btn-tambah"
           type="button"
           onClick={() => toggleMobileSheet('palette')}
           className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all active:scale-95 ${
@@ -141,6 +157,7 @@ export const App: React.FC = () => {
         </div>
 
         <button
+          id="tour-btn-info"
           type="button"
           onClick={() => toggleMobileSheet('inspector')}
           className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all active:scale-95 ${
@@ -153,10 +170,11 @@ export const App: React.FC = () => {
           <span>{t.inspector}</span>
         </button>
       </nav>
-      {/* Interactive 4-Step Onboarding & Lab Guide Modal */}
-      <TutorialModal
-        isOpen={isTutorialOpen}
-        onClose={() => setIsTutorialOpen(false)}
+
+      {/* First-Visit Welcome Modal to Launch or Skip Spotlight Tour */}
+      <WelcomeModal
+        isOpen={isWelcomeOpen}
+        onClose={() => setIsWelcomeOpen(false)}
       />
     </div>
   );

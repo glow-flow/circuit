@@ -85,3 +85,100 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #3f3f46;
 }
+
+/* Ensure bottom bar targets (#tour-btn-tambah & #tour-btn-info) remain visible during desktop spotlight tour */
+body.driver-active nav.tour-mobile-nav {
+  display: flex !important;
+}
+
+/* Driver.js Void Dark Mode & Neon Cyan Spotlight Overrides */
+.driver-popover,
+.driver-popover.circuit-tour-popover {
+  background-color: #121214 !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(34, 211, 238, 0.5) !important;
+  border-radius: 14px !important;
+  padding: 16px !important;
+  max-width: min(340px, calc(100vw - 24px)) !important;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.85), 0 0 24px rgba(34, 211, 238, 0.18) !important;
+  font-family: 'Geist', 'Inter', system-ui, -apple-system, sans-serif !important;
+}
+
+.driver-popover .driver-popover-title {
+  color: #ffffff !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+  margin-bottom: 6px !important;
+}
+
+.driver-popover .driver-popover-description {
+  color: #cbd5e1 !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+  margin-bottom: 14px !important;
+}
+
+.driver-popover .driver-popover-progress-text {
+  color: #22d3ee !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+}
+
+.driver-popover .driver-popover-close-btn {
+  color: #94a3b8 !important;
+  transition: color 0.15s ease !important;
+}
+
+.driver-popover .driver-popover-close-btn:hover {
+  color: #ffffff !important;
+}
+
+.driver-popover .driver-popover-prev-btn {
+  background-color: #09090b !important;
+  color: #67e8f9 !important;
+  border: 1px solid rgba(34, 211, 238, 0.35) !important;
+  border-radius: 10px !important;
+  padding: 6px 12px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  text-shadow: none !important;
+  transition: all 0.15s ease !important;
+}
+
+.driver-popover .driver-popover-prev-btn:hover {
+  background-color: rgba(34, 211, 238, 0.12) !important;
+  border-color: #22d3ee !important;
+}
+
+.driver-popover .driver-popover-next-btn {
+  background-color: #22d3ee !important;
+  color: #09090b !important;
+  border: 1px solid #67e8f9 !important;
+  border-radius: 10px !important;
+  padding: 6px 14px !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  text-shadow: none !important;
+  box-shadow: 0 0 14px rgba(34, 211, 238, 0.35) !important;
+  transition: all 0.15s ease !important;
+}
+
+.driver-popover .driver-popover-next-btn:hover {
+  background-color: #67e8f9 !important;
+}
+
+.driver-popover-arrow-side-left.driver-popover-arrow {
+  border-left-color: #121214 !important;
+}
+.driver-popover-arrow-side-right.driver-popover-arrow {
+  border-right-color: #121214 !important;
+}
+.driver-popover-arrow-side-top.driver-popover-arrow {
+  border-top-color: #121214 !important;
+}
+.driver-popover-arrow-side-bottom.driver-popover-arrow {
+  border-bottom-color: #121214 !important;
+}
+

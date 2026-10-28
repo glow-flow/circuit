@@ -13,12 +13,9 @@ import {
 } from 'lucide-react';
 import { useCircuitStore } from '../../store/useCircuitStore';
 import { TRANSLATIONS } from '../../i18n/translations';
+import { startTour } from '../../utils/tour';
 
-interface HeaderProps {
-  onOpenTutorial?: () => void;
-}
-
-export const Header: React.FC<HeaderProps> = ({ onOpenTutorial }) => {
+export const Header: React.FC = () => {
   const simulation = useCircuitStore((state) => state.simulation);
   const clearCanvas = useCircuitStore((state) => state.clearCanvas);
   const loadPreset = useCircuitStore((state) => state.loadPreset);
@@ -88,6 +85,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenTutorial }) => {
             <BookOpen className="w-3.5 h-3.5" />
           </div>
           <select
+            id="tour-dropdown-contoh"
             onChange={handlePresetSelectChange}
             defaultValue=""
             aria-label="Circuit Presets"
@@ -115,6 +113,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenTutorial }) => {
 
           {/* Save Custom Preset to Browser Cache Button */}
           <button
+            id="tour-btn-save"
             type="button"
             onClick={() => setIsSaveModalOpen(true)}
             title={t.savePresetModalTitle}
@@ -137,29 +136,28 @@ export const Header: React.FC<HeaderProps> = ({ onOpenTutorial }) => {
 
         {/* Right Help Button, Language Toggle, Circuit Health & Clear */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          {/* Help / Onboarding Tutorial Button */}
-          {onOpenTutorial && (
-            <button
-              type="button"
-              onClick={onOpenTutorial}
-              title={
-                language === 'id'
-                  ? 'Buka Panduan & Cara Pakai'
-                  : 'Open Interactive Tutorial'
-              }
-              aria-label={
-                language === 'id'
-                  ? 'Buka Panduan & Cara Pakai'
-                  : 'Open Interactive Tutorial'
-              }
-              className="flex items-center gap-1 px-2 py-1 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-400/40 text-cyan-300 text-[10px] sm:text-xs font-semibold transition-all active:scale-95 shrink-0 cursor-pointer"
-            >
-              <HelpCircle className="w-3.5 h-3.5" />
-              <span className="hidden lg:inline">
-                {language === 'id' ? 'Panduan' : 'Guide'}
-              </span>
-            </button>
-          )}
+          {/* Help / Interactive Spotlight Tour Button */}
+          <button
+            id="tour-btn-help"
+            type="button"
+            onClick={() => startTour()}
+            title={
+              language === 'id'
+                ? 'Mulai Panduan Interaktif'
+                : 'Start Interactive Tour'
+            }
+            aria-label={
+              language === 'id'
+                ? 'Mulai Panduan Interaktif'
+                : 'Start Interactive Tour'
+            }
+            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-400/40 text-cyan-300 text-[10px] sm:text-xs font-semibold transition-all active:scale-95 shrink-0 cursor-pointer"
+          >
+            <HelpCircle className="w-3.5 h-3.5" />
+            <span className="hidden lg:inline">
+              {language === 'id' ? 'Panduan' : 'Guide'}
+            </span>
+          </button>
 
           {/* Language Switcher Button (ID / EN) */}
           <button
@@ -187,6 +185,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenTutorial }) => {
           )}
 
           <button
+            id="tour-btn-reset"
             type="button"
             onClick={clearCanvas}
             className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-lg bg-void-850 hover:bg-red-950/40 border border-white/10 hover:border-red-500/30 text-xs text-slate-300 hover:text-red-300 transition-all active:scale-95 shrink-0 cursor-pointer"
