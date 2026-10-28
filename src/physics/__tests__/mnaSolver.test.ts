@@ -270,6 +270,48 @@ describe('Modified Nodal Analysis (MNA) Physics Engine', () => {
     });
     expect(Math.abs(openCircuit.branchCurrents['lamp_1'] ?? 0)).toBe(0);
   });
+
+  it('verifies Grade 9 IPA 3-branch Parallel ladder law (I_total = I1 + I2 + I3) with Waypoint rails', () => {
+    const holder: CircuitElementData = {
+      id: 'holder_1',
+      type: 'battery-holder',
+      hasBattery: true,
+      batteryCount: 2,
+      voltage: 3.0,
+      label: 'Sumber V (3.0V)',
+    };
+    const r1: CircuitElementData = { id: 'bulb_1', type: 'bulb', resistance: 10, label: 'R1' };
+    const r2: CircuitElementData = { id: 'bulb_2', type: 'bulb', resistance: 10, label: 'R2' };
+    const r3: CircuitElementData = { id: 'bulb_3', type: 'bulb', resistance: 10, label: 'R3' };
+    const wpTop1: CircuitElementData = { id: 'wp_top_1', type: 'waypoint', label: 'Top 1' };
+    const wpBot1: CircuitElementData = { id: 'wp_bot_1', type: 'waypoint', label: 'Bot 1' };
+
+    const wires: WireConnection[] = [
+      { id: 'w1', source: 'holder_1', sourceHandle: 'pos', target: 'wp_top_1', targetHandle: 'p1' },
+      { id: 'w2', source: 'wp_top_1', sourceHandle: 'p2', target: 'bulb_1', targetHandle: 'p1' },
+      { id: 'w3', source: 'wp_top_1', sourceHandle: 'p2', target: 'bulb_2', targetHandle: 'p1' },
+      { id: 'w4', source: 'wp_top_1', sourceHandle: 'p2', target: 'bulb_3', targetHandle: 'p1' },
+      { id: 'w5', source: 'bulb_1', sourceHandle: 'p2', target: 'wp_bot_1', targetHandle: 'p1' },
+      { id: 'w6', source: 'bulb_2', sourceHandle: 'p2', target: 'wp_bot_1', targetHandle: 'p1' },
+      { id: 'w7', source: 'bulb_3', sourceHandle: 'p2', target: 'wp_bot_1', targetHandle: 'p1' },
+      { id: 'w8', source: 'wp_bot_1', sourceHandle: 'p2', target: 'holder_1', targetHandle: 'neg' },
+    ];
+
+    const res = solveCircuitMNA({
+      components: [holder, r1, r2, r3, wpTop1, wpBot1],
+      wires,
+    });
+
+    const i1 = Math.abs(res.branchCurrents['bulb_1']);
+    const i2 = Math.abs(res.branchCurrents['bulb_2']);
+    const i3 = Math.abs(res.branchCurrents['bulb_3']);
+    const iTotal = Math.abs(res.branchCurrents['holder_1']);
+
+    // Equal branches have equal currents, and total current is sum of branches
+    expect(i1).toBeCloseTo(i2, 4);
+    expect(i2).toBeCloseTo(i3, 4);
+    expect(iTotal).toBeCloseTo(i1 + i2 + i3, 4);
+  });
 });
 
 

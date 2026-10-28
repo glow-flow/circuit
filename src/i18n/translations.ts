@@ -12,10 +12,18 @@ export interface TranslationDictionary {
   header: {
     appSubtitle: string;
     selectPreset: string;
+    builtinGroup: string;
+    customGroup: string;
     presetSimpleLamp: string;
     presetSeriesDivider: string;
     presetParallelBulbs: string;
     presetShortCircuit: string;
+    savePresetBtn: string;
+    savePresetModalTitle: string;
+    savePresetPlaceholder: string;
+    savePresetConfirm: string;
+    savePresetCancel: string;
+    savedPresetsListTitle: string;
     resetTitle: string;
     statusShort: string;
     statusStable: string;
@@ -139,6 +147,7 @@ export interface TranslationDictionary {
   wire: {
     cutWire: string;
     cutWireShort: string;
+    addBend: string;
     wireSelected: string;
     wireResistance: string;
     idealWire: string;
@@ -152,11 +161,19 @@ export const TRANSLATIONS: Record<AppLanguage, TranslationDictionary> = {
   id: {
     header: {
       appSubtitle: 'Lab IPA Kelas 9 & Blueprint Listrik',
-      selectPreset: 'Pilih Contoh Rangkaian...',
+      selectPreset: 'Pilih Contoh / Preset...',
+      builtinGroup: '📘 Materi IPA Kelas 9',
+      customGroup: '⭐ Rangkaian Buatanmu (Tersimpan)',
       presetSimpleLamp: '1. Rangkaian Lampu Sederhana (3V)',
-      presetSeriesDivider: '2. Rangkaian Seri (Pembagi Tegangan)',
-      presetParallelBulbs: '3. Rangkaian Lampu Paralel',
+      presetSeriesDivider: '2. Rangkaian Seri (R₁ + R₂ + R₃)',
+      presetParallelBulbs: '3. Rangkaian Paralel (3 Cabang Sejajar)',
       presetShortCircuit: '4. Demo Korsleting (Hubung Singkat)',
+      savePresetBtn: 'Simpan',
+      savePresetModalTitle: 'Simpan Kreasi Rangkaianmu',
+      savePresetPlaceholder: 'Contoh: Blueprint Lampu Kamar / Tugas IPA...',
+      savePresetConfirm: 'Simpan Preset',
+      savePresetCancel: 'Batal',
+      savedPresetsListTitle: 'Preset Tersimpan di Browser:',
       resetTitle: 'Muat Ulang Rangkaian Awal',
       statusShort: 'KORSLETING! (>10A)',
       statusStable: 'Rangkaian Aman',
@@ -313,10 +330,11 @@ export const TRANSLATIONS: Record<AppLanguage, TranslationDictionary> = {
     wire: {
       cutWire: 'Gunting / Putus Kabel',
       cutWireShort: 'Putus Kabel',
+      addBend: 'Tambah Tekukan',
       wireSelected: 'Kabel Rangkaian Terpilih',
       wireResistance: 'Hambatan Kabel:',
       idealWire: '0.00 Ω (Ideal / Lossless)',
-      tapToCut: 'Ketuk tombol merah untuk memutus kabel ini',
+      tapToCut: 'Ketuk tombol merah di atas untuk memutus kabel ini',
       deleteWireSuccess: 'Kabel berhasil diputus!',
       fromTo: 'Menghubungkan:',
     },
@@ -325,10 +343,18 @@ export const TRANSLATIONS: Record<AppLanguage, TranslationDictionary> = {
     header: {
       appSubtitle: 'Grade 9 Physics Lab & Circuit Blueprint',
       selectPreset: 'Select Circuit Preset...',
+      builtinGroup: '📘 Grade 9 Physics Presets',
+      customGroup: '⭐ Your Saved Blueprints',
       presetSimpleLamp: '1. Simple Lamp Circuit (3V)',
-      presetSeriesDivider: '2. Series Voltage Divider',
-      presetParallelBulbs: '3. Parallel Lamps Circuit',
+      presetSeriesDivider: '2. Series Circuit (R₁ + R₂ + R₃)',
+      presetParallelBulbs: '3. Parallel Circuit (3 Parallel Branches)',
       presetShortCircuit: '4. Short-Circuit Hazard Demo',
+      savePresetBtn: 'Save',
+      savePresetModalTitle: 'Save Custom Circuit Preset',
+      savePresetPlaceholder: 'e.g., Bedroom Lamp Blueprint / Lab 1...',
+      savePresetConfirm: 'Save to Browser',
+      savePresetCancel: 'Cancel',
+      savedPresetsListTitle: 'Saved in Browser Cache:',
       resetTitle: 'Reset Default Circuit',
       statusShort: 'SHORT CIRCUIT! (>10A)',
       statusStable: 'Circuit Stable',
@@ -485,10 +511,11 @@ export const TRANSLATIONS: Record<AppLanguage, TranslationDictionary> = {
     wire: {
       cutWire: 'Cut / Remove Wire',
       cutWireShort: 'Cut Wire',
+      addBend: 'Add Anchor Bend',
       wireSelected: 'Selected Wire Edge',
       wireResistance: 'Wire Resistance:',
       idealWire: '0.00 Ω (Ideal / Lossless)',
-      tapToCut: 'Tap the red button to cut this wire',
+      tapToCut: 'Tap the top red button to cut this wire',
       deleteWireSuccess: 'Wire successfully removed!',
       fromTo: 'Connecting:',
     },

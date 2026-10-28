@@ -24,6 +24,12 @@ import {
 } from '../types/circuit';
 import { solveCircuitMNA } from '../physics/mnaSolver';
 import { AppLanguage } from '../i18n/translations';
+import {
+  CustomCircuitPreset,
+  loadCustomPresetsFromStorage,
+  saveCustomPresetsToStorage,
+  saveWorkspaceAutosave,
+} from '../utils/presetStorage';
 
 interface CircuitState {
   nodes: Node<CircuitElementData>[];
@@ -33,6 +39,8 @@ interface CircuitState {
   simulation: SimulationResult;
   isSimulating: boolean;
   language: AppLanguage;
+  customPresets: CustomCircuitPreset[];
+  fitViewTrigger: number;
 
   // React Flow Handlers
   onNodesChange: (changes: NodeChange[]) => void;
@@ -48,6 +56,7 @@ interface CircuitState {
   insertBatteryIntoHolder: (batteryNodeId: string, holderNodeId: string) => void;
   ejectBatteryFromHolder: (holderNodeId: string) => void;
   splitEdgeWithWaypoint: (edgeId: string, position: { x: number; y: number }) => void;
+  splitEdgeAtMidpoint: (edgeId: string) => void;
   selectNode: (id: string | null) => void;
   selectEdge: (id: string | null) => void;
   toggleSwitch: (id: string) => void;
@@ -55,6 +64,9 @@ interface CircuitState {
   setIsSimulating: (isSimulating: boolean) => void;
   runSimulation: () => void;
   loadPreset: (presetName: 'simple-lamp' | 'voltage-divider' | 'parallel-bulbs' | 'short-circuit-demo') => void;
+  saveCustomPreset: (name: string) => void;
+  loadCustomPreset: (presetId: string) => void;
+  deleteCustomPreset: (presetId: string) => void;
 }
 
 const DEFAULT_SIMULATION: SimulationResult = {
@@ -67,7 +79,7 @@ const DEFAULT_SIMULATION: SimulationResult = {
 };
 
 /**
- * Executes MNA physics solver across current store state.
+ * Executes MNA physics solver across current store state and persists autosave backup.
  */
 function recalculateCircuit(
   nodes: Node<CircuitElementData>[],
@@ -101,6 +113,8 @@ function recalculateCircuit(
     };
   });
 
+  saveWorkspaceAutosave(updatedNodes, edges);
+
   return { simulation, updatedNodes };
 }
 
@@ -112,6 +126,8 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   simulation: DEFAULT_SIMULATION,
   isSimulating: true,
   language: 'id',
+  customPresets: loadCustomPresetsFromStorage(),
+  fitViewTrigger: 0,
 
   setLanguage: (language: AppLanguage) => {
     set({ language });
@@ -452,7 +468,34 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       edges: nextEdges,
       simulation,
       selectedNodeId: waypointId,
+      selectedEdgeId: null,
     });
+  },
+
+  /**
+   * Splits an existing wire edge at the geometric midpoint between its source and target nodes.
+   * Useful for single-tap mobile users via the top floating toolbar.
+   * Time Complexity: O(N + E)
+   */
+  splitEdgeAtMidpoint: (edgeId: string) => {
+    const currentEdges = get().edges;
+    const currentNodes = get().nodes;
+    const targetEdge = currentEdges.find((e) => e.id === edgeId);
+    if (!targetEdge) return;
+
+    const sourceNode = currentNodes.find((n) => n.id === targetEdge.source);
+    const targetNode = currentNodes.find((n) => n.id === targetEdge.target);
+
+    const midX =
+      sourceNode && targetNode
+        ? (sourceNode.position.x + targetNode.position.x) / 2 + 60
+        : 300;
+    const midY =
+      sourceNode && targetNode
+        ? (sourceNode.position.y + targetNode.position.y) / 2 + 60
+        : 200;
+
+    get().splitEdgeWithWaypoint(edgeId, { x: midX, y: midY });
   },
 
   /**
@@ -503,6 +546,7 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   },
 
   clearCanvas: () => {
+    saveWorkspaceAutosave([], []);
     set({
       nodes: [],
       edges: [],
@@ -530,119 +574,239 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
         {
           id: 'bat_extra',
           type: 'battery',
-          position: { x: -80, y: 155 },
-          data: { id: 'bat_extra', type: 'battery', voltage: 1.5, label: '1.5V AA Cell' },
+          position: { x: -220, y: 150 },
+          data: { id: 'bat_extra', type: 'battery', voltage: 1.5, label: 'Baterai AA 1.5V' },
         },
         {
           id: 'holder_1',
           type: 'battery-holder',
-          position: { x: 100, y: 120 },
+          position: { x: 20, y: 110 },
           data: {
             id: 'holder_1',
             type: 'battery-holder',
             hasBattery: true,
             batteryCount: 2,
             voltage: 3.0,
-            label: 'Dual AA Holder',
+            label: 'Wadah AA (3.0V)',
           },
         },
         {
           id: 'sw_1',
           type: 'switch',
-          position: { x: 320, y: 75 },
-          data: { id: 'sw_1', type: 'switch', isOpen: false, label: 'Power Switch' },
+          position: { x: 340, y: 20 },
+          data: { id: 'sw_1', type: 'switch', isOpen: false, label: 'Saklar Utama' },
         },
         {
           id: 'bulb_1',
           type: 'bulb',
-          position: { x: 520, y: 135 },
-          data: { id: 'bulb_1', type: 'bulb', resistance: 5, label: '3V Lamp (5Ω)' },
+          position: { x: 640, y: 130 },
+          data: { id: 'bulb_1', type: 'bulb', resistance: 5, label: 'Lampu (5Ω)' },
+        },
+        {
+          id: 'wp_s1',
+          type: 'waypoint',
+          position: { x: 840, y: 430 },
+          data: { id: 'wp_s1', type: 'waypoint', label: 'Sudut Kanan Bawah' },
+        },
+        {
+          id: 'wp_s2',
+          type: 'waypoint',
+          position: { x: 115, y: 430 },
+          data: { id: 'wp_s2', type: 'waypoint', label: 'Sudut Kiri Bawah' },
         },
       ];
       presetEdges = [
         { id: 'e1', source: 'holder_1', sourceHandle: 'pos', target: 'sw_1', targetHandle: 'p1', type: 'wire' },
         { id: 'e2', source: 'sw_1', sourceHandle: 'p2', target: 'bulb_1', targetHandle: 'p1', type: 'wire' },
-        { id: 'e3', source: 'bulb_1', sourceHandle: 'p2', target: 'holder_1', targetHandle: 'neg', type: 'wire' },
+        { id: 'e3', source: 'bulb_1', sourceHandle: 'p2', target: 'wp_s1', targetHandle: 'p1', type: 'wire' },
+        { id: 'e4', source: 'wp_s1', sourceHandle: 'p2', target: 'wp_s2', targetHandle: 'p1', type: 'wire' },
+        { id: 'e5', source: 'wp_s2', sourceHandle: 'p2', target: 'holder_1', targetHandle: 'neg', type: 'wire' },
       ];
     } else if (presetName === 'voltage-divider') {
+      // Textbook SERI Circuit: V source on Left, R1 on Top, R2 on Right, R3 on Bottom (I = I1 = I2 = I3)
       presetNodes = [
         {
-          id: 'bat_1',
-          type: 'battery',
-          position: { x: 80, y: 180 },
-          data: { id: 'bat_1', type: 'battery', voltage: 12, label: '12V Source' },
-        },
-        {
-          id: 'res_1',
-          type: 'resistor',
-          position: { x: 320, y: 100 },
-          data: { id: 'res_1', type: 'resistor', resistance: 100, label: 'R1: 100Ω' },
-        },
-        {
-          id: 'res_2',
-          type: 'resistor',
-          position: { x: 320, y: 260 },
-          data: { id: 'res_2', type: 'resistor', resistance: 100, label: 'R2: 100Ω' },
-        },
-        {
-          id: 'v_meter',
-          type: 'voltmeter',
-          position: { x: 540, y: 260 },
-          data: { id: 'v_meter', type: 'voltmeter', label: 'Midpoint Voltmeter' },
-        },
-      ];
-      presetEdges = [
-        { id: 'e1', source: 'bat_1', sourceHandle: 'pos', target: 'res_1', targetHandle: 'p1', type: 'wire' },
-        { id: 'e2', source: 'res_1', sourceHandle: 'p2', target: 'res_2', targetHandle: 'p1', type: 'wire' },
-        { id: 'e3', source: 'res_2', sourceHandle: 'p2', target: 'bat_1', targetHandle: 'neg', type: 'wire' },
-        { id: 'e4', source: 'res_1', sourceHandle: 'p2', target: 'v_meter', targetHandle: 'p1', type: 'wire' },
-        { id: 'e5', source: 'res_2', sourceHandle: 'p2', target: 'v_meter', targetHandle: 'p2', type: 'wire' },
-      ];
-    } else if (presetName === 'parallel-bulbs') {
-      presetNodes = [
-        {
-          id: 'bat_1',
-          type: 'battery',
-          position: { x: 100, y: 200 },
-          data: { id: 'bat_1', type: 'battery', voltage: 9, label: '9V Battery' },
+          id: 'holder_1',
+          type: 'battery-holder',
+          position: { x: 20, y: 190 },
+          data: {
+            id: 'holder_1',
+            type: 'battery-holder',
+            hasBattery: true,
+            batteryCount: 2,
+            voltage: 3.0,
+            label: 'Sumber V (3.0V)',
+          },
         },
         {
           id: 'bulb_1',
           type: 'bulb',
-          position: { x: 350, y: 100 },
-          data: { id: 'bulb_1', type: 'bulb', resistance: 20, label: 'Bulb A (20Ω)' },
+          position: { x: 380, y: 10 },
+          data: { id: 'bulb_1', type: 'bulb', resistance: 5, label: 'Lampu R₁ (5Ω)' },
         },
         {
           id: 'bulb_2',
           type: 'bulb',
-          position: { x: 350, y: 280 },
-          data: { id: 'bulb_2', type: 'bulb', resistance: 20, label: 'Bulb B (20Ω)' },
+          position: { x: 740, y: 190 },
+          data: { id: 'bulb_2', type: 'bulb', resistance: 5, label: 'Lampu R₂ (5Ω)' },
+        },
+        {
+          id: 'bulb_3',
+          type: 'bulb',
+          position: { x: 380, y: 410 },
+          data: { id: 'bulb_3', type: 'bulb', resistance: 5, label: 'Lampu R₃ (5Ω)' },
+        },
+        {
+          id: 'wp_tl',
+          type: 'waypoint',
+          position: { x: 115, y: 110 },
+          data: { id: 'wp_tl', type: 'waypoint', label: 'Sudut Atas Kiri' },
+        },
+        {
+          id: 'wp_tr',
+          type: 'waypoint',
+          position: { x: 690, y: 110 },
+          data: { id: 'wp_tr', type: 'waypoint', label: 'Sudut Atas Kanan' },
+        },
+        {
+          id: 'wp_br',
+          type: 'waypoint',
+          position: { x: 950, y: 510 },
+          data: { id: 'wp_br', type: 'waypoint', label: 'Sudut Bawah Kanan' },
+        },
+        {
+          id: 'wp_bl',
+          type: 'waypoint',
+          position: { x: 115, y: 510 },
+          data: { id: 'wp_bl', type: 'waypoint', label: 'Sudut Bawah Kiri' },
         },
       ];
       presetEdges = [
-        { id: 'e1', source: 'bat_1', sourceHandle: 'pos', target: 'bulb_1', targetHandle: 'p1', type: 'wire' },
-        { id: 'e2', source: 'bat_1', sourceHandle: 'pos', target: 'bulb_2', targetHandle: 'p1', type: 'wire' },
-        { id: 'e3', source: 'bulb_1', sourceHandle: 'p2', target: 'bat_1', targetHandle: 'neg', type: 'wire' },
-        { id: 'e4', source: 'bulb_2', sourceHandle: 'p2', target: 'bat_1', targetHandle: 'neg', type: 'wire' },
+        { id: 's1', source: 'holder_1', sourceHandle: 'pos', target: 'wp_tl', targetHandle: 'p1', type: 'wire' },
+        { id: 's2', source: 'wp_tl', sourceHandle: 'p2', target: 'bulb_1', targetHandle: 'p1', type: 'wire' },
+        { id: 's3', source: 'bulb_1', sourceHandle: 'p2', target: 'wp_tr', targetHandle: 'p1', type: 'wire' },
+        { id: 's4', source: 'wp_tr', sourceHandle: 'p2', target: 'bulb_2', targetHandle: 'p1', type: 'wire' },
+        { id: 's5', source: 'bulb_2', sourceHandle: 'p2', target: 'wp_br', targetHandle: 'p1', type: 'wire' },
+        { id: 's6', source: 'wp_br', sourceHandle: 'p2', target: 'bulb_3', targetHandle: 'p2', type: 'wire' },
+        { id: 's7', source: 'bulb_3', sourceHandle: 'p1', target: 'wp_bl', targetHandle: 'p1', type: 'wire' },
+        { id: 's8', source: 'wp_bl', sourceHandle: 'p2', target: 'holder_1', targetHandle: 'neg', type: 'wire' },
+      ];
+    } else if (presetName === 'parallel-bulbs') {
+      // Textbook PARALEL Circuit: V source on Left, 3 Side-by-Side Parallel Branches (R1, R2, R3) with Top & Bottom Rails
+      presetNodes = [
+        {
+          id: 'holder_1',
+          type: 'battery-holder',
+          position: { x: 20, y: 170 },
+          data: {
+            id: 'holder_1',
+            type: 'battery-holder',
+            hasBattery: true,
+            batteryCount: 2,
+            voltage: 3.0,
+            label: 'Sumber V (3.0V)',
+          },
+        },
+        {
+          id: 'bulb_1',
+          type: 'bulb',
+          position: { x: 350, y: 180 },
+          data: { id: 'bulb_1', type: 'bulb', resistance: 10, label: 'Cabang R₁ (10Ω)' },
+        },
+        {
+          id: 'bulb_2',
+          type: 'bulb',
+          position: { x: 640, y: 180 },
+          data: { id: 'bulb_2', type: 'bulb', resistance: 10, label: 'Cabang R₂ (10Ω)' },
+        },
+        {
+          id: 'bulb_3',
+          type: 'bulb',
+          position: { x: 930, y: 180 },
+          data: { id: 'bulb_3', type: 'bulb', resistance: 10, label: 'Cabang R₃ (10Ω)' },
+        },
+        // Top Rail Junctions (+)
+        {
+          id: 'wp_top_1',
+          type: 'waypoint',
+          position: { x: 320, y: 50 },
+          data: { id: 'wp_top_1', type: 'waypoint', label: 'Simpul Atas 1' },
+        },
+        {
+          id: 'wp_top_2',
+          type: 'waypoint',
+          position: { x: 610, y: 50 },
+          data: { id: 'wp_top_2', type: 'waypoint', label: 'Simpul Atas 2' },
+        },
+        {
+          id: 'wp_top_3',
+          type: 'waypoint',
+          position: { x: 900, y: 50 },
+          data: { id: 'wp_top_3', type: 'waypoint', label: 'Simpul Atas 3' },
+        },
+        // Bottom Rail Junctions (-)
+        {
+          id: 'wp_bot_1',
+          type: 'waypoint',
+          position: { x: 550, y: 490 },
+          data: { id: 'wp_bot_1', type: 'waypoint', label: 'Simpul Bawah 1' },
+        },
+        {
+          id: 'wp_bot_2',
+          type: 'waypoint',
+          position: { x: 840, y: 490 },
+          data: { id: 'wp_bot_2', type: 'waypoint', label: 'Simpul Bawah 2' },
+        },
+        {
+          id: 'wp_bot_3',
+          type: 'waypoint',
+          position: { x: 1130, y: 490 },
+          data: { id: 'wp_bot_3', type: 'waypoint', label: 'Simpul Bawah 3' },
+        },
+      ];
+      presetEdges = [
+        // Top Rail (+)
+        { id: 'p_t1', source: 'holder_1', sourceHandle: 'pos', target: 'wp_top_1', targetHandle: 'p1', type: 'wire' },
+        { id: 'p_t2', source: 'wp_top_1', sourceHandle: 'p2', target: 'wp_top_2', targetHandle: 'p1', type: 'wire' },
+        { id: 'p_t3', source: 'wp_top_2', sourceHandle: 'p2', target: 'wp_top_3', targetHandle: 'p1', type: 'wire' },
+        // Branch Inputs (from Top Rail into R1, R2, R3)
+        { id: 'p_in1', source: 'wp_top_1', sourceHandle: 'p2', target: 'bulb_1', targetHandle: 'p1', type: 'wire' },
+        { id: 'p_in2', source: 'wp_top_2', sourceHandle: 'p2', target: 'bulb_2', targetHandle: 'p1', type: 'wire' },
+        { id: 'p_in3', source: 'wp_top_3', sourceHandle: 'p2', target: 'bulb_3', targetHandle: 'p1', type: 'wire' },
+        // Branch Outputs (from R1, R2, R3 down to Bottom Rail)
+        { id: 'p_out1', source: 'bulb_1', sourceHandle: 'p2', target: 'wp_bot_1', targetHandle: 'p1', type: 'wire' },
+        { id: 'p_out2', source: 'bulb_2', sourceHandle: 'p2', target: 'wp_bot_2', targetHandle: 'p1', type: 'wire' },
+        { id: 'p_out3', source: 'bulb_3', sourceHandle: 'p2', target: 'wp_bot_3', targetHandle: 'p1', type: 'wire' },
+        // Bottom Rail (-) returning to Holder (-)
+        { id: 'p_b3', source: 'wp_bot_3', sourceHandle: 'p2', target: 'wp_bot_2', targetHandle: 'p1', type: 'wire' },
+        { id: 'p_b2', source: 'wp_bot_2', sourceHandle: 'p2', target: 'wp_bot_1', targetHandle: 'p1', type: 'wire' },
+        { id: 'p_b1', source: 'wp_bot_1', sourceHandle: 'p2', target: 'holder_1', targetHandle: 'neg', type: 'wire' },
       ];
     } else if (presetName === 'short-circuit-demo') {
       presetNodes = [
         {
-          id: 'bat_1',
-          type: 'battery',
-          position: { x: 140, y: 180 },
-          data: { id: 'bat_1', type: 'battery', voltage: 9, label: '9V Battery' },
+          id: 'holder_1',
+          type: 'battery-holder',
+          position: { x: 80, y: 150 },
+          data: {
+            id: 'holder_1',
+            type: 'battery-holder',
+            hasBattery: true,
+            batteryCount: 2,
+            voltage: 3.0,
+            label: 'Wadah AA (3.0V)',
+          },
         },
         {
           id: 'sw_1',
           type: 'switch',
-          position: { x: 380, y: 180 },
-          data: { id: 'sw_1', type: 'switch', isOpen: true, label: 'Dead Short Switch' },
+          position: { x: 420, y: 200 },
+          data: { id: 'sw_1', type: 'switch', isOpen: true, label: 'Saklar Korsleting' },
         },
       ];
       presetEdges = [
-        { id: 'e1', source: 'bat_1', sourceHandle: 'pos', target: 'sw_1', targetHandle: 'p1', type: 'wire' },
-        { id: 'e2', source: 'sw_1', sourceHandle: 'p2', target: 'bat_1', targetHandle: 'neg', type: 'wire' },
+        { id: 'e1', source: 'holder_1', sourceHandle: 'pos', target: 'sw_1', targetHandle: 'p1', type: 'wire' },
+        { id: 'e2', source: 'sw_1', sourceHandle: 'p2', target: 'holder_1', targetHandle: 'neg', type: 'wire' },
       ];
     }
 
@@ -652,6 +816,59 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       edges: presetEdges,
       simulation,
       selectedNodeId: null,
+      selectedEdgeId: null,
+      fitViewTrigger: get().fitViewTrigger + 1,
     });
   },
+
+  /**
+   * Saves the current canvas nodes and edges as a named custom preset in browser localStorage.
+   */
+  saveCustomPreset: (name: string) => {
+    const trimmedName = name.trim();
+    if (!trimmedName) return;
+
+    const newPreset: CustomCircuitPreset = {
+      id: `custom_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      name: trimmedName,
+      createdAt: Date.now(),
+      nodes: get().nodes.map((node) => ({ ...node, selected: false })),
+      edges: get().edges.map((edge) => ({ ...edge, selected: false })),
+    };
+
+    const nextPresets = [newPreset, ...get().customPresets];
+    saveCustomPresetsToStorage(nextPresets);
+    set({ customPresets: nextPresets });
+  },
+
+  /**
+   * Loads a user-saved custom preset by ID onto the canvas and recalculates MNA physics.
+   */
+  loadCustomPreset: (presetId: string) => {
+    const targetPreset = get().customPresets.find((p) => p.id === presetId);
+    if (!targetPreset) return;
+
+    const { simulation, updatedNodes } = recalculateCircuit(
+      targetPreset.nodes,
+      targetPreset.edges
+    );
+    set({
+      nodes: updatedNodes,
+      edges: targetPreset.edges,
+      simulation,
+      selectedNodeId: null,
+      selectedEdgeId: null,
+      fitViewTrigger: get().fitViewTrigger + 1,
+    });
+  },
+
+  /**
+   * Deletes a user-saved custom preset from browser localStorage.
+   */
+  deleteCustomPreset: (presetId: string) => {
+    const nextPresets = get().customPresets.filter((p) => p.id !== presetId);
+    saveCustomPresetsToStorage(nextPresets);
+    set({ customPresets: nextPresets });
+  },
 }));
+

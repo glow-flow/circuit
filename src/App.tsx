@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { PlusCircle, Sliders, Activity, Scissors } from 'lucide-react';
+import { PlusCircle, Sliders, Activity, Scissors, Pin } from 'lucide-react';
 import { Header } from './components/ui/Header';
 import { SidebarPalette } from './components/ui/SidebarPalette';
 import { CircuitCanvas } from './components/canvas/CircuitCanvas';
@@ -15,6 +15,7 @@ export const App: React.FC = () => {
   const selectedNodeId = useCircuitStore((state) => state.selectedNodeId);
   const selectedEdgeId = useCircuitStore((state) => state.selectedEdgeId);
   const removeEdge = useCircuitStore((state) => state.removeEdge);
+  const splitEdgeAtMidpoint = useCircuitStore((state) => state.splitEdgeAtMidpoint);
   const simulation = useCircuitStore((state) => state.simulation);
   const language = useCircuitStore((state) => state.language);
 
@@ -65,14 +66,23 @@ export const App: React.FC = () => {
             </div>
           )}
 
-          {/* Floating Quick-Cut Wire Pill on Mobile when a wire is selected */}
+          {/* Top Floating Wire Action Bar (Visible on ALL devices when a wire is selected) */}
           {selectedEdgeId && activeMobileSheet === 'none' && (
-            <div className="md:hidden absolute top-3 left-1/2 -translate-x-1/2 z-20">
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-void-900/95 backdrop-blur-md border border-white/15 shadow-[0_8px_30px_rgba(0,0,0,0.65)]">
               <button
-                onClick={() => removeEdge(selectedEdgeId)}
-                className="flex items-center gap-2 px-4 py-2 rounded-full bg-red-600 text-white text-xs font-bold shadow-[0_0_20px_rgba(239,68,68,0.7)] border border-red-300 active:scale-95 transition-transform animate-bounce"
+                type="button"
+                onClick={() => splitEdgeAtMidpoint(selectedEdgeId)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-electric-500/20 hover:bg-electric-500/30 text-electric-400 text-xs font-bold border border-electric-500/40 active:scale-95 transition-all cursor-pointer whitespace-nowrap"
               >
-                <Scissors className="w-4 h-4" />
+                <Pin className="w-3.5 h-3.5" />
+                <span>{wireT.addBend}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => removeEdge(selectedEdgeId)}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-red-600 hover:bg-red-500 text-white text-xs font-bold shadow-[0_0_16px_rgba(239,68,68,0.6)] border border-red-300/60 active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+              >
+                <Scissors className="w-3.5 h-3.5" />
                 <span>{wireT.cutWire}</span>
               </button>
             </div>

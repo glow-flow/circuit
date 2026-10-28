@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import ReactFlow, {
   Background,
   Controls,
@@ -38,8 +38,18 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
   const selectEdge = useCircuitStore((state) => state.selectEdge);
   const splitEdgeWithWaypoint = useCircuitStore((state) => state.splitEdgeWithWaypoint);
   const insertBatteryIntoHolder = useCircuitStore((state) => state.insertBatteryIntoHolder);
+  const fitViewTrigger = useCircuitStore((state) => state.fitViewTrigger);
 
   const [reactFlowInstance, setReactFlowInstance] = React.useState<ReactFlowInstance | null>(null);
+
+  // Automatically frame the circuit whenever a built-in or custom preset is loaded
+  useEffect(() => {
+    if (!reactFlowInstance || fitViewTrigger === 0) return;
+    const timer = window.setTimeout(() => {
+      reactFlowInstance.fitView({ padding: 0.18, duration: 350 });
+    }, 60);
+    return () => window.clearTimeout(timer);
+  }, [fitViewTrigger, reactFlowInstance]);
 
   const nodeTypes = useMemo(
     () => ({
