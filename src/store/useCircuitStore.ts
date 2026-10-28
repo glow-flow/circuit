@@ -32,6 +32,7 @@ import {
 import { AppLanguage } from '../i18n/translations';
 import {
   CustomCircuitPreset,
+  createUltimatePowerGridPreset,
   loadCustomPresetsFromStorage,
   saveCustomPresetsToStorage,
   saveWorkspaceAutosave,
@@ -79,7 +80,14 @@ interface CircuitState {
   clearCanvas: () => void;
   setIsSimulating: (isSimulating: boolean) => void;
   runSimulation: () => void;
-  loadPreset: (presetName: 'simple-lamp' | 'voltage-divider' | 'parallel-bulbs' | 'short-circuit-demo') => void;
+  loadPreset: (
+    presetName:
+      | 'simple-lamp'
+      | 'voltage-divider'
+      | 'parallel-bulbs'
+      | 'short-circuit-demo'
+      | 'ultimate-power-grid'
+  ) => void;
   saveCustomPreset: (name: string) => void;
   loadCustomPreset: (presetId: string) => void;
   deleteCustomPreset: (presetId: string) => void;
@@ -942,6 +950,10 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
         { id: 'e1', source: 'holder_1', sourceHandle: 'pos', target: 'sw_1', targetHandle: 'p1', type: 'wire' },
         { id: 'e2', source: 'sw_1', sourceHandle: 'p2', target: 'holder_1', targetHandle: 'neg', type: 'wire' },
       ];
+    } else if (presetName === 'ultimate-power-grid') {
+      const ultimatePreset = createUltimatePowerGridPreset(get().language);
+      presetNodes = ultimatePreset.nodes;
+      presetEdges = ultimatePreset.edges;
     }
 
     const { simulation, updatedNodes } = recalculateCircuit(presetNodes, presetEdges);

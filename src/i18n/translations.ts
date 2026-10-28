@@ -18,6 +18,7 @@ export interface TranslationDictionary {
     presetSeriesDivider: string;
     presetParallelBulbs: string;
     presetShortCircuit: string;
+    presetUltimatePowerGrid: string;
     savePresetBtn: string;
     savePresetModalTitle: string;
     savePresetPlaceholder: string;
@@ -162,6 +163,7 @@ export const TRANSLATIONS: Record<AppLanguage, TranslationDictionary> = {
       presetSeriesDivider: '2. Rangkaian Seri (R₁ + R₂ + R₃)',
       presetParallelBulbs: '3. Rangkaian Paralel (3 Cabang Sejajar)',
       presetShortCircuit: '4. Demo Korsleting (Hubung Singkat)',
+      presetUltimatePowerGrid: 'Tantangan Manajemen Daya (9V)',
       savePresetBtn: 'Simpan',
       savePresetModalTitle: 'Simpan Kreasi Rangkaianmu',
       savePresetPlaceholder: 'Contoh: Blueprint Lampu Kamar / Tugas IPA...',
@@ -264,7 +266,7 @@ export const TRANSLATIONS: Record<AppLanguage, TranslationDictionary> = {
       formulaSeries: 'Baterai Seri: V_total = V₁ + V₂ (1.5V + 1.5V = 3.0V)',
       quickTipTitle: 'Tips Blueprint & Praktikum:',
       quickTipDesc:
-        'Ketuk komponen apa saja di kanvas untuk mengubah nilai Volt, Ohm (Ω), atau melihat arus listriknya.',
+        'Ketuk komponen apa saja di kanvas untuk mengubah nilai nilai Volt, Ohm (Ω), atau melihat arus listriknya.',
       deleteTitle: 'Hapus Komponen Ini',
       waypointTitle: 'Penjepit Tekukan Kabel',
       waypointDesc:
@@ -310,6 +312,7 @@ export const TRANSLATIONS: Record<AppLanguage, TranslationDictionary> = {
       presetSeriesDivider: '2. Series Circuit (R₁ + R₂ + R₃)',
       presetParallelBulbs: '3. Parallel Circuit (3 Parallel Branches)',
       presetShortCircuit: '4. Short-Circuit Hazard Demo',
+      presetUltimatePowerGrid: 'Ultimate Power Grid (9V)',
       savePresetBtn: 'Save',
       savePresetModalTitle: 'Save Custom Circuit Preset',
       savePresetPlaceholder: 'e.g., Bedroom Lamp Blueprint / Lab 1...',

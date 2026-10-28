@@ -99,6 +99,7 @@ export const Header: React.FC = () => {
               <option value="voltage-divider">{t.presetSeriesDivider}</option>
               <option value="parallel-bulbs">{t.presetParallelBulbs}</option>
               <option value="short-circuit-demo">{t.presetShortCircuit}</option>
+              <option value="ultimate-power-grid">{t.presetUltimatePowerGrid}</option>
             </optgroup>
             {customPresets.length > 0 && (
               <optgroup label={t.customGroup}>

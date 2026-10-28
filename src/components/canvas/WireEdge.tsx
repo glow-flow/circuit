@@ -1,5 +1,12 @@
 import React from 'react';
-import { BaseEdge, EdgeProps, getBezierPath, Position, useReactFlow } from 'reactflow';
+import {
+  BaseEdge,
+  EdgeProps,
+  getBezierPath,
+  getSmoothStepPath,
+  Position,
+  useReactFlow,
+} from 'reactflow';
 import { useCircuitStore } from '../../store/useCircuitStore';
 
 /**
@@ -44,9 +51,40 @@ function resolveWaypointPositions(
 }
 
 /**
+ * Resolves the physical electrical current flowing through a specific wire edge
+ * connecting `source` and `target` so parallel/multi-zone branches show their
+ * true branch current and turn off cleanly when a zone switch opens.
+ * Time Complexity: O(1)
+ */
+function resolveEdgeBranchCurrent(
+  source: string,
+  target: string,
+  branchCurrents: Record<string, number>
+): number {
+  const rawSourceI = Math.abs(branchCurrents[source] ?? 0);
+  const rawTargetI = Math.abs(branchCurrents[target] ?? 0);
+  const isSourceWaypoint = source.startsWith('wp_');
+  const isTargetWaypoint = target.startsWith('wp_');
+
+  if (!isSourceWaypoint && !isTargetWaypoint) {
+    // Between two active/passive components (e.g. Ammeter -> Zone Switch, or Resistor -> Bulb),
+    // the wire carries the branch's series/split current
+    return Math.min(rawSourceI, rawTargetI);
+  }
+  if (!isSourceWaypoint && isTargetWaypoint) {
+    return rawSourceI;
+  }
+  if (isSourceWaypoint && !isTargetWaypoint) {
+    return rawTargetI;
+  }
+  return Math.max(rawSourceI, rawTargetI);
+}
+
+/**
  * Custom Wire Edge with dynamic current glow, animated electron flow,
  * permanent high-contrast visibility, single-tap selection (which opens the
- * top floating toolbar to cut the wire), and double-click waypoint anchor creation.
+ * top floating toolbar to cut the wire), double-click waypoint anchor creation,
+ * and support for both smoothstep orthogonal routing (`type: 'smoothstep'`) and bezier curves.
  */
 export const WireEdge: React.FC<EdgeProps> = ({
   id,
@@ -63,6 +101,9 @@ export const WireEdge: React.FC<EdgeProps> = ({
   markerEnd,
 }) => {
   const simulation = useCircuitStore((state) => state.simulation);
+  const edgeType = useCircuitStore(
+    (state) => state.edges.find((e) => e.id === id)?.type ?? 'wire'
+  );
   const splitEdgeWithWaypoint = useCircuitStore((state) => state.splitEdgeWithWaypoint);
   const selectedEdgeId = useCircuitStore((state) => state.selectedEdgeId);
   const selectEdge = useCircuitStore((state) => state.selectEdge);
@@ -71,10 +112,11 @@ export const WireEdge: React.FC<EdgeProps> = ({
   const isShortCircuit = simulation.isShortCircuit;
   const isWireSelected = selected || selectedEdgeId === id;
 
-  // Derive current through this wire by checking source or target component current
-  const sourceCurrent = Math.max(
-    Math.abs(simulation.branchCurrents[source] ?? 0),
-    Math.abs(simulation.branchCurrents[target] ?? 0)
+  // Derive current through this wire segment
+  const sourceCurrent = resolveEdgeBranchCurrent(
+    source,
+    target,
+    simulation.branchCurrents
   );
   const hasCurrent = sourceCurrent > 0.0001;
 
@@ -89,15 +131,26 @@ export const WireEdge: React.FC<EdgeProps> = ({
     targetPosition
   );
 
-  const [edgePath, labelX, labelY] = getBezierPath({
-    sourceX,
-    sourceY,
-    sourcePosition: effectiveSourcePos,
-    targetX,
-    targetY,
-    targetPosition: effectiveTargetPos,
-    curvature: 0.2,
-  });
+  const [edgePath, labelX, labelY] =
+    edgeType === 'smoothstep'
+      ? getSmoothStepPath({
+          sourceX,
+          sourceY,
+          sourcePosition: effectiveSourcePos,
+          targetX,
+          targetY,
+          targetPosition: effectiveTargetPos,
+          borderRadius: 12,
+        })
+      : getBezierPath({
+          sourceX,
+          sourceY,
+          sourcePosition: effectiveSourcePos,
+          targetX,
+          targetY,
+          targetPosition: effectiveTargetPos,
+          curvature: 0.2,
+        });
 
   // Solid, high-contrast permanent wire styling
   let strokeColor = '#64748B'; // Crisp slate-500 (100% visible on dark void background)

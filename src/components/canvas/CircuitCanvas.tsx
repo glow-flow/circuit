@@ -48,7 +48,7 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
   useEffect(() => {
     if (!reactFlowInstance || fitViewTrigger === 0) return;
     const timer = window.setTimeout(() => {
-      reactFlowInstance.fitView({ padding: 0.18, duration: 350 });
+      reactFlowInstance.fitView({ padding: 0.24, minZoom: 0.12, duration: 400 });
     }, 60);
     return () => window.clearTimeout(timer);
   }, [fitViewTrigger, reactFlowInstance]);
@@ -72,6 +72,7 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
   const edgeTypes = useMemo(
     () => ({
       wire: WireEdge,
+      smoothstep: WireEdge,
       default: WireEdge,
     }),
     []
@@ -201,8 +202,8 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
           selectEdge(null);
         }}
         fitView
-        fitViewOptions={{ padding: 0.25 }}
-        minZoom={0.25}
+        fitViewOptions={{ padding: 0.24, minZoom: 0.12 }}
+        minZoom={0.12}
         maxZoom={2.5}
         snapToGrid
         snapGrid={[15, 15]}

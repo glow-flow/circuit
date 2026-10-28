@@ -32,3 +32,54 @@ describe('useCircuitStore.addComponent (variant chosen in palette)', () => {
     expect(placedNode.data.bulbType).toBeUndefined();
   });
 });
+
+describe('Ultimate Power Grid (9V Smart Grid) Preset', () => {
+  beforeEach(() => {
+    useCircuitStore.setState({ nodes: [], edges: [], language: 'id', fitViewTrigger: 0 });
+  });
+
+  it('loads all 7 bulb types, 200Ω & 100Ω resistors, 4 closed switches, 9V battery, voltmeter, and ammeter with active MNA currents', () => {
+    useCircuitStore.getState().loadPreset('ultimate-power-grid');
+    const state = useCircuitStore.getState();
+
+    expect(state.fitViewTrigger).toBe(1);
+    expect(state.simulation.isShortCircuit).toBe(false);
+
+    // Verify all 7 bulb types are present and powered
+    const bulbNodes = state.nodes.filter((n) => n.data.type === 'bulb');
+    expect(bulbNodes).toHaveLength(7);
+    const bulbTypes = bulbNodes.map((n) => n.data.bulbType).sort();
+    expect(bulbTypes).toEqual(
+      ['cfl', 'edison', 'halogen', 'incandescent', 'led_green', 'led_rgb', 'led_standard'].sort()
+    );
+
+    for (const bulb of bulbNodes) {
+      const current = Math.abs(state.simulation.branchCurrents[bulb.id] ?? 0);
+      expect(current).toBeGreaterThan(0.0005);
+    }
+
+    // Verify resistors have exact 200Ω (Zone 1) and 100Ω (Zone 3) values
+    const resZone1 = state.nodes.find((n) => n.id === 'res_zone1');
+    const resZone3 = state.nodes.find((n) => n.id === 'res_zone3');
+    expect(resZone1?.data.resistance).toBe(200);
+    expect(resZone3?.data.resistance).toBe(100);
+
+    // Verify all 4 switches are CLOSED (isOpen: false) by default
+    const switchNodes = state.nodes.filter((n) => n.data.type === 'switch');
+    expect(switchNodes).toHaveLength(4);
+    expect(switchNodes.every((s) => s.data.isOpen === false)).toBe(true);
+
+    // Verify edges use smoothstep orthogonal routing
+    expect(state.edges.every((e) => e.type === 'smoothstep')).toBe(true);
+
+    // Verify Zone 1 isolation when sw_zone1 is opened
+    useCircuitStore.getState().toggleSwitch('sw_zone1');
+    const afterZone1Off = useCircuitStore.getState();
+    expect(Math.abs(afterZone1Off.simulation.branchCurrents['bulb_incandescent'] ?? 0)).toBeLessThan(
+      1e-5
+    );
+    expect(Math.abs(afterZone1Off.simulation.branchCurrents['bulb_edison'] ?? 0)).toBeGreaterThan(
+      0.001
+    );
+  });
+});
