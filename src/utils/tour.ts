@@ -2,13 +2,14 @@
  * Interactive Product Spotlight Tour Module (`driver.js`).
  *
  * Guides students and teachers step-by-step across the real Circuit Sandbox UI
- * elements using a 9-step spotlight sequence. Automatically synchronizes mobile
- * bottom-sheet drawers (`palette` / `inspector`) so every target element is
- * visible and accurately highlighted on both Mobile and Desktop viewports.
+ * elements using a 10-step spotlight sequence. Automatically synchronizes mobile
+ * bottom-sheet drawers (`palette` / `inspector`), component selection, and wire
+ * selection so every target element (`#tour-panel-inspector`, `#tour-wire-actions`, etc.)
+ * is visible and accurately highlighted on both Mobile and Desktop viewports.
  *
  * Time Complexity:
- * - Tour initialization (`startTour`): O(1) over the fixed 9-step configuration
- * - Step transition preparation (`prepareViewportForTourStep`): O(N) where N is canvas node count
+ * - Tour initialization (`startTour`): O(1) over the fixed 10-step configuration
+ * - Step transition preparation (`prepareViewportForTourStep`): O(N + E) where N is node count and E is edge count
  */
 
 import { driver, DriveStep, Driver } from 'driver.js';
@@ -37,7 +38,7 @@ export function registerTourMobileSheetController(
 }
 
 /**
- * Exports the 9 spotlight steps in a structured constant so unit tests can
+ * Exports the 10 spotlight steps in a structured constant so unit tests can
  * verify target selectors, titles, and descriptions without requiring a full browser.
  */
 export const TOUR_STEPS: DriveStep[] = [
@@ -67,17 +68,17 @@ export const TOUR_STEPS: DriveStep[] = [
       title: 'Pilih Alat',
       description:
         "Pilih komponen, lalu tekan 'Taruh di kanvas'. Di desktop, kamu bisa drag langsung ke kanvas.",
-      side: 'right',
+      side: 'top',
       align: 'center',
     },
   },
   {
     element: '#tour-panel-inspector',
     popover: {
-      title: 'Ubah Properti',
+      title: 'Ubah Properti Komponen',
       description:
-        'Klik komponen di kanvas, lalu ubah tegangan atau jenis lampunya di panel ini.',
-      side: 'left',
+        'Klik komponen di kanvas (di HP, ketuk tombol "Atur" yang muncul di atas), lalu ubah Jenis Lampu (7 tipe), Hambatan (Ω), atau Tegangan Baterai (V) di panel ini.',
+      side: 'top',
       align: 'center',
     },
   },
@@ -94,10 +95,20 @@ export const TOUR_STEPS: DriveStep[] = [
   {
     element: '#tour-canvas-area',
     popover: {
-      title: 'Hapus Kabel',
+      title: 'Klik Salah Satu Kabel',
       description:
-        'Untuk memutus kabel, cukup klik kabelnya, lalu tekan tombol Sampah atau Delete di keyboard.',
-      side: 'top',
+        'Coba klik/ketuk salah satu garis kabel di kanvas (kabel yang dipilih akan menyala kuning-oranye). Saat kabel diklik, tombol aksi kabel akan muncul di bagian atas kanvas.',
+      side: 'bottom',
+      align: 'center',
+    },
+  },
+  {
+    element: '#tour-wire-actions',
+    popover: {
+      title: 'Pin Kabel & Putus Kabel',
+      description:
+        "Setelah kabel diklik, tekan 'Tambah Tekukan' (atau ketuk 2x pada kabel) untuk membuat pin titik belokan (Anchor Point) agar jalur kabel rapi, atau tekan 'Potong Kabel' untuk memutus sambungan.",
+      side: 'bottom',
       align: 'center',
     },
   },
@@ -133,24 +144,48 @@ export const TOUR_STEPS: DriveStep[] = [
 ];
 
 /**
- * Prepares the UI viewport (mobile drawers and selected node) before a specific
- * step index is highlighted so `driver.js` always measures a visible DOM element.
- * Time Complexity: O(N) where N is the number of nodes on the canvas.
+ * Prepares the UI viewport (mobile drawers, selected component node, and selected
+ * wire edge) before a specific step index is highlighted so `driver.js` always
+ * measures a visible DOM element.
+ * Time Complexity: O(N + E) where N is node count and E is edge count on the canvas.
  *
  * @param stepIndex 0-based index in `TOUR_STEPS`
  */
 export function prepareViewportForTourStep(stepIndex: number): void {
   try {
-    const storeState = useCircuitStore.getState();
+    let storeState = useCircuitStore.getState();
 
-    // On Step 4 (index 3, #tour-panel-inspector), ensure a component is selected
-    // so the user sees actual adjustable properties (voltage / bulb type)
-    if (stepIndex === 3 && !storeState.selectedNodeId) {
+    // Ensure there is a sample circuit on the canvas if the user cleared everything
+    // before launching the tour so component & wire steps always have real targets
+    if (storeState.nodes.length === 0 || storeState.edges.length === 0) {
+      storeState.loadPreset('simple-lamp');
+      storeState = useCircuitStore.getState();
+    }
+
+    if (stepIndex === 3) {
+      // Step 4 (#tour-panel-inspector): Select a Bulb (or non-waypoint) component
+      // so the Component Properties view is rendered inside Inspector
       const preferredNode =
         storeState.nodes.find((n) => n.data.type === 'bulb') ??
         storeState.nodes.find((n) => n.data.type !== 'waypoint');
       if (preferredNode) {
         storeState.selectNode(preferredNode.id);
+      }
+    } else if (stepIndex === 5 || stepIndex === 6) {
+      // Step 6 (#tour-canvas-area "Klik Salah Satu Kabel") &
+      // Step 7 (#tour-wire-actions "Pin Kabel & Putus Kabel"):
+      // Ensure a wire edge is selected so the wire glows amber AND the top floating
+      // wire action bar ([Tambah Tekukan] & [Potong Kabel]) is mounted in the DOM
+      if (!storeState.selectedEdgeId && storeState.edges.length > 0) {
+        storeState.selectEdge(storeState.edges[0].id);
+      }
+    } else {
+      // Clear node/edge selection on other steps so floating pills don't clutter the canvas
+      if (storeState.selectedNodeId) {
+        storeState.selectNode(null);
+      }
+      if (storeState.selectedEdgeId) {
+        storeState.selectEdge(null);
       }
     }
 
@@ -179,7 +214,7 @@ export function prepareViewportForTourStep(stepIndex: number): void {
 }
 
 /**
- * Launches the 9-step interactive `driver.js` spotlight product tour.
+ * Launches the 10-step interactive `driver.js` spotlight product tour.
  * Defensive against SSR/missing DOM and persists `has_seen_tutorial = 'true'`
  * upon completion.
  * Time Complexity: O(1)
@@ -221,7 +256,7 @@ export function startTour(): void {
       onNextClick: () => {
         const currentIndex = driverObj.getActiveIndex() ?? 0;
         if (driverObj.isLastStep()) {
-          // Step 9 ("Selesai"): persist 'has_seen_tutorial' = 'true' and close
+          // Final Step ("Selesai"): persist 'has_seen_tutorial' = 'true' and close
           try {
             window.localStorage.setItem(TUTORIAL_STORAGE_KEY, 'true');
           } catch {
@@ -244,6 +279,8 @@ export function startTour(): void {
       onDestroyed: () => {
         markTutorialAsSeen();
         registeredMobileSheetController?.('none');
+        const st = useCircuitStore.getState();
+        if (st.selectedEdgeId) st.selectEdge(null);
       },
     });
 

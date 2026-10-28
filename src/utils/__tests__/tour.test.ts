@@ -17,8 +17,8 @@ describe('Interactive Spotlight Tour (driver.js) & Welcome Persistence', () => {
     registerTourMobileSheetController(null);
   });
 
-  it('defines all 9 spotlight steps in the exact sequence with required target IDs and copy', () => {
-    expect(TOUR_STEPS).toHaveLength(9);
+  it('defines all 10 spotlight steps in sequence with required target IDs including #tour-wire-actions', () => {
+    expect(TOUR_STEPS).toHaveLength(10);
 
     const targets = TOUR_STEPS.map((step) => step.element);
     expect(targets).toEqual([
@@ -28,6 +28,7 @@ describe('Interactive Spotlight Tour (driver.js) & Welcome Persistence', () => {
       '#tour-panel-inspector',
       '#tour-btn-info',
       '#tour-canvas-area',
+      '#tour-wire-actions',
       '#tour-btn-save',
       '#tour-btn-reset',
       '#tour-btn-help',
@@ -38,16 +39,17 @@ describe('Interactive Spotlight Tour (driver.js) & Welcome Persistence', () => {
       'Template Rangkaian',
       'Tambah Komponen',
       'Pilih Alat',
-      'Ubah Properti',
+      'Ubah Properti Komponen',
       'Info & Rumus',
-      'Hapus Kabel',
+      'Klik Salah Satu Kabel',
+      'Pin Kabel & Putus Kabel',
       'Simpan Karya',
       'Bersihkan Kanvas',
       'Panduan Ulang',
     ]);
   });
 
-  it('synchronizes mobile drawers and node selection across tour steps', () => {
+  it('synchronizes mobile drawers, component selection, and wire selection across tour steps', () => {
     let activeSheet: TourMobileSheetState = 'none';
     registerTourMobileSheetController((sheet) => {
       activeSheet = sheet;
@@ -59,6 +61,7 @@ describe('Interactive Spotlight Tour (driver.js) & Welcome Persistence', () => {
     try {
       useCircuitStore.getState().loadPreset('simple-lamp');
       useCircuitStore.getState().selectNode(null);
+      useCircuitStore.getState().selectEdge(null);
 
       // Step 3 (index 2): opens Component Palette on mobile
       prepareViewportForTourStep(2);
@@ -68,10 +71,25 @@ describe('Interactive Spotlight Tour (driver.js) & Welcome Persistence', () => {
       prepareViewportForTourStep(3);
       expect(activeSheet).toBe('inspector');
       expect(useCircuitStore.getState().selectedNodeId).toBeTruthy();
+      expect(useCircuitStore.getState().selectedEdgeId).toBeNull();
 
-      // Step 5 (index 4): closes mobile drawer so bottom button is visible
+      // Step 5 (index 4): closes mobile drawer and clears selection so bottom button is visible
       prepareViewportForTourStep(4);
       expect(activeSheet).toBe('none');
+      expect(useCircuitStore.getState().selectedNodeId).toBeNull();
+
+      // Step 6 (index 5) & Step 7 (index 6): auto-selects a wire edge so #tour-wire-actions is mounted
+      prepareViewportForTourStep(5);
+      expect(activeSheet).toBe('none');
+      expect(useCircuitStore.getState().selectedNodeId).toBeNull();
+      expect(useCircuitStore.getState().selectedEdgeId).toBeTruthy();
+
+      prepareViewportForTourStep(6);
+      expect(useCircuitStore.getState().selectedEdgeId).toBeTruthy();
+
+      // Step 8 (index 7): clears wire selection when moving to header buttons
+      prepareViewportForTourStep(7);
+      expect(useCircuitStore.getState().selectedEdgeId).toBeNull();
     } finally {
       (globalThis as any).window = originalWindow;
     }

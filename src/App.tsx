@@ -86,7 +86,10 @@ export const App: React.FC = () => {
 
           {/* Top Floating Wire Action Bar (Visible on ALL devices when a wire is selected) */}
           {selectedEdgeId && activeMobileSheet === 'none' && (
-            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-void-900/95 backdrop-blur-md border border-white/15 shadow-[0_8px_30px_rgba(0,0,0,0.65)]">
+            <div
+              id="tour-wire-actions"
+              className="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-void-900/95 backdrop-blur-md border border-white/15 shadow-[0_8px_30px_rgba(0,0,0,0.65)]"
+            >
               <button
                 type="button"
                 onClick={() => splitEdgeAtMidpoint(selectedEdgeId)}
