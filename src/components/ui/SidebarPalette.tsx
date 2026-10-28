@@ -43,6 +43,13 @@ export const SidebarPalette: React.FC<SidebarPaletteProps> = ({
       badge: t.items.battery.badge,
     },
     {
+      type: 'battery9v',
+      label: t.items.battery9v.label,
+      description: t.items.battery9v.description,
+      icon: <Zap className="w-4 h-4 text-amber-400" />,
+      badge: t.items.battery9v.badge,
+    },
+    {
       type: 'battery-holder',
       label: t.items.holder.label,
       description: t.items.holder.description,

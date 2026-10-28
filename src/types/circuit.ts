@@ -9,6 +9,7 @@ import { BulbType } from '../constants/bulbCatalog';
 
 export type ComponentType = 
   | 'battery'
+  | 'battery9v'
   | 'battery-holder'
   | 'resistor'
   | 'bulb'
@@ -30,14 +31,15 @@ export interface CircuitElementData {
   type: ComponentType;
   label: string;
   // Electrical properties
-  bulbType?: BulbType;    // For bulb carousel ('incandescent' | 'halogen' | 'edison' | 'cfl' | 'led_standard' | 'led_rgb' | 'led_green')
-  voltage?: number;       // For battery / battery-holder (Volts)
-  resistance?: number;    // For resistor, bulb, ammeter (Ohms)
-  power?: number;         // Real-time or rated power for bulb (Watts)
-  powerRating?: number;   // Max rated power for bulb (Watts)
-  isOpen?: boolean;       // For switch
-  hasBattery?: boolean;   // For battery-holder: whether AA battery is inserted
-  batteryCount?: number;  // For battery-holder: number of 1.5V AA cells inserted (0, 1, or 2)
+  bulbType?: BulbType;         // For bulb carousel ('incandescent' | 'halogen' | 'edison' | 'cfl' | 'led_standard' | 'led_rgb' | 'led_green')
+  voltage?: number;            // For battery / battery9v / battery-holder (Volts)
+  internalResistance?: number; // Internal series resistance in Ohms (e.g., 2.0Ω for 9V battery)
+  resistance?: number;         // For resistor, bulb, ammeter (Ohms)
+  power?: number;              // Real-time or rated power for bulb (Watts)
+  powerRating?: number;        // Max rated power for bulb (Watts)
+  isOpen?: boolean;            // For switch
+  hasBattery?: boolean;        // For battery-holder: whether AA battery is inserted
+  batteryCount?: number;       // For battery-holder: number of 1.5V AA cells inserted (0, 1, or 2)
   
   // Real-time calculated simulation results
   calculatedVoltage?: number;  // Voltage drop across component (V)

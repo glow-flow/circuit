@@ -43,6 +43,7 @@ export interface TranslationDictionary {
     tipWaypoint: string;
     items: {
       battery: { label: string; description: string; badge: string };
+      battery9v: { label: string; description: string; badge: string };
       holder: { label: string; description: string; badge: string };
       resistor: { label: string; description: string };
       bulb: { label: string; description: string; badge: string };
@@ -197,6 +198,11 @@ export const TRANSLATIONS: Record<AppLanguage, TranslationDictionary> = {
           label: 'Baterai AA 1.5V',
           description: 'Baterai 1.5V satuan. Geser masuk ke Wadah Baterai atau sambung langsung',
           badge: '1.5V',
+        },
+        battery9v: {
+          label: 'Baterai 9V',
+          description: 'Tegangan tinggi (9V). Cocok untuk lampu daya besar.',
+          badge: '9.0V',
         },
         holder: {
           label: 'Wadah Baterai (2x AA)',
@@ -378,6 +384,11 @@ export const TRANSLATIONS: Record<AppLanguage, TranslationDictionary> = {
           label: '1.5V AA Battery',
           description: 'Single 1.5V AA cell. Drag onto Holder or wire directly',
           badge: '1.5V',
+        },
+        battery9v: {
+          label: '9V Battery',
+          description: 'High voltage (9V). Ideal for high-wattage bulbs.',
+          badge: '9.0V',
         },
         holder: {
           label: 'Dual AA Holder',

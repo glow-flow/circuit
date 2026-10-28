@@ -242,6 +242,14 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
           label: isId ? 'Baterai AA 1.5V' : '1.5V AA Battery',
         };
         break;
+      case 'battery9v':
+        defaultData = {
+          ...defaultData,
+          voltage: 9.0,
+          internalResistance: 2.0,
+          label: isId ? 'Baterai 9V' : '9V Battery',
+        };
+        break;
       case 'battery-holder':
         defaultData = {
           ...defaultData,

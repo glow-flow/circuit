@@ -211,16 +211,16 @@ export const BulbNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, se
         </button>
 
         {/* Fixed Image Container (w-20 h-24 flex items-center justify-center) so node never resizes */}
-        <div className="relative w-20 h-24 flex items-center justify-center overflow-hidden">
+        <div className="relative w-20 h-24 flex items-center justify-center">
           {/* Dynamic Radial Glow Aura scaled by P = I^2 * R */}
           {!isBlown && brightness > 0.02 && (
             <div
-              className="absolute inset-1 rounded-full pointer-events-none transition-all duration-300"
+              className="absolute inset-0 rounded-full pointer-events-none transition-all duration-300"
               style={{
-                background: `radial-gradient(circle, ${bulbSpec.glowColor} 0%, transparent 72%)`,
-                opacity: Math.min(1, 0.2 + brightness * 0.8),
-                transform: `scale(${0.85 + brightness * 0.4})`,
-                filter: 'blur(8px)',
+                background: `radial-gradient(circle, ${bulbSpec.glowColor} 0%, transparent 70%)`,
+                opacity: Math.min(1, 0.25 + brightness * 0.75),
+                transform: `scale(${0.9 + brightness * 0.45})`,
+                filter: 'blur(10px)',
               }}
             />
           )}
@@ -228,25 +228,24 @@ export const BulbNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, se
           <img
             src={bulbSpec.image}
             alt={displayLabel}
-            className={`w-full h-full object-contain pointer-events-none select-none transition-all duration-300 ${
+            className={`relative z-10 w-full h-full object-contain pointer-events-none select-none transition-all duration-300 ${
               isFading ? 'opacity-25 scale-95' : 'opacity-100 scale-100'
             }`}
             style={{
-              mixBlendMode: 'screen',
               filter: isBlown
-                ? 'grayscale(100%) brightness(0.35) contrast(1.2)'
+                ? 'grayscale(100%) brightness(0.4) contrast(1.15)'
                 : brightness > 0.01
-                ? `brightness(${0.65 + brightness * 0.85}) saturate(${0.85 + brightness * 0.5}) drop-shadow(0 0 ${Math.round(
-                    4 + brightness * 18
+                ? `brightness(${0.75 + brightness * 0.55}) saturate(${0.9 + brightness * 0.35}) drop-shadow(0 0 ${Math.round(
+                    3 + brightness * 14
                   )}px ${bulbSpec.glowColor})`
-                : 'grayscale(85%) brightness(0.42)',
+                : 'grayscale(80%) brightness(0.48)',
               opacity: isBlown
-                ? 0.28
+                ? 0.35
                 : isFading
                 ? 0.25
                 : brightness > 0.01
-                ? Math.min(1.0, 0.48 + brightness * 0.52)
-                : 0.42,
+                ? Math.min(1.0, 0.65 + brightness * 0.35)
+                : 0.5,
             }}
           />
         </div>

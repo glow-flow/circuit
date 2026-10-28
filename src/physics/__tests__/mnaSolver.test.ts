@@ -378,6 +378,67 @@ describe('Modified Nodal Analysis (MNA) Physics Engine', () => {
     expect(photoOverload.isOverloaded).toBe(true);
     expect(photoOverload.heatLevel).toBe('overheat');
   });
+
+  it('correctly models 9V Battery internalResistance (2.0Ω) and sums two 9V batteries in series to 18.0V', () => {
+    const bat9vA: CircuitElementData = {
+      id: 'b9_1',
+      type: 'battery9v',
+      voltage: 9.0,
+      internalResistance: 2.0,
+      label: 'Baterai 9V #1',
+    };
+    const bat9vB: CircuitElementData = {
+      id: 'b9_2',
+      type: 'battery9v',
+      voltage: 9.0,
+      internalResistance: 2.0,
+      label: 'Baterai 9V #2',
+    };
+    const bulbHalogen: CircuitElementData = {
+      id: 'bulb_h',
+      type: 'bulb',
+      bulbType: 'halogen',
+      resistance: 1500,
+      label: 'Lampu Halogen (1500Ω)',
+    };
+
+    // Connect two 9V batteries in series: b9_1(-) -> ground, b9_1(+) -> b9_2(-), b9_2(+) -> bulb(p1) -> bulb(p2) -> b9_1(-)
+    const seriesWires: WireConnection[] = [
+      { id: 'w1', source: 'b9_1', sourceHandle: 'pos', target: 'b9_2', targetHandle: 'neg' },
+      { id: 'w2', source: 'b9_2', sourceHandle: 'pos', target: 'bulb_h', targetHandle: 'p1' },
+      { id: 'w3', source: 'bulb_h', sourceHandle: 'p2', target: 'b9_1', targetHandle: 'neg' },
+    ];
+
+    const seriesResult = solveCircuitMNA({
+      components: [bat9vA, bat9vB, bulbHalogen],
+      wires: seriesWires,
+    });
+
+    // Total EMF = 18.0V, Total R = 1500Ω + 2.0Ω + 2.0Ω = 1504.0Ω -> I = 18 / 1504 ≈ 0.011968 A
+    const expectedSeriesCurrent = 18.0 / 1504.0;
+    expect(Math.abs(seriesResult.branchCurrents['bulb_h'])).toBeCloseTo(expectedSeriesCurrent, 5);
+    expect(Math.max(...Object.values(seriesResult.nodeVoltages))).toBeCloseTo(
+      18.0 - expectedSeriesCurrent * 4.0,
+      2
+    );
+
+    // Direct short across a single 9V battery with 2.0Ω internal resistance limits current to ~4.5A (< 10A)
+    const closedSwitch: CircuitElementData = {
+      id: 'sw_short',
+      type: 'switch',
+      isOpen: false,
+      label: 'Closed Switch',
+    };
+    const shortResult = solveCircuitMNA({
+      components: [bat9vA, closedSwitch],
+      wires: [
+        { id: 's1', source: 'b9_1', sourceHandle: 'pos', target: 'sw_short', targetHandle: 'p1' },
+        { id: 's2', source: 'sw_short', sourceHandle: 'p2', target: 'b9_1', targetHandle: 'neg' },
+      ],
+    });
+    expect(Math.abs(shortResult.branchCurrents['b9_1'])).toBeCloseTo(9.0 / 2.001, 2);
+    expect(shortResult.isShortCircuit).toBe(false);
+  });
 });
 
 

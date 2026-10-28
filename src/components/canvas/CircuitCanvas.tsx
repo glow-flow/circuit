@@ -13,6 +13,7 @@ import ReactFlow, {
 import { useCircuitStore } from '../../store/useCircuitStore';
 import { CircuitElementData, ComponentType } from '../../types/circuit';
 import { BatteryNode } from './nodes/BatteryNode';
+import { Battery9VNode } from './nodes/Battery9VNode';
 import { BatteryHolderNode } from './nodes/BatteryHolderNode';
 import { ResistorNode } from './nodes/ResistorNode';
 import { BulbNode } from './nodes/BulbNode';
@@ -54,6 +55,7 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
   const nodeTypes = useMemo(
     () => ({
       battery: BatteryNode,
+      battery9v: Battery9VNode,
       'battery-holder': BatteryHolderNode,
       resistor: ResistorNode,
       bulb: BulbNode,

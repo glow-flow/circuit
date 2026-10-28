@@ -52,6 +52,9 @@ export function isActiveVoltageSource(component: CircuitElementData): boolean {
   if (component.type === 'battery') {
     return (component.voltage ?? 1.5) > 0;
   }
+  if (component.type === 'battery9v') {
+    return (component.voltage ?? 9.0) > 0;
+  }
   if (component.type === 'battery-holder') {
     const cellCount = component.batteryCount ?? (component.hasBattery ? 2 : 0);
     return Boolean(component.hasBattery && cellCount > 0);
@@ -62,6 +65,7 @@ export function isActiveVoltageSource(component: CircuitElementData): boolean {
 /**
  * Computes the nominal open-circuit EMF voltage of a voltage source component.
  * - Single AA Battery ('battery'): defaults to 1.5V
+ * - 9V Alkaline Battery ('battery9v'): defaults to 9.0V
  * - Dual AA Battery Holder ('battery-holder'): 1.5V per series cell (2 cells = 3.0V)
  * 
  * @param component - Circuit component data
@@ -70,6 +74,9 @@ export function isActiveVoltageSource(component: CircuitElementData): boolean {
 export function getVoltageSourceNominalVoltage(component: CircuitElementData): number {
   if (component.type === 'battery') {
     return component.voltage ?? 1.5;
+  }
+  if (component.type === 'battery9v') {
+    return component.voltage ?? 9.0;
   }
   if (component.type === 'battery-holder') {
     if (!component.hasBattery) return 0;
@@ -287,6 +294,7 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
     for (const component of components) {
       if (
         component.type === 'battery' ||
+        component.type === 'battery9v' ||
         component.type === 'battery-holder' ||
         component.type === 'ground' ||
         component.type === 'waypoint'
@@ -342,11 +350,19 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
         coefficientMatrix[voltageSourceRowIndex][negativeNetIndex] -= 1;
       }
 
-      // D matrix: Series internal resistance to guarantee well-conditioned matrix
-      const cellCount =
-        sourceComp.type === 'battery-holder' ? (sourceComp.batteryCount ?? 2) : 1;
-      coefficientMatrix[voltageSourceRowIndex][voltageSourceRowIndex] =
-        -(BATTERY_INTERNAL_RESISTANCE * Math.max(1, cellCount));
+      // D matrix: Series internal resistance (e.g. 2.0Ω for 9V battery, 0.05Ω per AA cell)
+      let seriesInternalResistance = BATTERY_INTERNAL_RESISTANCE;
+      if (sourceComp.type === 'battery9v') {
+        seriesInternalResistance = Math.max(0.01, sourceComp.internalResistance ?? 2.0);
+      } else if (sourceComp.type === 'battery-holder') {
+        const cellCount = sourceComp.batteryCount ?? 2;
+        seriesInternalResistance =
+          sourceComp.internalResistance ?? BATTERY_INTERNAL_RESISTANCE * Math.max(1, cellCount);
+      } else if (sourceComp.internalResistance !== undefined) {
+        seriesInternalResistance = Math.max(0.01, sourceComp.internalResistance);
+      }
+
+      coefficientMatrix[voltageSourceRowIndex][voltageSourceRowIndex] = -seriesInternalResistance;
 
       // Vector e: Nominal DC voltage
       constantVector[voltageSourceRowIndex] = getVoltageSourceNominalVoltage(sourceComp);
@@ -397,6 +413,7 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
     for (const component of components) {
       if (
         component.type === 'battery' ||
+        component.type === 'battery9v' ||
         component.type === 'battery-holder' ||
         component.type === 'ground' ||
         component.type === 'waypoint'
@@ -495,6 +512,7 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
 export function getComponentPinIdentifiers(component: CircuitElementData): string[] {
   switch (component.type) {
     case 'battery':
+    case 'battery9v':
     case 'battery-holder':
       return [`${component.id}:pos`, `${component.id}:neg`];
     case 'resistor':

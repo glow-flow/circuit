@@ -310,20 +310,23 @@ export const Inspector: React.FC<InspectorProps> = ({
           </div>
         )}
 
-        {/* Battery Controls */}
-        {componentData.type === 'battery' && (
+        {/* Battery (1.5V AA & 9V Alkaline) Controls */}
+        {(componentData.type === 'battery' || componentData.type === 'battery9v') && (
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <label className="text-xs font-semibold text-slate-300">
                 {t.batteryVoltageLabel}
               </label>
               <span className="text-xs font-mono font-bold text-electric-400">
-                {(componentData.voltage ?? 1.5).toFixed(1)} V
+                {(componentData.voltage ?? (componentData.type === 'battery9v' ? 9.0 : 1.5)).toFixed(
+                  1
+                )}{' '}
+                V
               </span>
             </div>
             <Slider.Root
               className="relative flex items-center select-none touch-none w-full h-6 cursor-pointer"
-              value={[componentData.voltage ?? 1.5]}
+              value={[componentData.voltage ?? (componentData.type === 'battery9v' ? 9.0 : 1.5)]}
               min={1.5}
               max={24}
               step={0.5}
@@ -334,6 +337,22 @@ export const Inspector: React.FC<InspectorProps> = ({
               </Slider.Track>
               <Slider.Thumb className="block w-5 h-5 bg-white rounded-full shadow-md focus:outline-none focus:ring-2 focus:ring-electric-500 transition-transform active:scale-125" />
             </Slider.Root>
+
+            {componentData.type === 'battery9v' && (
+              <div className="p-2.5 rounded-xl bg-void-950 border border-white/5 text-[11px] text-slate-400 space-y-1">
+                <div className="flex justify-between font-mono text-xs">
+                  <span>{language === 'id' ? 'Hambatan Dalam (R_in):' : 'Internal Resistance:'}</span>
+                  <span className="text-amber-400 font-bold">
+                    {(componentData.internalResistance ?? 2.0).toFixed(1)} Ω
+                  </span>
+                </div>
+                <p className="leading-relaxed text-[10px]">
+                  {language === 'id'
+                    ? 'Baterai 9V memiliki hambatan dalam ~2.0Ω sehingga arus hubung singkat terbatas (~4.5A). Jika 2 baterai 9V dipasang seri, tegangan menjadi 18.0V.'
+                    : '9V battery has ~2.0Ω internal resistance, limiting short-circuit current to ~4.5A. Wiring two 9V batteries in series yields 18.0V.'}
+                </p>
+              </div>
+            )}
           </div>
         )}
 
