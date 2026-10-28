@@ -2,6 +2,12 @@ import { describe, it, expect } from 'vitest';
 import { solveCircuitMNA, solveLinearSystem } from '../mnaSolver';
 import { UnionFind } from '../unionFind';
 import { CircuitElementData, WireConnection } from '../../types/circuit';
+import {
+  BULB_CATALOG,
+  computeBulbPhotometrics,
+  getAdjacentBulbSpec,
+  getBulbSpec,
+} from '../../constants/bulbCatalog';
 
 describe('UnionFind Data Structure', () => {
   it('correctly unites elements and performs path compression', () => {
@@ -312,6 +318,67 @@ describe('Modified Nodal Analysis (MNA) Physics Engine', () => {
     expect(i2).toBeCloseTo(i3, 4);
     expect(iTotal).toBeCloseTo(i1 + i2 + i3, 4);
   });
+
+  it('dynamically updates MNA current, power (P = I^2 * R), and brightness across the 7 bulb types', () => {
+    expect(BULB_CATALOG).toHaveLength(7);
+
+    // Verify circular carousel navigation: incandescent (0) <- prev wraps to led_green (6)
+    expect(getAdjacentBulbSpec('incandescent', 'prev').type).toBe('led_green');
+    expect(getAdjacentBulbSpec('led_green', 'next').type).toBe('incandescent');
+
+    const holder: CircuitElementData = {
+      id: 'holder_1',
+      type: 'battery-holder',
+      hasBattery: true,
+      batteryCount: 2,
+      voltage: 3.0,
+      label: 'Wadah AA 3.0V',
+    };
+
+    const wires: WireConnection[] = [
+      { id: 'w1', source: 'holder_1', sourceHandle: 'pos', target: 'bulb_1', targetHandle: 'p1' },
+      { id: 'w2', source: 'bulb_1', sourceHandle: 'p2', target: 'holder_1', targetHandle: 'neg' },
+    ];
+
+    // 1. Incandescent (800Ω)
+    const incandescentSpec = getBulbSpec('incandescent');
+    const bulbIncandescent: CircuitElementData = {
+      id: 'bulb_1',
+      type: 'bulb',
+      bulbType: 'incandescent',
+      resistance: incandescentSpec.resistance,
+      label: incandescentSpec.label,
+    };
+    const resInc = solveCircuitMNA({ components: [holder, bulbIncandescent], wires });
+    const currentInc = Math.abs(resInc.branchCurrents['bulb_1']);
+    const photoInc = computeBulbPhotometrics(currentInc, incandescentSpec.resistance, incandescentSpec);
+
+    // 2. Standard LED (4500Ω)
+    const ledSpec = getBulbSpec('led_standard');
+    const bulbLed: CircuitElementData = {
+      id: 'bulb_1',
+      type: 'bulb',
+      bulbType: 'led_standard',
+      resistance: ledSpec.resistance,
+      label: ledSpec.label,
+    };
+    const resLed = solveCircuitMNA({ components: [holder, bulbLed], wires });
+    const currentLed = Math.abs(resLed.branchCurrents['bulb_1']);
+    const photoLed = computeBulbPhotometrics(currentLed, ledSpec.resistance, ledSpec);
+
+    // Higher resistance on LED means lower current I, lower power P = I^2 * R, and dimmer glow
+    expect(currentLed).toBeLessThan(currentInc);
+    expect(photoLed.powerWatts).toBeLessThan(photoInc.powerWatts);
+    expect(photoLed.brightness).toBeLessThan(photoInc.brightness);
+
+    // 3. Overvoltage test: 9V battery connected directly to Indicator LED (led_green) triggers overheat/overload
+    const greenSpec = getBulbSpec('led_green');
+    const currentAt9V = 9.0 / greenSpec.resistance;
+    const photoOverload = computeBulbPhotometrics(currentAt9V, greenSpec.resistance, greenSpec);
+    expect(photoOverload.isOverloaded).toBe(true);
+    expect(photoOverload.heatLevel).toBe('overheat');
+  });
 });
+
 
 

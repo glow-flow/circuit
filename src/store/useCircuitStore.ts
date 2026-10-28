@@ -23,6 +23,12 @@ import {
   WireConnection,
 } from '../types/circuit';
 import { solveCircuitMNA } from '../physics/mnaSolver';
+import {
+  BulbType,
+  computeBulbPhotometrics,
+  getAdjacentBulbSpec,
+  getBulbSpec,
+} from '../constants/bulbCatalog';
 import { AppLanguage } from '../i18n/translations';
 import {
   CustomCircuitPreset,
@@ -46,11 +52,18 @@ interface CircuitState {
   onNodesChange: (changes: NodeChange[]) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
   onConnect: (connection: Connection) => void;
+  setNodes: (
+    updater:
+      | Node<CircuitElementData>[]
+      | ((prevNodes: Node<CircuitElementData>[]) => Node<CircuitElementData>[])
+  ) => void;
 
   // Circuit Operations
   setLanguage: (language: AppLanguage) => void;
   addComponent: (type: ComponentType, position: { x: number; y: number }) => void;
   updateComponentData: (id: string, partialData: Partial<CircuitElementData>) => void;
+  cycleBulbType: (id: string, direction: 'prev' | 'next') => void;
+  setBulbType: (id: string, bulbType: BulbType) => void;
   removeComponent: (id: string) => void;
   removeEdge: (edgeId: string) => void;
   insertBatteryIntoHolder: (batteryNodeId: string, holderNodeId: string) => void;
@@ -80,6 +93,9 @@ const DEFAULT_SIMULATION: SimulationResult = {
 
 /**
  * Executes MNA physics solver across current store state and persists autosave backup.
+ * Synchronizes real-time branch current, voltage drop, and dissipated power (P = I^2 * R)
+ * into each node's data object.
+ * Time Complexity: O(N + M^3) where N is node count and M is active MNA matrix dimension.
  */
 function recalculateCircuit(
   nodes: Node<CircuitElementData>[],
@@ -96,11 +112,39 @@ function recalculateCircuit(
 
   const simulation = solveCircuitMNA({ components, wires });
 
-  // Update node data with calculated voltages, currents, and status
+  // Update node data with calculated voltages, currents, power, and thermal overload status
   const updatedNodes = nodes.map((node) => {
     const branchCurrent = simulation.branchCurrents[node.id] ?? 0;
-    const isBlown = node.data.type === 'bulb' && Math.abs(branchCurrent) > 2.5; // Max 2.5A bulb rating
     const isShortCircuit = simulation.shortCircuitBranches.includes(node.id);
+
+    if (node.data.type === 'bulb') {
+      const spec = getBulbSpec(node.data.bulbType);
+      const effectiveResistance = node.data.resistance ?? spec.resistance;
+      const { powerWatts, voltageDrop, isOverloaded } = computeBulbPhotometrics(
+        branchCurrent,
+        effectiveResistance,
+        spec
+      );
+      const isBlown = Boolean(
+        node.data.isBlown || isOverloaded || Math.abs(branchCurrent) > 2.5
+      );
+
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          bulbType: node.data.bulbType ?? 'incandescent',
+          resistance: effectiveResistance,
+          powerRating: node.data.powerRating ?? spec.maxPower,
+          power: powerWatts,
+          calculatedCurrent: branchCurrent,
+          calculatedVoltage: voltageDrop,
+          calculatedPower: powerWatts,
+          isShortCircuit,
+          isBlown,
+        },
+      };
+    }
 
     return {
       ...node,
@@ -108,7 +152,6 @@ function recalculateCircuit(
         ...node.data,
         calculatedCurrent: branchCurrent,
         isShortCircuit,
-        isBlown: node.data.isBlown || isBlown,
       },
     };
   });
@@ -136,6 +179,16 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   onNodesChange: (changes: NodeChange[]) => {
     set({
       nodes: applyNodeChanges(changes, get().nodes),
+    });
+  },
+
+  setNodes: (updater) => {
+    const currentNodes = get().nodes;
+    const nextRawNodes = typeof updater === 'function' ? updater(currentNodes) : updater;
+    const { simulation, updatedNodes } = recalculateCircuit(nextRawNodes, get().edges);
+    set({
+      nodes: updatedNodes,
+      simulation,
     });
   },
 
@@ -205,14 +258,18 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
           label: isId ? 'Resistor 100Ω' : '100Ω Resistor',
         };
         break;
-      case 'bulb':
+      case 'bulb': {
+        const defaultBulbSpec = getBulbSpec('incandescent');
         defaultData = {
           ...defaultData,
-          resistance: 10,
-          powerRating: 5.0,
-          label: isId ? 'Lampu Bohlam' : 'Light Bulb',
+          bulbType: 'incandescent',
+          resistance: defaultBulbSpec.resistance,
+          power: 0,
+          powerRating: defaultBulbSpec.maxPower,
+          label: isId ? defaultBulbSpec.label : defaultBulbSpec.labelEn,
         };
         break;
+      }
       case 'switch':
         defaultData = {
           ...defaultData,
@@ -275,6 +332,35 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     set({
       nodes: updatedNodes,
       simulation,
+    });
+  },
+
+  cycleBulbType: (id: string, direction: 'prev' | 'next') => {
+    const targetNode = get().nodes.find((n) => n.id === id);
+    if (!targetNode || targetNode.data.type !== 'bulb') return;
+
+    const nextSpec = getAdjacentBulbSpec(targetNode.data.bulbType, direction);
+    const isId = get().language === 'id';
+
+    get().updateComponentData(id, {
+      bulbType: nextSpec.type,
+      label: isId ? nextSpec.label : nextSpec.labelEn,
+      resistance: nextSpec.resistance,
+      powerRating: nextSpec.maxPower,
+      isBlown: false,
+    });
+  },
+
+  setBulbType: (id: string, bulbType: BulbType) => {
+    const nextSpec = getBulbSpec(bulbType);
+    const isId = get().language === 'id';
+
+    get().updateComponentData(id, {
+      bulbType: nextSpec.type,
+      label: isId ? nextSpec.label : nextSpec.labelEn,
+      resistance: nextSpec.resistance,
+      powerRating: nextSpec.maxPower,
+      isBlown: false,
     });
   },
 
@@ -600,7 +686,14 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
           id: 'bulb_1',
           type: 'bulb',
           position: { x: 640, y: 130 },
-          data: { id: 'bulb_1', type: 'bulb', resistance: 5, label: 'Lampu (5Ω)' },
+          data: {
+            id: 'bulb_1',
+            type: 'bulb',
+            bulbType: 'incandescent',
+            resistance: 800,
+            powerRating: 40,
+            label: 'Lampu Pijar',
+          },
         },
         {
           id: 'wp_s1',
@@ -642,19 +735,40 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
           id: 'bulb_1',
           type: 'bulb',
           position: { x: 380, y: 10 },
-          data: { id: 'bulb_1', type: 'bulb', resistance: 5, label: 'Lampu R₁ (5Ω)' },
+          data: {
+            id: 'bulb_1',
+            type: 'bulb',
+            bulbType: 'incandescent',
+            resistance: 800,
+            powerRating: 40,
+            label: 'Lampu Pijar',
+          },
         },
         {
           id: 'bulb_2',
           type: 'bulb',
           position: { x: 740, y: 190 },
-          data: { id: 'bulb_2', type: 'bulb', resistance: 5, label: 'Lampu R₂ (5Ω)' },
+          data: {
+            id: 'bulb_2',
+            type: 'bulb',
+            bulbType: 'incandescent',
+            resistance: 800,
+            powerRating: 40,
+            label: 'Lampu Pijar',
+          },
         },
         {
           id: 'bulb_3',
           type: 'bulb',
           position: { x: 380, y: 410 },
-          data: { id: 'bulb_3', type: 'bulb', resistance: 5, label: 'Lampu R₃ (5Ω)' },
+          data: {
+            id: 'bulb_3',
+            type: 'bulb',
+            bulbType: 'incandescent',
+            resistance: 800,
+            powerRating: 40,
+            label: 'Lampu Pijar',
+          },
         },
         {
           id: 'wp_tl',
@@ -711,19 +825,40 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
           id: 'bulb_1',
           type: 'bulb',
           position: { x: 350, y: 180 },
-          data: { id: 'bulb_1', type: 'bulb', resistance: 10, label: 'Cabang R₁ (10Ω)' },
+          data: {
+            id: 'bulb_1',
+            type: 'bulb',
+            bulbType: 'incandescent',
+            resistance: 800,
+            powerRating: 40,
+            label: 'Lampu Pijar',
+          },
         },
         {
           id: 'bulb_2',
           type: 'bulb',
           position: { x: 640, y: 180 },
-          data: { id: 'bulb_2', type: 'bulb', resistance: 10, label: 'Cabang R₂ (10Ω)' },
+          data: {
+            id: 'bulb_2',
+            type: 'bulb',
+            bulbType: 'edison',
+            resistance: 1200,
+            powerRating: 30,
+            label: 'Lampu Edison',
+          },
         },
         {
           id: 'bulb_3',
           type: 'bulb',
           position: { x: 930, y: 180 },
-          data: { id: 'bulb_3', type: 'bulb', resistance: 10, label: 'Cabang R₃ (10Ω)' },
+          data: {
+            id: 'bulb_3',
+            type: 'bulb',
+            bulbType: 'led_rgb',
+            resistance: 6000,
+            powerRating: 7,
+            label: 'Smart LED',
+          },
         },
         // Top Rail Junctions (+)
         {

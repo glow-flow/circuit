@@ -25,6 +25,7 @@
  */
 
 import { CircuitElementData, WireConnection, SimulationResult } from '../types/circuit';
+import { getBulbSpec } from '../constants/bulbCatalog';
 import { UnionFind } from './unionFind';
 
 export const SHORT_CIRCUIT_CURRENT_THRESHOLD = 10.0; // Amperes threshold for short-circuit trip
@@ -532,8 +533,10 @@ export function getComponentEffectiveResistance(component: CircuitElementData): 
   switch (component.type) {
     case 'resistor':
       return Math.max(0.1, component.resistance ?? 100);
-    case 'bulb':
-      return Math.max(0.1, component.resistance ?? 15);
+    case 'bulb': {
+      const fallbackResistance = getBulbSpec(component.bulbType).resistance;
+      return Math.max(0.1, component.resistance ?? fallbackResistance);
+    }
     case 'switch':
       return component.isOpen ? SWITCH_OPEN_RESISTANCE : SWITCH_CLOSED_RESISTANCE;
     case 'ammeter':

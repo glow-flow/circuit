@@ -2,6 +2,7 @@ import React from 'react';
 import * as Slider from '@radix-ui/react-slider';
 import { Sliders, Trash2, Cpu, ShieldCheck, AlertTriangle, X, BookOpen, Scissors } from 'lucide-react';
 import { useCircuitStore } from '../../store/useCircuitStore';
+import { BULB_CATALOG, BulbType, getBulbSpec } from '../../constants/bulbCatalog';
 import { TRANSLATIONS } from '../../i18n/translations';
 
 interface InspectorProps {
@@ -294,7 +295,15 @@ export const Inspector: React.FC<InspectorProps> = ({
               <div className="flex justify-between items-center">
                 <span className="text-slate-400 font-sans text-[11px]">{t.powerDissipated}</span>
                 <span className="text-amber-400 font-bold">
-                  {(branchCurrent * branchCurrent * (componentData.resistance ?? 20)).toFixed(2)} W
+                  {(() => {
+                    const p =
+                      branchCurrent *
+                      branchCurrent *
+                      (componentData.resistance ?? getBulbSpec(componentData.bulbType).resistance);
+                    return p > 0 && p < 0.1
+                      ? `${(p * 1000).toFixed(2)} mW`
+                      : `${p.toFixed(2)} W`;
+                  })()}
                 </span>
               </div>
             )}
@@ -402,30 +411,61 @@ export const Inspector: React.FC<InspectorProps> = ({
           </div>
         )}
 
-        {/* Light Bulb Controls */}
+        {/* Light Bulb Controls (7-Bulb Selector + Fine Resistance Slider) */}
         {componentData.type === 'bulb' && (
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <label className="text-xs font-semibold text-slate-300">
-                {t.bulbResistanceLabel}
+          <div className="space-y-3.5">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-300 block">
+                {language === 'id' ? 'Pilih Jenis Lampu (7 Tipe)' : 'Select Bulb Type (7 Types)'}
               </label>
-              <span className="text-xs font-mono font-bold text-yellow-300">
-                {componentData.resistance ?? 20} Ω
-              </span>
+              <select
+                value={componentData.bulbType ?? 'incandescent'}
+                onChange={(e) =>
+                  useCircuitStore
+                    .getState()
+                    .setBulbType(selectedNode.id, e.target.value as BulbType)
+                }
+                className="w-full px-3 py-2 rounded-xl bg-void-950 border border-white/15 text-xs text-slate-100 focus:outline-none focus:border-electric-500 cursor-pointer"
+              >
+                {BULB_CATALOG.map((spec) => (
+                  <option key={spec.type} value={spec.type}>
+                    {language === 'id' ? spec.label : spec.labelEn} — {spec.resistance}Ω (Maks{' '}
+                    {spec.maxPower}W)
+                  </option>
+                ))}
+              </select>
+              <p className="text-[11px] text-slate-400 leading-relaxed pt-0.5">
+                {language === 'id'
+                  ? getBulbSpec(componentData.bulbType).traits
+                  : getBulbSpec(componentData.bulbType).traitsEn}
+              </p>
             </div>
-            <Slider.Root
-              className="relative flex items-center select-none touch-none w-full h-6 cursor-pointer"
-              value={[componentData.resistance ?? 20]}
-              min={5}
-              max={100}
-              step={1}
-              onValueChange={([val]) => updateComponentData(selectedNode.id, { resistance: val })}
-            >
-              <Slider.Track className="bg-void-950 relative grow rounded-full h-2 border border-white/10">
-                <Slider.Range className="absolute bg-yellow-400 rounded-full h-full" />
-              </Slider.Track>
-              <Slider.Thumb className="block w-5 h-5 bg-white rounded-full shadow-md focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-transform active:scale-125" />
-            </Slider.Root>
+
+            <div className="space-y-2 pt-1 border-t border-white/5">
+              <div className="flex justify-between items-center">
+                <label className="text-xs font-semibold text-slate-300">
+                  {t.bulbResistanceLabel}
+                </label>
+                <span className="text-xs font-mono font-bold text-yellow-300">
+                  {componentData.resistance ?? getBulbSpec(componentData.bulbType).resistance} Ω
+                </span>
+              </div>
+              <Slider.Root
+                className="relative flex items-center select-none touch-none w-full h-6 cursor-pointer"
+                value={[
+                  componentData.resistance ?? getBulbSpec(componentData.bulbType).resistance,
+                ]}
+                min={50}
+                max={6500}
+                step={50}
+                onValueChange={([val]) => updateComponentData(selectedNode.id, { resistance: val })}
+              >
+                <Slider.Track className="bg-void-950 relative grow rounded-full h-2 border border-white/10">
+                  <Slider.Range className="absolute bg-yellow-400 rounded-full h-full" />
+                </Slider.Track>
+                <Slider.Thumb className="block w-5 h-5 bg-white rounded-full shadow-md focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-transform active:scale-125" />
+              </Slider.Root>
+            </div>
           </div>
         )}
 

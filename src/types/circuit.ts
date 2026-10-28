@@ -5,6 +5,8 @@
  * MNA equations, and React Flow node extensions.
  */
 
+import { BulbType } from '../constants/bulbCatalog';
+
 export type ComponentType = 
   | 'battery'
   | 'battery-holder'
@@ -28,9 +30,11 @@ export interface CircuitElementData {
   type: ComponentType;
   label: string;
   // Electrical properties
+  bulbType?: BulbType;    // For bulb carousel ('incandescent' | 'halogen' | 'edison' | 'cfl' | 'led_standard' | 'led_rgb' | 'led_green')
   voltage?: number;       // For battery / battery-holder (Volts)
   resistance?: number;    // For resistor, bulb, ammeter (Ohms)
-  powerRating?: number;   // For bulb (Watts)
+  power?: number;         // Real-time or rated power for bulb (Watts)
+  powerRating?: number;   // Max rated power for bulb (Watts)
   isOpen?: boolean;       // For switch
   hasBattery?: boolean;   // For battery-holder: whether AA battery is inserted
   batteryCount?: number;  // For battery-holder: number of 1.5V AA cells inserted (0, 1, or 2)
