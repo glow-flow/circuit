@@ -125,3 +125,41 @@ export function loadWorkspaceAutosave(): {
     return null;
   }
 }
+
+export const TUTORIAL_STORAGE_KEY = 'has_seen_tutorial';
+
+/**
+ * Checks whether the user has already completed or dismissed the onboarding tutorial.
+ * Includes defensive try-catch for environments where localStorage is blocked.
+ * Time Complexity: O(1)
+ *
+ * @returns true if 'has_seen_tutorial' is set to 'true' in localStorage, false otherwise
+ */
+export function hasSeenTutorial(): boolean {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return false;
+    }
+    return window.localStorage.getItem(TUTORIAL_STORAGE_KEY) === 'true';
+  } catch (error) {
+    console.warn('Failed to read tutorial status from localStorage:', error);
+    return false;
+  }
+}
+
+/**
+ * Marks the onboarding tutorial as seen in browser localStorage ('has_seen_tutorial' = 'true').
+ * Includes defensive try-catch for restricted storage contexts.
+ * Time Complexity: O(1)
+ */
+export function markTutorialAsSeen(): void {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return;
+    }
+    window.localStorage.setItem(TUTORIAL_STORAGE_KEY, 'true');
+  } catch (error) {
+    console.warn('Failed to save tutorial status to localStorage:', error);
+  }
+}
+

@@ -9,11 +9,16 @@ import {
   BookmarkPlus,
   X,
   FolderOpen,
+  HelpCircle,
 } from 'lucide-react';
 import { useCircuitStore } from '../../store/useCircuitStore';
 import { TRANSLATIONS } from '../../i18n/translations';
 
-export const Header: React.FC = () => {
+interface HeaderProps {
+  onOpenTutorial?: () => void;
+}
+
+export const Header: React.FC<HeaderProps> = ({ onOpenTutorial }) => {
   const simulation = useCircuitStore((state) => state.simulation);
   const clearCanvas = useCircuitStore((state) => state.clearCanvas);
   const loadPreset = useCircuitStore((state) => state.loadPreset);
@@ -130,8 +135,32 @@ export const Header: React.FC = () => {
           </button>
         </div>
 
-        {/* Right Language Toggle, Circuit Health & Clear */}
+        {/* Right Help Button, Language Toggle, Circuit Health & Clear */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* Help / Onboarding Tutorial Button */}
+          {onOpenTutorial && (
+            <button
+              type="button"
+              onClick={onOpenTutorial}
+              title={
+                language === 'id'
+                  ? 'Buka Panduan & Cara Pakai'
+                  : 'Open Interactive Tutorial'
+              }
+              aria-label={
+                language === 'id'
+                  ? 'Buka Panduan & Cara Pakai'
+                  : 'Open Interactive Tutorial'
+              }
+              className="flex items-center gap-1 px-2 py-1 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-400/40 text-cyan-300 text-[10px] sm:text-xs font-semibold transition-all active:scale-95 shrink-0 cursor-pointer"
+            >
+              <HelpCircle className="w-3.5 h-3.5" />
+              <span className="hidden lg:inline">
+                {language === 'id' ? 'Panduan' : 'Guide'}
+              </span>
+            </button>
+          )}
+
           {/* Language Switcher Button (ID / EN) */}
           <button
             type="button"

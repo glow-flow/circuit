@@ -4,8 +4,10 @@ import { Header } from './components/ui/Header';
 import { SidebarPalette } from './components/ui/SidebarPalette';
 import { CircuitCanvas } from './components/canvas/CircuitCanvas';
 import { Inspector } from './components/ui/Inspector';
+import { TutorialModal } from './components/ui/TutorialModal';
 import { useCircuitStore } from './store/useCircuitStore';
 import { TRANSLATIONS } from './i18n/translations';
+import { hasSeenTutorial } from './utils/presetStorage';
 
 type MobileSheetType = 'none' | 'palette' | 'inspector';
 
@@ -23,6 +25,7 @@ export const App: React.FC = () => {
   const wireT = TRANSLATIONS[language].wire;
 
   const [activeMobileSheet, setActiveMobileSheet] = useState<MobileSheetType>('none');
+  const [isTutorialOpen, setIsTutorialOpen] = useState<boolean>(() => !hasSeenTutorial());
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId);
 
@@ -40,7 +43,7 @@ export const App: React.FC = () => {
   return (
     <div className="flex flex-col h-[100dvh] w-screen bg-void-950 text-slate-100 overflow-hidden font-sans">
       {/* Top Utility Header */}
-      <Header />
+      <Header onOpenTutorial={() => setIsTutorialOpen(true)} />
 
       {/* Main Workspace Layout */}
       <div className="flex flex-1 min-h-0 relative w-full overflow-hidden">
@@ -150,6 +153,11 @@ export const App: React.FC = () => {
           <span>{t.inspector}</span>
         </button>
       </nav>
+      {/* Interactive 4-Step Onboarding & Lab Guide Modal */}
+      <TutorialModal
+        isOpen={isTutorialOpen}
+        onClose={() => setIsTutorialOpen(false)}
+      />
     </div>
   );
 };
