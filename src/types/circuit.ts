@@ -79,3 +79,11 @@ export interface PresetCircuit {
   nodes: any[];
   edges: any[];
 }
+
+/**
+ * Optional variant choices made in the component palette at placement time
+ * (e.g. which bulb model to place). Consumed by useCircuitStore.addComponent.
+ */
+export interface PlacementOptions {
+  bulbType?: BulbType;
+}

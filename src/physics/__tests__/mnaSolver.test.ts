@@ -5,7 +5,6 @@ import { CircuitElementData, WireConnection } from '../../types/circuit';
 import {
   BULB_CATALOG,
   computeBulbPhotometrics,
-  getAdjacentBulbSpec,
   getBulbSpec,
 } from '../../constants/bulbCatalog';
 
@@ -321,10 +320,6 @@ describe('Modified Nodal Analysis (MNA) Physics Engine', () => {
 
   it('dynamically updates MNA current, power (P = I^2 * R), and brightness across the 7 bulb types', () => {
     expect(BULB_CATALOG).toHaveLength(7);
-
-    // Verify circular carousel navigation: incandescent (0) <- prev wraps to led_green (6)
-    expect(getAdjacentBulbSpec('incandescent', 'prev').type).toBe('led_green');
-    expect(getAdjacentBulbSpec('led_green', 'next').type).toBe('incandescent');
 
     const holder: CircuitElementData = {
       id: 'holder_1',

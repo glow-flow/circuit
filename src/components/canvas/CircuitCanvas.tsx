@@ -11,7 +11,8 @@ import ReactFlow, {
   Node,
 } from 'reactflow';
 import { useCircuitStore } from '../../store/useCircuitStore';
-import { CircuitElementData, ComponentType } from '../../types/circuit';
+import { CircuitElementData } from '../../types/circuit';
+import { PALETTE_DRAG_MIME, getPaletteEntry } from '../../constants/componentCatalog';
 import { BatteryNode } from './nodes/BatteryNode';
 import { Battery9VNode } from './nodes/Battery9VNode';
 import { BatteryHolderNode } from './nodes/BatteryHolderNode';
@@ -102,11 +103,11 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
     (event: React.DragEvent) => {
       event.preventDefault();
 
-      const componentType = event.dataTransfer.getData(
-        'application/reactflow'
-      ) as ComponentType | '';
+      const droppedEntry = getPaletteEntry(
+        event.dataTransfer.getData(PALETTE_DRAG_MIME)
+      );
 
-      if (!componentType || !reactFlowInstance || !reactFlowWrapper.current) {
+      if (!droppedEntry || !reactFlowInstance || !reactFlowWrapper.current) {
         return;
       }
 
@@ -116,7 +117,7 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
         y: event.clientY - reactFlowBounds.top,
       });
 
-      addComponent(componentType, position);
+      addComponent(droppedEntry.type, position, droppedEntry.placement);
     },
     [reactFlowInstance, addComponent, reactFlowWrapper]
   );

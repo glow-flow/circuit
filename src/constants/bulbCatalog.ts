@@ -3,11 +3,10 @@
  *
  * Centralizes the 7 light bulb types ('incandescent', 'halogen', 'edison',
  * 'cfl', 'led_standard', 'led_rgb', 'led_green') so BulbNode, Inspector,
- * Zustand Store, and MNA Solver share a single DRY source of truth.
+ * Palette catalog, Zustand Store, and MNA Solver share a single DRY source of truth.
  *
  * Time Complexity:
  * - Lookup by bulbType (`getBulbSpec`): O(1) via hash map (`BULB_SPEC_MAP`)
- * - Carousel navigation (`getAdjacentBulbSpec`): O(1) modular index arithmetic
  */
 
 export type BulbType =
@@ -23,6 +22,8 @@ export interface BulbSpec {
   type: BulbType;
   category: string;
   image: string;
+  /** True when the source PNG is a horizontal shape (e.g. CFL tube) that should be shown upright (rotated 90°). */
+  imageRotated?: boolean;
   label: string;
   labelEn: string;
   resistance: number; // Ohms (Ω)
@@ -81,6 +82,7 @@ export const BULB_CATALOG: readonly BulbSpec[] = [
     type: 'cfl',
     category: 'Neon U-Shape',
     image: '/assets/bulb-cfl.png',
+    imageRotated: true,
     label: 'Lampu Neon (CFL)',
     labelEn: 'Neon Tube (CFL)',
     resistance: 3000,
@@ -146,14 +148,6 @@ const BULB_SPEC_MAP: Record<BulbType, BulbSpec> = BULB_CATALOG.reduce(
   {} as Record<BulbType, BulbSpec>
 );
 
-const BULB_INDEX_MAP: Record<BulbType, number> = BULB_CATALOG.reduce(
-  (acc, spec, idx) => {
-    acc[spec.type] = idx;
-    return acc;
-  },
-  {} as Record<BulbType, number>
-);
-
 /**
  * Retrieves the specification for a given BulbType in O(1) time.
  * Defaults to 'incandescent' if undefined or invalid.
@@ -166,27 +160,6 @@ export function getBulbSpec(bulbType?: BulbType | string): BulbSpec {
     return BULB_SPEC_MAP[bulbType as BulbType];
   }
   return BULB_SPEC_MAP.incandescent;
-}
-
-/**
- * Returns the next or previous BulbSpec in the 7-item carousel in O(1) time.
- *
- * @param currentType - Current bulb type
- * @param direction - 'prev' (-1) or 'next' (+1)
- * @returns The adjacent BulbSpec in circular order
- */
-export function getAdjacentBulbSpec(
-  currentType: BulbType | string | undefined,
-  direction: 'prev' | 'next'
-): BulbSpec {
-  const currentIndex =
-    currentType && currentType in BULB_INDEX_MAP
-      ? BULB_INDEX_MAP[currentType as BulbType]
-      : 0;
-  const delta = direction === 'next' ? 1 : -1;
-  const total = BULB_CATALOG.length;
-  const nextIndex = (currentIndex + delta + total) % total;
-  return BULB_CATALOG[nextIndex];
 }
 
 /**

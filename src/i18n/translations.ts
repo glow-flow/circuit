@@ -39,19 +39,12 @@ export interface TranslationDictionary {
     title: string;
     subtitleDesktop: string;
     subtitleMobile: string;
+    placeBtn: string;
+    dragHint: string;
+    emptyCategory: string;
+    categoriesLabel: string;
     tipConnect: string;
     tipWaypoint: string;
-    items: {
-      battery: { label: string; description: string; badge: string };
-      battery9v: { label: string; description: string; badge: string };
-      holder: { label: string; description: string; badge: string };
-      resistor: { label: string; description: string };
-      bulb: { label: string; description: string; badge: string };
-      switch: { label: string; description: string };
-      ground: { label: string; description: string };
-      voltmeter: { label: string; description: string };
-      ammeter: { label: string; description: string };
-    };
   };
   nodes: {
     battery: {
@@ -187,54 +180,16 @@ export const TRANSLATIONS: Record<AppLanguage, TranslationDictionary> = {
       inspector: 'Info & Rumus',
     },
     palette: {
-      title: 'Komponen Listrik',
-      subtitleDesktop: 'Geser atau klik alat untuk menaruh di kanvas',
-      subtitleMobile: 'Ketuk komponen di bawah untuk menaruh ke kanvas',
+      title: 'Kotak Komponen',
+      subtitleDesktop: 'Pilih jenisnya, lalu taruh atau seret ke kanvas',
+      subtitleMobile: 'Pilih jenisnya, lalu taruh ke kanvas',
+      placeBtn: 'Taruh di kanvas',
+      dragHint: 'atau seret ke kanvas',
+      emptyCategory: 'Belum ada komponen di grup ini.',
+      categoriesLabel: 'Grup komponen',
       tipConnect: 'Tarik garis dari titik bulat (kutub) untuk menyambung kabel.',
       tipWaypoint:
         '💡 Ketuk 2x pada kabel untuk membuat Penjepit Tekukan agar jalur kabel rapi seperti blueprint!',
-      items: {
-        battery: {
-          label: 'Baterai AA 1.5V',
-          description: 'Baterai 1.5V satuan. Geser masuk ke Wadah Baterai atau sambung langsung',
-          badge: '1.5V',
-        },
-        battery9v: {
-          label: 'Baterai 9V',
-          description: 'Tegangan tinggi (9V). Cocok untuk lampu daya besar.',
-          badge: '9.0V',
-        },
-        holder: {
-          label: 'Wadah Baterai (2x AA)',
-          description: 'Tempat 2 baterai AA seri (total 3.0V) dengan pegas otomatis',
-          badge: 'Wadah',
-        },
-        resistor: {
-          label: 'Resistor (Hambatan)',
-          description: 'Penghambat arus listrik sesuai Hukum Ohm (V = I × R)',
-        },
-        bulb: {
-          label: 'Lampu Bohlam',
-          description: 'Menyala makin terang saat daya listrik (P = I²R) makin besar',
-          badge: 'Menyala',
-        },
-        switch: {
-          label: 'Saklar Listrik',
-          description: 'Menyambung (ON) atau memutus (OFF) aliran arus listrik',
-        },
-        ground: {
-          label: 'Ground (Titik 0V)',
-          description: 'Titik acuan tegangan 0 Volt pada rangkaian',
-        },
-        voltmeter: {
-          label: 'Voltmeter Digital',
-          description: 'Mengukur tegangan / beda potensial listrik (dipasang paralel)',
-        },
-        ammeter: {
-          label: 'Amperemeter Digital',
-          description: 'Mengukur kuat arus listrik yang mengalir (dipasang seri)',
-        },
-      },
     },
     nodes: {
       battery: {
@@ -259,7 +214,7 @@ export const TRANSLATIONS: Record<AppLanguage, TranslationDictionary> = {
       bulb: {
         title: 'Lampu',
         overloaded: 'PUTUS! Arus Terlalu Besar',
-        replaceBtn: 'Ganti Bohlam Baru',
+        replaceBtn: 'Ganti Lampu Baru',
         brightness: 'Terang:',
         power: 'Daya (P):',
         current: 'Arus (I):',
@@ -373,54 +328,16 @@ export const TRANSLATIONS: Record<AppLanguage, TranslationDictionary> = {
       inspector: 'Inspector',
     },
     palette: {
-      title: 'Component Palette',
-      subtitleDesktop: 'Drag or click to place onto the canvas',
-      subtitleMobile: 'Tap any part below to place it onto the canvas',
+      title: 'Component Box',
+      subtitleDesktop: 'Pick a type, then place it or drag it onto the canvas',
+      subtitleMobile: 'Pick a type, then place it on the canvas',
+      placeBtn: 'Place on canvas',
+      dragHint: 'or drag it onto the canvas',
+      emptyCategory: 'No parts in this group yet.',
+      categoriesLabel: 'Part groups',
       tipConnect: 'Drag between circular pins to connect wires.',
       tipWaypoint:
         '💡 Double-click any wire to add an Anchor Pin. Drag it to bend or route your blueprint cables!',
-      items: {
-        battery: {
-          label: '1.5V AA Battery',
-          description: 'Single 1.5V AA cell. Drag onto Holder or wire directly',
-          badge: '1.5V',
-        },
-        battery9v: {
-          label: '9V Battery',
-          description: 'High voltage (9V). Ideal for high-wattage bulbs.',
-          badge: '9.0V',
-        },
-        holder: {
-          label: 'Dual AA Holder',
-          description: 'Holds 2x AA cells in series (3.0V) with spring contacts',
-          badge: 'Holder',
-        },
-        resistor: {
-          label: 'Resistor',
-          description: 'Limits current according to Ohm’s Law (V = I × R)',
-        },
-        bulb: {
-          label: 'Light Bulb',
-          description: 'Glows brighter as dissipated power (P = I²R) increases',
-          badge: 'Glows',
-        },
-        switch: {
-          label: 'SPST Switch',
-          description: 'Toggleable contact blade to open/close circuits',
-        },
-        ground: {
-          label: 'Earth Ground (0V)',
-          description: 'Defines 0V reference point for the circuit',
-        },
-        voltmeter: {
-          label: 'Digital Voltmeter',
-          description: 'Measures potential difference in Volts (wire in parallel)',
-        },
-        ammeter: {
-          label: 'Digital Ammeter',
-          description: 'Measures current in Amperes (wire in series)',
-        },
-      },
     },
     nodes: {
       battery: {

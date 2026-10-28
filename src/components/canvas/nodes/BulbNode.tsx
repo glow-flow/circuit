@@ -1,41 +1,28 @@
-import React, { useState } from 'react';
-import { Handle, Position, NodeProps, useReactFlow } from 'reactflow';
-import { ChevronLeft, ChevronRight, Flame, Lightbulb, RotateCcw, Snowflake } from 'lucide-react';
+import React from 'react';
+import { Handle, Position, NodeProps } from 'reactflow';
+import { Flame, Lightbulb, RotateCcw, Snowflake } from 'lucide-react';
 import { CircuitElementData } from '../../../types/circuit';
 import { useCircuitStore } from '../../../store/useCircuitStore';
-import {
-  BULB_CATALOG,
-  computeBulbPhotometrics,
-  getAdjacentBulbSpec,
-  getBulbSpec,
-} from '../../../constants/bulbCatalog';
+import { computeBulbPhotometrics, getBulbSpec } from '../../../constants/bulbCatalog';
 import { TRANSLATIONS } from '../../../i18n/translations';
 
 /**
- * Interactive 7-Type Light Bulb Node with inline Carousel (< and >),
- * fixed geometry container, CSS screen-blend glow physics, and thermal overload indicator.
+ * Light Bulb Node. The bulb model (incandescent, halogen, LED, ...) is chosen in the
+ * component palette when the part is placed; this node only renders and simulates it.
  *
- * Time Complexity:
- * - Render & Photometric Calculation: O(1)
- * - Carousel Switch Handler: O(N) where N is canvas node count (triggers MNA solver)
+ * Time Complexity: O(1) render & photometric calculation.
  */
 export const BulbNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, selected }) => {
   const simulation = useCircuitStore((state) => state.simulation);
-  const setStoreNodes = useCircuitStore((state) => state.setNodes);
   const updateComponentData = useCircuitStore((state) => state.updateComponentData);
   const language = useCircuitStore((state) => state.language);
-  const { setNodes: setReactFlowNodes } = useReactFlow();
-
-  const [isFading, setIsFading] = useState(false);
 
   const t = TRANSLATIONS[language].nodes.bulb;
 
   // 1. Resolve active bulb specification (defaults to 'incandescent' 800Ω)
-  const activeBulbType = data.bulbType ?? 'incandescent';
-  const bulbSpec = getBulbSpec(activeBulbType);
-  const catalogIndex = BULB_CATALOG.findIndex((item) => item.type === bulbSpec.type);
+  const bulbSpec = getBulbSpec(data.bulbType);
 
-  // 2. Electrical & Photometric calculations (P = I^2 * R)
+  // 2. Electrical & photometric calculations (P = I^2 * R)
   const resistance = data.resistance ?? bulbSpec.resistance;
   const current = Math.abs(simulation.branchCurrents[id] ?? 0);
   const { powerWatts, voltageDrop, brightness, heatLevel, isOverloaded } =
@@ -44,60 +31,6 @@ export const BulbNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, se
   const isBlown = Boolean(data.isBlown || isOverloaded);
   const displayLabel = language === 'id' ? bulbSpec.label : bulbSpec.labelEn;
   const displayTraits = language === 'id' ? bulbSpec.traits : bulbSpec.traitsEn;
-
-  /**
-   * Cycles to the previous or next bulb type in the 7-bulb catalog,
-   * synchronizing `bulbType`, `resistance`, `powerRating`, `power`, and `label`
-   * into both React Flow's `setNodes` and the Zustand MNA store.
-   */
-  const handleCycleBulb = (e: React.MouseEvent, direction: 'prev' | 'next') => {
-    e.stopPropagation();
-    setIsFading(true);
-    window.setTimeout(() => setIsFading(false), 180);
-
-    const nextSpec = getAdjacentBulbSpec(activeBulbType, direction);
-    const nextLabel = language === 'id' ? nextSpec.label : nextSpec.labelEn;
-    const nextPower = current * current * nextSpec.resistance;
-
-    // Update via React Flow's setNodes as well as Zustand store for real-time MNA sync
-    setReactFlowNodes((nds) =>
-      nds.map((node) =>
-        node.id === id
-          ? {
-              ...node,
-              data: {
-                ...node.data,
-                bulbType: nextSpec.type,
-                label: nextLabel,
-                resistance: nextSpec.resistance,
-                powerRating: nextSpec.maxPower,
-                power: nextPower,
-                isBlown: false,
-              },
-            }
-          : node
-      )
-    );
-
-    setStoreNodes((nds) =>
-      nds.map((node) =>
-        node.id === id
-          ? {
-              ...node,
-              data: {
-                ...node.data,
-                bulbType: nextSpec.type,
-                label: nextLabel,
-                resistance: nextSpec.resistance,
-                powerRating: nextSpec.maxPower,
-                power: nextPower,
-                isBlown: false,
-              },
-            }
-          : node
-      )
-    );
-  };
 
   const handleResetBulb = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -137,7 +70,7 @@ export const BulbNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, se
         />
       </div>
 
-      {/* Top Header: Icon + Carousel Index Badge + Thermal Badge */}
+      {/* Top Header: Icon + Max Power + Thermal Badge */}
       <div className="flex items-center justify-between gap-1.5 mb-1.5">
         <div className="flex items-center gap-1.5 min-w-0">
           <div
@@ -152,7 +85,7 @@ export const BulbNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, se
             <Lightbulb className="w-3.5 h-3.5" />
           </div>
           <span className="text-[10px] font-mono text-slate-400">
-            {catalogIndex + 1}/{BULB_CATALOG.length} • Maks {bulbSpec.maxPower}W
+            {language === 'id' ? 'Maks' : 'Max'} {bulbSpec.maxPower}W
           </span>
         </div>
 
@@ -196,21 +129,8 @@ export const BulbNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, se
         )}
       </div>
 
-      {/* Fixed-Size Image Stage + Left/Right Carousel Buttons (< and >) */}
+      {/* Fixed-size image stage (w-20 h-24) so node geometry is identical for every bulb model */}
       <div className="relative flex items-center justify-center py-1 my-0.5">
-        {/* Left Carousel Button (<) */}
-        <button
-          type="button"
-          aria-label="Previous bulb type"
-          onPointerDown={(e) => e.stopPropagation()}
-          onMouseDown={(e) => e.stopPropagation()}
-          onClick={(e) => handleCycleBulb(e, 'prev')}
-          className="nodrag absolute left-0 z-10 w-7 h-7 rounded-lg bg-void-950/75 hover:bg-cyan-500/20 border border-cyan-400/50 hover:border-cyan-300 text-cyan-300 flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 transition-all duration-150 active:scale-90 cursor-pointer shadow-[0_0_10px_rgba(34,211,238,0.2)]"
-        >
-          <ChevronLeft className="w-4 h-4" />
-        </button>
-
-        {/* Fixed Image Container (w-20 h-24 flex items-center justify-center) so node never resizes */}
         <div className="relative w-20 h-24 flex items-center justify-center">
           {/* Dynamic Radial Glow Aura scaled by P = I^2 * R */}
           {!isBlown && brightness > 0.02 && (
@@ -228,8 +148,10 @@ export const BulbNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, se
           <img
             src={bulbSpec.image}
             alt={displayLabel}
-            className={`relative z-10 w-full h-full object-contain pointer-events-none select-none transition-all duration-300 ${
-              isFading ? 'opacity-25 scale-95' : 'opacity-100 scale-100'
+            className={`z-10 object-contain pointer-events-none select-none transition-all duration-300 ${
+              bulbSpec.imageRotated
+                ? 'absolute left-1/2 top-1/2 w-24 h-20 max-w-none -translate-x-1/2 -translate-y-1/2 rotate-90'
+                : 'relative w-full h-full'
             }`}
             style={{
               filter: isBlown
@@ -241,34 +163,16 @@ export const BulbNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, se
                 : 'grayscale(80%) brightness(0.48)',
               opacity: isBlown
                 ? 0.35
-                : isFading
-                ? 0.25
                 : brightness > 0.01
                 ? Math.min(1.0, 0.65 + brightness * 0.35)
                 : 0.5,
             }}
           />
         </div>
-
-        {/* Right Carousel Button (>) */}
-        <button
-          type="button"
-          aria-label="Next bulb type"
-          onPointerDown={(e) => e.stopPropagation()}
-          onMouseDown={(e) => e.stopPropagation()}
-          onClick={(e) => handleCycleBulb(e, 'next')}
-          className="nodrag absolute right-0 z-10 w-7 h-7 rounded-lg bg-void-950/75 hover:bg-cyan-500/20 border border-cyan-400/50 hover:border-cyan-300 text-cyan-300 flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 transition-all duration-150 active:scale-90 cursor-pointer shadow-[0_0_10px_rgba(34,211,238,0.2)]"
-        >
-          <ChevronRight className="w-4 h-4" />
-        </button>
       </div>
 
-      {/* Caption Under Image: {label} ({resistance}Ω) with smooth CSS fade */}
-      <div
-        className={`text-center mb-2 transition-opacity duration-300 ${
-          isFading ? 'opacity-30' : 'opacity-100'
-        }`}
-      >
+      {/* Caption Under Image: {label} ({resistance}Ω) */}
+      <div className="text-center mb-2">
         <div className="text-xs font-bold text-slate-100 tracking-tight truncate">
           {displayLabel} <span className="text-cyan-300 font-mono">({resistance}Ω)</span>
         </div>

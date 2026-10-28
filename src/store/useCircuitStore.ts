@@ -19,6 +19,7 @@ import {
 import {
   CircuitElementData,
   ComponentType,
+  PlacementOptions,
   SimulationResult,
   WireConnection,
 } from '../types/circuit';
@@ -26,7 +27,6 @@ import { solveCircuitMNA } from '../physics/mnaSolver';
 import {
   BulbType,
   computeBulbPhotometrics,
-  getAdjacentBulbSpec,
   getBulbSpec,
 } from '../constants/bulbCatalog';
 import { AppLanguage } from '../i18n/translations';
@@ -60,9 +60,12 @@ interface CircuitState {
 
   // Circuit Operations
   setLanguage: (language: AppLanguage) => void;
-  addComponent: (type: ComponentType, position: { x: number; y: number }) => void;
+  addComponent: (
+    type: ComponentType,
+    position: { x: number; y: number },
+    options?: PlacementOptions
+  ) => void;
   updateComponentData: (id: string, partialData: Partial<CircuitElementData>) => void;
-  cycleBulbType: (id: string, direction: 'prev' | 'next') => void;
   setBulbType: (id: string, bulbType: BulbType) => void;
   removeComponent: (id: string) => void;
   removeEdge: (edgeId: string) => void;
@@ -225,7 +228,11 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     });
   },
 
-  addComponent: (type: ComponentType, position: { x: number; y: number }) => {
+  addComponent: (
+    type: ComponentType,
+    position: { x: number; y: number },
+    options?: PlacementOptions
+  ) => {
     const componentId = `${type}_${Date.now()}`;
     const isId = get().language === 'id';
     let defaultData: CircuitElementData = {
@@ -267,14 +274,14 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
         };
         break;
       case 'bulb': {
-        const defaultBulbSpec = getBulbSpec('incandescent');
+        const chosenBulbSpec = getBulbSpec(options?.bulbType);
         defaultData = {
           ...defaultData,
-          bulbType: 'incandescent',
-          resistance: defaultBulbSpec.resistance,
+          bulbType: chosenBulbSpec.type,
+          resistance: chosenBulbSpec.resistance,
           power: 0,
-          powerRating: defaultBulbSpec.maxPower,
-          label: isId ? defaultBulbSpec.label : defaultBulbSpec.labelEn,
+          powerRating: chosenBulbSpec.maxPower,
+          label: isId ? chosenBulbSpec.label : chosenBulbSpec.labelEn,
         };
         break;
       }
@@ -340,22 +347,6 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     set({
       nodes: updatedNodes,
       simulation,
-    });
-  },
-
-  cycleBulbType: (id: string, direction: 'prev' | 'next') => {
-    const targetNode = get().nodes.find((n) => n.id === id);
-    if (!targetNode || targetNode.data.type !== 'bulb') return;
-
-    const nextSpec = getAdjacentBulbSpec(targetNode.data.bulbType, direction);
-    const isId = get().language === 'id';
-
-    get().updateComponentData(id, {
-      bulbType: nextSpec.type,
-      label: isId ? nextSpec.label : nextSpec.labelEn,
-      resistance: nextSpec.resistance,
-      powerRating: nextSpec.maxPower,
-      isBlown: false,
     });
   },
 
