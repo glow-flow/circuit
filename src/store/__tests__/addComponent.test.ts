@@ -45,24 +45,36 @@ describe('Ultimate Power Grid (9V Smart Grid) Preset', () => {
     expect(state.fitViewTrigger).toBe(1);
     expect(state.simulation.isShortCircuit).toBe(false);
 
-    // Verify all 7 bulb types are mounted in sockets (fiting) and powered
+    // Verify 5 screw bulbs are mounted in sockets (fiting) and 2 pin bulbs are direct-wired
     const socketNodes = state.nodes.filter(
       (n) => n.data.type === 'socket' && Boolean(n.data.installedBulb)
     );
-    expect(socketNodes).toHaveLength(7);
-    const bulbTypes = socketNodes
+    expect(socketNodes).toHaveLength(5);
+    const screwBulbTypes = socketNodes
       .map((n) =>
         typeof n.data.installedBulb === 'object' && n.data.installedBulb
           ? n.data.installedBulb.bulbType
           : n.data.bulbType
       )
       .sort();
-    expect(bulbTypes).toEqual(
-      ['cfl', 'edison', 'halogen', 'incandescent', 'led_green', 'led_rgb', 'led_standard'].sort()
+    expect(screwBulbTypes).toEqual(
+      ['cfl', 'edison', 'incandescent', 'led_rgb', 'led_standard'].sort()
     );
 
+    const pinBulbNodes = state.nodes.filter(
+      (n) => n.data.type === 'bulb'
+    );
+    expect(pinBulbNodes).toHaveLength(2);
+    const pinBulbTypes = pinBulbNodes.map((n) => n.data.bulbType).sort();
+    expect(pinBulbTypes).toEqual(['halogen', 'led_green'].sort());
+
+    // All 7 bulbs (5 sockets + 2 pin bulbs) carry active electrical current
     for (const socket of socketNodes) {
       const current = Math.abs(state.simulation.branchCurrents[socket.id] ?? 0);
+      expect(current).toBeGreaterThan(0.0005);
+    }
+    for (const pinBulb of pinBulbNodes) {
+      const current = Math.abs(state.simulation.branchCurrents[pinBulb.id] ?? 0);
       expect(current).toBeGreaterThan(0.0005);
     }
 

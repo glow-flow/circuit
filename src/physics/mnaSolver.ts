@@ -25,7 +25,7 @@
  */
 
 import { CircuitElementData, WireConnection, SimulationResult } from '../types/circuit';
-import { getBulbSpec } from '../constants/bulbCatalog';
+import { canBulbFitSocket, getBulbSpec } from '../constants/bulbCatalog';
 import { UnionFind } from './unionFind';
 
 export const SHORT_CIRCUIT_CURRENT_THRESHOLD = 10.0; // Amperes threshold for short-circuit trip
@@ -536,9 +536,15 @@ export function getComponentPinIdentifiers(component: CircuitElementData): strin
     case 'waypoint':
     case 'socket':
       return [`${component.id}:p1`, `${component.id}:p2`];
-    case 'bulb':
-      // Standalone/detached bulbs have NO electrical terminals; only a SocketNode has terminals
+    case 'bulb': {
+      // Pin-base bulbs (halogen, led_green) have direct physical contact pins
+      const spec = getBulbSpec(component.bulbType);
+      if (spec.baseType === 'pin') {
+        return [`${component.id}:p1`, `${component.id}:p2`];
+      }
+      // Screw-base bulbs have no direct handles (must be snapped into a SocketNode)
       return [];
+    }
     case 'ground':
       return [`${component.id}:gnd`];
     default:
@@ -572,15 +578,25 @@ export function getComponentEffectiveResistance(component: CircuitElementData): 
   switch (component.type) {
     case 'resistor':
       return Math.max(0.1, component.resistance ?? 100);
-    case 'bulb':
-      // Detached bulb cannot conduct current on its own (must be installed in a SocketNode)
+    case 'bulb': {
+      const spec = getBulbSpec(component.bulbType);
+      if (spec.baseType === 'pin') {
+        if (component.isBlown) return 1e9;
+        return Math.max(0.1, component.resistance ?? spec.resistance);
+      }
+      // Detached screw-base bulb cannot conduct current on its own (must be installed in a SocketNode)
       return 1e9;
+    }
     case 'socket': {
       if (!component.installedBulb) {
         return 1e9; // Open Circuit (Infinity): socket without bulb does not conduct
       }
       const bulbData = component.installedBulb;
       const bulbType = typeof bulbData === 'object' ? bulbData.bulbType : bulbData;
+      // Incompatible base (e.g. pin bulb in screw socket) cannot establish electrical contact
+      if (!canBulbFitSocket(bulbType)) {
+        return 1e9;
+      }
       const isBlown =
         typeof bulbData === 'object'
           ? Boolean(bulbData.isBlown)

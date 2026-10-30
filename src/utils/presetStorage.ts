@@ -6,6 +6,7 @@
  */
 
 import { Node, Edge } from 'reactflow';
+import { canBulbFitSocket } from '../constants/bulbCatalog';
 import { CircuitElementData } from '../types/circuit';
 
 export interface CustomCircuitPreset {
@@ -45,6 +46,10 @@ export function migrateWiredBulbsToSockets(
   return nodes.map((node) => {
     if (node.data?.type === 'bulb' && wiredNodeIds.has(node.id)) {
       const bulbType = node.data.bulbType ?? 'incandescent';
+      // Pin-base bulbs (halogen capsule, indicator LED) connect directly via pins and do NOT use sockets!
+      if (!canBulbFitSocket(bulbType)) {
+        return node;
+      }
       return {
         ...node,
         type: 'socket',
@@ -336,22 +341,15 @@ export function createUltimatePowerGridPreset(
     },
     {
       id: 'bulb_halogen',
-      type: 'socket',
+      type: 'bulb',
       position: { x: 1200, y: 200 },
       data: {
         id: 'bulb_halogen',
-        type: 'socket',
+        type: 'bulb',
         bulbType: 'halogen',
         resistance: 1500,
         powerRating: 50,
-        label: isId ? 'Fiting + Lampu Halogen' : 'Socket + Halogen Bulb',
-        installedBulb: {
-          id: 'bulb_halogen_unit',
-          bulbType: 'halogen',
-          resistance: 1500,
-          powerRating: 50,
-          label: isId ? 'Lampu Halogen' : 'Halogen Bulb',
-        },
+        label: isId ? 'Lampu Halogen (Kapsul Pin)' : 'Halogen Capsule Bulb',
       },
     },
 
@@ -473,22 +471,15 @@ export function createUltimatePowerGridPreset(
     },
     {
       id: 'bulb_led_green',
-      type: 'socket',
+      type: 'bulb',
       position: { x: 1200, y: 800 },
       data: {
         id: 'bulb_led_green',
-        type: 'socket',
+        type: 'bulb',
         bulbType: 'led_green',
         resistance: 2000,
         powerRating: 0.5,
-        label: isId ? 'Fiting + LED Indikator' : 'Socket + Green Indicator LED',
-        installedBulb: {
-          id: 'bulb_led_green_unit',
-          bulbType: 'led_green',
-          resistance: 2000,
-          powerRating: 0.5,
-          label: isId ? 'LED Indikator' : 'Green Indicator LED',
-        },
+        label: isId ? 'LED Indikator (5mm Kaki)' : '5mm Indicator LED',
       },
     },
 

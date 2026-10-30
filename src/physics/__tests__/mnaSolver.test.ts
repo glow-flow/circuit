@@ -455,15 +455,10 @@ describe('Modified Nodal Analysis (MNA) Physics Engine', () => {
     };
     const bulbHalogen: CircuitElementData = {
       id: 'bulb_h',
-      type: 'socket',
+      type: 'bulb',
       bulbType: 'halogen',
       resistance: 1500,
-      installedBulb: {
-        id: 'b_hal',
-        bulbType: 'halogen',
-        resistance: 1500,
-      },
-      label: 'Socket + Lampu Halogen (1500Ω)',
+      label: 'Lampu Halogen Kapsul Pin (1500Ω)',
     };
 
     // Connect two 9V batteries in series: b9_1(-) -> ground, b9_1(+) -> b9_2(-), b9_2(+) -> bulb(p1) -> bulb(p2) -> b9_1(-)

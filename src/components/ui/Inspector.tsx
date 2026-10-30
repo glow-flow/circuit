@@ -432,7 +432,11 @@ export const Inspector: React.FC<InspectorProps> = ({
                     <>
                       <div className="space-y-1.5">
                         <label className="text-xs font-semibold text-slate-200 block">
-                          {language === 'id'
+                          {componentData.type === 'socket'
+                            ? language === 'id'
+                              ? 'Pilih Lampu Ulir (5 Tipe E27)'
+                              : 'Select Screw Bulb (5 E27 Types)'
+                            : language === 'id'
                             ? 'Pilih Jenis Lampu (7 Tipe)'
                             : 'Select Bulb Type (7 Types)'}
                         </label>
@@ -445,7 +449,10 @@ export const Inspector: React.FC<InspectorProps> = ({
                           }
                           className="w-full px-3 py-2 rounded-xl bg-void-900 border border-electric-500/40 text-xs font-medium text-slate-100 focus:outline-none focus:border-electric-400 cursor-pointer"
                         >
-                          {BULB_CATALOG.map((spec) => (
+                          {BULB_CATALOG.filter(
+                            (spec) =>
+                              componentData.type !== 'socket' || spec.baseType === 'screw'
+                          ).map((spec) => (
                             <option key={spec.type} value={spec.type}>
                               {language === 'id' ? spec.label : spec.labelEn} — {spec.resistance}Ω
                               (Maks {spec.maxPower}W)

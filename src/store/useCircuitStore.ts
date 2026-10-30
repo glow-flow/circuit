@@ -129,11 +129,21 @@ function recalculateCircuit(
   nodes: Node<CircuitElementData>[],
   edges: Edge[]
 ): { simulation: SimulationResult; updatedNodes: Node<CircuitElementData>[] } {
-  const standaloneBulbIds = new Set(
-    nodes.filter((node) => node.data.type === 'bulb').map((node) => node.id)
+  // Only detached screw-base bulbs cannot connect wires directly.
+  // Pin-base bulbs (halogen, led_green) ARE active circuit components with pin handles!
+  const standaloneScrewBulbIds = new Set(
+    nodes
+      .filter(
+        (node) =>
+          node.data.type === 'bulb' &&
+          getBulbSpec(node.data.bulbType).baseType === 'screw'
+      )
+      .map((node) => node.id)
   );
   const validEdges = edges.filter(
-    (edge) => !standaloneBulbIds.has(edge.source) && !standaloneBulbIds.has(edge.target)
+    (edge) =>
+      !standaloneScrewBulbIds.has(edge.source) &&
+      !standaloneScrewBulbIds.has(edge.target)
   );
 
   const components: CircuitElementData[] = nodes.map((node) => node.data);
@@ -219,10 +229,40 @@ function recalculateCircuit(
     }
 
     if (node.data.type === 'bulb') {
-      // Standalone/detached bulb is purely an inventory item and NEVER conducts current
       const spec = getBulbSpec(node.data.bulbType);
       const effectiveResistance = node.data.resistance ?? spec.resistance;
 
+      // Pin-base bulbs ('halogen', 'led_green') conduct electricity directly via their terminal pins
+      if (spec.baseType === 'pin') {
+        const { powerWatts, voltageDrop, isOverloaded } = computeBulbPhotometrics(
+          branchCurrent,
+          effectiveResistance,
+          spec
+        );
+        const isBlown = Boolean(
+          node.data.isBlown ||
+            isOverloaded ||
+            Math.abs(branchCurrent) > 2.5
+        );
+
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            bulbType: spec.type,
+            resistance: effectiveResistance,
+            powerRating: node.data.powerRating ?? spec.maxPower,
+            power: powerWatts,
+            calculatedCurrent: branchCurrent,
+            calculatedVoltage: voltageDrop,
+            calculatedPower: powerWatts,
+            isShortCircuit,
+            isBlown,
+          },
+        };
+      }
+
+      // Standalone screw-base bulb is purely an inventory item and NEVER conducts current without socket
       return {
         ...node,
         data: {
@@ -311,9 +351,29 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     const currentNodes = get().nodes;
     const sourceNode = currentNodes.find((n) => n.id === connection.source);
     const targetNode = currentNodes.find((n) => n.id === connection.target);
+    const isId = get().language === 'id';
 
-    // Strictly forbid connecting wires directly to a standalone bulb without a socket
-    if (sourceNode?.data.type === 'bulb' || targetNode?.data.type === 'bulb') {
+    // Screw-base bulbs CANNOT be wired directly (must be snapped into an E27 SocketNode).
+    // Pin-base bulbs (halogen, led_green) HAVE physical pin handles and CAN be wired directly!
+    const sourceSpec =
+      sourceNode?.data.type === 'bulb' ? getBulbSpec(sourceNode.data.bulbType) : null;
+    const targetSpec =
+      targetNode?.data.type === 'bulb' ? getBulbSpec(targetNode.data.bulbType) : null;
+
+    if (sourceSpec && sourceSpec.baseType === 'screw') {
+      get().notify(
+        isId
+          ? 'Lampu ulir (E27) harus dipasang ke fiting lampu (Socket) terlebih dahulu!'
+          : 'Screw-base bulbs (E27) must be installed into a lamp socket first!'
+      );
+      return;
+    }
+    if (targetSpec && targetSpec.baseType === 'screw') {
+      get().notify(
+        isId
+          ? 'Lampu ulir (E27) harus dipasang ke fiting lampu (Socket) terlebih dahulu!'
+          : 'Screw-base bulbs (E27) must be installed into a lamp socket first!'
+      );
       return;
     }
 

@@ -166,11 +166,11 @@ export function countVisibleWires(edges: Edge[]): number {
 /** User-facing notices (id/en) for socket interactions. */
 export const SOCKET_NOTICES = {
   screwOnly: {
-    id: 'Fiting ini hanya untuk lampu ulir (screw)!',
-    en: 'This socket only accepts screw-base bulbs!',
+    id: 'Fiting E27 ini khusus lampu berulir! Lampu tipe pin (Halogen & LED Indikator) tidak muat.',
+    en: 'This E27 socket is for screw-base bulbs only! Pin-base bulbs (Halogen & Indicator LED) do not fit.',
   },
   detachedByType: {
-    id: 'Lampu dilepas dari fiting karena tipenya bukan ulir.',
-    en: 'Bulb removed from the socket because it is not a screw-base type.',
+    id: 'Lampu dilepas dari fiting karena menggunakan kaki pin langsung, bukan ulir E27.',
+    en: 'Bulb detached because it uses direct pin terminals, not an E27 screw base.',
   },
 } as const;

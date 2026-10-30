@@ -33,6 +33,21 @@ export const BASE_TERMINAL_LAYOUT: Record<BulbBaseType, { p1: string; p2: string
   pin: { p1: '42%', p2: '58%' },
 };
 
+/**
+ * Returns exact terminal handle positions calibrated to the individual artwork pins/legs.
+ * Time Complexity: O(1)
+ */
+export function getBulbTerminalLayout(bulbType?: BulbType | string): { p1: string; p2: string } {
+  if (bulbType === 'halogen') {
+    return { p1: '42.3%', p2: '57.6%' };
+  }
+  if (bulbType === 'led_green') {
+    return { p1: '38%', p2: '62%' };
+  }
+  const spec = getBulbSpec(bulbType);
+  return BASE_TERMINAL_LAYOUT[spec.baseType];
+}
+
 export interface BulbSpec {
   type: BulbType;
   category: string;
@@ -110,7 +125,7 @@ export const BULB_CATALOG: readonly BulbSpec[] = [
     glowTag: 'Cool White',
     traits: 'Hemat energi, cahaya putih bersih, panas rendah.',
     traitsEn: 'Energy efficient, crisp cool white light, low heat.',
-    glowColor: 'rgba(56, 189, 248, 0.65)',
+    glowColor: 'rgba(224, 242, 254, 0.75)',
     safeMaxVoltage: 18,
   },
   {
@@ -155,7 +170,7 @@ export const BULB_CATALOG: readonly BulbSpec[] = [
     glowTag: 'Green',
     traits: 'Hanya untuk indikator, arus sangat kecil.',
     traitsEn: 'Indicator diode only, operates at micro/milliampere current.',
-    glowColor: 'rgba(74, 222, 128, 0.65)',
+    glowColor: 'rgba(52, 211, 153, 0.75)',
     safeMaxVoltage: 6,
   },
 ] as const;

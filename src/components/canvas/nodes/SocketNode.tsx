@@ -4,6 +4,7 @@ import { Flame, RotateCcw, Snowflake, Unplug } from 'lucide-react';
 import { CircuitElementData } from '../../../types/circuit';
 import { useCircuitStore } from '../../../store/useCircuitStore';
 import {
+  canBulbFitSocket,
   computeBulbPhotometrics,
   getBulbSpec,
 } from '../../../constants/bulbCatalog';
@@ -80,7 +81,9 @@ export const SocketNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, 
       ? (installedBulb as import('../../../constants/bulbCatalog').BulbType)
       : undefined;
 
-  const installedSpec = installedBulbType ? getBulbSpec(installedBulbType) : undefined;
+  // Strictly enforce screw-base requirement: only bulbs designed for E27 sockets can mount
+  const rawSpec = installedBulbType ? getBulbSpec(installedBulbType) : undefined;
+  const installedSpec = rawSpec && canBulbFitSocket(rawSpec.type) ? rawSpec : undefined;
   const isBlown = Boolean(
     (installedBulbObj && installedBulbObj.isBlown) || data.isBlown
   );
@@ -94,7 +97,7 @@ export const SocketNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, 
   // Compute photometrics (brightness, heat, power, voltage drop) only if bulb is installed
   const photometrics = installedSpec
     ? computeBulbPhotometrics(current, resistance, installedSpec)
-    : { powerWatts: 0, voltageDrop: 0, brightness: 0, heatLevel: 'cool' as const, isOverloaded: false };
+    : { powerWatts: 0, voltageDrop: 0, brightness: 0, heatLevel: 'cold' as const, isOverloaded: false };
 
   const { powerWatts, voltageDrop, brightness, heatLevel, isOverloaded } = photometrics;
   const effectiveIsBlown = isBlown || isOverloaded;
@@ -108,12 +111,11 @@ export const SocketNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, 
     zIndex: 40,
   });
 
+  // Pure optical appearance on the PNG: NO drop-shadow on the image itself to prevent bounding box clipping!
   const bulbImageFilter = effectiveIsBlown
     ? 'grayscale(100%) brightness(0.42) contrast(1.15)'
     : brightness > 0.01
-    ? `brightness(${0.92 + brightness * 0.45}) saturate(${1.0 + brightness * 0.35}) drop-shadow(0 0 ${Math.round(
-        4 + brightness * 16
-      )}px ${installedSpec?.glowColor})`
+    ? `brightness(${0.96 + brightness * 0.42}) saturate(${1.0 + brightness * 0.35})`
     : 'saturate(0.45) brightness(0.76) contrast(1.04)';
 
   const bulbTopOffset = getInstalledBulbTopOffset(installedSpec?.type);
@@ -168,6 +170,58 @@ export const SocketNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, 
         )}
       </div>
 
+      {/* NATURAL MULTI-TIER GLOW (zIndex: 14): Zero rectangular boundary clipping */}
+      {installedSpec && !effectiveIsBlown && brightness > 0.01 && (
+        <div
+          className="pointer-events-none absolute select-none"
+          style={{
+            left: '50%',
+            top: bulbTopOffset + 40,
+            transform: 'translate(-50%, -50%)',
+            zIndex: 14,
+            width: 0,
+            height: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {/* Tier 3: Soft ambient atmospheric radiance (190px - 280px) */}
+          <div
+            className="absolute rounded-full transition-all duration-300"
+            style={{
+              width: Math.round(190 + brightness * 90),
+              height: Math.round(190 + brightness * 90),
+              background: `radial-gradient(circle, ${installedSpec.glowColor} 0%, rgba(0,0,0,0) 70%)`,
+              opacity: Math.min(0.85, 0.25 + brightness * 0.6),
+              filter: 'blur(22px)',
+            }}
+          />
+          {/* Tier 2: Glass globe corona (75px - 120px) */}
+          <div
+            className="absolute rounded-full transition-all duration-300"
+            style={{
+              width: Math.round(75 + brightness * 45),
+              height: Math.round(75 + brightness * 45),
+              background: `radial-gradient(circle, ${installedSpec.glowColor} 15%, rgba(0,0,0,0) 72%)`,
+              opacity: Math.min(0.9, 0.4 + brightness * 0.5),
+              filter: 'blur(8px)',
+            }}
+          />
+          {/* Tier 1: Specular optical core / filament center (32px - 50px) */}
+          <div
+            className="absolute rounded-full transition-all duration-300"
+            style={{
+              width: Math.round(32 + brightness * 18),
+              height: Math.round(32 + brightness * 18),
+              background: `radial-gradient(circle, rgba(255,255,255,0.95) 0%, ${installedSpec.glowColor} 55%, rgba(0,0,0,0) 80%)`,
+              opacity: Math.min(1.0, 0.5 + brightness * 0.5),
+              filter: 'blur(3px)',
+            }}
+          />
+        </div>
+      )}
+
       {/* LAYER 2 (zIndex: 20): Installed Bulb Artwork (Fixed 92x112 size — never shrinks or collapses) */}
       {installedSpec && (
         <div
@@ -180,19 +234,6 @@ export const SocketNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, 
             zIndex: 20,
           }}
         >
-          {/* Radial glow aura when electrical current flows */}
-          {!effectiveIsBlown && brightness > 0.02 && (
-            <div
-              className="pointer-events-none absolute inset-0 rounded-full transition-all duration-300"
-              style={{
-                background: `radial-gradient(circle, ${installedSpec.glowColor} 0%, transparent 68%)`,
-                opacity: Math.min(1, 0.3 + brightness * 0.7),
-                transform: `scale(${0.95 + brightness * 0.5})`,
-                filter: 'blur(12px)',
-              }}
-            />
-          )}
-
           <img
             src={installedSpec.image}
             alt={isIndonesian ? installedSpec.label : installedSpec.labelEn}
@@ -242,10 +283,6 @@ export const SocketNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, 
             className="pointer-events-none block h-full w-full select-none object-contain"
             style={{
               clipPath: SOCKET_FRONT_LIP_CLIP_PATH,
-              filter:
-                !effectiveIsBlown && brightness > 0.02
-                  ? `drop-shadow(0 -2px 6px ${installedSpec.glowColor})`
-                  : undefined,
             }}
           />
         </div>
