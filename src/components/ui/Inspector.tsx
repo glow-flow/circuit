@@ -2,6 +2,7 @@ import React from 'react';
 import * as Slider from '@radix-ui/react-slider';
 import { Sliders, Trash2, Cpu, ShieldCheck, AlertTriangle, X, BookOpen, Scissors } from 'lucide-react';
 import { useCircuitStore } from '../../store/useCircuitStore';
+import { countVisibleWires } from '../../utils/socketSnap';
 import { BULB_CATALOG, BulbType, getBulbSpec } from '../../constants/bulbCatalog';
 import { TRANSLATIONS } from '../../i18n/translations';
 
@@ -181,7 +182,7 @@ export const Inspector: React.FC<InspectorProps> = ({
             </div>
             <div className="flex justify-between items-center">
               <span className="text-slate-400 font-sans text-[11px]">{t.totalWires}</span>
-              <span className="text-slate-200">{edges.length}</span>
+              <span className="text-slate-200">{countVisibleWires(edges)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-slate-400 font-sans text-[11px]">{t.totalPower}</span>

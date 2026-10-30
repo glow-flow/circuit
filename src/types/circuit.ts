@@ -17,6 +17,7 @@ export type ComponentType =
   | 'ground'
   | 'voltmeter'
   | 'ammeter'
+  | 'socket'
   | 'waypoint';
 
 export interface ComponentPin {
@@ -40,6 +41,8 @@ export interface CircuitElementData {
   isOpen?: boolean;            // For switch
   hasBattery?: boolean;        // For battery-holder: whether AA battery is inserted
   batteryCount?: number;       // For battery-holder: number of 1.5V AA cells inserted (0, 1, or 2)
+  bulbId?: string;             // For socket: id of the bulb currently screwed in
+  socketId?: string;           // For bulb: id of the socket it is snapped into
   
   // Real-time calculated simulation results
   calculatedVoltage?: number;  // Voltage drop across component (V)

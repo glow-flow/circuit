@@ -18,9 +18,25 @@ export type BulbType =
   | 'led_rgb'
   | 'led_green';
 
+/** Physical lamp base: 'screw' = threaded (E27-style) cap, 'pin' = two-pin capsule cap. */
+export type BulbBaseType = 'screw' | 'pin';
+
+/** The only base a standard `SocketNode` (fiting) accepts. */
+export const SOCKET_ACCEPTED_BASE: BulbBaseType = 'screw';
+
+/**
+ * Horizontal position (percent of node width) of the two bottom terminals per base type,
+ * so wire handles sit exactly on the metal contact / pins of the artwork.
+ */
+export const BASE_TERMINAL_LAYOUT: Record<BulbBaseType, { p1: string; p2: string }> = {
+  screw: { p1: '40%', p2: '60%' },
+  pin: { p1: '42%', p2: '58%' },
+};
+
 export interface BulbSpec {
   type: BulbType;
   category: string;
+  baseType: BulbBaseType;
   image: string;
   /** True when the source PNG is a horizontal shape (e.g. CFL tube) that should be shown upright (rotated 90°). */
   imageRotated?: boolean;
@@ -39,6 +55,7 @@ export const BULB_CATALOG: readonly BulbSpec[] = [
   {
     type: 'incandescent',
     category: 'Pijar Modern',
+    baseType: 'screw',
     image: '/assets/bulb-incandescent.png',
     label: 'Lampu Pijar',
     labelEn: 'Incandescent Bulb',
@@ -53,6 +70,7 @@ export const BULB_CATALOG: readonly BulbSpec[] = [
   {
     type: 'halogen',
     category: 'Kapsul',
+    baseType: 'pin',
     image: '/assets/bulb-halogen.png',
     label: 'Lampu Halogen',
     labelEn: 'Halogen Bulb',
@@ -67,6 +85,7 @@ export const BULB_CATALOG: readonly BulbSpec[] = [
   {
     type: 'edison',
     category: 'Vintage',
+    baseType: 'screw',
     image: '/assets/bulb-edison.png',
     label: 'Lampu Edison',
     labelEn: 'Edison Vintage',
@@ -81,6 +100,7 @@ export const BULB_CATALOG: readonly BulbSpec[] = [
   {
     type: 'cfl',
     category: 'Neon U-Shape',
+    baseType: 'screw',
     image: '/assets/bulb-cfl.png',
     imageRotated: true,
     label: 'Lampu Neon (CFL)',
@@ -96,6 +116,7 @@ export const BULB_CATALOG: readonly BulbSpec[] = [
   {
     type: 'led_standard',
     category: 'LED Putih',
+    baseType: 'screw',
     image: '/assets/bulb-led-standard.png',
     label: 'Lampu LED',
     labelEn: 'Standard LED',
@@ -110,6 +131,7 @@ export const BULB_CATALOG: readonly BulbSpec[] = [
   {
     type: 'led_rgb',
     category: 'Smart Bulb',
+    baseType: 'screw',
     image: '/assets/bulb-rgb.png',
     label: 'Smart LED',
     labelEn: 'Smart RGB LED',
@@ -124,6 +146,7 @@ export const BULB_CATALOG: readonly BulbSpec[] = [
   {
     type: 'led_green',
     category: 'LED Indikator',
+    baseType: 'pin',
     image: '/assets/bulb-led.png',
     label: 'LED Indikator',
     labelEn: 'Green Indicator LED',
@@ -222,4 +245,15 @@ export function computeBulbPhotometrics(
     heatLevel,
     isOverloaded,
   };
+}
+
+/**
+ * Checks whether a bulb can be screwed into a standard socket.
+ * Time Complexity: O(1)
+ *
+ * @param bulbType - Bulb model being mounted (undefined falls back to incandescent)
+ * @returns true when the bulb base matches the socket's accepted base
+ */
+export function canBulbFitSocket(bulbType?: BulbType | string): boolean {
+  return getBulbSpec(bulbType).baseType === SOCKET_ACCEPTED_BASE;
 }

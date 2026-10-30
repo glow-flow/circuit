@@ -28,11 +28,14 @@ describe('Component palette catalog', () => {
     expect(batteryTypes).toEqual(['battery', 'battery9v', 'battery-holder']);
   });
 
-  it('derives one light entry per bulb model, carrying the model as placement option', () => {
+  it('derives one light entry per bulb model (plus the socket), carrying the model as placement option', () => {
     const lightEntries = getEntriesByCategory('light');
-    expect(lightEntries).toHaveLength(BULB_CATALOG.length);
-    lightEntries.forEach((entry, index) => {
-      expect(entry.type).toBe('bulb');
+    const bulbEntries = lightEntries.filter((entry) => entry.type === 'bulb');
+    const socketEntries = lightEntries.filter((entry) => entry.type === 'socket');
+
+    expect(socketEntries).toHaveLength(1);
+    expect(bulbEntries).toHaveLength(BULB_CATALOG.length);
+    bulbEntries.forEach((entry, index) => {
       expect(entry.placement?.bulbType).toBe(BULB_CATALOG[index].type);
     });
   });

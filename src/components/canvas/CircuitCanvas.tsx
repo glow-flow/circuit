@@ -19,6 +19,7 @@ import { BatteryHolderNode } from './nodes/BatteryHolderNode';
 import { ResistorNode } from './nodes/ResistorNode';
 import { BulbNode } from './nodes/BulbNode';
 import { SwitchNode } from './nodes/SwitchNode';
+import { SocketNode } from './nodes/SocketNode';
 import { GroundNode } from './nodes/GroundNode';
 import { VoltmeterNode } from './nodes/VoltmeterNode';
 import { AmmeterNode } from './nodes/AmmeterNode';
@@ -41,6 +42,8 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
   const splitEdgeWithWaypoint = useCircuitStore((state) => state.splitEdgeWithWaypoint);
   const insertBatteryIntoHolder = useCircuitStore((state) => state.insertBatteryIntoHolder);
   const fitViewTrigger = useCircuitStore((state) => state.fitViewTrigger);
+  const settleBulbAfterDrag = useCircuitStore((state) => state.settleBulbAfterDrag);
+  const syncSnappedBulbPosition = useCircuitStore((state) => state.syncSnappedBulbPosition);
 
   const [reactFlowInstance, setReactFlowInstance] = React.useState<ReactFlowInstance | null>(null);
 
@@ -61,6 +64,7 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
       resistor: ResistorNode,
       bulb: BulbNode,
       switch: SwitchNode,
+      socket: SocketNode,
       ground: GroundNode,
       voltmeter: VoltmeterNode,
       ammeter: AmmeterNode,
@@ -124,11 +128,30 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
   );
 
   /**
-   * Detects when a user drags an individual 1.5V AA BatteryNode onto a BatteryHolderNode.
+   * Keeps a bulb that is screwed into a socket moving together with that socket.
+   * Time Complexity: O(N) per drag tick.
+   */
+  const onNodeDrag = useCallback(
+    (_event: React.MouseEvent, draggedNode: Node<CircuitElementData>) => {
+      if (draggedNode.data?.type === 'socket' && draggedNode.data.bulbId) {
+        syncSnappedBulbPosition(draggedNode.id, draggedNode.position);
+      }
+    },
+    [syncSnappedBulbPosition]
+  );
+
+  /**
+   * Drop handling:
+   * - Bulb      -> snap into a nearby free socket (or reject pin-base bulbs with a toast).
+   * - AA battery -> insert into a nearby battery holder.
    * Time Complexity: O(N) where N is the number of nodes on the canvas.
    */
   const onNodeDragStop = useCallback(
     (_event: React.MouseEvent, draggedNode: Node<CircuitElementData>) => {
+      if (draggedNode.data?.type === 'bulb') {
+        settleBulbAfterDrag(draggedNode.id);
+        return;
+      }
       if (draggedNode.data?.type !== 'battery') return;
 
       const batteryCenterX = draggedNode.position.x + 64;
@@ -154,7 +177,7 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
         insertBatteryIntoHolder(draggedNode.id, targetHolder.id);
       }
     },
-    [nodes, insertBatteryIntoHolder]
+    [nodes, insertBatteryIntoHolder, settleBulbAfterDrag]
   );
 
   // Allow double-clicking any edge directly to insert a Waypoint anchor bend
@@ -181,6 +204,7 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
         onInit={setReactFlowInstance}
         onDrop={onDrop}
         onDragOver={onDragOver}
+        onNodeDrag={onNodeDrag}
         onNodeDragStop={onNodeDragStop}
         onEdgeDoubleClick={onEdgeDoubleClick}
         nodeTypes={nodeTypes}

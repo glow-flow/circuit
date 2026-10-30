@@ -6,6 +6,7 @@ import { SidebarPalette } from './components/ui/SidebarPalette';
 import { CircuitCanvas } from './components/canvas/CircuitCanvas';
 import { Inspector } from './components/ui/Inspector';
 import { WelcomeModal } from './components/ui/WelcomeModal';
+import { Toast } from './components/ui/Toast';
 import { useCircuitStore } from './store/useCircuitStore';
 import { TRANSLATIONS } from './i18n/translations';
 import { hasSeenTutorial } from './utils/presetStorage';
@@ -179,6 +180,9 @@ export const App: React.FC = () => {
         isOpen={isWelcomeOpen}
         onClose={() => setIsWelcomeOpen(false)}
       />
+
+      {/* Transient notifications (e.g. wrong bulb base for a socket) */}
+      <Toast />
     </div>
   );
 };

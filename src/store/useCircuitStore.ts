@@ -26,9 +26,20 @@ import {
 import { solveCircuitMNA } from '../physics/mnaSolver';
 import {
   BulbType,
+  canBulbFitSocket,
   computeBulbPhotometrics,
   getBulbSpec,
 } from '../constants/bulbCatalog';
+import {
+  REJECT_PUSH_DISTANCE,
+  SNAP_RADIUS,
+  SOCKET_NOTICES,
+  createSnapEdges,
+  distanceToSocketSnapPoint,
+  findNearestFreeSocket,
+  getBulbSnapPosition,
+  removeSnapEdges,
+} from '../utils/socketSnap';
 import { AppLanguage } from '../i18n/translations';
 import {
   CustomCircuitPreset,
@@ -48,6 +59,15 @@ interface CircuitState {
   language: AppLanguage;
   customPresets: CustomCircuitPreset[];
   fitViewTrigger: number;
+  /** Transient UI toast (e.g. "wrong lamp base"); `id` changes on every notify so timers restart. */
+  notification: { id: number; message: string } | null;
+
+  // Socket (fiting) snapping & notifications
+  notify: (message: string) => void;
+  dismissNotification: () => void;
+  settleBulbAfterDrag: (bulbId: string) => void;
+  detachBulbFromSocket: (bulbId: string) => void;
+  syncSnappedBulbPosition: (socketId: string, socketPosition: { x: number; y: number }) => void;
 
   // React Flow Handlers
   onNodesChange: (changes: NodeChange[]) => void;
@@ -182,6 +202,15 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   language: 'id',
   customPresets: loadCustomPresetsFromStorage(),
   fitViewTrigger: 0,
+  notification: null,
+
+  notify: (message: string) => {
+    set({ notification: { id: Date.now(), message } });
+  },
+
+  dismissNotification: () => {
+    set({ notification: null });
+  },
 
   setLanguage: (language: AppLanguage) => {
     set({ language });
@@ -318,6 +347,12 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
           label: isId ? 'Amperemeter Digital' : 'Digital Ammeter',
         };
         break;
+      case 'socket':
+        defaultData = {
+          ...defaultData,
+          label: isId ? 'Fiting Lampu (Ulir)' : 'Bulb Socket (Screw)',
+        };
+        break;
     }
 
     const newNode: Node<CircuitElementData> = {
@@ -361,6 +396,7 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   setBulbType: (id: string, bulbType: BulbType) => {
     const nextSpec = getBulbSpec(bulbType);
     const isId = get().language === 'id';
+    const wasSnapped = Boolean(get().nodes.find((n) => n.id === id)?.data.socketId);
 
     get().updateComponentData(id, {
       bulbType: nextSpec.type,
@@ -369,6 +405,12 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       powerRating: nextSpec.maxPower,
       isBlown: false,
     });
+
+    // A pin-base bulb cannot stay in a screw socket
+    if (wasSnapped && !canBulbFitSocket(nextSpec.type)) {
+      get().detachBulbFromSocket(id);
+      get().notify(SOCKET_NOTICES.detachedByType[isId ? 'id' : 'en']);
+    }
   },
 
   removeComponent: (id: string) => {
@@ -400,7 +442,19 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       nextEdges = nextEdges.filter((e) => e.source !== id && e.target !== id);
     }
 
-    const nextNodes = get().nodes.filter((node) => node.id !== id);
+    // Release any bulb/socket pairing that involved the removed node (snap wires were
+    // already dropped by the edge filters above because they touch the removed node).
+    const nextNodes = get()
+      .nodes.filter((node) => node.id !== id)
+      .map((node) => {
+        if (node.data.bulbId === id) {
+          return { ...node, data: { ...node.data, bulbId: undefined } };
+        }
+        if (node.data.socketId === id) {
+          return { ...node, data: { ...node.data, socketId: undefined } };
+        }
+        return node;
+      });
     const { simulation, updatedNodes } = recalculateCircuit(nextNodes, nextEdges);
 
     set({
@@ -408,6 +462,127 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       edges: nextEdges,
       simulation,
       selectedNodeId: get().selectedNodeId === id ? null : get().selectedNodeId,
+    });
+  },
+
+  /**
+   * Called when the user releases a dragged bulb. Decides between three outcomes:
+   * 1. Bulb already in a socket and still close  -> re-snap it neatly.
+   * 2. Bulb in a socket but dragged far away      -> unscrew it (detach).
+   * 3. Free bulb dropped near a free socket       -> snap if base fits, else reject + toast.
+   * Time Complexity: O(N + E) (one node scan + edge filter + one MNA solve).
+   *
+   * @param bulbId - Id of the bulb node that was just dropped
+   */
+  settleBulbAfterDrag: (bulbId: string) => {
+    try {
+      const currentNodes = get().nodes;
+      const bulbNode = currentNodes.find((n) => n.id === bulbId && n.data.type === 'bulb');
+      if (!bulbNode) return;
+      const isId = get().language === 'id';
+
+      // Case 1 & 2: bulb already sits in a socket
+      if (bulbNode.data.socketId) {
+        const ownSocket = currentNodes.find((n) => n.id === bulbNode.data.socketId);
+        const isStillClose =
+          ownSocket &&
+          distanceToSocketSnapPoint(bulbNode.position, ownSocket.position) <= SNAP_RADIUS;
+        if (ownSocket && isStillClose) {
+          set({
+            nodes: currentNodes.map((n) =>
+              n.id === bulbId ? { ...n, position: getBulbSnapPosition(ownSocket.position) } : n
+            ),
+          });
+        } else {
+          get().detachBulbFromSocket(bulbId);
+        }
+        return;
+      }
+
+      // Case 3: free bulb dropped somewhere
+      const targetSocket = findNearestFreeSocket(bulbNode, currentNodes);
+      if (!targetSocket) return;
+
+      if (!canBulbFitSocket(bulbNode.data.bulbType)) {
+        // Reject: push the bulb to the side so it does not sit on top of the socket
+        set({
+          nodes: currentNodes.map((n) =>
+            n.id === bulbId
+              ? {
+                  ...n,
+                  position: {
+                    x: targetSocket.position.x + REJECT_PUSH_DISTANCE,
+                    y: targetSocket.position.y,
+                  },
+                }
+              : n
+          ),
+        });
+        get().notify(SOCKET_NOTICES.screwOnly[isId ? 'id' : 'en']);
+        return;
+      }
+
+      const linkedNodes = currentNodes.map((n) => {
+        if (n.id === bulbId) {
+          return {
+            ...n,
+            selected: false,
+            zIndex: 10,
+            position: getBulbSnapPosition(targetSocket.position),
+            data: { ...n.data, socketId: targetSocket.id },
+          };
+        }
+        if (n.id === targetSocket.id) {
+          return { ...n, zIndex: 12, data: { ...n.data, bulbId } };
+        }
+        return n;
+      });
+      const linkedEdges = [...removeSnapEdges(get().edges, bulbId), ...createSnapEdges(bulbId, targetSocket.id)];
+      const { simulation, updatedNodes } = recalculateCircuit(linkedNodes, linkedEdges);
+      set({
+        nodes: updatedNodes,
+        edges: linkedEdges,
+        simulation,
+        selectedNodeId: null,
+      });
+    } catch (error) {
+      console.warn('Failed to settle bulb after drag:', error);
+    }
+  },
+
+  /**
+   * Unscrews a bulb from its socket: removes the invisible snap wires and clears both links.
+   * Time Complexity: O(N + E)
+   *
+   * @param bulbId - Id of the bulb to detach
+   */
+  detachBulbFromSocket: (bulbId: string) => {
+    const nextNodes = get().nodes.map((n) => {
+      if (n.id === bulbId) return { ...n, data: { ...n.data, socketId: undefined } };
+      if (n.data.bulbId === bulbId) return { ...n, data: { ...n.data, bulbId: undefined } };
+      return n;
+    });
+    const nextEdges = removeSnapEdges(get().edges, bulbId);
+    const { simulation, updatedNodes } = recalculateCircuit(nextNodes, nextEdges);
+    set({ nodes: updatedNodes, edges: nextEdges, simulation });
+  },
+
+  /**
+   * Moves the bulb screwed into a socket together with that socket while it is being dragged.
+   * Position-only update (no physics solve) so dragging stays smooth. O(N).
+   *
+   * @param socketId - Socket being dragged
+   * @param socketPosition - Socket's current top-left position
+   */
+  syncSnappedBulbPosition: (socketId: string, socketPosition: { x: number; y: number }) => {
+    const socketNode = get().nodes.find((n) => n.id === socketId);
+    const attachedBulbId = socketNode?.data.bulbId;
+    if (!attachedBulbId) return;
+    const snapPosition = getBulbSnapPosition(socketPosition);
+    set({
+      nodes: get().nodes.map((n) =>
+        n.id === attachedBulbId ? { ...n, position: snapPosition } : n
+      ),
     });
   },
 

@@ -297,7 +297,8 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
         component.type === 'battery9v' ||
         component.type === 'battery-holder' ||
         component.type === 'ground' ||
-        component.type === 'waypoint'
+        component.type === 'waypoint' ||
+        component.type === 'socket' // Socket is a passive holder: only the bulb screwed into it conducts
       ) {
         continue;
       }
@@ -416,7 +417,8 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
         component.type === 'battery9v' ||
         component.type === 'battery-holder' ||
         component.type === 'ground' ||
-        component.type === 'waypoint'
+        component.type === 'waypoint' ||
+        component.type === 'socket'
       ) {
         continue;
       }
@@ -439,6 +441,15 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
         isOverallShortCircuit = true;
         shortCircuitBranches.push(component.id);
       }
+    }
+
+    // 8b. A socket carries exactly the current of the bulb screwed into it (0 when empty),
+    // so wires attached to the socket animate correctly. O(S) with S = socket count.
+    for (const component of components) {
+      if (component.type !== 'socket') continue;
+      branchCurrentMap[component.id] = component.bulbId
+        ? branchCurrentMap[component.bulbId] ?? 0
+        : 0;
     }
 
     // 9. Propagate branch currents through Waypoint nodes so bent wire segments glow seamlessly
@@ -521,6 +532,7 @@ export function getComponentPinIdentifiers(component: CircuitElementData): strin
     case 'voltmeter':
     case 'ammeter':
     case 'waypoint':
+    case 'socket':
       return [`${component.id}:p1`, `${component.id}:p2`];
     case 'ground':
       return [`${component.id}:gnd`];

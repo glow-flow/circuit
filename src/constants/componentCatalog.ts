@@ -92,19 +92,34 @@ const BATTERY_ENTRIES: PaletteEntry[] = [
   },
 ];
 
-const LIGHT_ENTRIES: PaletteEntry[] = BULB_CATALOG.map((bulbSpec) => ({
-  id: `bulb:${bulbSpec.type}`,
-  type: 'bulb',
-  category: 'light',
-  label: bulbSpec.label,
-  labelEn: bulbSpec.labelEn,
-  hint: bulbSpec.traits,
-  hintEn: bulbSpec.traitsEn,
-  spec: `${bulbSpec.resistance} Ω · ${bulbSpec.maxPower} W`,
-  image: bulbSpec.image,
-  imageRotated: bulbSpec.imageRotated,
-  placement: { bulbType: bulbSpec.type },
-}));
+const LIGHT_ENTRIES: PaletteEntry[] = [
+  {
+    id: 'socket',
+    type: 'socket',
+    category: 'light',
+    label: 'Fiting Lampu',
+    labelEn: 'Bulb Socket',
+    hint: 'Dudukan lampu ulir. Seret lampu ke atasnya agar menempel. Lampu pin (Halogen/LED Indikator) tidak muat.',
+    hintEn: 'Holder for screw-base bulbs. Drag a bulb onto it to snap in. Pin bulbs (Halogen/Indicator LED) do not fit.',
+    spec: 'Ulir',
+    image: '/assets/socket.png',
+  },
+  ...BULB_CATALOG.map(
+    (bulbSpec): PaletteEntry => ({
+      id: `bulb:${bulbSpec.type}`,
+      type: 'bulb',
+      category: 'light',
+      label: bulbSpec.label,
+      labelEn: bulbSpec.labelEn,
+      hint: bulbSpec.traits,
+      hintEn: bulbSpec.traitsEn,
+      spec: `${bulbSpec.resistance} Ω · ${bulbSpec.maxPower} W`,
+      image: bulbSpec.image,
+      imageRotated: bulbSpec.imageRotated,
+      placement: { bulbType: bulbSpec.type },
+    })
+  ),
+];
 
 const CONTROL_ENTRIES: PaletteEntry[] = [
   {
