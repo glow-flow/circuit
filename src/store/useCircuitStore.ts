@@ -18,11 +18,17 @@ import {
 } from 'reactflow';
 import {
   CircuitElementData,
+  CircuitEnvironment,
   ComponentType,
   PlacementOptions,
   SimulationResult,
   WireConnection,
 } from '../types/circuit';
+import {
+  getSolarPanelVoltage,
+  getNextEnvironment,
+  SOLAR_PANEL_INTERNAL_RESISTANCE,
+} from '../physics/solarPanel';
 import { solveCircuitMNA } from '../physics/mnaSolver';
 import {
   computeEffectiveBatteryVoltage,
@@ -63,6 +69,9 @@ interface CircuitState {
   language: AppLanguage;
   customPresets: CustomCircuitPreset[];
   fitViewTrigger: number;
+  environment: CircuitEnvironment;
+  setEnvironment: (environment: CircuitEnvironment) => void;
+  cycleEnvironment: () => void;
   /** Transient UI toast (e.g. "wrong lamp base"); `id` changes on every notify so timers restart. */
   notification: { id: number; message: string } | null;
 
@@ -258,6 +267,25 @@ function recalculateCircuit(
       };
     }
 
+    if (node.data.type === 'solar-panel' || node.data.type === 'solar_panel') {
+      const env = node.data.environment ?? 'lab';
+      const outputVoltage = getSolarPanelVoltage(env);
+      const outputPower = Math.abs(branchCurrent * outputVoltage);
+
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          voltage: outputVoltage,
+          environment: env,
+          calculatedCurrent: branchCurrent,
+          calculatedVoltage: outputVoltage,
+          calculatedPower: outputPower,
+          isShortCircuit,
+        },
+      };
+    }
+
     if (
       node.data.type === 'battery' ||
       node.data.type === 'battery9v' ||
@@ -316,6 +344,36 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   customPresets: loadCustomPresetsFromStorage(),
   fitViewTrigger: 0,
   notification: null,
+  environment: 'lab',
+
+  setEnvironment: (environment: CircuitEnvironment) => {
+    const currentNodes = get().nodes;
+    const nextNodes = currentNodes.map((node) => {
+      if (node.data.type === 'solar-panel' || node.data.type === 'solar_panel') {
+        const outputVoltage = getSolarPanelVoltage(environment);
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            environment,
+            voltage: outputVoltage,
+          },
+        };
+      }
+      return node;
+    });
+    const { simulation, updatedNodes } = recalculateCircuit(nextNodes, get().edges);
+    set({
+      environment,
+      nodes: updatedNodes,
+      simulation,
+    });
+  },
+
+  cycleEnvironment: () => {
+    const nextEnv = getNextEnvironment(get().environment);
+    get().setEnvironment(nextEnv);
+  },
 
   notify: (message: string) => {
     set({ notification: { id: Date.now(), message } });
@@ -452,6 +510,20 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
           label: isId ? 'Wadah Baterai AA' : 'Dual AA Holder',
         };
         break;
+      case 'solar-panel':
+      case 'solar_panel': {
+        const env = get().environment;
+        const v = getSolarPanelVoltage(env);
+        defaultData = {
+          ...defaultData,
+          type: 'solar-panel',
+          voltage: v,
+          environment: env,
+          internalResistance: SOLAR_PANEL_INTERNAL_RESISTANCE,
+          label: isId ? 'Panel Surya' : 'Solar Panel',
+        };
+        break;
+      }
       case 'resistor':
         defaultData = {
           ...defaultData,

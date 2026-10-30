@@ -50,7 +50,7 @@ export interface PaletteEntry {
 }
 
 export const PALETTE_CATEGORIES: readonly PaletteCategory[] = [
-  { id: 'battery', label: 'Baterai', labelEn: 'Batteries' },
+  { id: 'battery', label: 'Sumber Energi', labelEn: 'Power Sources' },
   { id: 'light', label: 'Lampu', labelEn: 'Lights' },
   { id: 'control', label: 'Pengatur', labelEn: 'Control' },
   { id: 'measure', label: 'Ukur', labelEn: 'Measure' },
@@ -89,6 +89,17 @@ const BATTERY_ENTRIES: PaletteEntry[] = [
     hintEn: 'Holds 2 AA cells in series: 1.5 + 1.5 = 3 V. Drag a cell onto it.',
     spec: '3 V',
     image: '/assets/processed/battery-holder.png',
+  },
+  {
+    id: 'solar-panel',
+    type: 'solar-panel',
+    category: 'battery',
+    label: 'Panel Surya',
+    labelEn: 'Solar Panel',
+    hint: 'Mengubah cahaya matahari jadi listrik: 12V saat terik, 5V saat mendung, 0V di lab.',
+    hintEn: 'Converts sunlight into electricity: 12V sunny, 5V cloudy, 0V lab.',
+    spec: '0 - 12 V',
+    image: '/assets/solar-panel.png',
   },
 ];
 

@@ -2,7 +2,7 @@
  * Circuit Sandbox Type Definitions
  * 
  * Strict typing for electrical components, simulation state,
- * MNA equations, and React Flow node extensions.
+ * MNA equations, environmental modes, and React Flow node extensions.
  */
 
 import { BulbType } from '../constants/bulbCatalog';
@@ -11,6 +11,8 @@ export type ComponentType =
   | 'battery'
   | 'battery9v'
   | 'battery-holder'
+  | 'solar-panel'
+  | 'solar_panel'
   | 'resistor'
   | 'bulb'
   | 'switch'
@@ -23,6 +25,8 @@ export type ComponentType =
   | 'waypoint';
 
 export type BatteryChargeState = 'idle' | 'charging' | 'discharging';
+
+export type CircuitEnvironment = 'lab' | 'sunny' | 'cloudy';
 
 export interface ComponentPin {
   id: string; // e.g., 'pos', 'neg', 'p1', 'p2'
@@ -47,8 +51,8 @@ export interface CircuitElementData {
   label: string;
   // Electrical properties
   bulbType?: BulbType;         // For bulb carousel ('incandescent' | 'halogen' | 'edison' | 'cfl' | 'led_standard' | 'led_rgb' | 'led_green')
-  voltage?: number;            // For battery / battery9v / battery-holder (Volts)
-  internalResistance?: number; // Internal series resistance in Ohms (e.g., 2.0Ω for 9V battery)
+  voltage?: number;            // For battery / battery9v / battery-holder / solar-panel (Volts)
+  internalResistance?: number; // Internal series resistance in Ohms (e.g., 2.0Ω for 9V battery, 0.2Ω for solar panel)
   resistance?: number;         // For resistor, bulb, ammeter (Ohms)
   power?: number;              // Real-time or rated power for bulb (Watts)
   powerRating?: number;        // Max rated power for bulb (Watts)
@@ -63,6 +67,9 @@ export interface CircuitElementData {
   currentCharge?: number;      // State of Charge in percentage (0 - 100, default 100)
   capacity?: number;           // Battery capacity in milliampere-hours (mAh, e.g. 1000 for AA, 500 for 9V)
   chargeState?: BatteryChargeState; // Current dynamic charge state ('idle' | 'charging' | 'discharging')
+
+  // Environment state for environmental transducers (Solar Panel)
+  environment?: CircuitEnvironment;
   
   // Real-time calculated simulation results
   calculatedVoltage?: number;  // Voltage drop across component (V)

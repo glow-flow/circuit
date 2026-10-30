@@ -27,6 +27,10 @@ export interface TranslationDictionary {
     savedPresetsListTitle: string;
     resetTitle: string;
     statusShort: string;
+    environmentLab: string;
+    environmentSunny: string;
+    environmentCloudy: string;
+    environmentToggleTitle: string;
     statusStable: string;
     clearAll: string;
     clearTitle: string;
@@ -106,6 +110,15 @@ export interface TranslationDictionary {
       title: string;
       seriesCurrent: string;
     };
+    solarPanel: {
+      title: string;
+      sunnyStatus: string;
+      cloudyStatus: string;
+      labStatus: string;
+      voltage: string;
+      current: string;
+      power: string;
+    };
   };
   inspector: {
     title: string;
@@ -182,6 +195,10 @@ export const TRANSLATIONS: Record<AppLanguage, TranslationDictionary> = {
       savedPresetsListTitle: 'Preset Tersimpan di Browser:',
       resetTitle: 'Muat Ulang Rangkaian Awal',
       statusShort: 'KORSLETING! (>10A)',
+      environmentLab: 'Lab',
+      environmentSunny: 'Terik (12V)',
+      environmentCloudy: 'Mendung (5V)',
+      environmentToggleTitle: 'Ganti Lingkungan (Lab / Terik / Mendung)',
       statusStable: 'Rangkaian Aman',
       clearAll: 'Bersihkan',
       clearTitle: 'Hapus Semua Komponen di Kanvas',
@@ -262,6 +279,15 @@ export const TRANSLATIONS: Record<AppLanguage, TranslationDictionary> = {
         title: 'Amperemeter',
         seriesCurrent: 'Kuat Arus Seri (I)',
       },
+      solarPanel: {
+        title: 'Panel Surya',
+        sunnyStatus: '☀️ Terik (12V)',
+        cloudyStatus: '⛅ Mendung (5V)',
+        labStatus: '🔬 Lab / Gelap (0V)',
+        voltage: 'Tegangan:',
+        current: 'Kuat Arus:',
+        power: 'Daya (P):',
+      },
     },
     inspector: {
       title: 'Panel Info & Rumus IPA',
@@ -341,6 +367,10 @@ export const TRANSLATIONS: Record<AppLanguage, TranslationDictionary> = {
       savedPresetsListTitle: 'Saved in Browser Cache:',
       resetTitle: 'Reset Default Circuit',
       statusShort: 'SHORT CIRCUIT! (>10A)',
+      environmentLab: 'Lab',
+      environmentSunny: 'Sunny (12V)',
+      environmentCloudy: 'Cloudy (5V)',
+      environmentToggleTitle: 'Toggle Environment (Lab / Sunny / Cloudy)',
       statusStable: 'Circuit Stable',
       clearAll: 'Clear',
       clearTitle: 'Clear All Components',
@@ -420,6 +450,15 @@ export const TRANSLATIONS: Record<AppLanguage, TranslationDictionary> = {
       ammeter: {
         title: 'Ammeter',
         seriesCurrent: 'Series Current (I)',
+      },
+      solarPanel: {
+        title: 'Solar Panel',
+        sunnyStatus: '☀️ Sunny (12V)',
+        cloudyStatus: '⛅ Cloudy (5V)',
+        labStatus: '🔬 Lab / Dark (0V)',
+        voltage: 'Voltage:',
+        current: 'Current (I):',
+        power: 'Power (P):',
       },
     },
     inspector: {

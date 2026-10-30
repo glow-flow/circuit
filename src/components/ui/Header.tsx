@@ -10,6 +10,8 @@ import {
   X,
   FolderOpen,
   HelpCircle,
+  Sun,
+  CloudSun,
 } from 'lucide-react';
 import { useCircuitStore } from '../../store/useCircuitStore';
 import { TRANSLATIONS } from '../../i18n/translations';
@@ -26,6 +28,8 @@ export const Header: React.FC = () => {
   const saveCustomPreset = useCircuitStore((state) => state.saveCustomPreset);
   const loadCustomPreset = useCircuitStore((state) => state.loadCustomPreset);
   const deleteCustomPreset = useCircuitStore((state) => state.deleteCustomPreset);
+  const environment = useCircuitStore((state) => state.environment);
+  const cycleEnvironment = useCircuitStore((state) => state.cycleEnvironment);
 
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [presetNameInput, setPresetNameInput] = useState('');
@@ -137,6 +141,36 @@ export const Header: React.FC = () => {
 
         {/* Right Help Button, Language Toggle, Circuit Health & Clear */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* Environment / Weather Toggle Button */}
+          <button
+            type="button"
+            onClick={cycleEnvironment}
+            title={t.environmentToggleTitle}
+            aria-label={t.environmentToggleTitle}
+            className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[10px] sm:text-xs font-semibold transition-all active:scale-95 shrink-0 cursor-pointer ${
+              environment === 'sunny'
+                ? 'bg-amber-500/20 hover:bg-amber-500/30 border-amber-400/50 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.25)]'
+                : environment === 'cloudy'
+                ? 'bg-sky-500/20 hover:bg-sky-500/30 border-sky-400/50 text-sky-200 shadow-[0_0_12px_rgba(56,189,248,0.25)]'
+                : 'bg-void-850 hover:bg-void-800 border-white/10 text-slate-300 hover:text-white'
+            }`}
+          >
+            {environment === 'sunny' ? (
+              <Sun className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            ) : environment === 'cloudy' ? (
+              <CloudSun className="w-3.5 h-3.5 text-sky-300 shrink-0" />
+            ) : (
+              <Globe className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            )}
+            <span className="font-mono text-[10px] sm:text-[11px] font-bold">
+              {environment === 'sunny'
+                ? t.environmentSunny
+                : environment === 'cloudy'
+                ? t.environmentCloudy
+                : t.environmentLab}
+            </span>
+          </button>
+
           {/* Help / Interactive Spotlight Tour Button */}
           <button
             id="tour-btn-help"

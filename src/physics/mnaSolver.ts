@@ -28,6 +28,7 @@ import { CircuitElementData, WireConnection, SimulationResult } from '../types/c
 import { canBulbFitSocket, canBulbFitPinSocket, getBulbSpec } from '../constants/bulbCatalog';
 import { UnionFind } from './unionFind';
 import { computeEffectiveBatteryVoltage } from './batterySoC';
+import { getSolarPanelVoltage, SOLAR_PANEL_INTERNAL_RESISTANCE } from './solarPanel';
 
 export const SHORT_CIRCUIT_CURRENT_THRESHOLD = 10.0; // Amperes threshold for short-circuit trip
 const BATTERY_INTERNAL_RESISTANCE = 0.05; // 50mΩ internal resistance per cell to prevent singularity
@@ -60,6 +61,9 @@ export function isActiveVoltageSource(component: CircuitElementData): boolean {
     const cellCount = component.batteryCount ?? (component.hasBattery ? 2 : 0);
     return Boolean(component.hasBattery && cellCount > 0);
   }
+  if (component.type === 'solar-panel' || component.type === 'solar_panel') {
+    return true;
+  }
   return false;
 }
 
@@ -88,6 +92,8 @@ export function getVoltageSourceNominalVoltage(component: CircuitElementData): n
     if (!component.hasBattery) return 0;
     const cellCount = component.batteryCount ?? 2;
     baseVoltage = component.voltage ?? cellCount * 1.5;
+  } else if (component.type === 'solar-panel' || component.type === 'solar_panel') {
+    return component.voltage ?? getSolarPanelVoltage(component.environment ?? 'lab');
   } else {
     return 0;
   }
@@ -305,6 +311,8 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
         component.type === 'battery' ||
         component.type === 'battery9v' ||
         component.type === 'battery-holder' ||
+        component.type === 'solar-panel' ||
+        component.type === 'solar_panel' ||
         component.type === 'ground' ||
         component.type === 'waypoint'
       ) {
@@ -367,6 +375,8 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
         const cellCount = sourceComp.batteryCount ?? 2;
         seriesInternalResistance =
           sourceComp.internalResistance ?? BATTERY_INTERNAL_RESISTANCE * Math.max(1, cellCount);
+      } else if (sourceComp.type === 'solar-panel' || sourceComp.type === 'solar_panel') {
+        seriesInternalResistance = Math.max(0.01, sourceComp.internalResistance ?? SOLAR_PANEL_INTERNAL_RESISTANCE);
       } else if (sourceComp.internalResistance !== undefined) {
         seriesInternalResistance = Math.max(0.01, sourceComp.internalResistance);
       }
@@ -427,6 +437,8 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
         component.type === 'battery' ||
         component.type === 'battery9v' ||
         component.type === 'battery-holder' ||
+        component.type === 'solar-panel' ||
+        component.type === 'solar_panel' ||
         component.type === 'ground' ||
         component.type === 'waypoint'
       ) {
@@ -542,6 +554,8 @@ export function getComponentPinIdentifiers(component: CircuitElementData): strin
     case 'battery':
     case 'battery9v':
     case 'battery-holder':
+    case 'solar-panel':
+    case 'solar_panel':
       return [`${component.id}:pos`, `${component.id}:neg`];
     case 'resistor':
     case 'switch':

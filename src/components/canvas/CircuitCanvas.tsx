@@ -25,6 +25,7 @@ import { GroundNode } from './nodes/GroundNode';
 import { VoltmeterNode } from './nodes/VoltmeterNode';
 import { AmmeterNode } from './nodes/AmmeterNode';
 import { WaypointNode } from './nodes/WaypointNode';
+import { SolarPanelNode } from './nodes/SolarPanelNode';
 import { WireEdge } from './WireEdge';
 
 interface CircuitCanvasInnerProps {
@@ -45,6 +46,7 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
   const fitViewTrigger = useCircuitStore((state) => state.fitViewTrigger);
   const settleBulbAfterDrag = useCircuitStore((state) => state.settleBulbAfterDrag);
   const syncSnappedBulbPosition = useCircuitStore((state) => state.syncSnappedBulbPosition);
+  const environment = useCircuitStore((state) => state.environment);
 
   const [reactFlowInstance, setReactFlowInstance] = React.useState<ReactFlowInstance | null>(null);
 
@@ -72,6 +74,8 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
       voltmeter: VoltmeterNode,
       ammeter: AmmeterNode,
       waypoint: WaypointNode,
+      'solar-panel': SolarPanelNode,
+      'solar_panel': SolarPanelNode,
     }),
     []
   );
@@ -200,7 +204,27 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
   );
 
   return (
-    <div className="w-full h-full relative" ref={reactFlowWrapper}>
+    <div
+      className="w-full h-full relative overflow-hidden bg-void-950 transition-colors duration-500"
+      ref={reactFlowWrapper}
+    >
+      {/* Dynamic Nature Environment Background Layer */}
+      {environment !== 'lab' && (
+        <div
+          className="absolute inset-0 bg-cover bg-center transition-all duration-700 pointer-events-none z-0"
+          style={{
+            backgroundImage: `url(${
+              environment === 'sunny'
+                ? '/assets/nature-sunny.png'
+                : '/assets/nature-cloudy.png'
+            })`,
+          }}
+        >
+          {/* Transparent Dark Overlay for Neon Cable Contrast & Text Legibility */}
+          <div className="absolute inset-0 bg-black/40 backdrop-brightness-[0.88]" />
+        </div>
+      )}
+
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -238,13 +262,13 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
         snapToGrid
         snapGrid={[15, 15]}
         deleteKeyCode={['Backspace', 'Delete']}
-        className="bg-void-950"
+        className="bg-transparent relative z-10"
       >
         <Background
           variant={BackgroundVariant.Dots}
           gap={20}
           size={1.5}
-          color="#27272A"
+          color={environment === 'lab' ? '#27272A' : '#ffffff20'}
         />
         <Controls
           className="!bg-void-900 !border !border-white/10 !rounded-lg !overflow-hidden [&>button]:!bg-void-900 [&>button]:!border-b [&>button]:!border-white/10 [&>button]:!text-slate-300 hover:[&>button]:!bg-void-800"

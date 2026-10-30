@@ -521,6 +521,40 @@ export const Inspector: React.FC<InspectorProps> = ({
               </div>
             )}
 
+            {/* Solar Panel Controls */}
+            {(componentData.type === 'solar-panel' || componentData.type === 'solar_panel') && (
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-semibold text-slate-200">
+                    {language === 'id' ? 'Tegangan Fotovoltaik' : 'Photovoltaic Output'}
+                  </span>
+                  <span className="text-xs font-mono font-bold text-amber-400">
+                    {(componentData.voltage ?? 0).toFixed(1)} V
+                  </span>
+                </div>
+
+                <div className="p-3 rounded-xl bg-void-950/70 border border-white/5 space-y-2 text-xs">
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-400 font-sans text-[11px]">
+                      {language === 'id' ? 'Kondisi Cuaca:' : 'Environment:'}
+                    </span>
+                    <span className="font-mono font-bold text-slate-200">
+                      {useCircuitStore.getState().environment === 'sunny'
+                        ? '☀️ Terik (12V)'
+                        : useCircuitStore.getState().environment === 'cloudy'
+                        ? '⛅ Mendung (5V)'
+                        : '🔬 Lab / Gelap (0V)'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    {language === 'id'
+                      ? 'Tegangan panel surya ditentukan oleh lingkungan luar ruangan. Gunakan tombol cuaca di bilah atas untuk beralih antara Terik (12V), Mendung (5V), atau Lab (0V).'
+                      : 'Solar panel voltage is determined by outdoor weather. Use the environment switcher button in the top bar to toggle between Sunny (12V), Cloudy (5V), or Lab (0V).'}
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Resistor Controls */}
             {componentData.type === 'resistor' && (
               <div className="space-y-3">
