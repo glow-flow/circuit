@@ -425,8 +425,8 @@ export function createUltimatePowerGridPreset(
       data: {
         id: 'res_zone3',
         type: 'resistor',
-        resistance: 100,
-        label: isId ? 'LED Limiter (100Ω)' : 'LED Limiter (100Ω)',
+        resistance: 470,
+        label: isId ? 'LED Limiter (470Ω)' : 'LED Limiter (470Ω)',
       },
     },
     {
@@ -479,6 +479,7 @@ export function createUltimatePowerGridPreset(
         bulbType: 'led_green',
         resistance: 2000,
         powerRating: 0.5,
+        isBlown: false,
         label: isId ? 'LED Indikator (5mm Kaki)' : '5mm Indicator LED',
       },
     },

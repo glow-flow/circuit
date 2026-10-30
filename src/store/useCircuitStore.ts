@@ -402,7 +402,7 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     position: { x: number; y: number },
     options?: PlacementOptions
   ) => {
-    const componentId = `${type}_${Date.now()}`;
+    const componentId = `${type}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const isId = get().language === 'id';
     let defaultData: CircuitElementData = {
       id: componentId,

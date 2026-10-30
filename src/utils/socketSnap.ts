@@ -19,11 +19,11 @@ import { CircuitElementData } from '../types/circuit';
 export const BULB_NODE_SIZE = { width: 92, height: 112 } as const;
 /**
  * Rendered size (px) of a SocketNode (E27 Fiting Lampu). Must match SocketNode.tsx.
- * Preserves exact 546x808 PNG aspect ratio (0.676) at realistic scale relative to the bulb.
+ * Preserves exact 546x808 PNG aspect ratio (0.676) at calibrated scale to snugly hug the bulb base.
  */
-export const SOCKET_NODE_SIZE = { width: 44, height: 65 } as const;
+export const SOCKET_NODE_SIZE = { width: 38, height: 56 } as const;
 /** How deep (px) the bulb base sits inside the socket mouth when snapped. */
-const BULB_INSERT_DEPTH = 38;
+const BULB_INSERT_DEPTH = 44;
 /** Max distance (px) between a dropped bulb and a socket's snap point to attach. */
 export const SNAP_RADIUS = 90;
 /** Distance (px) a rejected bulb is pushed away from the socket it cannot fit. */
@@ -40,7 +40,7 @@ export const SOCKET_FRONT_LIP_CLIP_PATH =
 
 /**
  * Returns the vertical top offset (in px) for an installed bulb inside a SocketNode
- * so its glass-to-metal collar sits right at the socket's rim.
+ * so its glass-to-metal collar sits flush against the socket's front lip without floating gaps.
  * Time Complexity: O(1).
  *
  * @param bulbType - Type of bulb installed in the socket
@@ -49,15 +49,16 @@ export const SOCKET_FRONT_LIP_CLIP_PATH =
 export function getInstalledBulbTopOffset(bulbType?: BulbType): number {
   switch (bulbType) {
     case 'incandescent':
-      return -73;
+      return -66;
     case 'edison':
+      return -68;
     case 'led_standard':
     case 'led_rgb':
-      return -78;
+      return -68;
     case 'cfl':
-      return -72;
+      return -66;
     default:
-      return -75;
+      return -68;
   }
 }
 

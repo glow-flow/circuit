@@ -171,7 +171,7 @@ export const BULB_CATALOG: readonly BulbSpec[] = [
     traits: 'Hanya untuk indikator, arus sangat kecil.',
     traitsEn: 'Indicator diode only, operates at micro/milliampere current.',
     glowColor: 'rgba(52, 211, 153, 0.75)',
-    safeMaxVoltage: 6,
+    safeMaxVoltage: 8,
   },
 ] as const;
 

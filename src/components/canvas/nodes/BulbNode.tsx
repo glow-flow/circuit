@@ -105,7 +105,7 @@ export const BulbNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, se
           className="pointer-events-none absolute select-none"
           style={{
             left: '50%',
-            top: 42,
+            top: bulbSpec.type === 'led_green' ? 30 : 42,
             transform: 'translate(-50%, -50%)',
             zIndex: 14,
             width: 0,

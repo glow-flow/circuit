@@ -72,17 +72,19 @@ describe('Ultimate Power Grid (9V Smart Grid) Preset', () => {
     for (const socket of socketNodes) {
       const current = Math.abs(state.simulation.branchCurrents[socket.id] ?? 0);
       expect(current).toBeGreaterThan(0.0005);
+      expect(socket.data.isBlown).toBe(false);
     }
     for (const pinBulb of pinBulbNodes) {
       const current = Math.abs(state.simulation.branchCurrents[pinBulb.id] ?? 0);
       expect(current).toBeGreaterThan(0.0005);
+      expect(pinBulb.data.isBlown).toBe(false);
     }
 
-    // Verify resistors have exact 200Ω (Zone 1) and 100Ω (Zone 3) values
+    // Verify resistors have exact 200Ω (Zone 1) and 470Ω (Zone 3) values
     const resZone1 = state.nodes.find((n) => n.id === 'res_zone1');
     const resZone3 = state.nodes.find((n) => n.id === 'res_zone3');
     expect(resZone1?.data.resistance).toBe(200);
-    expect(resZone3?.data.resistance).toBe(100);
+    expect(resZone3?.data.resistance).toBe(470);
 
     // Verify all 4 switches are CLOSED (isOpen: false) by default
     const switchNodes = state.nodes.filter((n) => n.data.type === 'switch');
