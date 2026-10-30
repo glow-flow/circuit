@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { solveCircuitMNA, solveLinearSystem } from '../mnaSolver';
+import {
+  solveCircuitMNA,
+  solveLinearSystem,
+  getComponentEffectiveResistance,
+  getComponentPinIdentifiers,
+} from '../mnaSolver';
 import { UnionFind } from '../unionFind';
 import { CircuitElementData, WireConnection } from '../../types/circuit';
 import {
@@ -455,10 +460,15 @@ describe('Modified Nodal Analysis (MNA) Physics Engine', () => {
     };
     const bulbHalogen: CircuitElementData = {
       id: 'bulb_h',
-      type: 'bulb',
+      type: 'pin-socket',
       bulbType: 'halogen',
+      installedBulb: {
+        id: 'bulb_h',
+        bulbType: 'halogen',
+        resistance: 1500,
+      },
       resistance: 1500,
-      label: 'Lampu Halogen Kapsul Pin (1500Ω)',
+      label: 'Fiting Pin + Lampu Halogen (1500Ω)',
     };
 
     // Connect two 9V batteries in series: b9_1(-) -> ground, b9_1(+) -> b9_2(-), b9_2(+) -> bulb(p1) -> bulb(p2) -> b9_1(-)
@@ -497,6 +507,156 @@ describe('Modified Nodal Analysis (MNA) Physics Engine', () => {
     });
     expect(Math.abs(shortResult.branchCurrents['b9_1'])).toBeCloseTo(9.0 / 2.001, 2);
     expect(shortResult.isShortCircuit).toBe(false);
+  });
+
+  it('correctly models pin-socket: 1e9 when empty, 1500Ω when halogen installed', () => {
+    const emptyPinSocket: CircuitElementData = {
+      id: 'ps_empty',
+      type: 'pin-socket',
+      label: 'Fiting Pin Kosong',
+    };
+    expect(getComponentEffectiveResistance(emptyPinSocket)).toBe(1e9);
+
+    const loadedPinSocket: CircuitElementData = {
+      id: 'ps_loaded',
+      type: 'pin-socket',
+      installedBulb: {
+        id: 'b1',
+        bulbType: 'halogen',
+      },
+      label: 'Fiting Pin + Halogen',
+    };
+    expect(getComponentEffectiveResistance(loadedPinSocket)).toBe(1500);
+
+    const standaloneHalogen: CircuitElementData = {
+      id: 'b_halogen',
+      type: 'bulb',
+      bulbType: 'halogen',
+      label: 'Halogen Standalone',
+    };
+    expect(getComponentEffectiveResistance(standaloneHalogen)).toBe(1e9);
+
+    const standaloneScrew: CircuitElementData = {
+      id: 'b_screw',
+      type: 'bulb',
+      bulbType: 'incandescent',
+      label: 'Pijar Standalone',
+    };
+    expect(getComponentEffectiveResistance(standaloneScrew)).toBe(1e9);
+
+    const standaloneLedGreen: CircuitElementData = {
+      id: 'b_led_green',
+      type: 'bulb',
+      bulbType: 'led_green',
+      label: 'LED Indikator Standalone',
+    };
+    expect(getComponentEffectiveResistance(standaloneLedGreen)).toBe(5000);
+
+    expect(getComponentPinIdentifiers(emptyPinSocket)).toEqual(['ps_empty:p1', 'ps_empty:p2']);
+    expect(getComponentPinIdentifiers(standaloneHalogen)).toEqual([]);
+    expect(getComponentPinIdentifiers(standaloneScrew)).toEqual([]);
+    expect(getComponentPinIdentifiers(standaloneLedGreen)).toEqual(['b_led_green:p1', 'b_led_green:p2']);
+  });
+
+  it('conducts through pin-socket only when Halogen is installed and accurately calculates current, power, and overvoltage', () => {
+    const battery9v: CircuitElementData = {
+      id: 'bat_ps',
+      type: 'battery9v',
+      voltage: 9.0,
+      internalResistance: 2.0,
+      label: '9V Battery',
+    };
+
+    // 1. Empty pin-socket in circuit: open circuit, zero current
+    const emptyPinSocket: CircuitElementData = {
+      id: 'socket_empty',
+      type: 'pin-socket',
+      label: 'Ceramic Pin Socket (Empty)',
+    };
+
+    const emptyWires: WireConnection[] = [
+      { id: 'w1', source: 'bat_ps', sourceHandle: 'pos', target: 'socket_empty', targetHandle: 'p1' },
+      { id: 'w2', source: 'socket_empty', sourceHandle: 'p2', target: 'bat_ps', targetHandle: 'neg' },
+    ];
+
+    const emptyResult = solveCircuitMNA({
+      components: [battery9v, emptyPinSocket],
+      wires: emptyWires,
+    });
+
+    expect(Math.abs(emptyResult.branchCurrents['socket_empty'] ?? 0)).toBeLessThan(1e-6);
+    expect(emptyResult.isShortCircuit).toBe(false);
+
+    // 2. Pin-socket with Halogen installed: conducts with R = 1500Ω
+    const halogenSpec = getBulbSpec('halogen');
+    const loadedPinSocket: CircuitElementData = {
+      id: 'socket_halogen',
+      type: 'pin-socket',
+      bulbType: 'halogen',
+      resistance: halogenSpec.resistance,
+      installedBulb: {
+        id: 'bulb_hal_item',
+        bulbType: 'halogen',
+        resistance: halogenSpec.resistance,
+      },
+      label: 'Ceramic Socket + Halogen',
+    };
+
+    const loadedWires: WireConnection[] = [
+      { id: 'lw1', source: 'bat_ps', sourceHandle: 'pos', target: 'socket_halogen', targetHandle: 'p1' },
+      { id: 'lw2', source: 'socket_halogen', sourceHandle: 'p2', target: 'bat_ps', targetHandle: 'neg' },
+    ];
+
+    const loadedResult = solveCircuitMNA({
+      components: [battery9v, loadedPinSocket],
+      wires: loadedWires,
+    });
+
+    // Expected current: 9.0 / (1500 + 2.0) = 9.0 / 1502.0 ≈ 0.005992 A
+    const expectedCurrent = 9.0 / (1500.0 + 2.0);
+    const actualCurrent = Math.abs(loadedResult.branchCurrents['socket_halogen']);
+    expect(actualCurrent).toBeCloseTo(expectedCurrent, 5);
+
+    // Current is also propagated to installed bulb id
+    expect(Math.abs(loadedResult.branchCurrents['bulb_hal_item'])).toBeCloseTo(actualCurrent, 5);
+
+    // Photometrics verification
+    const photometrics = computeBulbPhotometrics(actualCurrent, halogenSpec.resistance, halogenSpec);
+    expect(photometrics.powerWatts).toBeCloseTo(actualCurrent * actualCurrent * halogenSpec.resistance, 5);
+    expect(photometrics.voltageDrop).toBeCloseTo(actualCurrent * halogenSpec.resistance, 3);
+    expect(photometrics.brightness).toBeGreaterThan(0.4);
+    expect(photometrics.isOverloaded).toBe(false);
+    expect(photometrics.heatLevel).toBe('hot');
+
+    // 3. Overvoltage / Overload condition: Halogen has safeMaxVoltage = 24V
+    // Exceeding 24V (e.g. 28V across bulb) triggers isOverloaded and overheat state
+    const overvoltageCurrent = 28.0 / halogenSpec.resistance; // V = 28V > 24V
+    const overvoltagePhoto = computeBulbPhotometrics(overvoltageCurrent, halogenSpec.resistance, halogenSpec);
+    expect(overvoltagePhoto.isOverloaded).toBe(true);
+    expect(overvoltagePhoto.heatLevel).toBe('overheat');
+
+    // 4. Incompatible bulb in pin-socket (e.g. CFL in pin-socket): behaves as open circuit
+    const incompatiblePinSocket: CircuitElementData = {
+      id: 'socket_cfl_in_pin',
+      type: 'pin-socket',
+      bulbType: 'cfl',
+      installedBulb: {
+        id: 'bulb_cfl_in_pin',
+        bulbType: 'cfl',
+      },
+      label: 'Incompatible Socket',
+    };
+
+    const incompatibleWires: WireConnection[] = [
+      { id: 'iw1', source: 'bat_ps', sourceHandle: 'pos', target: 'socket_cfl_in_pin', targetHandle: 'p1' },
+      { id: 'iw2', source: 'socket_cfl_in_pin', sourceHandle: 'p2', target: 'bat_ps', targetHandle: 'neg' },
+    ];
+
+    const incompatibleResult = solveCircuitMNA({
+      components: [battery9v, incompatiblePinSocket],
+      wires: incompatibleWires,
+    });
+    expect(Math.abs(incompatibleResult.branchCurrents['socket_cfl_in_pin'] ?? 0)).toBeLessThan(1e-6);
   });
 });
 

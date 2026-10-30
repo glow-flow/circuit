@@ -50,7 +50,7 @@ export const BulbNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, se
 
   const isIndonesian = language === 'id';
   const bulbSpec = getBulbSpec(data.bulbType);
-  const isPinBulb = bulbSpec.baseType === 'pin';
+  const isDirectWired = bulbSpec.type === 'led_green';
   const terminalLayout = getBulbTerminalLayout(bulbSpec.type);
 
   const resistance = data.resistance ?? bulbSpec.resistance;
@@ -59,12 +59,12 @@ export const BulbNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, se
   const displayLabel = isIndonesian ? bulbSpec.label : bulbSpec.labelEn;
   const displayTraits = isIndonesian ? bulbSpec.traits : bulbSpec.traitsEn;
 
-  // Active current & photometrics for direct-wired pin bulbs
-  const current = isPinBulb
+  // Active current & photometrics for direct-wired indicator LED
+  const current = isDirectWired
     ? Math.abs(simulation.branchCurrents[id] ?? data.calculatedCurrent ?? 0)
     : 0;
 
-  const photometrics = isPinBulb
+  const photometrics = isDirectWired
     ? computeBulbPhotometrics(current, resistance, bulbSpec)
     : { powerWatts: 0, voltageDrop: 0, brightness: 0, heatLevel: 'cold' as const, isOverloaded: false };
 
@@ -74,7 +74,7 @@ export const BulbNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, se
   // Pure optical filter: NO drop-shadow on the image itself to prevent bounding box clipping!
   const imageFilter = effectiveIsBlown
     ? 'grayscale(100%) brightness(0.42) contrast(1.15)'
-    : isPinBulb && brightness > 0.01
+    : isDirectWired && brightness > 0.01
     ? `brightness(${0.96 + brightness * 0.42}) saturate(${1.0 + brightness * 0.35})`
     : 'saturate(0.48) brightness(0.78) contrast(1.04)';
 
@@ -98,9 +98,9 @@ export const BulbNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, se
     >
       {/* 
         NATURAL MULTI-TIER GLOW (zIndex: 14):
-        Rendered for active pin-base bulbs when energized. Zero rectangular boundary clipping.
+        Rendered for active direct-wired indicator LED when energized. Zero rectangular boundary clipping.
       */}
-      {isPinBulb && !effectiveIsBlown && brightness > 0.01 && (
+      {isDirectWired && !effectiveIsBlown && brightness > 0.01 && (
         <div
           className="pointer-events-none absolute select-none"
           style={{
@@ -156,7 +156,7 @@ export const BulbNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, se
         className={`relative flex h-full w-full items-center justify-center rounded-lg outline outline-1 outline-offset-2 transition-all duration-150 ${
           selected
             ? 'outline-cyan-300 shadow-md'
-            : isPinBulb
+            : isDirectWired
             ? 'outline-transparent group-hover:outline-cyan-400/80'
             : 'outline-transparent'
         }`}
@@ -185,10 +185,10 @@ export const BulbNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, se
 
       {/* 
         ELECTRICAL HANDLES:
-        - Pin-base bulbs ('halogen', 'led_green') HAVE 2 physical pin handles at the bottom.
-        - Screw-base bulbs have NO handles (must be snapped into SocketNode).
+        - Only 'led_green' acts as a loose DIP component with 2 physical pin handles at the bottom.
+        - Standalone screw-base bulbs and halogen have ZERO handles (they are passive inventory items).
       */}
-      {isPinBulb && (
+      {isDirectWired && (
         <>
           <Handle
             type="source"
@@ -218,11 +218,11 @@ export const BulbNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, se
                 {displayLabel} <span className="font-mono text-cyan-300">({resistance}Ω)</span>
               </div>
               <div className="truncate text-[10px] text-slate-400" title={displayTraits}>
-                {bulbSpec.category} • {isPinBulb ? (isIndonesian ? 'Kaki Pin Langsung' : 'Direct Pin Base') : (isIndonesian ? 'Ulir E27' : 'Screw E27')}
+                {bulbSpec.category} • {isDirectWired ? (isIndonesian ? 'Kaki Pin Langsung' : 'Direct Pin Base') : bulbSpec.type === 'halogen' ? (isIndonesian ? 'Pin Kapsul (Butuh Fiting Pin)' : 'Pin Capsule (Needs Pin Socket)') : (isIndonesian ? 'Ulir E27 (Butuh Fiting)' : 'Screw E27 (Needs Socket)')}
               </div>
             </div>
 
-            {isPinBulb && (
+            {isDirectWired && (
               heatLevel === 'hot' || heatLevel === 'warm' ? (
                 <span
                   className={`flex shrink-0 items-center gap-0.5 rounded border px-1.5 py-0.5 font-mono text-[9px] ${
@@ -243,7 +243,7 @@ export const BulbNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, se
             )}
           </div>
 
-          {isPinBulb ? (
+          {isDirectWired ? (
             <div className="grid grid-cols-2 gap-1 rounded-lg border border-white/5 bg-void-950/85 p-2 font-mono text-[10px]">
               <div>
                 <span className="text-slate-500">{isIndonesian ? 'Arus:' : 'Current:'} </span>
@@ -267,7 +267,11 @@ export const BulbNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, se
               <div className="flex items-center gap-1.5 text-slate-400 text-[10px]">
                 <Info className="h-3 w-3 text-cyan-400 shrink-0" />
                 <span>
-                  {isIndonesian
+                  {bulbSpec.type === 'halogen'
+                    ? isIndonesian
+                      ? 'Lampu Halogen: Pasang ke fiting keramik (Pin Socket) untuk mengalirkan arus.'
+                      : 'Halogen bulb: Install into a ceramic pin socket to conduct electrical current.'
+                    : isIndonesian
                     ? 'Lampu ulir E27: Pasang ke fiting lampu (Socket) untuk mengalirkan arus.'
                     : 'E27 screw bulb: Install into a lamp socket to conduct electrical current.'}
                 </span>

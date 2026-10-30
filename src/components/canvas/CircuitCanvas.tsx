@@ -20,6 +20,7 @@ import { ResistorNode } from './nodes/ResistorNode';
 import { BulbNode } from './nodes/BulbNode';
 import { SwitchNode } from './nodes/SwitchNode';
 import { SocketNode } from './nodes/SocketNode';
+import { PinSocketNode } from './nodes/PinSocketNode';
 import { GroundNode } from './nodes/GroundNode';
 import { VoltmeterNode } from './nodes/VoltmeterNode';
 import { AmmeterNode } from './nodes/AmmeterNode';
@@ -65,6 +66,8 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
       bulb: BulbNode,
       switch: SwitchNode,
       socket: SocketNode,
+      'pin-socket': PinSocketNode,
+      'socket-pin': PinSocketNode,
       ground: GroundNode,
       voltmeter: VoltmeterNode,
       ammeter: AmmeterNode,
@@ -128,12 +131,15 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
   );
 
   /**
-   * Keeps a bulb that is screwed into a socket moving together with that socket.
+   * Keeps a bulb that is snapped into a socket moving together with that socket.
    * Time Complexity: O(N) per drag tick.
    */
   const onNodeDrag = useCallback(
     (_event: React.MouseEvent, draggedNode: Node<CircuitElementData>) => {
-      if (draggedNode.data?.type === 'socket' && draggedNode.data.bulbId) {
+      if (
+        (draggedNode.data?.type === 'socket' || draggedNode.data?.type === 'pin-socket') &&
+        draggedNode.data.bulbId
+      ) {
         syncSnappedBulbPosition(draggedNode.id, draggedNode.position);
       }
     },

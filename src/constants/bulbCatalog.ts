@@ -117,7 +117,7 @@ export const BULB_CATALOG: readonly BulbSpec[] = [
     category: 'Neon U-Shape',
     baseType: 'screw',
     image: '/assets/bulb-cfl.png',
-    imageRotated: true,
+    imageRotated: false,
     label: 'Lampu Neon (CFL)',
     labelEn: 'Neon Tube (CFL)',
     resistance: 3000,
@@ -263,12 +263,30 @@ export function computeBulbPhotometrics(
 }
 
 /**
- * Checks whether a bulb can be screwed into a standard socket.
- * Time Complexity: O(1)
+ * Checks whether a bulb can be screwed into a standard E27 socket.
+ * Only bulbs with an E27 screw base (`baseType === 'screw'`) are accepted.
+ * Returns true ONLY for `baseType === 'screw'`.
+ * Time Complexity: O(1) via hash map lookup.
  *
- * @param bulbType - Bulb model being mounted (undefined falls back to incandescent)
- * @returns true when the bulb base matches the socket's accepted base
+ * @param bulbType - Bulb model identifier (undefined falls back to incandescent)
+ * @returns true ONLY when the bulb base type is 'screw'
  */
 export function canBulbFitSocket(bulbType?: BulbType | string): boolean {
   return getBulbSpec(bulbType).baseType === SOCKET_ACCEPTED_BASE;
+}
+
+/**
+ * Checks whether a bulb can fit into a ceramic bi-pin socket (G4/G9).
+ * Specifically designed for bi-pin capsule bulbs ('halogen').
+ * Discrete indicator LEDs (e.g. 'led_green') are direct-wired and do not mount into ceramic sockets.
+ * Returns true ONLY for `bulbType === 'halogen'` (or pin bulbs designed for the ceramic bi-pin socket).
+ * Time Complexity: O(1).
+ *
+ * @param bulbType - Bulb model identifier being mounted
+ * @returns true ONLY when the bulb is compatible with ceramic pin sockets ('halogen')
+ */
+export function canBulbFitPinSocket(bulbType?: BulbType | string): boolean {
+  if (!bulbType) return false;
+  const spec = getBulbSpec(bulbType);
+  return spec.type === 'halogen' && spec.baseType === 'pin';
 }

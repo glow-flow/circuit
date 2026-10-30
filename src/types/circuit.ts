@@ -18,6 +18,8 @@ export type ComponentType =
   | 'voltmeter'
   | 'ammeter'
   | 'socket'
+  | 'pin-socket'
+  | 'socket-pin'
   | 'waypoint';
 
 export interface ComponentPin {

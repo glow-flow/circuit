@@ -6,7 +6,6 @@
  */
 
 import { Node, Edge } from 'reactflow';
-import { canBulbFitSocket } from '../constants/bulbCatalog';
 import { CircuitElementData } from '../types/circuit';
 
 export interface CustomCircuitPreset {
@@ -46,9 +45,28 @@ export function migrateWiredBulbsToSockets(
   return nodes.map((node) => {
     if (node.data?.type === 'bulb' && wiredNodeIds.has(node.id)) {
       const bulbType = node.data.bulbType ?? 'incandescent';
-      // Pin-base bulbs (halogen capsule, indicator LED) connect directly via pins and do NOT use sockets!
-      if (!canBulbFitSocket(bulbType)) {
+      // Loose indicator LED ('led_green') connects directly via pins and does NOT use sockets!
+      if (bulbType === 'led_green') {
         return node;
+      }
+      if (bulbType === 'halogen') {
+        return {
+          ...node,
+          type: 'pin-socket',
+          data: {
+            ...node.data,
+            type: 'pin-socket',
+            bulbId: node.id,
+            installedBulb: {
+              id: node.id,
+              bulbType,
+              resistance: node.data.resistance,
+              powerRating: node.data.powerRating,
+              isBlown: node.data.isBlown,
+              label: node.data.label,
+            },
+          },
+        };
       }
       return {
         ...node,
@@ -341,15 +359,24 @@ export function createUltimatePowerGridPreset(
     },
     {
       id: 'bulb_halogen',
-      type: 'bulb',
+      type: 'pin-socket',
       position: { x: 1200, y: 200 },
       data: {
         id: 'bulb_halogen',
-        type: 'bulb',
+        type: 'pin-socket',
         bulbType: 'halogen',
+        bulbId: 'bulb_halogen',
+        installedBulb: {
+          id: 'bulb_halogen',
+          bulbType: 'halogen',
+          resistance: 1500,
+          powerRating: 50,
+          isBlown: false,
+          label: isId ? 'Lampu Halogen' : 'Halogen Bulb',
+        },
         resistance: 1500,
         powerRating: 50,
-        label: isId ? 'Lampu Halogen (Kapsul Pin)' : 'Halogen Capsule Bulb',
+        label: isId ? 'Fiting Pin + Lampu Halogen' : 'Pin Socket + Halogen Bulb',
       },
     },
 

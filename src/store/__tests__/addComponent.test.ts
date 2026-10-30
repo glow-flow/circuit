@@ -61,23 +61,33 @@ describe('Ultimate Power Grid (9V Smart Grid) Preset', () => {
       ['cfl', 'edison', 'incandescent', 'led_rgb', 'led_standard'].sort()
     );
 
-    const pinBulbNodes = state.nodes.filter(
+    const pinSocketNodes = state.nodes.filter(
+      (n) => n.data.type === 'pin-socket' && Boolean(n.data.installedBulb)
+    );
+    expect(pinSocketNodes).toHaveLength(1);
+    expect((pinSocketNodes[0].data.installedBulb as any)?.bulbType).toBe('halogen');
+
+    const directBulbNodes = state.nodes.filter(
       (n) => n.data.type === 'bulb'
     );
-    expect(pinBulbNodes).toHaveLength(2);
-    const pinBulbTypes = pinBulbNodes.map((n) => n.data.bulbType).sort();
-    expect(pinBulbTypes).toEqual(['halogen', 'led_green'].sort());
+    expect(directBulbNodes).toHaveLength(1);
+    expect(directBulbNodes[0].data.bulbType).toBe('led_green');
 
-    // All 7 bulbs (5 sockets + 2 pin bulbs) carry active electrical current
+    // All 7 bulbs (5 screw sockets + 1 pin socket + 1 direct indicator LED) carry active electrical current
     for (const socket of socketNodes) {
       const current = Math.abs(state.simulation.branchCurrents[socket.id] ?? 0);
       expect(current).toBeGreaterThan(0.0005);
       expect(socket.data.isBlown).toBe(false);
     }
-    for (const pinBulb of pinBulbNodes) {
-      const current = Math.abs(state.simulation.branchCurrents[pinBulb.id] ?? 0);
+    for (const pinSocket of pinSocketNodes) {
+      const current = Math.abs(state.simulation.branchCurrents[pinSocket.id] ?? 0);
       expect(current).toBeGreaterThan(0.0005);
-      expect(pinBulb.data.isBlown).toBe(false);
+      expect(pinSocket.data.isBlown).toBe(false);
+    }
+    for (const directBulb of directBulbNodes) {
+      const current = Math.abs(state.simulation.branchCurrents[directBulb.id] ?? 0);
+      expect(current).toBeGreaterThan(0.0005);
+      expect(directBulb.data.isBlown).toBe(false);
     }
 
     // Verify resistors have exact 200Ω (Zone 1) and 470Ω (Zone 3) values

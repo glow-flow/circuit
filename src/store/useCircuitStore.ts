@@ -27,6 +27,7 @@ import { solveCircuitMNA } from '../physics/mnaSolver';
 import {
   BulbType,
   canBulbFitSocket,
+  canBulbFitPinSocket,
   computeBulbPhotometrics,
   getBulbSpec,
 } from '../constants/bulbCatalog';
@@ -129,21 +130,21 @@ function recalculateCircuit(
   nodes: Node<CircuitElementData>[],
   edges: Edge[]
 ): { simulation: SimulationResult; updatedNodes: Node<CircuitElementData>[] } {
-  // Only detached screw-base bulbs cannot connect wires directly.
-  // Pin-base bulbs (halogen, led_green) ARE active circuit components with pin handles!
-  const standaloneScrewBulbIds = new Set(
+  // Detached screw-base bulbs and detached halogen cannot connect wires directly.
+  // Loose indicator LED ('led_green') is the only standalone bulb that has active pin handles.
+  const standalonePassiveBulbIds = new Set(
     nodes
       .filter(
         (node) =>
           node.data.type === 'bulb' &&
-          getBulbSpec(node.data.bulbType).baseType === 'screw'
+          node.data.bulbType !== 'led_green'
       )
       .map((node) => node.id)
   );
   const validEdges = edges.filter(
     (edge) =>
-      !standaloneScrewBulbIds.has(edge.source) &&
-      !standaloneScrewBulbIds.has(edge.target)
+      !standalonePassiveBulbIds.has(edge.source) &&
+      !standalonePassiveBulbIds.has(edge.target)
   );
 
   const components: CircuitElementData[] = nodes.map((node) => node.data);
@@ -162,7 +163,7 @@ function recalculateCircuit(
     const branchCurrent = simulation.branchCurrents[node.id] ?? 0;
     const isShortCircuit = simulation.shortCircuitBranches.includes(node.id);
 
-    if (node.data.type === 'socket') {
+    if (node.data.type === 'socket' || node.data.type === 'pin-socket' || node.data.type === 'socket-pin') {
       const installedBulb = node.data.installedBulb;
       if (installedBulb) {
         const bulbType =
@@ -232,8 +233,8 @@ function recalculateCircuit(
       const spec = getBulbSpec(node.data.bulbType);
       const effectiveResistance = node.data.resistance ?? spec.resistance;
 
-      // Pin-base bulbs ('halogen', 'led_green') conduct electricity directly via their terminal pins
-      if (spec.baseType === 'pin') {
+      // Only standalone indicator LED ('led_green') conducts electricity directly via its terminal pins
+      if (node.data.bulbType === 'led_green') {
         const { powerWatts, voltageDrop, isOverloaded } = computeBulbPhotometrics(
           branchCurrent,
           effectiveResistance,
@@ -262,7 +263,7 @@ function recalculateCircuit(
         };
       }
 
-      // Standalone screw-base bulb is purely an inventory item and NEVER conducts current without socket
+      // Standalone screw-base bulbs and standalone halogen are purely inventory items and NEVER conduct current without socket
       return {
         ...node,
         data: {
@@ -353,26 +354,36 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     const targetNode = currentNodes.find((n) => n.id === connection.target);
     const isId = get().language === 'id';
 
-    // Screw-base bulbs CANNOT be wired directly (must be snapped into an E27 SocketNode).
-    // Pin-base bulbs (halogen, led_green) HAVE physical pin handles and CAN be wired directly!
-    const sourceSpec =
-      sourceNode?.data.type === 'bulb' ? getBulbSpec(sourceNode.data.bulbType) : null;
-    const targetSpec =
-      targetNode?.data.type === 'bulb' ? getBulbSpec(targetNode.data.bulbType) : null;
+    // Screw-base bulbs and halogen CANNOT be wired directly (must be snapped into their respective sockets).
+    // Only loose indicator LED ('led_green') has active pin handles and can be wired directly!
+    const sourceIsPassive =
+      sourceNode?.data.type === 'bulb' && sourceNode.data.bulbType !== 'led_green';
+    const targetIsPassive =
+      targetNode?.data.type === 'bulb' && targetNode.data.bulbType !== 'led_green';
 
-    if (sourceSpec && sourceSpec.baseType === 'screw') {
+    if (sourceIsPassive) {
+      const isHalogen = sourceNode?.data.bulbType === 'halogen';
       get().notify(
-        isId
-          ? 'Lampu ulir (E27) harus dipasang ke fiting lampu (Socket) terlebih dahulu!'
-          : 'Screw-base bulbs (E27) must be installed into a lamp socket first!'
+        isHalogen
+          ? (isId
+              ? 'Lampu Halogen harus dipasang ke fiting pin keramik terlebih dahulu!'
+              : 'Halogen bulbs must be installed into a ceramic pin socket first!')
+          : (isId
+              ? 'Lampu ulir (E27) harus dipasang ke fiting lampu (Socket) terlebih dahulu!'
+              : 'Screw-base bulbs (E27) must be installed into a lamp socket first!')
       );
       return;
     }
-    if (targetSpec && targetSpec.baseType === 'screw') {
+    if (targetIsPassive) {
+      const isHalogen = targetNode?.data.bulbType === 'halogen';
       get().notify(
-        isId
-          ? 'Lampu ulir (E27) harus dipasang ke fiting lampu (Socket) terlebih dahulu!'
-          : 'Screw-base bulbs (E27) must be installed into a lamp socket first!'
+        isHalogen
+          ? (isId
+              ? 'Lampu Halogen harus dipasang ke fiting pin keramik terlebih dahulu!'
+              : 'Halogen bulbs must be installed into a ceramic pin socket first!')
+          : (isId
+              ? 'Lampu ulir (E27) harus dipasang ke fiting lampu (Socket) terlebih dahulu!'
+              : 'Screw-base bulbs (E27) must be installed into a lamp socket first!')
       );
       return;
     }
@@ -485,6 +496,12 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
           label: isId ? 'Fiting Lampu (Ulir)' : 'Bulb Socket (Screw)',
         };
         break;
+      case 'pin-socket':
+        defaultData = {
+          ...defaultData,
+          label: isId ? 'Fiting Keramik Putih' : 'Ceramic Pin Socket',
+        };
+        break;
     }
 
     const newNode: Node<CircuitElementData> = {
@@ -542,6 +559,35 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       if (!canBulbFitSocket(nextSpec.type)) {
         get().detachBulbFromSocket(targetNode.id);
         get().notify(SOCKET_NOTICES.detachedByType[isId ? 'id' : 'en']);
+        return;
+      }
+      if (targetNode.data.installedBulb) {
+        const existingBulb =
+          typeof targetNode.data.installedBulb === 'object'
+            ? targetNode.data.installedBulb
+            : { id: `bulb_${Date.now()}` };
+        get().updateComponentData(targetNode.id, {
+          installedBulb: {
+            ...existingBulb,
+            bulbType: nextSpec.type,
+            resistance: nextSpec.resistance,
+            powerRating: nextSpec.maxPower,
+            isBlown: false,
+            label: isId ? nextSpec.label : nextSpec.labelEn,
+          },
+        });
+      }
+      return;
+    }
+
+    if (targetNode.data.type === 'pin-socket') {
+      if (!canBulbFitPinSocket(nextSpec.type)) {
+        get().detachBulbFromSocket(targetNode.id);
+        get().notify(
+          isId
+            ? 'Lampu dilepas dari fiting keramik karena bukan tipe pin (Halogen).'
+            : 'Bulb detached from ceramic socket because it is not a pin-base bulb (Halogen).'
+        );
         return;
       }
       if (targetNode.data.installedBulb) {
@@ -647,32 +693,56 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       if (!bulbNode) return;
       const isId = get().language === 'id';
 
-      // Find nearest free socket within SNAP_RADIUS
+      // Find nearest free socket (supports both 'socket' and 'pin-socket') within SNAP_RADIUS
       const targetSocket = findNearestFreeSocket(bulbNode, currentNodes);
       if (!targetSocket) return;
 
-      if (!canBulbFitSocket(bulbNode.data.bulbType)) {
-        // Reject: push the bulb to the side so it does not sit on top of the socket
-        set({
-          nodes: currentNodes.map((n) =>
-            n.id === bulbId
-              ? {
-                  ...n,
-                  position: {
-                    x: targetSocket.position.x + REJECT_PUSH_DISTANCE,
-                    y: targetSocket.position.y,
-                  },
-                }
-              : n
-          ),
-        });
-        get().notify(SOCKET_NOTICES.screwOnly[isId ? 'id' : 'en']);
-        return;
+      const isPinSocket = targetSocket.data.type === 'pin-socket';
+      const bulbType = bulbNode.data.bulbType ?? 'incandescent';
+
+      if (isPinSocket) {
+        // Pin socket only allows halogen (or compatible pin bulb)
+        if (!canBulbFitPinSocket(bulbType)) {
+          set({
+            nodes: currentNodes.map((n) =>
+              n.id === bulbId
+                ? {
+                    ...n,
+                    position: {
+                      x: targetSocket.position.x + REJECT_PUSH_DISTANCE,
+                      y: targetSocket.position.y,
+                    },
+                  }
+                : n
+            ),
+          });
+          get().notify(SOCKET_NOTICES.pinOnly[isId ? 'id' : 'en']);
+          return;
+        }
+      } else {
+        // Standard E27 socket only allows screw-base bulbs
+        if (!canBulbFitSocket(bulbType)) {
+          set({
+            nodes: currentNodes.map((n) =>
+              n.id === bulbId
+                ? {
+                    ...n,
+                    position: {
+                      x: targetSocket.position.x + REJECT_PUSH_DISTANCE,
+                      y: targetSocket.position.y,
+                    },
+                  }
+                : n
+            ),
+          });
+          get().notify(SOCKET_NOTICES.screwOnly[isId ? 'id' : 'en']);
+          return;
+        }
       }
 
       const installedBulb = {
         id: bulbId,
-        bulbType: bulbNode.data.bulbType ?? 'incandescent',
+        bulbType,
         resistance: bulbNode.data.resistance,
         powerRating: bulbNode.data.powerRating,
         isBlown: bulbNode.data.isBlown,
@@ -711,8 +781,8 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   },
 
   /**
-   * Unscrews a bulb from its socket:
-   * - Clears installedBulb from SocketNode (socket becomes open circuit).
+   * Detaches a bulb from its socket (E27 socket or ceramic pin socket):
+   * - Clears installedBulb from socket node (socket becomes open circuit).
    * - Restores the bulb as a separate standalone node on the canvas (no handles, purely inventory item).
    * Time Complexity: O(N + E).
    *
@@ -726,11 +796,12 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       // Find socket holding this bulb or socket with this id
       const targetSocket = currentNodes.find(
         (n) =>
-          n.id === identifier ||
-          n.data.bulbId === identifier ||
-          (n.data.installedBulb &&
-            typeof n.data.installedBulb === 'object' &&
-            n.data.installedBulb.id === identifier)
+          (n.data.type === 'socket' || n.data.type === 'pin-socket') &&
+          (n.id === identifier ||
+            n.data.bulbId === identifier ||
+            (n.data.installedBulb &&
+              typeof n.data.installedBulb === 'object' &&
+              n.data.installedBulb.id === identifier))
       );
 
       if (!targetSocket || !targetSocket.data.installedBulb) {

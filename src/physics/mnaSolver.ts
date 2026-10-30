@@ -25,7 +25,7 @@
  */
 
 import { CircuitElementData, WireConnection, SimulationResult } from '../types/circuit';
-import { canBulbFitSocket, getBulbSpec } from '../constants/bulbCatalog';
+import { canBulbFitSocket, canBulbFitPinSocket, getBulbSpec } from '../constants/bulbCatalog';
 import { UnionFind } from './unionFind';
 
 export const SHORT_CIRCUIT_CURRENT_THRESHOLD = 10.0; // Amperes threshold for short-circuit trip
@@ -439,7 +439,12 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
       branchCurrentMap[component.id] = branchCurrent;
 
       // If socket has installed bulb, propagate current to the bulb's id as well
-      if (component.type === 'socket' && component.installedBulb) {
+      if (
+        (component.type === 'socket' ||
+          component.type === 'pin-socket' ||
+          component.type === 'socket-pin') &&
+        component.installedBulb
+      ) {
         const installedBulbId =
           typeof component.installedBulb === 'object'
             ? component.installedBulb.id
@@ -535,14 +540,15 @@ export function getComponentPinIdentifiers(component: CircuitElementData): strin
     case 'ammeter':
     case 'waypoint':
     case 'socket':
+    case 'pin-socket':
+    case 'socket-pin':
       return [`${component.id}:p1`, `${component.id}:p2`];
     case 'bulb': {
-      // Pin-base bulbs (halogen, led_green) have direct physical contact pins
-      const spec = getBulbSpec(component.bulbType);
-      if (spec.baseType === 'pin') {
+      // Pin-base bulbs: only led_green has standalone direct physical contact pins
+      if (component.bulbType === 'led_green') {
         return [`${component.id}:p1`, `${component.id}:p2`];
       }
-      // Screw-base bulbs have no direct handles (must be snapped into a SocketNode)
+      // Detached screw-base bulbs and standalone halogen have no direct handles (passive inventory items)
       return [];
     }
     case 'ground':
@@ -567,9 +573,51 @@ function calculateComponentConductance(component: CircuitElementData): number {
 }
 
 /**
+ * Calculates effective resistance for bulb sockets (E27 screw socket or ceramic pin socket).
+ * Follows DRY principles and O(1) specification lookups.
+ *
+ * @param component - Electrical component (socket or pin-socket)
+ * @param isPinSocket - Whether the component is a ceramic pin socket
+ * @returns Effective resistance in Ohms (or 1e9 for open circuit)
+ */
+function calculateSocketEffectiveResistance(
+  component: CircuitElementData,
+  isPinSocket: boolean
+): number {
+  if (!component.installedBulb) {
+    return 1e9; // Open circuit: empty socket does not conduct
+  }
+  const bulbData = component.installedBulb;
+  const bulbType = typeof bulbData === 'object' ? bulbData.bulbType : bulbData;
+
+  const isCompatible = isPinSocket
+    ? canBulbFitPinSocket(bulbType) || bulbType === 'halogen'
+    : canBulbFitSocket(bulbType);
+
+  if (!isCompatible) {
+    return 1e9; // Incompatible bulb base = open circuit
+  }
+
+  const isBlown =
+    typeof bulbData === 'object'
+      ? Boolean(bulbData.isBlown)
+      : Boolean(component.isBlown);
+  if (isBlown) {
+    return 1e9; // Blown filament = open circuit
+  }
+
+  const fallbackResistance = getBulbSpec(bulbType).resistance;
+  const customResistance =
+    typeof bulbData === 'object' ? bulbData.resistance : component.resistance;
+  return Math.max(0.1, customResistance ?? fallbackResistance);
+}
+
+/**
  * Retrieves the effective resistance of a component in Ohms.
- * - Socket without installed bulb acts as Open Circuit (Infinity / 1GΩ).
- * - Socket with installed bulb takes the resistance of that bulb.
+ * - Sockets without installed bulb act as Open Circuit (Infinity / 1GΩ).
+ * - Sockets with installed bulb take the resistance of that bulb.
+ * - Standalone screw bulbs and standalone halogen have infinite resistance (1e9).
+ * - Standalone indicator LED (led_green) conducts directly.
  * 
  * @param component - Electrical component
  * @returns Resistance in Ohms
@@ -579,36 +627,20 @@ export function getComponentEffectiveResistance(component: CircuitElementData): 
     case 'resistor':
       return Math.max(0.1, component.resistance ?? 100);
     case 'bulb': {
-      const spec = getBulbSpec(component.bulbType);
-      if (spec.baseType === 'pin') {
+      // Only standalone led_green can conduct current on its own as a loose DIP component
+      if (component.bulbType === 'led_green') {
         if (component.isBlown) return 1e9;
+        const spec = getBulbSpec(component.bulbType);
         return Math.max(0.1, component.resistance ?? spec.resistance);
       }
-      // Detached screw-base bulb cannot conduct current on its own (must be installed in a SocketNode)
+      // Detached screw-base bulbs and standalone halogen cannot conduct current on their own (1e9)
       return 1e9;
     }
-    case 'socket': {
-      if (!component.installedBulb) {
-        return 1e9; // Open Circuit (Infinity): socket without bulb does not conduct
-      }
-      const bulbData = component.installedBulb;
-      const bulbType = typeof bulbData === 'object' ? bulbData.bulbType : bulbData;
-      // Incompatible base (e.g. pin bulb in screw socket) cannot establish electrical contact
-      if (!canBulbFitSocket(bulbType)) {
-        return 1e9;
-      }
-      const isBlown =
-        typeof bulbData === 'object'
-          ? Boolean(bulbData.isBlown)
-          : Boolean(component.isBlown);
-      if (isBlown) {
-        return 1e9; // Blown filament = open circuit
-      }
-      const fallbackResistance = getBulbSpec(bulbType).resistance;
-      const customResistance =
-        typeof bulbData === 'object' ? bulbData.resistance : component.resistance;
-      return Math.max(0.1, customResistance ?? fallbackResistance);
-    }
+    case 'socket':
+      return calculateSocketEffectiveResistance(component, false);
+    case 'pin-socket':
+    case 'socket-pin':
+      return calculateSocketEffectiveResistance(component, true);
     case 'switch':
       return component.isOpen ? SWITCH_OPEN_RESISTANCE : SWITCH_CLOSED_RESISTANCE;
     case 'ammeter':

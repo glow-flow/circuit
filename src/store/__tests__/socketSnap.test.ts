@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useCircuitStore } from '../useCircuitStore';
-import { BULB_CATALOG, canBulbFitSocket } from '../../constants/bulbCatalog';
+import { BULB_CATALOG, BulbType, canBulbFitSocket, canBulbFitPinSocket } from '../../constants/bulbCatalog';
 import { getBulbSnapPosition, SOCKET_NOTICES } from '../../utils/socketSnap';
 
 /** Places a socket and a bulb, and drops the bulb exactly on the socket's snap point. */
-function placeSocketAndBulb(bulbType: 'incandescent' | 'halogen'): { socketId: string; bulbId: string } {
+function placeSocketAndBulb(bulbType: BulbType): { socketId: string; bulbId: string } {
   const store = useCircuitStore.getState();
   store.addComponent('socket', { x: 400, y: 400 });
   store.addComponent('bulb', { x: 0, y: 0 }, { bulbType });
@@ -37,6 +37,15 @@ describe('Bulb base types', () => {
     expect(canBulbFitSocket('incandescent')).toBe(true);
     expect(canBulbFitSocket('halogen')).toBe(false);
     expect(canBulbFitSocket('led_green')).toBe(false);
+  });
+
+  it('canBulbFitPinSocket accepts halogen and rejects screw bulbs', () => {
+    expect(canBulbFitPinSocket('halogen')).toBe(true);
+    expect(canBulbFitPinSocket('incandescent')).toBe(false);
+    expect(canBulbFitPinSocket('edison')).toBe(false);
+    expect(canBulbFitPinSocket('cfl')).toBe(false);
+    expect(canBulbFitPinSocket('led_standard')).toBe(false);
+    expect(canBulbFitPinSocket('led_rgb')).toBe(false);
   });
 });
 
@@ -159,24 +168,36 @@ describe('Socket (fiting) snapping & MNA physics', () => {
     expect(notification).not.toBeNull();
   });
 
-  it('allows direct wiring to pin-base bulbs but blocks direct wiring to screw bulbs', () => {
+  it('allows direct wiring to indicator LED but blocks direct wiring to screw bulbs and halogen', () => {
     useCircuitStore.getState().addComponent('battery9v', { x: 0, y: 0 });
-    useCircuitStore.getState().addComponent('bulb', { x: 200, y: 0 }, { bulbType: 'halogen' }); // pin base
-    useCircuitStore.getState().addComponent('bulb', { x: 400, y: 0 }, { bulbType: 'incandescent' }); // screw base
+    useCircuitStore.getState().addComponent('bulb', { x: 200, y: 0 }, { bulbType: 'led_green' }); // loose DIP indicator
+    useCircuitStore.getState().addComponent('bulb', { x: 400, y: 0 }, { bulbType: 'halogen' }); // needs pin-socket
+    useCircuitStore.getState().addComponent('bulb', { x: 600, y: 0 }, { bulbType: 'incandescent' }); // screw base
 
     const currentNodes = useCircuitStore.getState().nodes;
     const bat = currentNodes.find((n) => n.data.type === 'battery9v')!;
+    const ledGreen = currentNodes.find((n) => n.data.bulbType === 'led_green')!;
     const halogen = currentNodes.find((n) => n.data.bulbType === 'halogen')!;
     const incand = currentNodes.find((n) => n.data.bulbType === 'incandescent')!;
 
-    // Connecting to pin bulb (Halogen) should succeed
+    // Connecting to loose indicator LED (led_green) should succeed
+    useCircuitStore.getState().onConnect({
+      source: bat.id,
+      sourceHandle: 'pos',
+      target: ledGreen.id,
+      targetHandle: 'p1',
+    });
+    expect(useCircuitStore.getState().edges).toHaveLength(1);
+
+    // Connecting to detached halogen should fail with notification
     useCircuitStore.getState().onConnect({
       source: bat.id,
       sourceHandle: 'pos',
       target: halogen.id,
       targetHandle: 'p1',
     });
-    expect(useCircuitStore.getState().edges).toHaveLength(1);
+    expect(useCircuitStore.getState().edges).toHaveLength(1); // unchanged
+    expect(useCircuitStore.getState().notification?.message).toContain('Lampu Halogen');
 
     // Connecting to screw bulb should fail with notification
     useCircuitStore.getState().onConnect({
@@ -189,7 +210,147 @@ describe('Socket (fiting) snapping & MNA physics', () => {
     expect(useCircuitStore.getState().notification?.message).toContain('Lampu ulir');
   });
 
-  it('loads ultimate-power-grid preset with pin bulbs (halogen & led_green) as direct bulbs and screw bulbs as sockets', () => {
+  it('snaps a CFL screw bulb into a nearby E27 SocketNode and installs it into socket without hidden wires', () => {
+    const { socketId, bulbId } = placeSocketAndBulb('cfl' as any);
+    useCircuitStore.getState().settleBulbAfterDrag(bulbId);
+
+    const { nodes, edges, notification } = useCircuitStore.getState();
+    const socketNode = nodes.find((n) => n.id === socketId);
+
+    expect(socketNode?.data.installedBulb).toBeDefined();
+    expect((socketNode?.data.installedBulb as any)?.bulbType).toBe('cfl');
+    expect(nodes.find((n) => n.id === bulbId)).toBeUndefined();
+    expect(edges.filter((e) => e.hidden)).toHaveLength(0);
+    expect(notification).toBeNull();
+  });
+
+  it('snaps Halogen into a nearby pin-socket and absorbs it into installedBulb', () => {
+    const store = useCircuitStore.getState();
+    store.addComponent('pin-socket', { x: 400, y: 400 });
+    store.addComponent('bulb', { x: 0, y: 0 }, { bulbType: 'halogen' });
+
+    const placedNodes = useCircuitStore.getState().nodes;
+    const pinSocketNode = placedNodes.find((n) => n.data.type === 'pin-socket')!;
+    const halogenNode = placedNodes.find((n) => n.data.type === 'bulb')!;
+
+    useCircuitStore.setState({
+      nodes: placedNodes.map((n) =>
+        n.id === halogenNode.id ? { ...n, position: getBulbSnapPosition(pinSocketNode.position) } : n
+      ),
+    });
+
+    useCircuitStore.getState().settleBulbAfterDrag(halogenNode.id);
+
+    const { nodes, notification } = useCircuitStore.getState();
+    const updatedSocket = nodes.find((n) => n.id === pinSocketNode.id);
+
+    expect(updatedSocket?.data.installedBulb).toBeDefined();
+    expect((updatedSocket?.data.installedBulb as any)?.bulbType).toBe('halogen');
+    expect(nodes.find((n) => n.id === halogenNode.id)).toBeUndefined();
+    expect(notification).toBeNull();
+  });
+
+  it('rejects a screw bulb when dropped onto a pin-socket', () => {
+    const store = useCircuitStore.getState();
+    store.addComponent('pin-socket', { x: 400, y: 400 });
+    store.addComponent('bulb', { x: 0, y: 0 }, { bulbType: 'incandescent' });
+
+    const placedNodes = useCircuitStore.getState().nodes;
+    const pinSocketNode = placedNodes.find((n) => n.data.type === 'pin-socket')!;
+    const screwBulbNode = placedNodes.find((n) => n.data.type === 'bulb')!;
+
+    useCircuitStore.setState({
+      nodes: placedNodes.map((n) =>
+        n.id === screwBulbNode.id ? { ...n, position: getBulbSnapPosition(pinSocketNode.position) } : n
+      ),
+    });
+
+    useCircuitStore.getState().settleBulbAfterDrag(screwBulbNode.id);
+
+    const { nodes, notification } = useCircuitStore.getState();
+    const updatedSocket = nodes.find((n) => n.id === pinSocketNode.id);
+
+    expect(updatedSocket?.data.installedBulb).toBeUndefined();
+    expect(nodes.find((n) => n.id === screwBulbNode.id)).toBeDefined();
+    expect(notification?.message).toBe(SOCKET_NOTICES.pinOnly.id);
+  });
+
+  it('rejects a CFL screw bulb when dropped onto a pin-socket with push away', () => {
+    const store = useCircuitStore.getState();
+    store.addComponent('pin-socket', { x: 400, y: 400 });
+    store.addComponent('bulb', { x: 0, y: 0 }, { bulbType: 'cfl' });
+
+    const placedNodes = useCircuitStore.getState().nodes;
+    const pinSocketNode = placedNodes.find((n) => n.data.type === 'pin-socket')!;
+    const cflBulbNode = placedNodes.find((n) => n.data.type === 'bulb')!;
+
+    useCircuitStore.setState({
+      nodes: placedNodes.map((n) =>
+        n.id === cflBulbNode.id ? { ...n, position: getBulbSnapPosition(pinSocketNode.position) } : n
+      ),
+    });
+
+    useCircuitStore.getState().settleBulbAfterDrag(cflBulbNode.id);
+
+    const { nodes, notification } = useCircuitStore.getState();
+    const updatedSocket = nodes.find((n) => n.id === pinSocketNode.id);
+    const rejectedCfl = nodes.find((n) => n.id === cflBulbNode.id);
+
+    expect(updatedSocket?.data.installedBulb).toBeUndefined();
+    expect(rejectedCfl).toBeDefined();
+    // Bulb is pushed away to the side
+    expect(rejectedCfl?.position.x).toBeGreaterThan(pinSocketNode.position.x);
+    expect(notification?.message).toBe(SOCKET_NOTICES.pinOnly.id);
+  });
+
+  it('detaches Halogen from pin-socket, recreating standalone bulb node on canvas', () => {
+    const store = useCircuitStore.getState();
+    store.addComponent('pin-socket', { x: 400, y: 400 });
+    store.addComponent('bulb', { x: 0, y: 0 }, { bulbType: 'halogen' });
+
+    const placedNodes = useCircuitStore.getState().nodes;
+    const pinSocketNode = placedNodes.find((n) => n.data.type === 'pin-socket')!;
+    const halogenNode = placedNodes.find((n) => n.data.type === 'bulb')!;
+
+    useCircuitStore.setState({
+      nodes: placedNodes.map((n) =>
+        n.id === halogenNode.id ? { ...n, position: getBulbSnapPosition(pinSocketNode.position) } : n
+      ),
+    });
+
+    useCircuitStore.getState().settleBulbAfterDrag(halogenNode.id);
+    useCircuitStore.getState().detachBulbFromSocket(pinSocketNode.id);
+
+    const { nodes } = useCircuitStore.getState();
+    const restoredHalogen = nodes.find((n) => n.id === halogenNode.id);
+    const emptySocket = nodes.find((n) => n.id === pinSocketNode.id);
+
+    expect(restoredHalogen).toBeDefined();
+    expect(restoredHalogen?.data.bulbType).toBe('halogen');
+    expect(emptySocket?.data.installedBulb).toBeUndefined();
+  });
+
+  it('an empty PinSocketNode acts as an open circuit (0 current through pin-socket)', () => {
+    const store = useCircuitStore.getState();
+    store.addComponent('battery9v', { x: 0, y: 0 });
+    const batteryId = useCircuitStore.getState().nodes.find((n) => n.data.type === 'battery9v')!.id;
+    store.addComponent('pin-socket', { x: 400, y: 400 });
+    const pinSocketId = useCircuitStore.getState().nodes.find((n) => n.data.type === 'pin-socket')!.id;
+
+    useCircuitStore.setState({
+      edges: [
+        { id: 'pw1', source: batteryId, sourceHandle: 'pos', target: pinSocketId, targetHandle: 'p1', type: 'wire' },
+        { id: 'pw2', source: pinSocketId, sourceHandle: 'p2', target: batteryId, targetHandle: 'neg', type: 'wire' },
+      ],
+    });
+    useCircuitStore.getState().runSimulation();
+
+    const { simulation } = useCircuitStore.getState();
+    expect(Math.abs(simulation.branchCurrents[pinSocketId] ?? 0)).toBe(0);
+    expect(simulation.isShortCircuit).toBe(false);
+  });
+
+  it('loads ultimate-power-grid preset with screw sockets, pin-socket for halogen, and direct bulb for indicator LED', () => {
     const store = useCircuitStore.getState();
     store.loadPreset('ultimate-power-grid');
 
@@ -202,7 +363,7 @@ describe('Socket (fiting) snapping & MNA physics', () => {
     const ledRgb = nodes.find((n) => n.id === 'bulb_led_rgb');
     const ledStd = nodes.find((n) => n.id === 'bulb_led_standard');
 
-    expect(halogen?.type).toBe('bulb');
+    expect(halogen?.type).toBe('pin-socket');
     expect(ledGreen?.type).toBe('bulb');
     expect(incand?.type).toBe('socket');
     expect(edison?.type).toBe('socket');

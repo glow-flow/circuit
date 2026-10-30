@@ -22,8 +22,15 @@ export const BULB_NODE_SIZE = { width: 92, height: 112 } as const;
  * Preserves exact 546x808 PNG aspect ratio (0.676) at calibrated scale to snugly hug the bulb base.
  */
 export const SOCKET_NODE_SIZE = { width: 38, height: 56 } as const;
+/**
+ * Rendered size (px) of a PinSocketNode (White Ceramic Bi-Pin Socket). Must match PinSocketNode.tsx.
+ * Calibrated to the physical ceramic socket body (width ~38px, height ~58px).
+ */
+export const PIN_SOCKET_NODE_SIZE = { width: 38, height: 58 } as const;
 /** How deep (px) the bulb base sits inside the socket mouth when snapped. */
-const BULB_INSERT_DEPTH = 44;
+export const BULB_INSERT_DEPTH = 44;
+/** How deep (px) the halogen pin bulb sits inside the ceramic bi-pin socket when snapped. */
+export const PIN_BULB_INSERT_DEPTH = 14;
 /** Max distance (px) between a dropped bulb and a socket's snap point to attach. */
 export const SNAP_RADIUS = 90;
 /** Distance (px) a rejected bulb is pushed away from the socket it cannot fit. */
@@ -39,9 +46,24 @@ export const SOCKET_FRONT_LIP_CLIP_PATH =
   'polygon(0% 13%, 10% 17.5%, 20% 20.5%, 30% 22.1%, 40% 22.9%, 50% 23.1%, 60% 22.9%, 70% 22.1%, 80% 20.5%, 90% 17.5%, 100% 13%, 100% 100%, 0% 100%)';
 
 /**
+ * Polygon clip-path tracing the front ceramic lip of the bi-pin socket (`socket-pin.png`).
+ * Used on Layer 3 (`z-index: 30`) so the front ceramic wall wraps in front of the bulb's pins.
+ */
+export const PIN_SOCKET_FRONT_LIP_CLIP_PATH =
+  'polygon(0% 4.8%, 10% 3.6%, 20% 2.8%, 30% 2.6%, 40% 2.9%, 50% 3.2%, 60% 2.9%, 70% 2.6%, 80% 2.8%, 90% 3.6%, 100% 4.8%, 100% 100%, 0% 100%)';
+
+/**
  * Returns the vertical top offset (in px) for an installed bulb inside a SocketNode
- * so its glass-to-metal collar sits flush against the socket's front lip without floating gaps.
+ * so its glass/ballast shoulder sits flush against the socket's front lip without floating gaps,
+ * completely concealing the metal screw threads inside the socket cavity.
  * Time Complexity: O(1).
+ *
+ * Calibration:
+ * - 'incandescent': Glass collar flares at 78.2px -> -66px (sits at +12.2px)
+ * - 'edison': Amber glass shoulder ends at 86.9px -> -74px (sits at +12.9px, flush with front lip)
+ * - 'cfl': White plastic ballast shoulder ends at 88.8px -> -76px (sits at +12.8px, flush on socket rim)
+ * - 'led_standard': Diffuser collar flares at 87.5px -> -74px (sits at +13.5px)
+ * - 'led_rgb': Diffuser collar flares at 87.2px -> -74px (sits at +13.2px)
  *
  * @param bulbType - Type of bulb installed in the socket
  * @returns Negative top offset in pixels
@@ -51,14 +73,14 @@ export function getInstalledBulbTopOffset(bulbType?: BulbType): number {
     case 'incandescent':
       return -66;
     case 'edison':
-      return -68;
+      return -74;
+    case 'cfl':
+      return -76;
     case 'led_standard':
     case 'led_rgb':
-      return -68;
-    case 'cfl':
-      return -66;
+      return -74;
     default:
-      return -68;
+      return -74;
   }
 }
 
@@ -94,6 +116,8 @@ export function distanceToSocketSnapPoint(bulbPosition: Point, socketPosition: P
 
 /**
  * Finds the closest socket within `SNAP_RADIUS` that has no bulb in it yet.
+ * Supports standard E27 sockets and ceramic pin sockets.
+ * Time Complexity: O(N) over N nodes.
  *
  * @param bulbNode - The bulb that was just dropped
  * @param allNodes - Every node currently on the canvas
@@ -107,8 +131,63 @@ export function findNearestFreeSocket(
   let nearestDistance = SNAP_RADIUS;
 
   for (const candidate of allNodes) {
-    if (candidate.data.type !== 'socket' || candidate.data.bulbId || candidate.data.installedBulb) continue;
+    const isSocket = candidate.data.type === 'socket' || candidate.data.type === 'pin-socket';
+    if (!isSocket || candidate.data.bulbId || candidate.data.installedBulb) continue;
     const distance = distanceToSocketSnapPoint(bulbNode.position, candidate.position);
+    if (distance <= nearestDistance) {
+      nearestDistance = distance;
+      nearestSocket = candidate;
+    }
+  }
+  return nearestSocket;
+}
+
+/**
+ * Computes where a bulb's top-left corner must be so its pins sit inside the ceramic bi-pin socket.
+ * Time Complexity: O(1).
+ *
+ * @param pinSocketPosition - Top-left position of the pin socket node
+ * @returns Top-left position for the snapped bulb node
+ */
+export function getPinBulbSnapPosition(pinSocketPosition: Point): Point {
+  return {
+    x: pinSocketPosition.x + (PIN_SOCKET_NODE_SIZE.width - BULB_NODE_SIZE.width) / 2,
+    y: pinSocketPosition.y - BULB_NODE_SIZE.height + PIN_BULB_INSERT_DEPTH,
+  };
+}
+
+/**
+ * Euclidean distance between a bulb and the snap point of a ceramic bi-pin socket.
+ * Time Complexity: O(1).
+ *
+ * @param bulbPosition - Top-left position of the bulb node
+ * @param pinSocketPosition - Top-left position of the pin socket node
+ * @returns Distance in pixels
+ */
+export function distanceToPinSocketSnapPoint(bulbPosition: Point, pinSocketPosition: Point): number {
+  const snapPoint = getPinBulbSnapPosition(pinSocketPosition);
+  return Math.hypot(bulbPosition.x - snapPoint.x, bulbPosition.y - snapPoint.y);
+}
+
+/**
+ * Finds the closest ceramic bi-pin socket within `SNAP_RADIUS` that has no bulb in it yet.
+ * Time Complexity: O(N) over N nodes.
+ *
+ * @param bulbNode - The bulb that was just dropped
+ * @param allNodes - Every node currently on the canvas
+ * @returns The nearest free pin socket node, or undefined when none is in range
+ */
+export function findNearestFreePinSocket(
+  bulbNode: Node<CircuitElementData>,
+  allNodes: Node<CircuitElementData>[]
+): Node<CircuitElementData> | undefined {
+  let nearestSocket: Node<CircuitElementData> | undefined;
+  let nearestDistance = SNAP_RADIUS;
+
+  for (const candidate of allNodes) {
+    const isPinSocket = candidate.data.type === 'pin-socket' || candidate.data.type === 'socket-pin';
+    if (!isPinSocket || candidate.data.bulbId || candidate.data.installedBulb) continue;
+    const distance = distanceToPinSocketSnapPoint(bulbNode.position, candidate.position);
     if (distance <= nearestDistance) {
       nearestDistance = distance;
       nearestSocket = candidate;
@@ -169,6 +248,10 @@ export const SOCKET_NOTICES = {
   screwOnly: {
     id: 'Fiting E27 ini khusus lampu berulir! Lampu tipe pin (Halogen & LED Indikator) tidak muat.',
     en: 'This E27 socket is for screw-base bulbs only! Pin-base bulbs (Halogen & Indicator LED) do not fit.',
+  },
+  pinOnly: {
+    id: 'Fiting pin keramik ini khusus lampu Halogen tipe pin! Lampu tipe ulir (E27) tidak muat.',
+    en: 'This ceramic pin socket is for pin-base Halogen bulbs only! Screw-base bulbs do not fit.',
   },
   detachedByType: {
     id: 'Lampu dilepas dari fiting karena menggunakan kaki pin langsung, bukan ulir E27.',
