@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
-import { Sun, CloudSun, FlaskConical, AlertTriangle } from 'lucide-react';
+import { Sun, CloudSun, Moon, AlertTriangle } from 'lucide-react';
 import { CircuitElementData } from '../../../types/circuit';
 import { useCircuitStore } from '../../../store/useCircuitStore';
 import { TRANSLATIONS } from '../../../i18n/translations';
@@ -10,12 +10,10 @@ import { getSolarPanelVoltage } from '../../../physics/solarPanel';
  * Photovoltaic Solar Panel Node (`type: 'solar-panel'`).
  *
  * Characteristics:
- * - Environment-driven renewable power source:
- *   - 'sunny': 12.0V
- *   - 'cloudy': 5.0V
- *   - 'lab': 0.0V (indoor dark)
+ * - Adjustable solar irradiance (0% to 100% -> 0.0V to 12.0V DC) via in-node slider
+ *   and quick weather preset buttons (Terik 12V, Mendung 5V, Gelap 0V).
  * - Bottom dual copper terminal pins: Positive (+) at 38.6% and Negative (-) at 61.3%.
- * - Charges lower-voltage batteries (e.g. 9V battery or AA cells) when exposed to sunlight.
+ * - Works seamlessly in both Outdoor Sandbox and Lab modes with MNA Union-Find Transmission Towers.
  *
  * Time Complexity: O(1) render.
  */
@@ -26,17 +24,19 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
 }) => {
   const simulation = useCircuitStore((state) => state.simulation);
   const language = useCircuitStore((state) => state.language);
-  const environment = useCircuitStore((state) => state.environment);
+  const updateComponentData = useCircuitStore((state) => state.updateComponentData);
 
   const t = TRANSLATIONS[language].nodes.solarPanel;
+  const isId = language === 'id';
 
-  const currentEnvironment = data.environment ?? environment;
-  const nominalVoltage = data.voltage ?? getSolarPanelVoltage(currentEnvironment);
+  const sunlight = data.sunlight ?? 100;
+  const nominalVoltage = data.voltage ?? getSolarPanelVoltage(sunlight);
   const current = Math.abs(simulation.branchCurrents[id] ?? 0);
   const isShorted = simulation.shortCircuitBranches.includes(id);
 
   const isGenerating = nominalVoltage > 0 && current > 0;
-  const isDark = currentEnvironment === 'lab' || nominalVoltage === 0;
+  const isDark = nominalVoltage <= 0.1;
+  const isSunny = nominalVoltage >= 9.0;
 
   const formattedCurrent =
     current === 0
@@ -47,16 +47,37 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
 
   const powerWatts = (nominalVoltage * current).toFixed(2);
 
+  const handleSunlightChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const nextSunlight = parseInt(e.target.value, 10);
+      updateComponentData(id, {
+        sunlight: nextSunlight,
+        voltage: getSolarPanelVoltage(nextSunlight),
+      });
+    },
+    [id, updateComponentData]
+  );
+
+  const applyWeatherPreset = useCallback(
+    (targetVoltage: number, targetSunlight: number) => {
+      updateComponentData(id, {
+        sunlight: targetSunlight,
+        voltage: targetVoltage,
+      });
+    },
+    [id, updateComponentData]
+  );
+
   return (
     <div
-      className={`relative rounded-xl border bg-void-900 px-3.5 pt-3 pb-6 shadow-2xl transition-all duration-200 w-[190px] select-none ${
+      className={`relative rounded-xl border bg-void-900/95 backdrop-blur-md px-3.5 pt-3 pb-6 shadow-2xl transition-all duration-200 w-[190px] select-none ${
         isShorted
           ? 'border-danger-500 shadow-glow-danger animate-pulse'
           : selected
           ? 'border-electric-500 shadow-glow'
           : isGenerating
-          ? 'border-amber-400/40 shadow-[0_0_20px_rgba(245,158,11,0.25)]'
-          : 'border-white/10 hover:border-white/20'
+          ? 'border-amber-400/50 shadow-[0_0_20px_rgba(245,158,11,0.25)]'
+          : 'border-white/15 hover:border-white/25'
       }`}
     >
       {/* Component Header */}
@@ -66,21 +87,21 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
             className={`p-1 rounded shrink-0 ${
               isShorted
                 ? 'bg-danger-500/20 text-danger-500'
-                : currentEnvironment === 'sunny'
+                : isSunny
                 ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
-                : currentEnvironment === 'cloudy'
+                : !isDark
                 ? 'bg-sky-500/15 text-sky-400 border border-sky-500/30'
                 : 'bg-white/5 text-slate-400 border border-white/10'
             }`}
           >
             {isShorted ? (
               <AlertTriangle className="w-3.5 h-3.5" />
-            ) : currentEnvironment === 'sunny' ? (
+            ) : isSunny ? (
               <Sun className="w-3.5 h-3.5" />
-            ) : currentEnvironment === 'cloudy' ? (
+            ) : !isDark ? (
               <CloudSun className="w-3.5 h-3.5" />
             ) : (
-              <FlaskConical className="w-3.5 h-3.5" />
+              <Moon className="w-3.5 h-3.5" />
             )}
           </div>
           <span className="text-[11px] font-bold text-slate-100 tracking-tight truncate">
@@ -88,12 +109,12 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
           </span>
         </div>
 
-        {/* Ambient Voltage Badge */}
+        {/* Output Voltage Badge */}
         <span
           className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border shrink-0 ${
-            currentEnvironment === 'sunny'
+            isSunny
               ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
-              : currentEnvironment === 'cloudy'
+              : !isDark
               ? 'bg-sky-500/15 text-sky-300 border-sky-500/30'
               : 'bg-white/5 text-slate-400 border-white/10'
           }`}
@@ -103,8 +124,8 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
       </div>
 
       {/* Photovoltaic Panel Die-Cut Asset */}
-      <div className="flex flex-col items-center justify-center py-1 relative">
-        <div className="relative w-36 h-28 flex items-center justify-center">
+      <div className="flex flex-col items-center justify-center py-0.5 relative">
+        <div className="relative w-32 h-24 flex items-center justify-center">
           <img
             src="/assets/solar-panel.png"
             alt={t.title}
@@ -119,53 +140,65 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
           {isDark && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <span className="bg-void-950/90 text-slate-300 border border-white/10 text-[9px] font-mono font-semibold px-2 py-0.5 rounded shadow">
-                {language === 'id' ? '0V / Gelap' : '0V / Dark'}
+                {isId ? '0V / Gelap' : '0V / Dark'}
               </span>
             </div>
           )}
         </div>
       </div>
 
-      {/* Weather Condition Status Pill */}
-      <div className="mb-2">
-        <div
-          className={`flex items-center justify-center gap-1.5 py-1 px-2 rounded-lg text-[9px] font-mono font-bold border transition-colors ${
-            currentEnvironment === 'sunny'
-              ? 'bg-amber-500/10 text-amber-300 border-amber-500/25'
-              : currentEnvironment === 'cloudy'
-              ? 'bg-sky-500/10 text-sky-300 border-sky-500/25'
-              : 'bg-white/5 text-slate-400 border-white/10'
-          }`}
-        >
-          {currentEnvironment === 'sunny' && <Sun className="w-3 h-3 text-amber-400 animate-spin-slow" />}
-          {currentEnvironment === 'cloudy' && <CloudSun className="w-3 h-3 text-sky-400" />}
-          {currentEnvironment === 'lab' && <FlaskConical className="w-3 h-3 text-slate-400" />}
-          <span>
-            {currentEnvironment === 'sunny'
-              ? t.sunnyStatus
-              : currentEnvironment === 'cloudy'
-              ? t.cloudyStatus
-              : t.labStatus}
-          </span>
+      {/* In-Node Weather & Irradiance Controls (nodrag so slider/buttons don't drag the node) */}
+      <div className="nodrag mb-2 space-y-1.5 bg-void-950/75 p-1.5 rounded-lg border border-white/10">
+        <div className="grid grid-cols-3 gap-1">
+          <button
+            type="button"
+            onClick={() => applyWeatherPreset(12.0, 100)}
+            className={`px-1 py-0.5 rounded text-[9px] font-mono font-bold border transition-all active:scale-95 cursor-pointer ${
+              Math.abs(nominalVoltage - 12.0) < 0.3
+                ? 'bg-amber-500/25 text-amber-300 border-amber-400/50'
+                : 'bg-void-900 text-slate-400 border-white/5 hover:text-white'
+            }`}
+          >
+            ☀️ 12V
+          </button>
+          <button
+            type="button"
+            onClick={() => applyWeatherPreset(5.0, 42)}
+            className={`px-1 py-0.5 rounded text-[9px] font-mono font-bold border transition-all active:scale-95 cursor-pointer ${
+              Math.abs(nominalVoltage - 5.0) < 0.3
+                ? 'bg-sky-500/25 text-sky-300 border-sky-400/50'
+                : 'bg-void-900 text-slate-400 border-white/5 hover:text-white'
+            }`}
+          >
+            ⛅ 5V
+          </button>
+          <button
+            type="button"
+            onClick={() => applyWeatherPreset(0.0, 0)}
+            className={`px-1 py-0.5 rounded text-[9px] font-mono font-bold border transition-all active:scale-95 cursor-pointer ${
+              nominalVoltage === 0
+                ? 'bg-slate-700/50 text-slate-200 border-slate-400/40'
+                : 'bg-void-900 text-slate-400 border-white/5 hover:text-white'
+            }`}
+          >
+            🌙 0V
+          </button>
         </div>
+
+        <input
+          type="range"
+          min="0"
+          max="100"
+          step="1"
+          value={sunlight}
+          onChange={handleSunlightChange}
+          className="w-full h-1.5 bg-void-900 rounded-lg appearance-none cursor-pointer accent-amber-400 focus:outline-none"
+          aria-label="Solar Irradiance"
+        />
       </div>
 
       {/* Live Telemetry Readout */}
-      <div className="bg-void-950/85 rounded-lg p-2 border border-white/5 space-y-1 text-[10px] font-mono">
-        <div className="flex justify-between items-baseline">
-          <span className="text-slate-400 font-sans">{t.voltage}</span>
-          <span
-            className={
-              isDark
-                ? 'text-slate-500'
-                : currentEnvironment === 'sunny'
-                ? 'text-amber-300 font-bold'
-                : 'text-sky-300 font-bold'
-            }
-          >
-            {nominalVoltage.toFixed(1)} V
-          </span>
-        </div>
+      <div className="bg-void-950/85 rounded-lg p-1.5 border border-white/5 space-y-0.5 text-[10px] font-mono">
         <div className="flex justify-between items-baseline">
           <span className="text-slate-400 font-sans">{t.current}</span>
           <span
@@ -180,12 +213,10 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
             {formattedCurrent}
           </span>
         </div>
-        {current > 0 && (
-          <div className="flex justify-between items-baseline pt-0.5 border-t border-white/5">
-            <span className="text-slate-400 font-sans">{t.power}</span>
-            <span className="text-emerald-400 font-bold">{powerWatts} W</span>
-          </div>
-        )}
+        <div className="flex justify-between items-baseline">
+          <span className="text-slate-400 font-sans">{t.power}</span>
+          <span className="text-emerald-400 font-bold">{powerWatts} W</span>
+        </div>
       </div>
 
       {/* Bottom Positive (+) Handle — Aligned with Left Copper Screw Terminal (38.6%) */}

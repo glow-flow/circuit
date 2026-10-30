@@ -25,6 +25,8 @@ export const SidebarPalette: React.FC<SidebarPaletteProps> = ({
   onCloseMobile,
 }) => {
   const addComponent = useCircuitStore((state) => state.addComponent);
+  const placeOutdoorComponent = useCircuitStore((state) => state.placeOutdoorComponent);
+  const worldMode = useCircuitStore((state) => state.worldMode);
   const language = useCircuitStore((state) => state.language);
   const t = TRANSLATIONS[language].palette;
   const isIndonesian = language === 'id';
@@ -49,9 +51,42 @@ export const SidebarPalette: React.FC<SidebarPaletteProps> = ({
   };
 
   const handlePlace = (entry: PaletteEntry) => {
-    const offsetX = 200 + Math.floor(Math.random() * 120);
-    const offsetY = 120 + Math.floor(Math.random() * 120);
-    addComponent(entry.type, { x: offsetX, y: offsetY }, entry.placement);
+    if (worldMode === 'outside') {
+      const candidatePositions = [
+        { x: 40, y: 210 },
+        { x: 240, y: 150 },
+        { x: 450, y: 170 },
+        { x: 40, y: 40 },
+        { x: 240, y: 30 },
+        { x: 450, y: 40 },
+      ];
+      let placed = false;
+      for (const candidate of candidatePositions) {
+        if (
+          placeOutdoorComponent(
+            entry.type,
+            candidate,
+            { width: 960, height: 680 },
+            entry.placement
+          )
+        ) {
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) {
+        placeOutdoorComponent(
+          entry.type,
+          { x: 60 + Math.floor(Math.random() * 320), y: 90 },
+          { width: 960, height: 680 },
+          entry.placement
+        );
+      }
+    } else {
+      const offsetX = 200 + Math.floor(Math.random() * 120);
+      const offsetY = 120 + Math.floor(Math.random() * 120);
+      addComponent(entry.type, { x: offsetX, y: offsetY }, entry.placement);
+    }
     if (isMobileDrawer && onCloseMobile) {
       onCloseMobile();
     }

@@ -10,8 +10,8 @@ import {
   X,
   FolderOpen,
   HelpCircle,
-  Sun,
-  CloudSun,
+  Trees,
+  FlaskConical,
 } from 'lucide-react';
 import { useCircuitStore } from '../../store/useCircuitStore';
 import { TRANSLATIONS } from '../../i18n/translations';
@@ -28,8 +28,9 @@ export const Header: React.FC = () => {
   const saveCustomPreset = useCircuitStore((state) => state.saveCustomPreset);
   const loadCustomPreset = useCircuitStore((state) => state.loadCustomPreset);
   const deleteCustomPreset = useCircuitStore((state) => state.deleteCustomPreset);
-  const environment = useCircuitStore((state) => state.environment);
-  const cycleEnvironment = useCircuitStore((state) => state.cycleEnvironment);
+  const worldMode = useCircuitStore((state) => state.worldMode);
+  const isTransitioningWorld = useCircuitStore((state) => state.isTransitioningWorld);
+  const triggerWorldTransition = useCircuitStore((state) => state.triggerWorldTransition);
 
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [presetNameInput, setPresetNameInput] = useState('');
@@ -146,42 +147,46 @@ export const Header: React.FC = () => {
 
         {/* Right Help Button, Language Toggle, Environment & Clear */}
         <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-          {/* Environment / Weather Toggle Button */}
+          {/* World Transition Button (Go Outside / Inside with 2s CSS Cloud Animation) */}
           <button
             type="button"
-            onClick={cycleEnvironment}
-            title={t.environmentToggleTitle}
-            aria-label={t.environmentToggleTitle}
-            className={`flex items-center gap-1 sm:gap-1.5 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg border text-[10px] sm:text-xs font-semibold transition-all active:scale-95 shrink-0 cursor-pointer ${
-              environment === 'sunny'
-                ? 'bg-amber-500/20 hover:bg-amber-500/30 border-amber-400/50 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.25)]'
-                : environment === 'cloudy'
-                ? 'bg-sky-500/20 hover:bg-sky-500/30 border-sky-400/50 text-sky-200 shadow-[0_0_12px_rgba(56,189,248,0.25)]'
-                : 'bg-void-850 hover:bg-void-800 border-white/10 text-slate-300 hover:text-white'
+            disabled={isTransitioningWorld}
+            onClick={() => triggerWorldTransition()}
+            title={
+              worldMode === 'lab'
+                ? language === 'id'
+                  ? 'Keluar ke Alam Terbuka (Outdoor Sandbox)'
+                  : 'Go Outside (Outdoor Sandbox)'
+                : language === 'id'
+                ? 'Kembali ke Dalam Laboratorium'
+                : 'Go Inside (Back to Lab)'
+            }
+            aria-label="Toggle World Mode"
+            className={`flex items-center gap-1 sm:gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg border text-[10px] sm:text-xs font-bold transition-all active:scale-95 shrink-0 cursor-pointer disabled:opacity-50 ${
+              worldMode === 'outside'
+                ? 'bg-cyan-500/20 hover:bg-cyan-500/30 border-cyan-400/50 text-cyan-200 shadow-[0_0_14px_rgba(34,211,238,0.25)]'
+                : 'bg-emerald-500/20 hover:bg-emerald-500/30 border-emerald-400/50 text-emerald-200 shadow-[0_0_14px_rgba(16,185,129,0.25)]'
             }`}
           >
-            {environment === 'sunny' ? (
-              <Sun className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-            ) : environment === 'cloudy' ? (
-              <CloudSun className="w-3.5 h-3.5 text-sky-300 shrink-0" />
+            {worldMode === 'outside' ? (
+              <FlaskConical className="w-3.5 h-3.5 text-cyan-300 shrink-0" />
             ) : (
-              <Globe className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <Trees className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
             )}
             <span className="font-mono text-[10px] sm:text-[11px] font-bold">
-              {environment === 'sunny' ? (
+              {worldMode === 'outside' ? (
                 <>
-                  <span className="hidden sm:inline">{t.environmentSunny}</span>
-                  <span className="sm:hidden">12V</span>
-                </>
-              ) : environment === 'cloudy' ? (
-                <>
-                  <span className="hidden sm:inline">{t.environmentCloudy}</span>
-                  <span className="sm:hidden">5V</span>
+                  <span className="hidden sm:inline">
+                    {language === 'id' ? 'Masuk ke Lab' : 'Go Inside'}
+                  </span>
+                  <span className="sm:hidden">Lab</span>
                 </>
               ) : (
                 <>
-                  <span className="hidden sm:inline">{t.environmentLab}</span>
-                  <span className="sm:hidden">Lab</span>
+                  <span className="hidden sm:inline">
+                    {language === 'id' ? 'Keluar ke Alam' : 'Go Outside'}
+                  </span>
+                  <span className="sm:hidden">Alam</span>
                 </>
               )}
             </span>

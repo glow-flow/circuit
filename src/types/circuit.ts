@@ -31,7 +31,21 @@ export type ComponentType =
 
 export type BatteryChargeState = 'idle' | 'charging' | 'discharging';
 
-export type CircuitEnvironment = 'lab' | 'sunny' | 'cloudy';
+export type WorldMode = 'lab' | 'outside';
+
+export type TerrainCellType = 'EMPTY' | 'DIRT' | 'WATER' | 'GRASS';
+
+export type TerrainBrushTool = 'cursor' | 'DIRT' | 'WATER' | 'EMPTY';
+
+export interface ExplosionEvent {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  label: string;
+  createdAt: number;
+}
 
 export interface ComponentPin {
   id: string; // e.g., 'pos', 'neg', 'p1', 'p2'
@@ -73,8 +87,9 @@ export interface CircuitElementData {
   capacity?: number;           // Battery capacity in milliampere-hours (mAh, e.g. 1000 for AA, 500 for 9V)
   chargeState?: BatteryChargeState; // Current dynamic charge state ('idle' | 'charging' | 'discharging')
 
-  // Environment state for environmental transducers (Solar Panel)
-  environment?: CircuitEnvironment;
+  // World & sunlight state for outdoor/lab components
+  worldMode?: WorldMode;
+  sunlight?: number;           // Solar irradiance percentage (0 - 100, default 100 -> 12V)
 
   // Wind Turbine properties
   speed?: number;              // Wind turbine rotational speed (0 - 100, default 50)

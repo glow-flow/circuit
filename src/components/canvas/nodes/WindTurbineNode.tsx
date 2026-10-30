@@ -160,7 +160,7 @@ export const WindTurbineNode: React.FC<NodeProps<CircuitElementData>> = memo(
           </div>
 
           {/* Interactive Control & Live Metrics Panel */}
-          <div className="mt-3 w-full px-3 py-2 rounded-xl bg-void-900/90 border border-white/10 text-slate-200 text-xs backdrop-blur-md shadow-xl flex flex-col gap-2">
+          <div className="nodrag mt-3 w-full px-3 py-2 rounded-xl bg-void-900/90 border border-white/10 text-slate-200 text-xs backdrop-blur-md shadow-xl flex flex-col gap-2">
             {/* Speed Slider Control */}
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between text-[10px] text-slate-300 font-medium">

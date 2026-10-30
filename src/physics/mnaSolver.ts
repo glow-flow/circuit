@@ -96,7 +96,7 @@ export function getVoltageSourceNominalVoltage(component: CircuitElementData): n
     const cellCount = component.batteryCount ?? 2;
     baseVoltage = component.voltage ?? cellCount * 1.5;
   } else if (component.type === 'solar-panel' || component.type === 'solar_panel') {
-    return component.voltage ?? getSolarPanelVoltage(component.environment ?? 'lab');
+    return component.voltage ?? getSolarPanelVoltage(component.sunlight ?? 100);
   } else if (component.type === 'wind-turbine' || component.type === 'wind_turbine') {
     const turbineSpeed = component.speed ?? 50;
     return component.voltage ?? (turbineSpeed / 100) * 12.0;

@@ -18,17 +18,30 @@ import {
 } from 'reactflow';
 import {
   CircuitElementData,
-  CircuitEnvironment,
   ComponentType,
+  ExplosionEvent,
   PlacementOptions,
   SimulationResult,
+  TerrainBrushTool,
+  TerrainCellType,
   WireConnection,
+  WorldMode,
 } from '../types/circuit';
 import {
   getSolarPanelVoltage,
-  getNextEnvironment,
   SOLAR_PANEL_INTERNAL_RESISTANCE,
 } from '../physics/solarPanel';
+import {
+  createDefaultOutdoorTerrain,
+  doesComponentTouchWater,
+  evaluateGrassGrowth,
+  findOverlappingComponent,
+  getComponentBoundingBox,
+  GRID_COLS,
+  GRID_ROWS,
+  settleTerrainGravityImmediate,
+  stepTerrainGravity,
+} from '../physics/terrainGrid';
 import { solveCircuitMNA } from '../physics/mnaSolver';
 import {
   computeEffectiveBatteryVoltage,
@@ -69,9 +82,42 @@ interface CircuitState {
   language: AppLanguage;
   customPresets: CustomCircuitPreset[];
   fitViewTrigger: number;
-  environment: CircuitEnvironment;
-  setEnvironment: (environment: CircuitEnvironment) => void;
-  cycleEnvironment: () => void;
+
+  // World Mode & CSS Cloud Transition State
+  worldMode: WorldMode;
+  isTransitioningWorld: boolean;
+  transitionTargetMode: WorldMode | null;
+  setWorldMode: (worldMode: WorldMode) => void;
+  triggerWorldTransition: (targetMode?: WorldMode) => void;
+
+  // Outdoor Sandbox 2D Terrain Grid & Physics State
+  terrainGrid: TerrainCellType[][];
+  dirtExposureMap: Record<string, number>;
+  terrainBrush: TerrainBrushTool;
+  explosions: ExplosionEvent[];
+  setTerrainBrush: (brush: TerrainBrushTool) => void;
+  paintTerrainCell: (
+    row: number,
+    col: number,
+    cellType: TerrainCellType,
+    immediateGravity?: boolean
+  ) => void;
+  tickTerrainPhysics: (nowMs?: number) => void;
+  settleAllTerrainGravity: () => void;
+  resetOutdoorTerrain: () => void;
+  placeOutdoorComponent: (
+    type: ComponentType,
+    position: { x: number; y: number },
+    containerSize: { width: number; height: number },
+    options?: PlacementOptions
+  ) => boolean;
+  settleOutdoorNodeAfterDrag: (
+    nodeId: string,
+    previousPosition: { x: number; y: number },
+    containerSize: { width: number; height: number }
+  ) => void;
+  dismissExplosion: (explosionId: string) => void;
+
   /** Transient UI toast (e.g. "wrong lamp base"); `id` changes on every notify so timers restart. */
   notification: { id: number; message: string } | null;
 
@@ -272,16 +318,16 @@ function recalculateCircuit(
     }
 
     if (node.data.type === 'solar-panel' || node.data.type === 'solar_panel') {
-      const env = node.data.environment ?? 'lab';
-      const outputVoltage = getSolarPanelVoltage(env);
+      const sunlight = node.data.sunlight ?? 100;
+      const outputVoltage = node.data.voltage ?? getSolarPanelVoltage(sunlight);
       const outputPower = Math.abs(branchCurrent * outputVoltage);
 
       return {
         ...node,
         data: {
           ...node.data,
+          sunlight,
           voltage: outputVoltage,
-          environment: env,
           calculatedCurrent: branchCurrent,
           calculatedVoltage: outputVoltage,
           calculatedPower: outputPower,
@@ -379,35 +425,250 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   customPresets: loadCustomPresetsFromStorage(),
   fitViewTrigger: 0,
   notification: null,
-  environment: 'lab',
 
-  setEnvironment: (environment: CircuitEnvironment) => {
-    const currentNodes = get().nodes;
-    const nextNodes = currentNodes.map((node) => {
-      if (node.data.type === 'solar-panel' || node.data.type === 'solar_panel') {
-        const outputVoltage = getSolarPanelVoltage(environment);
-        return {
-          ...node,
-          data: {
-            ...node.data,
-            environment,
-            voltage: outputVoltage,
-          },
-        };
-      }
-      return node;
-    });
-    const { simulation, updatedNodes } = recalculateCircuit(nextNodes, get().edges);
+  // World Mode & CSS Cloud Transition State
+  worldMode: 'lab',
+  isTransitioningWorld: false,
+  transitionTargetMode: null,
+
+  // Outdoor Sandbox 2D Terrain Grid (40x20)
+  terrainGrid: createDefaultOutdoorTerrain(GRID_ROWS, GRID_COLS),
+  dirtExposureMap: {},
+  terrainBrush: 'cursor',
+  explosions: [],
+
+  setWorldMode: (worldMode: WorldMode) => {
     set({
-      environment,
-      nodes: updatedNodes,
-      simulation,
+      worldMode,
+      selectedNodeId: null,
+      selectedEdgeId: null,
     });
   },
 
-  cycleEnvironment: () => {
-    const nextEnv = getNextEnvironment(get().environment);
-    get().setEnvironment(nextEnv);
+  triggerWorldTransition: (targetMode?: WorldMode) => {
+    if (get().isTransitioningWorld) return;
+    const nextMode: WorldMode = targetMode ?? (get().worldMode === 'lab' ? 'outside' : 'lab');
+
+    set({
+      isTransitioningWorld: true,
+      transitionTargetMode: nextMode,
+      selectedNodeId: null,
+      selectedEdgeId: null,
+    });
+
+    if (typeof window === 'undefined') {
+      set({
+        worldMode: nextMode,
+        isTransitioningWorld: false,
+        transitionTargetMode: null,
+      });
+      return;
+    }
+
+    // 0.5s - 1.5s: Cloud fully covers screen -> switch worldMode at 1.0s midpoint
+    window.setTimeout(() => {
+      set({ worldMode: nextMode });
+    }, 1000);
+
+    // 1.5s - 2.0s: Cloud fades out -> complete transition at 2.0s
+    window.setTimeout(() => {
+      set({
+        isTransitioningWorld: false,
+        transitionTargetMode: null,
+      });
+    }, 2000);
+  },
+
+  setTerrainBrush: (brush: TerrainBrushTool) => {
+    set({ terrainBrush: brush });
+  },
+
+  paintTerrainCell: (
+    row: number,
+    col: number,
+    cellType: TerrainCellType,
+    immediateGravity: boolean = false
+  ) => {
+    const currentGrid = get().terrainGrid;
+    if (
+      row < 0 ||
+      row >= currentGrid.length ||
+      col < 0 ||
+      col >= (currentGrid[0]?.length ?? 0)
+    ) {
+      return;
+    }
+    if (currentGrid[row][col] === cellType && !immediateGravity) return;
+
+    const updatedGrid = currentGrid.map((r, rIdx) =>
+      rIdx === row ? r.map((c, cIdx) => (cIdx === col ? cellType : c)) : [...r]
+    );
+
+    // If a GRASS cell directly below the newly painted non-empty cell is now covered, revert it to DIRT
+    if (cellType !== 'EMPTY' && row + 1 < updatedGrid.length && updatedGrid[row + 1][col] === 'GRASS') {
+      updatedGrid[row + 1][col] = 'DIRT';
+    }
+
+    const finalGrid = immediateGravity
+      ? settleTerrainGravityImmediate(updatedGrid)
+      : updatedGrid;
+
+    // Reset exposure tracking for modified column so 3s timer starts fresh when settled
+    const nextExposureMap = { ...get().dirtExposureMap };
+    delete nextExposureMap[`${row},${col}`];
+
+    set({
+      terrainGrid: finalGrid,
+      dirtExposureMap: nextExposureMap,
+    });
+  },
+
+  tickTerrainPhysics: (nowMs: number = Date.now()) => {
+    const currentGrid = get().terrainGrid;
+    const { nextGrid: afterGravityGrid, moved } = stepTerrainGravity(currentGrid);
+    const {
+      nextGrid: afterGrassGrid,
+      nextExposureMap,
+      changed: grassChanged,
+    } = evaluateGrassGrowth(afterGravityGrid, get().dirtExposureMap, nowMs);
+
+    if (moved || grassChanged) {
+      set({
+        terrainGrid: afterGrassGrid,
+        dirtExposureMap: nextExposureMap,
+      });
+    }
+  },
+
+  settleAllTerrainGravity: () => {
+    const settled = settleTerrainGravityImmediate(get().terrainGrid);
+    set({ terrainGrid: settled });
+  },
+
+  resetOutdoorTerrain: () => {
+    set({
+      terrainGrid: createDefaultOutdoorTerrain(GRID_ROWS, GRID_COLS),
+      dirtExposureMap: {},
+    });
+  },
+
+  dismissExplosion: (explosionId: string) => {
+    set({
+      explosions: get().explosions.filter((exp) => exp.id !== explosionId),
+    });
+  },
+
+  placeOutdoorComponent: (
+    type: ComponentType,
+    position: { x: number; y: number },
+    containerSize: { width: number; height: number },
+    options?: PlacementOptions
+  ) => {
+    const isId = get().language === 'id';
+    const targetBox = getComponentBoundingBox(position, type);
+
+    // 1. Check Water Short-Circuit / Explosion Rule first
+    if (
+      doesComponentTouchWater(
+        targetBox,
+        get().terrainGrid,
+        containerSize.width,
+        containerSize.height
+      )
+    ) {
+      const explosionId = `exp_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      const explosionEvent: ExplosionEvent = {
+        id: explosionId,
+        x: targetBox.x,
+        y: targetBox.y,
+        width: targetBox.width,
+        height: targetBox.height,
+        label: type,
+        createdAt: Date.now(),
+      };
+      set({ explosions: [...get().explosions, explosionEvent] });
+      get().notify('Komponen Korsleting/Hancur karena Air!');
+      if (typeof window !== 'undefined') {
+        window.setTimeout(() => {
+          get().dismissExplosion(explosionId);
+        }, 1200);
+      }
+      return false;
+    }
+
+    // 2. Check AABB Overlap Rule against other outdoor components
+    const overlappingNode = findOverlappingComponent(targetBox, null, get().nodes);
+    if (overlappingNode) {
+      get().notify(
+        isId
+          ? `Penempatan ditolak: Bertabrakan dengan ${overlappingNode.data.label}!`
+          : `Placement rejected: Overlaps with ${overlappingNode.data.label}!`
+      );
+      return false;
+    }
+
+    // 3. Valid free placement on Outdoor Sandbox
+    get().addComponent(type, position, options);
+    return true;
+  },
+
+  settleOutdoorNodeAfterDrag: (
+    nodeId: string,
+    previousPosition: { x: number; y: number },
+    containerSize: { width: number; height: number }
+  ) => {
+    const currentNodes = get().nodes;
+    const draggedNode = currentNodes.find((n) => n.id === nodeId);
+    if (!draggedNode) return;
+
+    const isId = get().language === 'id';
+    const targetBox = getComponentBoundingBox(draggedNode.position, draggedNode.data.type);
+
+    // 1. Water Rule: If dropped on WATER grid cell -> Explode, remove component, and notify!
+    if (
+      doesComponentTouchWater(
+        targetBox,
+        get().terrainGrid,
+        containerSize.width,
+        containerSize.height
+      )
+    ) {
+      const explosionId = `exp_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      const explosionEvent: ExplosionEvent = {
+        id: explosionId,
+        x: targetBox.x,
+        y: targetBox.y,
+        width: targetBox.width,
+        height: targetBox.height,
+        label: draggedNode.data.label,
+        createdAt: Date.now(),
+      };
+      set({ explosions: [...get().explosions, explosionEvent] });
+      get().removeComponent(nodeId);
+      get().notify('Komponen Korsleting/Hancur karena Air!');
+
+      if (typeof window !== 'undefined') {
+        window.setTimeout(() => {
+          get().dismissExplosion(explosionId);
+        }, 1200);
+      }
+      return;
+    }
+
+    // 2. Overlap Rule: If bounding box collides with another component -> reject & return to previousPosition
+    const overlappingNode = findOverlappingComponent(targetBox, nodeId, currentNodes);
+    if (overlappingNode) {
+      set({
+        nodes: currentNodes.map((n) =>
+          n.id === nodeId ? { ...n, position: { ...previousPosition } } : n
+        ),
+      });
+      get().notify(
+        isId
+          ? `Posisi ditolak: Bertabrakan dengan ${overlappingNode.data.label}!`
+          : `Position rejected: Overlaps with ${overlappingNode.data.label}!`
+      );
+    }
   },
 
   notify: (message: string) => {
@@ -505,9 +766,11 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   ) => {
     const componentId = `${type}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const isId = get().language === 'id';
+    const activeWorldMode = get().worldMode;
     let defaultData: CircuitElementData = {
       id: componentId,
       type,
+      worldMode: activeWorldMode,
       label: type.charAt(0).toUpperCase() + type.slice(1),
     };
 
@@ -547,13 +810,13 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
         break;
       case 'solar-panel':
       case 'solar_panel': {
-        const env = get().environment;
-        const v = getSolarPanelVoltage(env);
+        const defaultSunlight = 100;
+        const v = getSolarPanelVoltage(defaultSunlight);
         defaultData = {
           ...defaultData,
           type: 'solar-panel',
+          sunlight: defaultSunlight,
           voltage: v,
-          environment: env,
           internalResistance: SOLAR_PANEL_INTERNAL_RESISTANCE,
           label: isId ? 'Panel Surya' : 'Solar Panel',
         };
@@ -1152,6 +1415,7 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       data: {
         id: waypointId,
         type: 'waypoint',
+        worldMode: get().worldMode,
         label: 'Anchor',
       },
     };

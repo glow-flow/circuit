@@ -526,32 +526,37 @@ export const Inspector: React.FC<InspectorProps> = ({
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-xs font-semibold text-slate-200">
-                    {language === 'id' ? 'Tegangan Fotovoltaik' : 'Photovoltaic Output'}
+                    {language === 'id' ? 'Intensitas Cahaya Surya' : 'Solar Irradiance'}
                   </span>
                   <span className="text-xs font-mono font-bold text-amber-400">
-                    {(componentData.voltage ?? 0).toFixed(1)} V
+                    {componentData.sunlight ?? 100}% ({(componentData.voltage ?? 12.0).toFixed(1)} V)
                   </span>
                 </div>
 
-                <div className="p-3 rounded-xl bg-void-950/70 border border-white/5 space-y-2 text-xs">
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-400 font-sans text-[11px]">
-                      {language === 'id' ? 'Kondisi Cuaca:' : 'Environment:'}
-                    </span>
-                    <span className="font-mono font-bold text-slate-200">
-                      {useCircuitStore.getState().environment === 'sunny'
-                        ? '☀️ Terik (12V)'
-                        : useCircuitStore.getState().environment === 'cloudy'
-                        ? '⛅ Mendung (5V)'
-                        : '🔬 Lab / Gelap (0V)'}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    {language === 'id'
-                      ? 'Tegangan panel surya ditentukan oleh lingkungan luar ruangan. Gunakan tombol cuaca di bilah atas untuk beralih antara Terik (12V), Mendung (5V), atau Lab (0V).'
-                      : 'Solar panel voltage is determined by outdoor weather. Use the environment switcher button in the top bar to toggle between Sunny (12V), Cloudy (5V), or Lab (0V).'}
-                  </p>
-                </div>
+                <Slider.Root
+                  className="relative flex items-center select-none touch-none w-full h-6 cursor-pointer"
+                  value={[componentData.sunlight ?? 100]}
+                  min={0}
+                  max={100}
+                  step={1}
+                  onValueChange={([val]) =>
+                    updateComponentData(selectedNode.id, {
+                      sunlight: val,
+                      voltage: Number(((val / 100) * 12.0).toFixed(2)),
+                    })
+                  }
+                >
+                  <Slider.Track className="bg-void-900 relative grow rounded-full h-2 border border-white/10">
+                    <Slider.Range className="absolute bg-amber-400 rounded-full h-full" />
+                  </Slider.Track>
+                  <Slider.Thumb className="block w-5 h-5 bg-white rounded-full shadow-md focus:outline-none focus:ring-2 focus:ring-amber-400 transition-transform active:scale-125" />
+                </Slider.Root>
+
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  {language === 'id'
+                    ? 'Panel surya menghasilkan tegangan DC 0 - 12 V sesuai intensitas sinar matahari. Sambungkan ke Menara Transmisi untuk mengirim listrik ke Lab!'
+                    : 'Solar panel generates 0 - 12 V DC proportional to sunlight intensity. Connect to a Transmission Tower to send power to the Lab!'}
+                </p>
               </div>
             )}
 

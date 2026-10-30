@@ -48,7 +48,16 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
   const fitViewTrigger = useCircuitStore((state) => state.fitViewTrigger);
   const settleBulbAfterDrag = useCircuitStore((state) => state.settleBulbAfterDrag);
   const syncSnappedBulbPosition = useCircuitStore((state) => state.syncSnappedBulbPosition);
-  const environment = useCircuitStore((state) => state.environment);
+
+  const labNodes = useMemo(
+    () => nodes.filter((n) => (n.data.worldMode ?? 'lab') === 'lab'),
+    [nodes]
+  );
+
+  const labEdges = useMemo(() => {
+    const labNodeIdSet = new Set(labNodes.map((n) => n.id));
+    return edges.filter((e) => labNodeIdSet.has(e.source) && labNodeIdSet.has(e.target));
+  }, [edges, labNodes]);
 
   const [reactFlowInstance, setReactFlowInstance] = React.useState<ReactFlowInstance | null>(null);
 
@@ -214,34 +223,9 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
       className="w-full h-full relative overflow-hidden bg-void-950 transition-colors duration-500"
       ref={reactFlowWrapper}
     >
-      {/* Dynamic Nature Environment Background Layers (Preloaded & Seamlessly Cross-faded) */}
-      <div
-        className={`absolute inset-0 bg-cover bg-center transition-opacity duration-700 pointer-events-none z-0 ${
-          environment === 'sunny' ? 'opacity-100' : 'opacity-0'
-        }`}
-        style={{
-          backgroundImage: "url('/assets/nature-sunny.png')",
-        }}
-      >
-        {/* Dark contrast overlay for neon wires and text legibility */}
-        <div className="absolute inset-0 bg-black/40 backdrop-brightness-[0.9]" />
-      </div>
-
-      <div
-        className={`absolute inset-0 bg-cover bg-center transition-opacity duration-700 pointer-events-none z-0 ${
-          environment === 'cloudy' ? 'opacity-100' : 'opacity-0'
-        }`}
-        style={{
-          backgroundImage: "url('/assets/nature-cloudy.png')",
-        }}
-      >
-        {/* Dark contrast overlay for neon wires and text legibility */}
-        <div className="absolute inset-0 bg-black/40 backdrop-brightness-[0.9]" />
-      </div>
-
       <ReactFlow
-        nodes={nodes}
-        edges={edges}
+        nodes={labNodes}
+        edges={labEdges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
@@ -282,7 +266,7 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
           variant={BackgroundVariant.Dots}
           gap={20}
           size={1.5}
-          color={environment === 'lab' ? '#27272A' : '#ffffff20'}
+          color="#27272A"
         />
         <Controls
           className="!bg-void-900 !border !border-white/10 !rounded-lg !overflow-hidden [&>button]:!bg-void-900 [&>button]:!border-b [&>button]:!border-white/10 [&>button]:!text-slate-300 hover:[&>button]:!bg-void-800"

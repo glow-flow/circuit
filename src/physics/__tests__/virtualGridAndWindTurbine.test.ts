@@ -46,7 +46,7 @@ describe('Virtual Transmission Grid and Wind Turbine Physics Solver', () => {
       type: 'solar-panel',
       label: 'Panel Surya',
       voltage: 12.0,
-      environment: 'sunny',
+      sunlight: 100,
     };
 
     const towerOutdoor: CircuitElementData = {

@@ -1,52 +1,34 @@
 /**
- * Solar Panel Physics & Environmental Simulation Module.
+ * Solar Panel Physics Module.
  *
- * Models photovoltaic behavior under dynamic atmospheric conditions:
- * - 'sunny': Full solar irradiance -> 12.0V open-circuit EMF
- * - 'cloudy': Diffuse solar irradiance -> 5.0V open-circuit EMF
- * - 'lab': Indoor dark environment -> 0.0V (no photovoltage generated)
+ * Models photovoltaic EMF output under adjustable solar irradiance (0% to 100%):
+ * - 100% Sunlight (Full Irradiance): 12.0V open-circuit EMF
+ * - 42% Sunlight (Diffuse / Overcast): ~5.0V open-circuit EMF
+ * - 0% Sunlight (Dark / Night): 0.0V open-circuit EMF
  *
- * Time Complexity: O(1) constant time lookups.
+ * Time Complexity: O(1) constant-time arithmetic.
  */
 
-import { CircuitEnvironment } from '../types/circuit';
+/** Maximum rated open-circuit voltage of the solar panel array (Volts) */
+export const SOLAR_PANEL_MAX_VOLTAGE = 12.0;
 
-/** Rated output voltages for solar panels per environmental state */
-export const SOLAR_PANEL_VOLTAGES: Record<CircuitEnvironment, number> = {
-  sunny: 12.0,
-  cloudy: 5.0,
-  lab: 0.0,
-};
+/** Default sunlight irradiance percentage when placed (100% = 12.0V) */
+export const DEFAULT_SOLAR_SUNLIGHT_PERCENT = 100;
 
 /** Internal series source resistance of solar cell matrix (Ohms) */
 export const SOLAR_PANEL_INTERNAL_RESISTANCE = 0.2;
 
 /**
- * Returns nominal output voltage for a solar panel in the given environment.
+ * Computes the nominal open-circuit EMF voltage of a solar panel from sunlight irradiance percentage.
+ * Includes input validation and clamping to [0, 100].
  *
- * @param environment - Current ambient environment ('lab' | 'sunny' | 'cloudy')
- * @returns Nominal voltage in Volts (12.0V, 5.0V, or 0.0V)
+ * @param sunlightPercent - Solar irradiance percentage (0 to 100, default 100)
+ * @returns Nominal output voltage in Volts (0.0V to 12.0V)
  */
-export function getSolarPanelVoltage(environment?: CircuitEnvironment): number {
-  if (!environment) return SOLAR_PANEL_VOLTAGES.lab;
-  return SOLAR_PANEL_VOLTAGES[environment] ?? SOLAR_PANEL_VOLTAGES.lab;
-}
-
-/**
- * Cycles to the next environment state: 'lab' -> 'sunny' -> 'cloudy' -> 'lab'.
- *
- * @param current - Current environment
- * @returns Next environment in cycle
- */
-export function getNextEnvironment(current: CircuitEnvironment): CircuitEnvironment {
-  switch (current) {
-    case 'lab':
-      return 'sunny';
-    case 'sunny':
-      return 'cloudy';
-    case 'cloudy':
-      return 'lab';
-    default:
-      return 'lab';
+export function getSolarPanelVoltage(sunlightPercent: number = DEFAULT_SOLAR_SUNLIGHT_PERCENT): number {
+  if (typeof sunlightPercent !== 'number' || Number.isNaN(sunlightPercent)) {
+    return SOLAR_PANEL_MAX_VOLTAGE;
   }
+  const clampedSunlight = Math.max(0, Math.min(100, sunlightPercent));
+  return Number(((clampedSunlight / 100) * SOLAR_PANEL_MAX_VOLTAGE).toFixed(2));
 }

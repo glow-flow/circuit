@@ -4,6 +4,8 @@ import { PlusCircle, Sliders, Activity, Scissors, Pin } from 'lucide-react';
 import { Header } from './components/ui/Header';
 import { SidebarPalette } from './components/ui/SidebarPalette';
 import { CircuitCanvas } from './components/canvas/CircuitCanvas';
+import { OutdoorSandbox } from './components/canvas/OutdoorSandbox';
+import { CloudOverlay } from './components/ui/CloudOverlay';
 import { Inspector } from './components/ui/Inspector';
 import { WelcomeModal } from './components/ui/WelcomeModal';
 import { Toast } from './components/ui/Toast';
@@ -23,6 +25,7 @@ export const App: React.FC = () => {
   const splitEdgeAtMidpoint = useCircuitStore((state) => state.splitEdgeAtMidpoint);
   const simulation = useCircuitStore((state) => state.simulation);
   const language = useCircuitStore((state) => state.language);
+  const worldMode = useCircuitStore((state) => state.worldMode);
 
   const t = TRANSLATIONS[language].mobileNav;
   const wireT = TRANSLATIONS[language].wire;
@@ -69,12 +72,12 @@ export const App: React.FC = () => {
         {/* Desktop Left Component Palette */}
         <SidebarPalette />
 
-        {/* Central React Flow Canvas (Full width on mobile, center column on desktop) */}
+        {/* Central Canvas: Lab Mode (CircuitCanvas) or Outdoor Sandbox (OutdoorSandbox) */}
         <main
           id="tour-canvas-area"
           className="flex-1 relative h-full w-full min-w-0"
         >
-          <CircuitCanvas />
+          {worldMode === 'outside' ? <OutdoorSandbox /> : <CircuitCanvas />}
 
           {/* Floating Quick-Edit Pill on Mobile when a component is selected */}
           {selectedNode && activeMobileSheet === 'none' && (
@@ -189,6 +192,9 @@ export const App: React.FC = () => {
 
       {/* Transient notifications (e.g. wrong bulb base for a socket) */}
       <Toast />
+
+      {/* 2-Second Pure CSS Cloud Transition Overlay */}
+      <CloudOverlay />
     </div>
   );
 };

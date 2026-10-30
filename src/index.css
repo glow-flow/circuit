@@ -211,3 +211,113 @@ body.driver-active nav.tour-mobile-nav {
 @media (prefers-reduced-motion: reduce) {
   .node-info-pop { animation: none; }
 }
+
+/* ============================================================================
+   2-Second Pure CSS Cloud World Transition (0-0.5s In, 0.5-1.5s Hold, 1.5-2.0s Out)
+   ============================================================================ */
+@keyframes cloudOverlayTimeline {
+  0% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  25% {
+    opacity: 1;
+    transform: scale(1.0);
+  }
+  75% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.16);
+  }
+}
+
+@keyframes cloudSweepLeft {
+  0% {
+    opacity: 0;
+    transform: translate3d(-22vw, 4vh, 0) scale(0.65);
+  }
+  25% {
+    opacity: 1;
+    transform: translate3d(0vw, 0vh, 0) scale(1.05);
+  }
+  75% {
+    opacity: 1;
+    transform: translate3d(3vw, -1vh, 0) scale(1.12);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(-16vw, -4vh, 0) scale(1.25);
+  }
+}
+
+@keyframes cloudSweepRight {
+  0% {
+    opacity: 0;
+    transform: translate3d(22vw, -4vh, 0) scale(0.65);
+  }
+  25% {
+    opacity: 1;
+    transform: translate3d(0vw, 0vh, 0) scale(1.05);
+  }
+  75% {
+    opacity: 1;
+    transform: translate3d(-3vw, 1vh, 0) scale(1.12);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(16vw, 4vh, 0) scale(1.25);
+  }
+}
+
+.animate-cloud-overlay {
+  animation: cloudOverlayTimeline 2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-cloud-left {
+  animation: cloudSweepLeft 2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-cloud-right {
+  animation: cloudSweepRight 2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* ============================================================================
+   Water Short-Circuit Explosion Animation (Scale-up + Fade-out + Particle Burst)
+   ============================================================================ */
+@keyframes waterExplodeCore {
+  0% {
+    opacity: 1;
+    transform: scale(0.35);
+  }
+  35% {
+    opacity: 1;
+    transform: scale(1.45);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.35);
+  }
+}
+
+@keyframes waterExplodeParticle {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--tx, 60px), var(--ty, -60px)) scale(0.15);
+  }
+}
+
+.animate-water-explode-core {
+  animation: waterExplodeCore 0.85s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-water-explode-particle {
+  animation: waterExplodeParticle 0.85s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
