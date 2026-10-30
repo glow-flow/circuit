@@ -8,6 +8,7 @@ import {
   getComponentBoundingBox,
   findOverlappingComponent,
   doesComponentTouchWater,
+  evaluateComponentDropPhysics,
   GRID_COLS,
   GRID_ROWS,
   GRASS_GROWTH_DELAY_MS,
@@ -114,5 +115,49 @@ describe('Outdoor Sandbox Terrain Physics & Spatial Collision Engine', () => {
     // Drop solar panel on dry land (x = 40, y = 100)
     const dryDropBox = getComponentBoundingBox({ x: 40, y: 100 }, 'solar-panel');
     expect(doesComponentTouchWater(dryDropBox, grid, containerWidth, containerHeight)).toBe(false);
+  });
+
+  it('coalesces hollow gaps ("bolong") inside a water pool via liquid cellular automata', () => {
+    const grid = createEmptyTerrainGrid(6, 6);
+    // Solid dirt floor at row 5
+    for (let c = 0; c < 6; c++) grid[5][c] = 'DIRT';
+    // Water pool at row 4 with a hole at col 2: WATER | WATER | EMPTY | WATER
+    grid[4][1] = 'WATER';
+    grid[4][2] = 'EMPTY';
+    grid[4][3] = 'WATER';
+
+    const { nextGrid, moved } = stepTerrainGravity(grid);
+    expect(moved).toBe(true);
+    expect(nextGrid[4][2]).toBe('WATER');
+  });
+
+  it('settles safe drops onto the ground surface and explodes drops from excessive height', () => {
+    const grid = createDefaultOutdoorTerrain(20, 40);
+    const containerSize = { width: 800, height: 400 }; // 20px per row
+
+    // Safe drop just above ground (y = 110) -> settles onto ground surface
+    const safeOutcome = evaluateComponentDropPhysics(
+      { x: 60, y: 110 },
+      'solar-panel',
+      null,
+      [],
+      grid,
+      containerSize
+    );
+    expect(safeOutcome.status).toBe('settled');
+    if (safeOutcome.status === 'settled') {
+      expect(safeOutcome.settledPosition.y).toBeGreaterThan(110);
+    }
+
+    // Excessive height drop near top of sky (y = 5) -> explodes on impact!
+    const highDropOutcome = evaluateComponentDropPhysics(
+      { x: 60, y: 5 },
+      'solar-panel',
+      null,
+      [],
+      grid,
+      containerSize
+    );
+    expect(highDropOutcome.status).toBe('explode-height');
   });
 });

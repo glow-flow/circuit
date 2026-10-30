@@ -26,7 +26,8 @@ import {
 } from '../../types/circuit';
 import { PALETTE_DRAG_MIME, getPaletteEntry } from '../../constants/componentCatalog';
 import {
-  doesComponentTouchWater,
+  evaluateComponentDropPhysics,
+  findTerrainSurfaceY,
   getComponentBoundingBox,
   GRID_COLS,
   GRID_ROWS,
@@ -109,10 +110,14 @@ const WaterExplosionEffect: React.FC<{ explosion: ExplosionEvent }> = ({ explosi
         />
       ))}
 
-      {/* Floating Short-Circuit Alert Pill */}
+      {/* Floating Short-Circuit / Impact Alert Pill */}
       <div className="absolute -top-12 left-1/2 -translate-x-1/2 whitespace-nowrap px-3 py-1 rounded-full bg-red-600/95 border border-yellow-300 text-white font-mono text-xs font-bold shadow-[0_0_24px_rgba(239,68,68,0.9)] flex items-center gap-1.5 animate-bounce">
         <Flame className="w-3.5 h-3.5 text-yellow-300 fill-yellow-300" />
-        <span>BOOM! KORSLETING AIR!</span>
+        <span>
+          {explosion.reason === 'height'
+            ? 'BOOM! HANCUR JATUH DARI KETINGGIAN!'
+            : 'BOOM! KORSLETING AIR!'}
+        </span>
       </div>
     </div>
   );
@@ -148,6 +153,8 @@ const OutdoorSandboxInner: React.FC = () => {
 
   // Store each node's initial position before dragging so overlap rejection can snap it back
   const dragStartPositionsRef = useRef<Record<string, { x: number; y: number }>>({});
+  // Track actively dragged node ID so terrain gravity effects NEVER interrupt an active drag
+  const activeDraggedNodeIdRef = useRef<string | null>(null);
 
   // Filter nodes & edges belonging to the 'outside' world
   const outdoorNodes = useMemo(
@@ -160,7 +167,7 @@ const OutdoorSandboxInner: React.FC = () => {
     return edges.filter((e) => outdoorIds.has(e.source) && outdoorIds.has(e.target));
   }, [edges, outdoorNodes]);
 
-  // Run Gravity (falling Dirt/Water) and 3-Second Grass Growth physics loop
+  // Run Gravity (falling Dirt/Water + Liquid Leveling) and 3-Second Grass Growth physics loop
   useEffect(() => {
     const intervalId = window.setInterval(() => {
       tickTerrainPhysics(Date.now());
@@ -168,16 +175,36 @@ const OutdoorSandboxInner: React.FC = () => {
     return () => window.clearInterval(intervalId);
   }, [tickTerrainPhysics]);
 
-  // Check if newly fallen/painted water touches any existing outdoor component -> trigger explosion!
+  // When terrainGrid changes (e.g. dirt dug out under a component or water poured onto a component),
+  // apply gravity & hazard checks ONLY to non-dragging outdoor components.
   useEffect(() => {
-    if (!containerRef.current || outdoorNodes.length === 0) return;
+    if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return;
 
-    for (const node of outdoorNodes) {
+    const currentOutdoorNodes = useCircuitStore
+      .getState()
+      .nodes.filter((n) => n.data.worldMode === 'outside');
+
+    for (const node of currentOutdoorNodes) {
       if (node.data.type === 'waypoint') continue;
-      const box = getComponentBoundingBox(node.position, node.data.type);
-      if (doesComponentTouchWater(box, terrainGrid, rect.width, rect.height)) {
+      if (activeDraggedNodeIdRef.current === node.id) continue;
+
+      const outcome = evaluateComponentDropPhysics(
+        node.position,
+        node.data.type,
+        node.id,
+        currentOutdoorNodes,
+        terrainGrid,
+        { width: rect.width, height: rect.height }
+      );
+
+      if (
+        outcome.status === 'explode-water' ||
+        outcome.status === 'explode-height' ||
+        (outcome.status === 'settled' &&
+          Math.abs(outcome.settledPosition.y - node.position.y) > 2)
+      ) {
         settleOutdoorNodeAfterDrag(node.id, node.position, {
           width: rect.width,
           height: rect.height,
@@ -185,7 +212,7 @@ const OutdoorSandboxInner: React.FC = () => {
         break;
       }
     }
-  }, [terrainGrid, outdoorNodes, settleOutdoorNodeAfterDrag]);
+  }, [terrainGrid, settleOutdoorNodeAfterDrag]);
 
   const nodeTypes = useMemo(
     () => ({
@@ -274,6 +301,8 @@ const OutdoorSandboxInner: React.FC = () => {
 
   const onNodeDragStart = useCallback(
     (_event: React.MouseEvent, draggedNode: Node<CircuitElementData>) => {
+      activeDraggedNodeIdRef.current = draggedNode.id;
+      setIsPaintingTerrain(false);
       dragStartPositionsRef.current[draggedNode.id] = {
         x: draggedNode.position.x,
         y: draggedNode.position.y,
@@ -284,16 +313,19 @@ const OutdoorSandboxInner: React.FC = () => {
 
   /**
    * Handles releasing a dragged outdoor component:
-   * 1. Checks if dropped on WATER -> triggers Explosion, deletes node, shows toast.
-   * 2. Checks if bounding box overlaps another outdoor component -> rejects & returns to start position.
+   * 1. Checks if dropped from too high (> MAX_SAFE_DROP_ROWS) -> explodes on impact!
+   * 2. Checks if dropped on WATER -> triggers Explosion, deletes node, shows toast.
+   * 3. Checks if bounding box overlaps another outdoor component -> rejects & returns to start position.
+   * 4. Otherwise settles the component down onto the terrain surface by gravity.
    */
   const onNodeDragStop = useCallback(
     (_event: React.MouseEvent, draggedNode: Node<CircuitElementData>) => {
+      activeDraggedNodeIdRef.current = null;
       if (!containerRef.current) return;
       const bounds = containerRef.current.getBoundingClientRect();
       const previousPosition = dragStartPositionsRef.current[draggedNode.id] ?? {
-        x: 60,
-        y: 80,
+        x: 30,
+        y: 120,
       };
 
       settleOutdoorNodeAfterDrag(draggedNode.id, previousPosition, {
@@ -339,13 +371,13 @@ const OutdoorSandboxInner: React.FC = () => {
 
   /**
    * Spawns a ready-to-use Outdoor Renewable Power Station (Solar Panel 12V + Wind Turbine + Transmission Tower)
-   * on the grassy plateau and wires them in parallel to the Transmission Tower!
+   * grounded directly on the grassy terrain surface!
    */
   const handleSpawnOutdoorPowerStation = useCallback(() => {
     const state = useCircuitStore.getState();
     const bounds = containerRef.current?.getBoundingClientRect();
-    const canvasHeight = bounds && bounds.height > 300 ? bounds.height : 680;
-    const groundY = Math.max(90, Math.round(canvasHeight * 0.72) - 235);
+    const canvasWidth = bounds && bounds.width > 200 ? bounds.width : 960;
+    const canvasHeight = bounds && bounds.height > 250 ? bounds.height : 680;
 
     // Clear existing outdoor nodes first to avoid overlap
     const nonOutdoorNodes = state.nodes.filter((n) => n.data.worldMode !== 'outside');
@@ -360,11 +392,32 @@ const OutdoorSandboxInner: React.FC = () => {
     const turbineId = `wind_out_${Date.now() + 1}`;
     const towerId = `tower_out_${Date.now() + 2}`;
 
+    // Calculate responsive X positions on the left grassy highland (columns 0..22, avoiding water at cols 24..32)
+    const isCompactViewport = canvasWidth < 600;
+    const solarX = isCompactViewport ? 8 : Math.round(canvasWidth * 0.04);
+    const turbineX = isCompactViewport
+      ? Math.round(canvasWidth * 0.34)
+      : Math.round(canvasWidth * 0.24);
+    const towerX = isCompactViewport
+      ? Math.round(canvasWidth * 0.66)
+      : Math.round(canvasWidth * 0.44);
+
+    const computeGroundedY = (x: number, type: 'solar-panel' | 'wind-turbine' | 'transmission-tower') => {
+      const box = getComponentBoundingBox({ x, y: 0 }, type);
+      const { surfaceY } = findTerrainSurfaceY(
+        box,
+        state.terrainGrid,
+        canvasWidth,
+        canvasHeight
+      );
+      return Math.max(8, Math.round(surfaceY - box.height + 6));
+    };
+
     const newOutdoorNodes: Node<CircuitElementData>[] = [
       {
         id: solarId,
         type: 'solar-panel',
-        position: { x: 45, y: groundY + 45 },
+        position: { x: solarX, y: computeGroundedY(solarX, 'solar-panel') },
         data: {
           id: solarId,
           type: 'solar-panel',
@@ -378,7 +431,7 @@ const OutdoorSandboxInner: React.FC = () => {
       {
         id: turbineId,
         type: 'wind-turbine',
-        position: { x: 265, y: Math.max(30, groundY - 45) },
+        position: { x: turbineX, y: computeGroundedY(turbineX, 'wind-turbine') },
         data: {
           id: turbineId,
           type: 'wind-turbine',
@@ -392,7 +445,7 @@ const OutdoorSandboxInner: React.FC = () => {
       {
         id: towerId,
         type: 'transmission-tower',
-        position: { x: 500, y: Math.max(40, groundY - 15) },
+        position: { x: towerX, y: computeGroundedY(towerX, 'transmission-tower') },
         data: {
           id: towerId,
           type: 'transmission-tower',
@@ -486,13 +539,26 @@ const OutdoorSandboxInner: React.FC = () => {
       onDragOver={onDragOver}
       onDrop={onDrop}
       onPointerDown={(e) => {
+        // Never block or hijack pointer events when touching a component node, handle, or wire!
+        const targetEl = e.target as HTMLElement | null;
+        if (
+          targetEl?.closest(
+            '.react-flow__node, .react-flow__handle, .react-flow__edge, button, input'
+          )
+        ) {
+          return;
+        }
         if (terrainBrush !== 'cursor') {
           setIsPaintingTerrain(true);
           handleTerrainPointerAction(e.clientX, e.clientY);
         }
       }}
       onPointerMove={(e) => {
-        if (isPaintingTerrain && terrainBrush !== 'cursor') {
+        if (
+          isPaintingTerrain &&
+          terrainBrush !== 'cursor' &&
+          !activeDraggedNodeIdRef.current
+        ) {
           handleTerrainPointerAction(e.clientX, e.clientY);
         }
       }}
@@ -516,7 +582,7 @@ const OutdoorSandboxInner: React.FC = () => {
       </div>
 
       {/* ====================================================================
-          LAYER 1 (z-10): 40x20 2D Terrain Grid (DIRT & Transparent WATER)
+          LAYER 1 (z-10): 40x20 2D Terrain Grid (DIRT & Cohesive Liquid WATER)
          ==================================================================== */}
       <div
         className="absolute inset-0 grid pointer-events-none z-10"
@@ -542,19 +608,22 @@ const OutdoorSandboxInner: React.FC = () => {
             }
 
             if (cellType === 'WATER') {
+              const isTopWaterSurface =
+                rIdx === 0 || terrainGrid[rIdx - 1]?.[cIdx] === 'EMPTY';
               return (
                 <div
                   key={key}
-                  className="w-full h-full relative overflow-hidden transition-all duration-75"
+                  className="w-[calc(100%+1px)] h-[calc(100%+1px)] relative overflow-hidden bg-sky-500/25"
                   style={{
                     backgroundImage: "url('/assets/tile-water.png')",
-                    backgroundSize: '100% 100%',
-                    opacity: 0.6,
+                    backgroundSize: '120px 120px',
+                    backgroundPosition: `-${(cIdx % 6) * 20}px -${(rIdx % 6) * 20}px`,
+                    opacity: 0.72,
                   }}
                 >
-                  {/* Top surface water ripple highlight if air is above */}
-                  {(rIdx === 0 || terrainGrid[rIdx - 1]?.[cIdx] === 'EMPTY') && (
-                    <div className="absolute inset-x-0 top-0 h-1 bg-cyan-200/70 shadow-[0_0_8px_rgba(103,232,249,0.9)]" />
+                  {/* Continuous liquid surface crest highlight only on top-most water row */}
+                  {isTopWaterSurface && (
+                    <div className="absolute inset-x-0 top-0 h-[3px] bg-cyan-200/85 shadow-[0_0_8px_rgba(103,232,249,0.95)]" />
                   )}
                 </div>
               );
@@ -564,7 +633,7 @@ const OutdoorSandboxInner: React.FC = () => {
             return (
               <div
                 key={key}
-                className="w-full h-full relative transition-transform duration-75"
+                className="w-[calc(100%+1px)] h-[calc(100%+1px)] relative"
                 style={{
                   backgroundImage: "url('/assets/tile-dirt.png')",
                   backgroundSize: '100% 100%',
@@ -577,13 +646,9 @@ const OutdoorSandboxInner: React.FC = () => {
 
       {/* ====================================================================
           LAYER 2 (z-20): Free-Position Power Source Components & Wires
-          (React Flow locked 1:1 to terrain coordinates, snapToGrid={false})
+          (Always pointer-events-auto on nodes so dragging NEVER gets stuck!)
          ==================================================================== */}
-      <div
-        className={`absolute inset-0 z-20 ${
-          terrainBrush !== 'cursor' ? 'pointer-events-none' : 'pointer-events-auto'
-        }`}
-      >
+      <div className="absolute inset-0 z-20 pointer-events-auto">
         <ReactFlow
           nodes={outdoorNodes}
           edges={outdoorEdges}

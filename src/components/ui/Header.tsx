@@ -86,64 +86,73 @@ export const Header: React.FC = () => {
           </div>
         </div>
 
-        {/* Center Presets Dropdown */}
-        <div className="flex items-center gap-1 sm:gap-1.5 min-w-0 mx-1">
-          <div className="hidden md:flex items-center gap-1 text-xs text-slate-400 mr-0.5 shrink-0">
-            <BookOpen className="w-3.5 h-3.5" />
-          </div>
-          <select
-            id="tour-dropdown-contoh"
-            onChange={handlePresetSelectChange}
-            defaultValue=""
-            aria-label="Circuit Presets"
-            className="text-[11px] sm:text-xs bg-void-950 border border-white/10 text-slate-200 rounded-lg px-1.5 sm:px-2.5 py-1 sm:py-1.5 w-28 xs:w-36 sm:w-48 md:w-56 truncate focus:outline-none focus:border-electric-500 transition-colors cursor-pointer"
-          >
-            <option value="" disabled>
-              {t.selectPreset}
-            </option>
-            <optgroup label={t.builtinGroup}>
-              <option value="simple-lamp">{t.presetSimpleLamp}</option>
-              <option value="voltage-divider">{t.presetSeriesDivider}</option>
-              <option value="parallel-bulbs">{t.presetParallelBulbs}</option>
-              <option value="short-circuit-demo">{t.presetShortCircuit}</option>
-              <option value="ultimate-power-grid">{t.presetUltimatePowerGrid}</option>
-            </optgroup>
-            {customPresets.length > 0 && (
-              <optgroup label={t.customGroup}>
-                {customPresets.map((preset) => (
-                  <option key={preset.id} value={`custom:${preset.id}`}>
-                    ★ {preset.name}
-                  </option>
-                ))}
+        {/* Center Presets Dropdown (Only shown in Indoor Lab Mode) */}
+        {worldMode === 'lab' ? (
+          <div className="flex items-center gap-1 sm:gap-1.5 min-w-0 mx-1">
+            <div className="hidden md:flex items-center gap-1 text-xs text-slate-400 mr-0.5 shrink-0">
+              <BookOpen className="w-3.5 h-3.5" />
+            </div>
+            <select
+              id="tour-dropdown-contoh"
+              onChange={handlePresetSelectChange}
+              defaultValue=""
+              aria-label="Circuit Presets"
+              className="text-[11px] sm:text-xs bg-void-950 border border-white/10 text-slate-200 rounded-lg px-1.5 sm:px-2.5 py-1 sm:py-1.5 w-28 xs:w-36 sm:w-48 md:w-56 truncate focus:outline-none focus:border-electric-500 transition-colors cursor-pointer"
+            >
+              <option value="" disabled>
+                {t.selectPreset}
+              </option>
+              <optgroup label={t.builtinGroup}>
+                <option value="simple-lamp">{t.presetSimpleLamp}</option>
+                <option value="voltage-divider">{t.presetSeriesDivider}</option>
+                <option value="parallel-bulbs">{t.presetParallelBulbs}</option>
+                <option value="short-circuit-demo">{t.presetShortCircuit}</option>
+                <option value="ultimate-power-grid">{t.presetUltimatePowerGrid}</option>
               </optgroup>
-            )}
-            <option value="action:save" className="text-electric-400 font-semibold">
-              + {t.savePresetBtn}...
-            </option>
-          </select>
+              {customPresets.length > 0 && (
+                <optgroup label={t.customGroup}>
+                  {customPresets.map((preset) => (
+                    <option key={preset.id} value={`custom:${preset.id}`}>
+                      ★ {preset.name}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              <option value="action:save" className="text-electric-400 font-semibold">
+                + {t.savePresetBtn}...
+              </option>
+            </select>
 
-          {/* Save Custom Preset to Browser Cache Button (visible on tablet/desktop) */}
-          <button
-            id="tour-btn-save"
-            type="button"
-            onClick={() => setIsSaveModalOpen(true)}
-            title={t.savePresetModalTitle}
-            className="hidden sm:flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg bg-electric-500/15 hover:bg-electric-500/25 border border-electric-500/30 text-electric-400 text-[11px] sm:text-xs font-semibold transition-all active:scale-95 shrink-0 cursor-pointer"
-          >
-            <BookmarkPlus className="w-3.5 h-3.5 shrink-0" />
-            <span className="hidden md:inline">{t.savePresetBtn}</span>
-          </button>
+            {/* Save Custom Preset to Browser Cache Button (visible on tablet/desktop) */}
+            <button
+              id="tour-btn-save"
+              type="button"
+              onClick={() => setIsSaveModalOpen(true)}
+              title={t.savePresetModalTitle}
+              className="hidden sm:flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg bg-electric-500/15 hover:bg-electric-500/25 border border-electric-500/30 text-electric-400 text-[11px] sm:text-xs font-semibold transition-all active:scale-95 shrink-0 cursor-pointer"
+            >
+              <BookmarkPlus className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden md:inline">{t.savePresetBtn}</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => loadPreset('simple-lamp')}
-            className="hidden sm:flex p-1.5 rounded-lg bg-void-850 hover:bg-void-800 border border-white/10 text-slate-300 hover:text-white transition-all active:scale-95 shrink-0 cursor-pointer"
-            title={t.resetTitle}
-            onClickCapture={runSimulation}
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={() => loadPreset('simple-lamp')}
+              className="hidden sm:flex p-1.5 rounded-lg bg-void-850 hover:bg-void-800 border border-white/10 text-slate-300 hover:text-white transition-all active:scale-95 shrink-0 cursor-pointer"
+              title={t.resetTitle}
+              onClickCapture={runSimulation}
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-400/25 text-emerald-300 text-[10px] sm:text-xs font-mono font-semibold truncate">
+            <Trees className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span className="truncate">
+              {language === 'id' ? 'Zona Alam Terbuka' : 'Outdoor Nature Sandbox'}
+            </span>
+          </div>
+        )}
 
         {/* Right Help Button, Language Toggle, Environment & Clear */}
         <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">

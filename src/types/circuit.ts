@@ -44,6 +44,7 @@ export interface ExplosionEvent {
   width: number;
   height: number;
   label: string;
+  reason?: 'water' | 'height';
   createdAt: number;
 }
 

@@ -31,96 +31,74 @@ export const TransmissionTowerNode: React.FC<NodeProps<CircuitElementData>> = me
 
     return (
       <div
-        className={`relative flex flex-col items-center select-none transition-all duration-200 group ${
-          selected ? 'filter drop-shadow-[0_0_16px_rgba(34,211,238,0.5)]' : ''
+        className={`relative flex flex-col items-center select-none transition-all duration-200 group w-[148px] ${
+          selected ? 'filter drop-shadow-[0_0_18px_rgba(34,211,238,0.55)]' : ''
         }`}
       >
-        {/* Main Pylon Graphic Container */}
-        <div className="relative w-44 flex flex-col items-center">
-          {/* Top Status Badge */}
-          <div className="mb-1 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono font-bold tracking-tight shadow-lg backdrop-blur-md border transition-all duration-300">
+        {/* Top Floating Status & Telemetry Pill (Above Pylon so Steel Legs Sit on Grass) */}
+        <div
+          className={`mb-1 px-2.5 py-1 rounded-2xl text-[10px] font-mono font-bold tracking-tight shadow-[0_8px_20px_rgba(0,0,0,0.45)] backdrop-blur-md border transition-all duration-300 z-30 ${
+            isGridConnected
+              ? 'bg-emerald-950/85 text-emerald-300 border-emerald-400/45 shadow-[0_0_14px_rgba(16,185,129,0.3)]'
+              : 'bg-void-950/85 text-slate-300 border-white/15'
+          }`}
+        >
+          <div className="flex items-center gap-1.5 whitespace-nowrap">
             {isGridConnected ? (
-              <span className="flex items-center gap-1.5 bg-emerald-950/80 text-emerald-300 border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.3)]">
+              <>
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
                 <Zap className="w-3 h-3 text-emerald-400 shrink-0" />
                 <span>
                   {isId
-                    ? `Grid Terhubung (${connectedCount} Menara)`
-                    : `Grid Active (${connectedCount} Towers)`}
+                    ? `Grid (${connectedCount} Menara)`
+                    : `Grid (${connectedCount} Towers)`}
+                  {currentAmperes > 0.001 ? ` · ${currentDisplay}` : ''}
                 </span>
-              </span>
+              </>
             ) : (
-              <span className="flex items-center gap-1.5 bg-void-900/80 text-slate-400 border-white/10">
+              <>
                 <Radio className="w-3 h-3 text-slate-400 shrink-0" />
                 <span>{isId ? 'Standby (1 Menara)' : 'Standby (1 Tower)'}</span>
-              </span>
+              </>
             )}
           </div>
+        </div>
 
-          {/* High-Resolution Transparent Transmission Tower Pylon Graphic */}
-          <div className="relative w-36 h-64 flex items-center justify-center">
-            <img
-              src="/assets/transmission-tower.png"
-              alt={isId ? 'Menara Transmisi' : 'Transmission Tower'}
-              className="w-full h-full object-contain pointer-events-none drop-shadow-md"
-              draggable={false}
+        {/* High-Resolution Transparent Transmission Tower Pylon Graphic: Legs Anchored at Bottom-0 */}
+        <div className="relative w-[136px] h-[204px] flex items-end justify-center">
+          <img
+            src="/assets/transmission-tower.png"
+            alt={isId ? 'Menara Transmisi' : 'Transmission Tower'}
+            className="w-full h-full object-contain pointer-events-none select-none drop-shadow-[0_6px_10px_rgba(0,0,0,0.5)]"
+            draggable={false}
+          />
+
+          {/* Electrical Current Flow Glow Indicator (if active current) */}
+          {currentAmperes > 0.001 && (
+            <div
+              className="absolute inset-x-6 top-8 bottom-6 rounded-full pointer-events-none bg-cyan-400/15 blur-xl animate-pulse"
+              aria-hidden="true"
             />
+          )}
 
-            {/* Electrical Current Flow Glow Indicator (if active current) */}
-            {currentAmperes > 0.001 && (
-              <div
-                className="absolute inset-x-8 top-12 bottom-8 rounded-full pointer-events-none bg-cyan-400/10 blur-xl animate-pulse"
-                aria-hidden="true"
-              />
-            )}
-          </div>
+          {/* Grounded Base Terminals (+ and -) Right on the Steel Pylon Feet */}
+          <Handle
+            type="source"
+            position={Position.Bottom}
+            id="pos"
+            style={{ left: '34.4%', bottom: '2px' }}
+            className="!w-4 !h-4 !bg-red-500 !border-2 !border-white !rounded-full shadow-[0_0_10px_rgba(239,68,68,0.9)] hover:!scale-125 transition-transform cursor-crosshair z-30"
+            title={isId ? 'Kutub Positif (+)' : 'Positive Terminal (+)'}
+          />
 
-          {/* Bottom Terminal Footing & Floating Handles */}
-          <div className="relative w-36 h-2 -mt-1">
-            {/* Positive (+) Terminal Handle (Left Foot at ~34.4%) */}
-            <Handle
-              type="source"
-              position={Position.Bottom}
-              id="pos"
-              style={{ left: '34.4%', bottom: '-4px' }}
-              className="!w-3.5 !h-3.5 !bg-red-500 !border-2 !border-white !rounded-full shadow-[0_0_8px_rgba(239,68,68,0.8)] hover:!scale-125 transition-transform cursor-crosshair z-30"
-              title={isId ? 'Kutub Positif (+)' : 'Positive Terminal (+)'}
-            />
-
-            {/* Negative (-) Terminal Handle (Right Foot at ~65.3%) */}
-            <Handle
-              type="source"
-              position={Position.Bottom}
-              id="neg"
-              style={{ left: '65.3%', bottom: '-4px' }}
-              className="!w-3.5 !h-3.5 !bg-blue-500 !border-2 !border-white !rounded-full shadow-[0_0_8px_rgba(59,130,246,0.8)] hover:!scale-125 transition-transform cursor-crosshair z-30"
-              title={isId ? 'Kutub Negatif (-)' : 'Negative Terminal (-)'}
-            />
-          </div>
-
-          {/* Measurement Pill (Shown on Selection or Hover) */}
-          <div
-            className={`mt-3.5 px-3 py-1.5 rounded-xl bg-void-900/90 border border-white/10 text-slate-200 text-xs backdrop-blur-md shadow-xl flex items-center justify-between gap-3 min-w-[130px] transition-all duration-200 ${
-              selected ? 'opacity-100 scale-100' : 'opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100'
-            }`}
-          >
-            <div className="flex flex-col">
-              <span className="text-[10px] text-slate-400 font-medium">
-                {isId ? 'Arus Grid' : 'Grid Current'}
-              </span>
-              <span className="font-mono font-bold text-cyan-400 text-xs">
-                {currentDisplay}
-              </span>
-            </div>
-            <div className="flex flex-col items-end">
-              <span className="text-[10px] text-slate-400 font-medium">
-                {isId ? 'Impedansi' : 'Impedance'}
-              </span>
-              <span className="font-mono text-emerald-400 text-xs font-bold">
-                0.00 Ω
-              </span>
-            </div>
-          </div>
+          <Handle
+            type="source"
+            position={Position.Bottom}
+            id="neg"
+            style={{ left: '65.3%', bottom: '2px' }}
+            className="!w-4 !h-4 !bg-sky-400 !border-2 !border-white !rounded-full shadow-[0_0_10px_rgba(56,189,248,0.9)] hover:!scale-125 transition-transform cursor-crosshair z-30"
+            title={isId ? 'Kutub Negatif (-)' : 'Negative Terminal (-)'}
+          />
         </div>
       </div>
     );

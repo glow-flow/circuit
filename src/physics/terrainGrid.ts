@@ -16,6 +16,12 @@ export const GRID_COLS = 40;
 export const GRID_ROWS = 20;
 export const GRASS_GROWTH_DELAY_MS = 3000;
 
+/**
+ * Maximum safe vertical drop distance (in grid row units) before a falling outdoor
+ * component shatters/explodes upon hitting the ground.
+ */
+export const MAX_SAFE_DROP_ROWS = 4.5;
+
 export interface BoundingBox {
   x: number;
   y: number;
@@ -23,17 +29,41 @@ export interface BoundingBox {
   height: number;
 }
 
+export type DropPhysicsOutcome =
+  | {
+      status: 'settled';
+      settledPosition: { x: number; y: number };
+      settledBox: BoundingBox;
+      dropRows: number;
+    }
+  | {
+      status: 'explode-height';
+      impactPosition: { x: number; y: number };
+      impactBox: BoundingBox;
+      dropRows: number;
+    }
+  | {
+      status: 'explode-water';
+      impactPosition: { x: number; y: number };
+      impactBox: BoundingBox;
+      dropRows: number;
+    }
+  | {
+      status: 'overlap';
+      collidingNode: Node<CircuitElementData>;
+    };
+
 /**
  * Standard visual footprint dimensions (in px) for outdoor power components.
- * Used for AABB overlap rejection and water hazard collision checks.
+ * Used for AABB overlap rejection, ground gravity settling, and water hazard collision checks.
  */
 const COMPONENT_DIMENSIONS: Partial<Record<ComponentType, { width: number; height: number }>> = {
-  'solar-panel': { width: 175, height: 215 },
-  solar_panel: { width: 175, height: 215 },
-  'wind-turbine': { width: 175, height: 295 },
-  wind_turbine: { width: 175, height: 295 },
-  'transmission-tower': { width: 155, height: 265 },
-  transmission_tower: { width: 155, height: 265 },
+  'solar-panel': { width: 168, height: 156 },
+  solar_panel: { width: 168, height: 156 },
+  'wind-turbine': { width: 164, height: 248 },
+  wind_turbine: { width: 164, height: 248 },
+  'transmission-tower': { width: 148, height: 236 },
+  transmission_tower: { width: 148, height: 236 },
 };
 
 const DEFAULT_COMPONENT_DIMENSION = { width: 150, height: 170 };
@@ -107,11 +137,19 @@ export function createDefaultOutdoorTerrain(
 }
 
 /**
- * Advances gravity by one vertical step across the 2D terrain grid.
- * - Any 'DIRT', 'GRASS', or 'WATER' cell with 'EMPTY' directly below it falls down 1 row.
- * - Any 'GRASS' cell that becomes covered by a non-'EMPTY' cell above it reverts to 'DIRT'.
+ * Advances gravity and liquid water hydrodynamics by one step across the 2D terrain grid.
+ * - Pass 1 (Vertical & Diagonal Gravity):
+ *   - Any 'DIRT', 'GRASS', or 'WATER' cell with 'EMPTY' directly below it falls down 1 row.
+ *   - Any 'WATER' cell resting on a non-EMPTY cell flows diagonally down-left (`r + 1, c - 1`)
+ *     or down-right (`r + 1, c + 1`) if empty, filling lower pockets naturally.
+ * - Pass 2 (Liquid Coalescence & Lateral Leveling):
+ *   - Any 'EMPTY' pocket supported below that is flanked by 'WATER' on both left and right
+ *     (`WATER | EMPTY | WATER`) coalesces into 'WATER' so water pools never stay hollow ("bolong").
+ *   - Any 'WATER' cell next to an unsupported 'EMPTY' ledge flows sideways to cascade into lower basins.
+ * - Pass 3 (Buried Grass Check):
+ *   - Any 'GRASS' cell covered by a non-'EMPTY' cell above it reverts to 'DIRT'.
  *
- * Time Complexity: O(R * C) single bottom-up pass (no nested loop re-scanning).
+ * Time Complexity: O(R * C) linear passes across the 40x20 grid (800 cells).
  *
  * @param currentGrid - Current 2D terrain grid
  * @returns Object containing `nextGrid` and boolean `moved` indicating whether any cell changed
@@ -129,22 +167,93 @@ export function stepTerrainGravity(currentGrid: TerrainCellType[][]): {
   const nextGrid: TerrainCellType[][] = currentGrid.map((row) => [...row]);
   let moved = false;
 
-  // Bottom-up pass from second-to-last row up to row 0
+  // Pass 1: Bottom-up vertical fall & diagonal liquid flow
   for (let r = rows - 2; r >= 0; r--) {
     for (let c = 0; c < cols; c++) {
       const cell = nextGrid[r][c];
       if (cell === 'EMPTY') continue;
 
+      // 1a. Straight vertical gravity (DIRT, GRASS, WATER)
       if (nextGrid[r + 1][c] === 'EMPTY') {
-        // Falling block: if it was GRASS, keep it or revert if covered
         nextGrid[r + 1][c] = cell;
         nextGrid[r][c] = 'EMPTY';
         moved = true;
+        continue;
+      }
+
+      // 1b. Diagonal downward flow for WATER
+      if (cell === 'WATER') {
+        const canFlowDownLeft = c > 0 && nextGrid[r + 1][c - 1] === 'EMPTY';
+        const canFlowDownRight = c < cols - 1 && nextGrid[r + 1][c + 1] === 'EMPTY';
+
+        if (canFlowDownLeft && canFlowDownRight) {
+          const targetCol = (r + c) % 2 === 0 ? c - 1 : c + 1;
+          nextGrid[r + 1][targetCol] = 'WATER';
+          nextGrid[r][c] = 'EMPTY';
+          moved = true;
+        } else if (canFlowDownLeft) {
+          nextGrid[r + 1][c - 1] = 'WATER';
+          nextGrid[r][c] = 'EMPTY';
+          moved = true;
+        } else if (canFlowDownRight) {
+          nextGrid[r + 1][c + 1] = 'WATER';
+          nextGrid[r][c] = 'EMPTY';
+          moved = true;
+        }
       }
     }
   }
 
-  // Buried GRASS check: if any GRASS cell has a non-EMPTY block directly above it, it reverts to DIRT
+  // Pass 2: Liquid Water Lateral Leveling & Hole Coalescence (so water never stays "bolong")
+  for (let r = rows - 1; r >= 0; r--) {
+    for (let c = 0; c < cols; c++) {
+      const cell = nextGrid[r][c];
+
+      // 2a. If an EMPTY cell is supported below and sandwiched between WATER on left & right,
+      // or has WATER directly on one side and another WATER 2 cells away in the same basin, coalesce!
+      if (cell === 'EMPTY') {
+        const isSupportedBelow = r === rows - 1 || nextGrid[r + 1][c] !== 'EMPTY';
+        const leftIsWater = c > 0 && nextGrid[r][c - 1] === 'WATER';
+        const rightIsWater = c < cols - 1 && nextGrid[r][c + 1] === 'WATER';
+
+        if (isSupportedBelow && leftIsWater && rightIsWater) {
+          nextGrid[r][c] = 'WATER';
+          moved = true;
+          continue;
+        }
+      }
+
+      // 2b. Lateral spreading of WATER into adjacent empty depressions/ledges
+      if (cell === 'WATER' && r < rows - 1 && nextGrid[r + 1][c] !== 'EMPTY') {
+        // Check if left neighbor is EMPTY and has a depression or is bounded by water/wall
+        if (
+          c > 0 &&
+          nextGrid[r][c - 1] === 'EMPTY' &&
+          (nextGrid[r + 1][c - 1] === 'EMPTY' ||
+            (c > 1 && nextGrid[r][c - 2] === 'WATER'))
+        ) {
+          nextGrid[r][c - 1] = 'WATER';
+          nextGrid[r][c] = 'EMPTY';
+          moved = true;
+          continue;
+        }
+
+        if (
+          c < cols - 1 &&
+          nextGrid[r][c + 1] === 'EMPTY' &&
+          (nextGrid[r + 1][c + 1] === 'EMPTY' ||
+            (c < cols - 2 && nextGrid[r][c + 2] === 'WATER'))
+        ) {
+          nextGrid[r][c + 1] = 'WATER';
+          nextGrid[r][c] = 'EMPTY';
+          moved = true;
+          continue;
+        }
+      }
+    }
+  }
+
+  // Pass 3: Buried GRASS check — if any GRASS cell has a non-EMPTY block directly above it, it reverts to DIRT
   for (let r = 1; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       if (nextGrid[r][c] === 'GRASS' && nextGrid[r - 1][c] !== 'EMPTY') {
@@ -377,12 +486,12 @@ export function doesComponentTouchWater(
   const cellWidth = containerWidth / cols;
   const cellHeight = containerHeight / rows;
 
-  // Check the horizontal span of the component (with 12px horizontal margin)
-  // and the lower 65% of the component body down to its base terminals
-  const sampleLeft = targetBox.x + 12;
-  const sampleRight = targetBox.x + targetBox.width - 12;
-  const sampleTop = targetBox.y + targetBox.height * 0.35;
-  const sampleBottom = targetBox.y + targetBox.height - 4;
+  // Check the horizontal span of the component's base/body (with 18px horizontal margin)
+  // and from 45% down the body to 6px below its base feet (so landing on a WATER surface triggers immediately)
+  const sampleLeft = targetBox.x + 18;
+  const sampleRight = targetBox.x + targetBox.width - 18;
+  const sampleTop = targetBox.y + targetBox.height * 0.45;
+  const sampleBottom = targetBox.y + targetBox.height + 6;
 
   const startCol = Math.max(0, Math.min(cols - 1, Math.floor(sampleLeft / cellWidth)));
   const endCol = Math.max(0, Math.min(cols - 1, Math.floor(sampleRight / cellWidth)));
@@ -398,4 +507,156 @@ export function doesComponentTouchWater(
   }
 
   return false;
+}
+
+/**
+ * Finds the highest terrain surface elevation (row index and pixel Y) directly beneath
+ * a component's horizontal support footprint.
+ * Time Complexity: O(R * k) where k <= 6 columns spanned by the component's base.
+ *
+ * @param targetBox - Component bounding box in container pixels
+ * @param terrainGrid - 2D terrain grid (rows x cols)
+ * @param containerWidth - Container width in pixels
+ * @param containerHeight - Container height in pixels
+ * @returns Surface row index, surface Y coordinate in pixels, and single cell height
+ */
+export function findTerrainSurfaceY(
+  targetBox: BoundingBox,
+  terrainGrid: TerrainCellType[][],
+  containerWidth: number,
+  containerHeight: number
+): { surfaceRow: number; surfaceY: number; cellHeight: number } {
+  const safeWidth = containerWidth > 0 ? containerWidth : 960;
+  const safeHeight = containerHeight > 0 ? containerHeight : 680;
+
+  if (!terrainGrid || terrainGrid.length === 0) {
+    const defaultCellHeight = safeHeight / GRID_ROWS;
+    const defaultRow = GRID_ROWS - 5;
+    return {
+      surfaceRow: defaultRow,
+      surfaceY: defaultRow * defaultCellHeight,
+      cellHeight: defaultCellHeight,
+    };
+  }
+
+  const rows = terrainGrid.length;
+  const cols = terrainGrid[0].length;
+  const cellWidth = safeWidth / cols;
+  const cellHeight = safeHeight / rows;
+
+  const footLeft = targetBox.x + targetBox.width * 0.22;
+  const footRight = targetBox.x + targetBox.width * 0.78;
+
+  const startCol = Math.max(0, Math.min(cols - 1, Math.floor(footLeft / cellWidth)));
+  const endCol = Math.max(0, Math.min(cols - 1, Math.floor(footRight / cellWidth)));
+
+  let highestSurfaceRow = rows;
+  for (let c = startCol; c <= endCol; c++) {
+    for (let r = 0; r < rows; r++) {
+      if (terrainGrid[r][c] !== 'EMPTY') {
+        if (r < highestSurfaceRow) {
+          highestSurfaceRow = r;
+        }
+        break;
+      }
+    }
+  }
+
+  return {
+    surfaceRow: highestSurfaceRow,
+    surfaceY: highestSurfaceRow * cellHeight,
+    cellHeight,
+  };
+}
+
+/**
+ * Evaluates full Outdoor Sandbox drop physics for a component:
+ * 1. Computes the ground surface elevation below the component (`findTerrainSurfaceY`)
+ *    and the grounded `settledPosition` so outdoor components NEVER float in mid-air.
+ * 2. Checks if the vertical drop distance exceeds `MAX_SAFE_DROP_ROWS` (dropped from too high)
+ *    -> returns `'explode-height'`.
+ * 3. Checks if the component lands on or touches `'WATER'`
+ *    -> returns `'explode-water'`.
+ * 4. Checks if the settled bounding box overlaps any existing outdoor component
+ *    -> returns `'overlap'`.
+ * 5. Otherwise returns `'settled'` with the ground-snapped position.
+ *
+ * Time Complexity: O(R * k + N) where k <= 6 columns and N is number of outdoor nodes.
+ */
+export function evaluateComponentDropPhysics(
+  position: { x: number; y: number },
+  type: ComponentType,
+  excludeNodeId: string | null,
+  existingNodes: Node<CircuitElementData>[],
+  terrainGrid: TerrainCellType[][],
+  containerSize: { width: number; height: number }
+): DropPhysicsOutcome {
+  const rawBox = getComponentBoundingBox(position, type);
+  const { surfaceY, cellHeight } = findTerrainSurfaceY(
+    rawBox,
+    terrainGrid,
+    containerSize.width,
+    containerSize.height
+  );
+
+  // Plant the component's base 6px into the grass/ground surface so it never floats
+  const settledY = Math.max(8, Math.round(surfaceY - rawBox.height + 6));
+  const settledPosition = {
+    x: Math.round(position.x),
+    y: settledY,
+  };
+  const settledBox = getComponentBoundingBox(settledPosition, type);
+
+  // Positive dropDistancePx means the component was released above the ground surface
+  const dropDistancePx = Math.max(0, settledY - position.y);
+  const dropRows = cellHeight > 0 ? dropDistancePx / cellHeight : 0;
+
+  // 1. Check Excessive Drop Height Tolerance (if dropped too high above the ground -> explode on impact!)
+  if (dropRows > MAX_SAFE_DROP_ROWS) {
+    return {
+      status: 'explode-height',
+      impactPosition: settledPosition,
+      impactBox: settledBox,
+      dropRows,
+    };
+  }
+
+  // 2. Check Water Short-Circuit Hazard (either at release point or grounded landing surface)
+  if (
+    doesComponentTouchWater(
+      rawBox,
+      terrainGrid,
+      containerSize.width,
+      containerSize.height
+    ) ||
+    doesComponentTouchWater(
+      settledBox,
+      terrainGrid,
+      containerSize.width,
+      containerSize.height
+    )
+  ) {
+    return {
+      status: 'explode-water',
+      impactPosition: settledPosition,
+      impactBox: settledBox,
+      dropRows,
+    };
+  }
+
+  // 3. Check AABB Overlap against other outdoor components at the settled ground position
+  const collidingNode = findOverlappingComponent(settledBox, excludeNodeId, existingNodes);
+  if (collidingNode) {
+    return {
+      status: 'overlap',
+      collidingNode,
+    };
+  }
+
+  return {
+    status: 'settled',
+    settledPosition,
+    settledBox,
+    dropRows,
+  };
 }

@@ -70,115 +70,79 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
 
   return (
     <div
-      className={`relative rounded-xl border bg-void-900/95 backdrop-blur-md px-3.5 pt-3 pb-6 shadow-2xl transition-all duration-200 w-[190px] select-none ${
-        isShorted
-          ? 'border-danger-500 shadow-glow-danger animate-pulse'
-          : selected
-          ? 'border-electric-500 shadow-glow'
-          : isGenerating
-          ? 'border-amber-400/50 shadow-[0_0_20px_rgba(245,158,11,0.25)]'
-          : 'border-white/15 hover:border-white/25'
+      className={`relative flex flex-col items-center select-none transition-all duration-200 w-[168px] group ${
+        selected ? 'filter drop-shadow-[0_0_18px_rgba(245,158,11,0.55)]' : ''
       }`}
     >
-      {/* Component Header */}
-      <div className="flex items-center justify-between gap-1.5 mb-1.5">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <div
-            className={`p-1 rounded shrink-0 ${
-              isShorted
-                ? 'bg-danger-500/20 text-danger-500'
-                : isSunny
-                ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+      {/* Top Floating Control & Weather Pill (Above Panel so Mounting Legs Sit on Grass) */}
+      <div
+        className={`nodrag mb-1 w-full px-2.5 py-1.5 rounded-2xl backdrop-blur-md border shadow-[0_8px_20px_rgba(0,0,0,0.45)] flex flex-col gap-1 z-30 ${
+          isShorted
+            ? 'bg-red-950/90 border-danger-500 animate-pulse'
+            : 'bg-void-950/85 border-amber-400/35'
+        }`}
+      >
+        <div className="flex items-center justify-between gap-1 text-[10px] font-mono">
+          <span className="flex items-center gap-1 font-bold text-slate-100 truncate">
+            {isShorted ? (
+              <AlertTriangle className="w-3 h-3 text-danger-500 shrink-0" />
+            ) : isSunny ? (
+              <Sun className="w-3 h-3 text-amber-400 shrink-0" />
+            ) : !isDark ? (
+              <CloudSun className="w-3 h-3 text-sky-400 shrink-0" />
+            ) : (
+              <Moon className="w-3 h-3 text-slate-400 shrink-0" />
+            )}
+            <span className="truncate">{t.title}</span>
+          </span>
+          <span
+            className={`font-bold shrink-0 ${
+              isSunny
+                ? 'text-amber-300'
                 : !isDark
-                ? 'bg-sky-500/15 text-sky-400 border border-sky-500/30'
-                : 'bg-white/5 text-slate-400 border border-white/10'
+                ? 'text-sky-300'
+                : 'text-slate-400'
             }`}
           >
-            {isShorted ? (
-              <AlertTriangle className="w-3.5 h-3.5" />
-            ) : isSunny ? (
-              <Sun className="w-3.5 h-3.5" />
-            ) : !isDark ? (
-              <CloudSun className="w-3.5 h-3.5" />
-            ) : (
-              <Moon className="w-3.5 h-3.5" />
-            )}
-          </div>
-          <span className="text-[11px] font-bold text-slate-100 tracking-tight truncate">
-            {t.title}
+            {nominalVoltage.toFixed(1)}V
+            {current > 0.001 ? ` · ${powerWatts}W` : ''}
           </span>
         </div>
 
-        {/* Output Voltage Badge */}
-        <span
-          className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border shrink-0 ${
-            isSunny
-              ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
-              : !isDark
-              ? 'bg-sky-500/15 text-sky-300 border-sky-500/30'
-              : 'bg-white/5 text-slate-400 border-white/10'
-          }`}
-        >
-          {nominalVoltage.toFixed(1)} V
-        </span>
-      </div>
-
-      {/* Photovoltaic Panel Die-Cut Asset */}
-      <div className="flex flex-col items-center justify-center py-0.5 relative">
-        <div className="relative w-32 h-24 flex items-center justify-center">
-          <img
-            src="/assets/solar-panel.png"
-            alt={t.title}
-            className={`w-full h-full object-contain pointer-events-none select-none transition-all duration-300 ${
-              isDark ? 'opacity-50 grayscale-[0.5]' : ''
-            } ${
-              isGenerating
-                ? 'drop-shadow-[0_6px_18px_rgba(245,158,11,0.5)]'
-                : 'drop-shadow-[0_4px_10px_rgba(0,0,0,0.65)]'
-            }`}
-          />
-          {isDark && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <span className="bg-void-950/90 text-slate-300 border border-white/10 text-[9px] font-mono font-semibold px-2 py-0.5 rounded shadow">
-                {isId ? '0V / Gelap' : '0V / Dark'}
-              </span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* In-Node Weather & Irradiance Controls (nodrag so slider/buttons don't drag the node) */}
-      <div className="nodrag mb-2 space-y-1.5 bg-void-950/75 p-1.5 rounded-lg border border-white/10">
+        {/* Weather Presets (Terik 12V, Mendung 5V, Gelap 0V) */}
         <div className="grid grid-cols-3 gap-1">
           <button
             type="button"
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={() => applyWeatherPreset(12.0, 100)}
             className={`px-1 py-0.5 rounded text-[9px] font-mono font-bold border transition-all active:scale-95 cursor-pointer ${
               Math.abs(nominalVoltage - 12.0) < 0.3
                 ? 'bg-amber-500/25 text-amber-300 border-amber-400/50'
-                : 'bg-void-900 text-slate-400 border-white/5 hover:text-white'
+                : 'bg-void-900/90 text-slate-400 border-white/10 hover:text-white'
             }`}
           >
             ☀️ 12V
           </button>
           <button
             type="button"
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={() => applyWeatherPreset(5.0, 42)}
             className={`px-1 py-0.5 rounded text-[9px] font-mono font-bold border transition-all active:scale-95 cursor-pointer ${
               Math.abs(nominalVoltage - 5.0) < 0.3
                 ? 'bg-sky-500/25 text-sky-300 border-sky-400/50'
-                : 'bg-void-900 text-slate-400 border-white/5 hover:text-white'
+                : 'bg-void-900/90 text-slate-400 border-white/10 hover:text-white'
             }`}
           >
             ⛅ 5V
           </button>
           <button
             type="button"
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={() => applyWeatherPreset(0.0, 0)}
             className={`px-1 py-0.5 rounded text-[9px] font-mono font-bold border transition-all active:scale-95 cursor-pointer ${
               nominalVoltage === 0
-                ? 'bg-slate-700/50 text-slate-200 border-slate-400/40'
-                : 'bg-void-900 text-slate-400 border-white/5 hover:text-white'
+                ? 'bg-slate-700/60 text-slate-200 border-slate-400/40'
+                : 'bg-void-900/90 text-slate-400 border-white/10 hover:text-white'
             }`}
           >
             🌙 0V
@@ -192,62 +156,51 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
           step="1"
           value={sunlight}
           onChange={handleSunlightChange}
+          onPointerDown={(e) => e.stopPropagation()}
           className="w-full h-1.5 bg-void-900 rounded-lg appearance-none cursor-pointer accent-amber-400 focus:outline-none"
           aria-label="Solar Irradiance"
         />
       </div>
 
-      {/* Live Telemetry Readout */}
-      <div className="bg-void-950/85 rounded-lg p-1.5 border border-white/5 space-y-0.5 text-[10px] font-mono">
-        <div className="flex justify-between items-baseline">
-          <span className="text-slate-400 font-sans">{t.current}</span>
-          <span
-            className={
-              isShorted
-                ? 'text-danger-500 font-bold'
-                : current > 0
-                ? 'text-electric-400 font-bold'
-                : 'text-slate-400'
-            }
-          >
-            {formattedCurrent}
-          </span>
-        </div>
-        <div className="flex justify-between items-baseline">
-          <span className="text-slate-400 font-sans">{t.power}</span>
-          <span className="text-emerald-400 font-bold">{powerWatts} W</span>
-        </div>
-      </div>
+      {/* Physical Photovoltaic Panel Asset: Base Feet Anchored at Bottom-0 (Planted in Grass) */}
+      <div className="relative w-[156px] h-[96px] flex items-end justify-center">
+        <img
+          src="/assets/solar-panel.png"
+          alt={t.title}
+          draggable={false}
+          className={`w-full h-full object-contain pointer-events-none select-none transition-all duration-300 ${
+            isDark ? 'opacity-60 grayscale-[0.45]' : ''
+          } ${
+            isGenerating
+              ? 'drop-shadow-[0_6px_18px_rgba(245,158,11,0.55)]'
+              : 'drop-shadow-[0_6px_10px_rgba(0,0,0,0.55)]'
+          }`}
+        />
 
-      {/* Bottom Positive (+) Handle — Aligned with Left Copper Screw Terminal (38.6%) */}
-      <div
-        className="absolute -bottom-3 -translate-x-1/2 flex flex-col items-center z-20"
-        style={{ left: '38.6%' }}
-      >
-        <span className="mb-0.5 px-1 py-0 rounded bg-red-500/20 border border-red-500/40 text-[9px] font-mono font-bold text-red-400 leading-tight pointer-events-none">
-          +
-        </span>
+        {isDark && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <span className="bg-void-950/90 text-slate-300 border border-white/15 text-[9px] font-mono font-semibold px-2 py-0.5 rounded shadow">
+              {isId ? '0V / Gelap' : '0V / Dark'}
+            </span>
+          </div>
+        )}
+
+        {/* Grounded Base Terminals (+ and -) at the Copper Stand Feet */}
         <Handle
           type="source"
           position={Position.Bottom}
           id="pos"
-          className="!relative !left-0 !top-0 !transform-none !bg-red-500 !border-2 !border-white !w-3.5 !h-3.5 shadow-[0_0_8px_rgba(239,68,68,0.8)]"
+          style={{ left: '41%', bottom: '2px' }}
+          className="!w-4 !h-4 !bg-red-500 !border-2 !border-white !rounded-full shadow-[0_0_10px_rgba(239,68,68,0.9)] hover:!scale-125 transition-transform cursor-crosshair z-30"
+          title={isId ? 'Kutub Positif (+)' : 'Positive Terminal (+)'}
         />
-      </div>
-
-      {/* Bottom Negative (-) Handle — Aligned with Right Copper Screw Terminal (61.3%) */}
-      <div
-        className="absolute -bottom-3 -translate-x-1/2 flex flex-col items-center z-20"
-        style={{ left: '61.3%' }}
-      >
-        <span className="mb-0.5 px-1 py-0 rounded bg-sky-500/20 border border-sky-500/40 text-[9px] font-mono font-bold text-sky-300 leading-tight pointer-events-none">
-          -
-        </span>
         <Handle
           type="source"
           position={Position.Bottom}
           id="neg"
-          className="!relative !left-0 !top-0 !transform-none !bg-sky-400 !border-2 !border-white !w-3.5 !h-3.5 shadow-[0_0_8px_rgba(56,189,248,0.8)]"
+          style={{ left: '59%', bottom: '2px' }}
+          className="!w-4 !h-4 !bg-sky-400 !border-2 !border-white !rounded-full shadow-[0_0_10px_rgba(56,189,248,0.9)] hover:!scale-125 transition-transform cursor-crosshair z-30"
+          title={`${formattedCurrent} (-)`}
         />
       </div>
     </div>

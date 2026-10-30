@@ -52,21 +52,31 @@ export const SidebarPalette: React.FC<SidebarPaletteProps> = ({
 
   const handlePlace = (entry: PaletteEntry) => {
     if (worldMode === 'outside') {
-      const candidatePositions = [
-        { x: 40, y: 210 },
-        { x: 240, y: 150 },
-        { x: 450, y: 170 },
-        { x: 40, y: 40 },
-        { x: 240, y: 30 },
-        { x: 450, y: 40 },
-      ];
+      const canvasEl = document.getElementById('tour-canvas-area');
+      const rect = canvasEl?.getBoundingClientRect();
+      const containerWidth = rect && rect.width > 200 ? rect.width : 960;
+      const containerHeight = rect && rect.height > 250 ? rect.height : 680;
+      // Drop from a safe height just above the terrain surface (~65% down the canvas)
+      const safeDropY = Math.round(containerHeight * 0.42);
+      const isNarrow = containerWidth < 560;
+      const candidatePositions = isNarrow
+        ? [
+            { x: 10, y: safeDropY },
+            { x: Math.round(containerWidth * 0.34), y: safeDropY },
+            { x: Math.round(containerWidth * 0.64), y: safeDropY },
+          ]
+        : [
+            { x: Math.round(containerWidth * 0.05), y: safeDropY },
+            { x: Math.round(containerWidth * 0.25), y: safeDropY },
+            { x: Math.round(containerWidth * 0.45), y: safeDropY },
+          ];
       let placed = false;
       for (const candidate of candidatePositions) {
         if (
           placeOutdoorComponent(
             entry.type,
             candidate,
-            { width: 960, height: 680 },
+            { width: containerWidth, height: containerHeight },
             entry.placement
           )
         ) {
@@ -77,8 +87,11 @@ export const SidebarPalette: React.FC<SidebarPaletteProps> = ({
       if (!placed) {
         placeOutdoorComponent(
           entry.type,
-          { x: 60 + Math.floor(Math.random() * 320), y: 90 },
-          { width: 960, height: 680 },
+          {
+            x: 16 + Math.floor(Math.random() * Math.max(80, containerWidth * 0.45)),
+            y: safeDropY,
+          },
+          { width: containerWidth, height: containerHeight },
           entry.placement
         );
       }

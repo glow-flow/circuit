@@ -20,9 +20,12 @@ describe('useCircuitStore - World Mode, Outdoor Sandbox & MNA Integration', () =
     const store = useCircuitStore.getState();
     store.setWorldMode('outside');
 
-    // Set up custom terrain with WATER on the right half
+    // Set up custom terrain with solid GRASS/DIRT on the left half (cols 0..24) and WATER on the right half (cols 25..38)
     const customGrid = createEmptyTerrainGrid(20, 40);
-    for (let r = 10; r < 20; r++) {
+    for (let r = 14; r < 20; r++) {
+      for (let c = 0; c < 25; c++) {
+        customGrid[r][c] = r === 14 ? 'GRASS' : 'DIRT';
+      }
       for (let c = 25; c < 38; c++) {
         customGrid[r][c] = 'WATER';
       }
@@ -31,8 +34,8 @@ describe('useCircuitStore - World Mode, Outdoor Sandbox & MNA Integration', () =
 
     const containerSize = { width: 800, height: 400 };
 
-    // 1. Place Solar Panel on dry ground (x=40, y=60) -> succeeds
-    const placed1 = store.placeOutdoorComponent('solar-panel', { x: 40, y: 60 }, containerSize);
+    // 1. Place Solar Panel at a safe height above dry ground (x=40, y=110) -> succeeds & settles on ground
+    const placed1 = store.placeOutdoorComponent('solar-panel', { x: 40, y: 110 }, containerSize);
     expect(placed1).toBe(true);
     expect(useCircuitStore.getState().nodes).toHaveLength(1);
 
@@ -45,10 +48,10 @@ describe('useCircuitStore - World Mode, Outdoor Sandbox & MNA Integration', () =
     expect(placedOverlap).toBe(false);
     expect(useCircuitStore.getState().nodes).toHaveLength(1);
 
-    // 3. Drop component into WATER region (x=540, y=150) -> Explodes & notifies!
+    // 3. Drop component into WATER region (x=540, y=120) -> Explodes & notifies!
     const placedWater = store.placeOutdoorComponent(
       'solar-panel',
-      { x: 540, y: 150 },
+      { x: 540, y: 120 },
       containerSize
     );
     expect(placedWater).toBe(false);
@@ -56,6 +59,17 @@ describe('useCircuitStore - World Mode, Outdoor Sandbox & MNA Integration', () =
     expect(useCircuitStore.getState().explosions.length).toBeGreaterThan(0);
     expect(useCircuitStore.getState().notification?.message).toBe(
       'Komponen Korsleting/Hancur karena Air!'
+    );
+
+    // 4. Drop component from excessive height in the sky (x=260, y=5) -> Explodes on ground impact!
+    const placedTooHigh = store.placeOutdoorComponent(
+      'solar-panel',
+      { x: 260, y: 5 },
+      containerSize
+    );
+    expect(placedTooHigh).toBe(false);
+    expect(useCircuitStore.getState().notification?.message).toBe(
+      'Komponen Hancur karena Jatuh dari Ketinggian!'
     );
   });
 

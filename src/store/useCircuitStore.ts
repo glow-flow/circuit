@@ -33,10 +33,8 @@ import {
 } from '../physics/solarPanel';
 import {
   createDefaultOutdoorTerrain,
-  doesComponentTouchWater,
+  evaluateComponentDropPhysics,
   evaluateGrassGrowth,
-  findOverlappingComponent,
-  getComponentBoundingBox,
   GRID_COLS,
   GRID_ROWS,
   settleTerrainGravityImmediate,
@@ -565,25 +563,51 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     options?: PlacementOptions
   ) => {
     const isId = get().language === 'id';
-    const targetBox = getComponentBoundingBox(position, type);
+    const outcome = evaluateComponentDropPhysics(
+      position,
+      type,
+      null,
+      get().nodes,
+      get().terrainGrid,
+      containerSize
+    );
 
-    // 1. Check Water Short-Circuit / Explosion Rule first
-    if (
-      doesComponentTouchWater(
-        targetBox,
-        get().terrainGrid,
-        containerSize.width,
-        containerSize.height
-      )
-    ) {
+    if (outcome.status === 'explode-height') {
       const explosionId = `exp_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
       const explosionEvent: ExplosionEvent = {
         id: explosionId,
-        x: targetBox.x,
-        y: targetBox.y,
-        width: targetBox.width,
-        height: targetBox.height,
+        x: outcome.impactBox.x,
+        y: outcome.impactBox.y,
+        width: outcome.impactBox.width,
+        height: outcome.impactBox.height,
         label: type,
+        reason: 'height',
+        createdAt: Date.now(),
+      };
+      set({ explosions: [...get().explosions, explosionEvent] });
+      get().notify(
+        isId
+          ? 'Komponen Hancur karena Jatuh dari Ketinggian!'
+          : 'Component Destroyed from Falling Too High!'
+      );
+      if (typeof window !== 'undefined') {
+        window.setTimeout(() => {
+          get().dismissExplosion(explosionId);
+        }, 1200);
+      }
+      return false;
+    }
+
+    if (outcome.status === 'explode-water') {
+      const explosionId = `exp_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      const explosionEvent: ExplosionEvent = {
+        id: explosionId,
+        x: outcome.impactBox.x,
+        y: outcome.impactBox.y,
+        width: outcome.impactBox.width,
+        height: outcome.impactBox.height,
+        label: type,
+        reason: 'water',
         createdAt: Date.now(),
       };
       set({ explosions: [...get().explosions, explosionEvent] });
@@ -596,19 +620,17 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       return false;
     }
 
-    // 2. Check AABB Overlap Rule against other outdoor components
-    const overlappingNode = findOverlappingComponent(targetBox, null, get().nodes);
-    if (overlappingNode) {
+    if (outcome.status === 'overlap') {
       get().notify(
         isId
-          ? `Penempatan ditolak: Bertabrakan dengan ${overlappingNode.data.label}!`
-          : `Placement rejected: Overlaps with ${overlappingNode.data.label}!`
+          ? `Penempatan ditolak: Bertabrakan dengan ${outcome.collidingNode.data.label}!`
+          : `Placement rejected: Overlaps with ${outcome.collidingNode.data.label}!`
       );
       return false;
     }
 
-    // 3. Valid free placement on Outdoor Sandbox
-    get().addComponent(type, position, options);
+    // Valid placement: automatically settled onto the terrain surface by gravity
+    get().addComponent(type, outcome.settledPosition, options);
     return true;
   },
 
@@ -622,25 +644,55 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     if (!draggedNode) return;
 
     const isId = get().language === 'id';
-    const targetBox = getComponentBoundingBox(draggedNode.position, draggedNode.data.type);
+    const outcome = evaluateComponentDropPhysics(
+      draggedNode.position,
+      draggedNode.data.type,
+      nodeId,
+      currentNodes,
+      get().terrainGrid,
+      containerSize
+    );
 
-    // 1. Water Rule: If dropped on WATER grid cell -> Explode, remove component, and notify!
-    if (
-      doesComponentTouchWater(
-        targetBox,
-        get().terrainGrid,
-        containerSize.width,
-        containerSize.height
-      )
-    ) {
+    // 1. Height Tolerance Rule: If dropped from too high above ground -> Explode on impact!
+    if (outcome.status === 'explode-height') {
       const explosionId = `exp_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
       const explosionEvent: ExplosionEvent = {
         id: explosionId,
-        x: targetBox.x,
-        y: targetBox.y,
-        width: targetBox.width,
-        height: targetBox.height,
+        x: outcome.impactBox.x,
+        y: outcome.impactBox.y,
+        width: outcome.impactBox.width,
+        height: outcome.impactBox.height,
         label: draggedNode.data.label,
+        reason: 'height',
+        createdAt: Date.now(),
+      };
+      set({ explosions: [...get().explosions, explosionEvent] });
+      get().removeComponent(nodeId);
+      get().notify(
+        isId
+          ? 'Komponen Hancur karena Jatuh dari Ketinggian!'
+          : 'Component Destroyed from Falling Too High!'
+      );
+
+      if (typeof window !== 'undefined') {
+        window.setTimeout(() => {
+          get().dismissExplosion(explosionId);
+        }, 1200);
+      }
+      return;
+    }
+
+    // 2. Water Rule: If dropped on WATER grid cell -> Explode, remove component, and notify!
+    if (outcome.status === 'explode-water') {
+      const explosionId = `exp_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      const explosionEvent: ExplosionEvent = {
+        id: explosionId,
+        x: outcome.impactBox.x,
+        y: outcome.impactBox.y,
+        width: outcome.impactBox.width,
+        height: outcome.impactBox.height,
+        label: draggedNode.data.label,
+        reason: 'water',
         createdAt: Date.now(),
       };
       set({ explosions: [...get().explosions, explosionEvent] });
@@ -655,9 +707,8 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       return;
     }
 
-    // 2. Overlap Rule: If bounding box collides with another component -> reject & return to previousPosition
-    const overlappingNode = findOverlappingComponent(targetBox, nodeId, currentNodes);
-    if (overlappingNode) {
+    // 3. Overlap Rule: If bounding box collides with another component -> reject & return to previousPosition
+    if (outcome.status === 'overlap') {
       set({
         nodes: currentNodes.map((n) =>
           n.id === nodeId ? { ...n, position: { ...previousPosition } } : n
@@ -665,9 +716,22 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       });
       get().notify(
         isId
-          ? `Posisi ditolak: Bertabrakan dengan ${overlappingNode.data.label}!`
-          : `Position rejected: Overlaps with ${overlappingNode.data.label}!`
+          ? `Posisi ditolak: Bertabrakan dengan ${outcome.collidingNode.data.label}!`
+          : `Position rejected: Overlaps with ${outcome.collidingNode.data.label}!`
       );
+      return;
+    }
+
+    // 4. Gravity Settlement: Snap component's Y onto the terrain surface so it never floats in mid-air
+    if (
+      draggedNode.position.x !== outcome.settledPosition.x ||
+      draggedNode.position.y !== outcome.settledPosition.y
+    ) {
+      set({
+        nodes: currentNodes.map((n) =>
+          n.id === nodeId ? { ...n, position: { ...outcome.settledPosition } } : n
+        ),
+      });
     }
   },
 
