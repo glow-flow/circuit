@@ -1,6 +1,6 @@
 import React from 'react';
 import * as Slider from '@radix-ui/react-slider';
-import { Sliders, Trash2, Cpu, ShieldCheck, AlertTriangle, X, BookOpen, Scissors } from 'lucide-react';
+import { Sliders, Trash2, Cpu, ShieldCheck, AlertTriangle, X, BookOpen, Scissors, Zap, BatteryCharging } from 'lucide-react';
 import { useCircuitStore } from '../../store/useCircuitStore';
 import { countVisibleWires } from '../../utils/socketSnap';
 import { BULB_CATALOG, BulbType, getBulbSpec } from '../../constants/bulbCatalog';
@@ -23,6 +23,7 @@ export const Inspector: React.FC<InspectorProps> = ({
   const removeComponent = useCircuitStore((state) => state.removeComponent);
   const removeEdge = useCircuitStore((state) => state.removeEdge);
   const toggleSwitch = useCircuitStore((state) => state.toggleSwitch);
+  const rechargeBattery = useCircuitStore((state) => state.rechargeBattery);
   const simulation = useCircuitStore((state) => state.simulation);
   const language = useCircuitStore((state) => state.language);
 
@@ -327,6 +328,88 @@ export const Inspector: React.FC<InspectorProps> = ({
                     </p>
                   </div>
                 )}
+
+                {/* State of Charge (SoC) Controls & Recharge Action */}
+                <div className="p-3 rounded-xl bg-void-950/70 border border-white/5 space-y-2.5">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
+                      <BatteryCharging className="w-3.5 h-3.5 text-emerald-400" />
+                      {t.batteryChargeLabel}
+                    </span>
+                    <span
+                      className={`text-xs font-mono font-bold ${
+                        (componentData.currentCharge ?? 100) < 20
+                          ? 'text-red-400'
+                          : (componentData.currentCharge ?? 100) < 50
+                          ? 'text-amber-400'
+                          : 'text-emerald-400'
+                      }`}
+                    >
+                      {(componentData.currentCharge ?? 100).toFixed(0)}%
+                    </span>
+                  </div>
+
+                  {/* Visual Progress Bar */}
+                  <div className="w-full h-2 rounded-full bg-void-900 border border-white/10 overflow-hidden relative">
+                    <div
+                      className={`h-full rounded-full transition-all duration-300 ${
+                        (componentData.currentCharge ?? 100) < 20
+                          ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.7)]'
+                          : (componentData.currentCharge ?? 100) < 50
+                          ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]'
+                          : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]'
+                      }`}
+                      style={{ width: `${Math.max(0, Math.min(100, componentData.currentCharge ?? 100))}%` }}
+                    />
+                  </div>
+
+                  <div className="flex justify-between items-center text-[11px] font-mono text-slate-400">
+                    <span>{t.batteryCapacityLabel}</span>
+                    <span className="text-slate-200">
+                      {Math.round(((componentData.currentCharge ?? 100) * (componentData.capacity ?? 1000)) / 100)} / {componentData.capacity ?? 1000} mAh
+                    </span>
+                  </div>
+
+                  {/* Dynamic Charge Status Badge */}
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-slate-400 font-sans">
+                      {language === 'id' ? 'Status Aliran:' : 'Flow State:'}
+                    </span>
+                    <span
+                      className={`px-2 py-0.5 rounded font-mono font-bold text-[10px] border ${
+                        componentData.chargeState === 'charging'
+                          ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 animate-pulse'
+                          : componentData.chargeState === 'discharging'
+                          ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                          : 'bg-white/5 text-slate-400 border-white/10'
+                      }`}
+                    >
+                      {componentData.chargeState === 'charging'
+                        ? '⚡ CHARGING'
+                        : componentData.chargeState === 'discharging'
+                        ? '🔋 DISCHARGING'
+                        : 'IDLE (STANDBY)'}
+                    </span>
+                  </div>
+
+                  {/* Voltage Sag Alert Warning */}
+                  {(componentData.currentCharge ?? 100) < 20 && (
+                    <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/30 text-[10px] text-red-300 leading-relaxed flex items-start gap-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
+                      <span>{t.batterySagNotice}</span>
+                    </div>
+                  )}
+
+                  {/* Recharge Button */}
+                  <button
+                    type="button"
+                    onClick={() => rechargeBattery(selectedNode.id)}
+                    className="w-full py-2 px-3 rounded-lg text-xs font-bold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                  >
+                    <Zap className="w-3.5 h-3.5" />
+                    <span>{t.batteryRechargeBtn}</span>
+                  </button>
+                </div>
               </div>
             )}
 
@@ -376,6 +459,65 @@ export const Inspector: React.FC<InspectorProps> = ({
                     {t.holderEjectBtn}
                   </button>
                 </div>
+
+                {/* State of Charge (SoC) Controls for Holder */}
+                {Boolean(componentData.hasBattery && (componentData.batteryCount ?? 0) > 0) && (
+                  <div className="p-3 rounded-xl bg-void-950/70 border border-white/5 space-y-2.5 mt-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
+                        <BatteryCharging className="w-3.5 h-3.5 text-emerald-400" />
+                        {t.batteryChargeLabel}
+                      </span>
+                      <span
+                        className={`text-xs font-mono font-bold ${
+                          (componentData.currentCharge ?? 100) < 20
+                            ? 'text-red-400'
+                            : (componentData.currentCharge ?? 100) < 50
+                            ? 'text-amber-400'
+                            : 'text-emerald-400'
+                        }`}
+                      >
+                        {(componentData.currentCharge ?? 100).toFixed(0)}%
+                      </span>
+                    </div>
+
+                    <div className="w-full h-2 rounded-full bg-void-900 border border-white/10 overflow-hidden relative">
+                      <div
+                        className={`h-full rounded-full transition-all duration-300 ${
+                          (componentData.currentCharge ?? 100) < 20
+                            ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.7)]'
+                            : (componentData.currentCharge ?? 100) < 50
+                            ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]'
+                            : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]'
+                        }`}
+                        style={{ width: `${Math.max(0, Math.min(100, componentData.currentCharge ?? 100))}%` }}
+                      />
+                    </div>
+
+                    <div className="flex justify-between items-center text-[11px] font-mono text-slate-400">
+                      <span>{t.batteryCapacityLabel}</span>
+                      <span className="text-slate-200">
+                        {Math.round(((componentData.currentCharge ?? 100) * (componentData.capacity ?? 2000)) / 100)} / {componentData.capacity ?? 2000} mAh
+                      </span>
+                    </div>
+
+                    {(componentData.currentCharge ?? 100) < 20 && (
+                      <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/30 text-[10px] text-red-300 leading-relaxed flex items-start gap-1.5">
+                        <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
+                        <span>{t.batterySagNotice}</span>
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => rechargeBattery(selectedNode.id)}
+                      className="w-full py-2 px-3 rounded-lg text-xs font-bold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                    >
+                      <Zap className="w-3.5 h-3.5" />
+                      <span>{t.batteryRechargeBtn}</span>
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 

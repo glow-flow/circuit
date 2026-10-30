@@ -32,6 +32,12 @@ export const App: React.FC = () => {
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId);
 
+  // Start the global 1-second Battery State of Charge (SoC) simulation timer
+  useEffect(() => {
+    const cleanup = useCircuitStore.getState().startBatteryInterval();
+    return cleanup;
+  }, []);
+
   // Initialize with the Simple Lamp & Switch circuit preset on first mount
   useEffect(() => {
     if (nodes.length === 0) {

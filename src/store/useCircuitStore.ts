@@ -25,6 +25,12 @@ import {
 } from '../types/circuit';
 import { solveCircuitMNA } from '../physics/mnaSolver';
 import {
+  computeEffectiveBatteryVoltage,
+  determineBatteryChargeState,
+  getDefaultBatteryCapacity,
+  stepBatteryCharge,
+} from '../physics/batterySoC';
+import {
   BulbType,
   canBulbFitSocket,
   canBulbFitPinSocket,
@@ -109,6 +115,12 @@ interface CircuitState {
   saveCustomPreset: (name: string) => void;
   loadCustomPreset: (presetId: string) => void;
   deleteCustomPreset: (presetId: string) => void;
+
+  // Battery State of Charge (SoC) Operations
+  tickBatteryCharge: (deltaSeconds?: number) => void;
+  rechargeBattery: (nodeId: string) => void;
+  rechargeAllBatteries: () => void;
+  startBatteryInterval: () => () => void;
 }
 
 const DEFAULT_SIMULATION: SimulationResult = {
@@ -246,6 +258,38 @@ function recalculateCircuit(
       };
     }
 
+    if (
+      node.data.type === 'battery' ||
+      node.data.type === 'battery9v' ||
+      node.data.type === 'battery-holder'
+    ) {
+      const currentCharge = node.data.currentCharge ?? 100;
+      const capacity =
+        node.data.capacity ??
+        getDefaultBatteryCapacity(node.data.type, node.data.batteryCount);
+      const chargeState = determineBatteryChargeState(branchCurrent);
+      const nominalBase =
+        node.data.type === 'battery9v'
+          ? node.data.voltage ?? 9.0
+          : node.data.type === 'battery-holder'
+          ? (node.data.batteryCount ?? (node.data.hasBattery ? 2 : 0)) * 1.5
+          : node.data.voltage ?? 1.5;
+      const effectiveVoltage = computeEffectiveBatteryVoltage(nominalBase, currentCharge);
+
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          currentCharge,
+          capacity,
+          chargeState,
+          calculatedCurrent: branchCurrent,
+          calculatedVoltage: effectiveVoltage,
+          isShortCircuit,
+        },
+      };
+    }
+
     return {
       ...node,
       data: {
@@ -379,6 +423,9 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
         defaultData = {
           ...defaultData,
           voltage: 1.5,
+          capacity: 1000,
+          currentCharge: 100,
+          chargeState: 'idle',
           label: isId ? 'Baterai AA 1.5V' : '1.5V AA Battery',
         };
         break;
@@ -387,6 +434,9 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
           ...defaultData,
           voltage: 9.0,
           internalResistance: 2.0,
+          capacity: 500,
+          currentCharge: 100,
+          chargeState: 'idle',
           label: isId ? 'Baterai 9V' : '9V Battery',
         };
         break;
@@ -396,6 +446,9 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
           hasBattery: false,
           batteryCount: 0,
           voltage: 0,
+          capacity: 2000,
+          currentCharge: 100,
+          chargeState: 'idle',
           label: isId ? 'Wadah Baterai AA' : 'Dual AA Holder',
         };
         break;
@@ -923,7 +976,10 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
         id: ejectedId,
         type: 'battery',
         voltage: 1.5,
-        label: '1.5V AA Battery',
+        capacity: 1000,
+        currentCharge: holderNode.data.currentCharge ?? 100,
+        chargeState: 'idle',
+        label: get().language === 'id' ? 'Baterai AA 1.5V' : '1.5V AA Battery',
       },
     };
 
@@ -1095,6 +1151,125 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   runSimulation: () => {
     const { simulation, updatedNodes } = recalculateCircuit(get().nodes, get().edges);
     set({ simulation, nodes: updatedNodes });
+  },
+
+  tickBatteryCharge: (deltaSeconds = 1) => {
+    const state = get();
+    if (!state.isSimulating) return;
+
+    let hasChanged = false;
+    const currentNodes = state.nodes;
+
+    const nextNodes = currentNodes.map((node) => {
+      if (
+        node.data.type !== 'battery' &&
+        node.data.type !== 'battery9v' &&
+        node.data.type !== 'battery-holder'
+      ) {
+        return node;
+      }
+
+      // For holder, only process if it actually has batteries inserted
+      if (
+        node.data.type === 'battery-holder' &&
+        (!node.data.hasBattery || (node.data.batteryCount ?? 0) <= 0)
+      ) {
+        return node;
+      }
+
+      const currentCharge = node.data.currentCharge ?? 100;
+      const capacity =
+        node.data.capacity ??
+        getDefaultBatteryCapacity(node.data.type, node.data.batteryCount);
+      const branchCurrent = state.simulation.branchCurrents[node.id] ?? 0;
+
+      const { newCharge, chargeState } = stepBatteryCharge(
+        currentCharge,
+        capacity,
+        branchCurrent,
+        deltaSeconds
+      );
+
+      // Check if charge changed or state changed
+      if (
+        Math.abs(newCharge - currentCharge) > 1e-4 ||
+        chargeState !== node.data.chargeState
+      ) {
+        hasChanged = true;
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            currentCharge: newCharge,
+            capacity,
+            chargeState,
+          },
+        };
+      }
+
+      return node;
+    });
+
+    if (hasChanged) {
+      const { simulation, updatedNodes } = recalculateCircuit(nextNodes, state.edges);
+      set({
+        nodes: updatedNodes,
+        simulation,
+      });
+    }
+  },
+
+  rechargeBattery: (nodeId: string) => {
+    const nextNodes = get().nodes.map((node) => {
+      if (node.id === nodeId) {
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            currentCharge: 100,
+            chargeState: 'idle' as const,
+          },
+        };
+      }
+      return node;
+    });
+    const { simulation, updatedNodes } = recalculateCircuit(nextNodes, get().edges);
+    set({ nodes: updatedNodes, simulation });
+  },
+
+  rechargeAllBatteries: () => {
+    const nextNodes = get().nodes.map((node) => {
+      if (
+        node.data.type === 'battery' ||
+        node.data.type === 'battery9v' ||
+        node.data.type === 'battery-holder'
+      ) {
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            currentCharge: 100,
+            chargeState: 'idle' as const,
+          },
+        };
+      }
+      return node;
+    });
+    const { simulation, updatedNodes } = recalculateCircuit(nextNodes, get().edges);
+    set({ nodes: updatedNodes, simulation });
+  },
+
+  startBatteryInterval: () => {
+    if (typeof window === 'undefined') {
+      return () => {};
+    }
+    const intervalId = window.setInterval(() => {
+      get().tickBatteryCharge(1);
+    }, 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
   },
 
   loadPreset: (presetName) => {

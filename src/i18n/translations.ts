@@ -53,6 +53,12 @@ export interface TranslationDictionary {
       dragHint: string;
       voltage: string;
       current: string;
+      charge: string;
+      capacity: string;
+      statusCharging: string;
+      statusDischarging: string;
+      statusIdle: string;
+      sagNotice: string;
     };
     holder: {
       title: string;
@@ -128,6 +134,10 @@ export interface TranslationDictionary {
     voltageDrop: string;
     powerDissipated: string;
     batteryVoltageLabel: string;
+    batteryChargeLabel: string;
+    batteryRechargeBtn: string;
+    batterySagNotice: string;
+    batteryCapacityLabel: string;
     holderCellsLabel: string;
     holderOutputLabel: string;
     holderGuide: string;
@@ -199,6 +209,12 @@ export const TRANSLATIONS: Record<AppLanguage, TranslationDictionary> = {
         dragHint: 'Geser ke Wadah Baterai untuk pasang',
         voltage: 'Tegangan:',
         current: 'Kuat Arus:',
+        charge: 'Daya (SoC):',
+        capacity: 'Kapasitas:',
+        statusCharging: 'CHARGING',
+        statusDischarging: 'DISCHARGING',
+        statusIdle: 'STANDBY',
+        sagNotice: 'Tegangan turun (Sag)',
       },
       holder: {
         title: 'Wadah AA (2x)',
@@ -278,6 +294,10 @@ export const TRANSLATIONS: Record<AppLanguage, TranslationDictionary> = {
       voltageDrop: 'Tegangan (V = I×R):',
       powerDissipated: 'Daya Lampu (P):',
       batteryVoltageLabel: 'Tegangan Baterai (V)',
+      batteryChargeLabel: 'Sisa Daya Baterai (SoC)',
+      batteryRechargeBtn: '⚡ Isi Ulang Baterai (100%)',
+      batterySagNotice: '⚠️ Voltage Sag: Tegangan EMF turun bertahap saat daya di bawah 20%',
+      batteryCapacityLabel: 'Kapasitas Baterai:',
       holderCellsLabel: 'Jumlah Baterai AA',
       holderOutputLabel: 'Tegangan Keluar (Seri):',
       holderGuide:
@@ -348,6 +368,12 @@ export const TRANSLATIONS: Record<AppLanguage, TranslationDictionary> = {
         dragHint: 'Drag onto Holder to insert',
         voltage: 'Voltage:',
         current: 'Current:',
+        charge: 'Charge (SoC):',
+        capacity: 'Capacity:',
+        statusCharging: 'CHARGING',
+        statusDischarging: 'DISCHARGING',
+        statusIdle: 'STANDBY',
+        sagNotice: 'Voltage Sag Active',
       },
       holder: {
         title: 'AA Holder (2x)',
@@ -427,6 +453,10 @@ export const TRANSLATIONS: Record<AppLanguage, TranslationDictionary> = {
       voltageDrop: 'Voltage Drop (V):',
       powerDissipated: 'Lamp Power (P):',
       batteryVoltageLabel: 'Battery Voltage (V)',
+      batteryChargeLabel: 'Battery State of Charge (SoC)',
+      batteryRechargeBtn: '⚡ Recharge Battery (100%)',
+      batterySagNotice: '⚠️ Voltage Sag: EMF voltage drops gradually when charge falls below 20%',
+      batteryCapacityLabel: 'Battery Capacity:',
       holderCellsLabel: 'Inserted AA Cells',
       holderOutputLabel: 'Series Output:',
       holderGuide:

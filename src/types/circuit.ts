@@ -22,6 +22,8 @@ export type ComponentType =
   | 'socket-pin'
   | 'waypoint';
 
+export type BatteryChargeState = 'idle' | 'charging' | 'discharging';
+
 export interface ComponentPin {
   id: string; // e.g., 'pos', 'neg', 'p1', 'p2'
   label: string;
@@ -57,6 +59,10 @@ export interface CircuitElementData {
   socketId?: string;           // For bulb: id of the socket it is snapped into
   installedBulb?: InstalledBulbData | BulbType | null; // For socket: bulb installed in this socket
 
+  // Battery State of Charge (SoC) properties
+  currentCharge?: number;      // State of Charge in percentage (0 - 100, default 100)
+  capacity?: number;           // Battery capacity in milliampere-hours (mAh, e.g. 1000 for AA, 500 for 9V)
+  chargeState?: BatteryChargeState; // Current dynamic charge state ('idle' | 'charging' | 'discharging')
   
   // Real-time calculated simulation results
   calculatedVoltage?: number;  // Voltage drop across component (V)

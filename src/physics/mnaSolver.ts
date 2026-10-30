@@ -27,6 +27,7 @@
 import { CircuitElementData, WireConnection, SimulationResult } from '../types/circuit';
 import { canBulbFitSocket, canBulbFitPinSocket, getBulbSpec } from '../constants/bulbCatalog';
 import { UnionFind } from './unionFind';
+import { computeEffectiveBatteryVoltage } from './batterySoC';
 
 export const SHORT_CIRCUIT_CURRENT_THRESHOLD = 10.0; // Amperes threshold for short-circuit trip
 const BATTERY_INTERNAL_RESISTANCE = 0.05; // 50mΩ internal resistance per cell to prevent singularity
@@ -50,10 +51,10 @@ export interface CircuitGraphInput {
  */
 export function isActiveVoltageSource(component: CircuitElementData): boolean {
   if (component.type === 'battery') {
-    return (component.voltage ?? 1.5) > 0;
+    return (component.voltage ?? 1.5) >= 0;
   }
   if (component.type === 'battery9v') {
-    return (component.voltage ?? 9.0) > 0;
+    return (component.voltage ?? 9.0) >= 0;
   }
   if (component.type === 'battery-holder') {
     const cellCount = component.batteryCount ?? (component.hasBattery ? 2 : 0);
@@ -63,27 +64,35 @@ export function isActiveVoltageSource(component: CircuitElementData): boolean {
 }
 
 /**
- * Computes the nominal open-circuit EMF voltage of a voltage source component.
- * - Single AA Battery ('battery'): defaults to 1.5V
- * - 9V Alkaline Battery ('battery9v'): defaults to 9.0V
- * - Dual AA Battery Holder ('battery-holder'): 1.5V per series cell (2 cells = 3.0V)
+ * Computes the nominal open-circuit EMF voltage of a voltage source component,
+ * taking into account State of Charge (SoC) and realistic voltage sag.
+ * - Single AA Battery ('battery'): defaults to 1.5V nominal
+ * - 9V Alkaline Battery ('battery9v'): defaults to 9.0V nominal
+ * - Dual AA Battery Holder ('battery-holder'): 1.5V per series cell (2 cells = 3.0V nominal)
+ * 
+ * Voltage Sag Curve:
+ * - currentCharge >= 20%: 100% nominal EMF
+ * - 0% < currentCharge < 20%: Linear sag V_nominal * (charge / 20)
+ * - currentCharge <= 0%: 0.0V (dead / discharged cell)
  * 
  * @param component - Circuit component data
- * @returns Nominal voltage in Volts
+ * @returns Effective EMF voltage in Volts
  */
 export function getVoltageSourceNominalVoltage(component: CircuitElementData): number {
+  let baseVoltage = 0;
   if (component.type === 'battery') {
-    return component.voltage ?? 1.5;
-  }
-  if (component.type === 'battery9v') {
-    return component.voltage ?? 9.0;
-  }
-  if (component.type === 'battery-holder') {
+    baseVoltage = component.voltage ?? 1.5;
+  } else if (component.type === 'battery9v') {
+    baseVoltage = component.voltage ?? 9.0;
+  } else if (component.type === 'battery-holder') {
     if (!component.hasBattery) return 0;
     const cellCount = component.batteryCount ?? 2;
-    return component.voltage ?? cellCount * 1.5;
+    baseVoltage = component.voltage ?? cellCount * 1.5;
+  } else {
+    return 0;
   }
-  return 0;
+
+  return computeEffectiveBatteryVoltage(baseVoltage, component.currentCharge);
 }
 
 /**

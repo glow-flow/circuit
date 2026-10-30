@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
 import { BatteryCharging, Plus, RotateCcw, Zap } from 'lucide-react';
 import { CircuitElementData, ComponentType } from '../../../types/circuit';
+import { computeEffectiveBatteryVoltage } from '../../../physics/batterySoC';
 import { useCircuitStore } from '../../../store/useCircuitStore';
 import { TRANSLATIONS } from '../../../i18n/translations';
 
@@ -58,7 +59,16 @@ export const BatteryHolderNode: React.FC<NodeProps<CircuitElementData>> = ({
   const hasSlot1 = batteryCount >= 1;
   const hasSlot2 = batteryCount >= 2;
 
-  const outputVoltage = batteryCount * 1.5;
+  const nominalBaseVoltage = batteryCount * 1.5;
+  const charge = Math.max(0, Math.min(100, data.currentCharge ?? 100));
+  const chargeState = data.chargeState ?? 'idle';
+  const effectiveVoltage =
+    data.calculatedVoltage ??
+    (hasBattery ? computeEffectiveBatteryVoltage(nominalBaseVoltage, charge) : 0);
+  const isDead = hasBattery && charge <= 0;
+  const isSagActive = hasBattery && charge > 0 && charge < 20;
+
+  const outputVoltage = effectiveVoltage;
   const current = Math.abs(data.calculatedCurrent ?? 0);
   const isShorted = data.isShortCircuit;
 
@@ -242,6 +252,56 @@ export const BatteryHolderNode: React.FC<NodeProps<CircuitElementData>> = ({
           )}
         </div>
       </div>
+
+      {/* State of Charge (SoC) Bar when battery is loaded */}
+      {hasBattery && (
+        <div className="mt-2 mb-1.5 space-y-1">
+          <div className="flex justify-between items-center text-[10px] font-mono">
+            <span className="text-slate-400 font-sans text-[9px]">{language === 'id' ? 'Daya (SoC):' : 'Charge:'}</span>
+            <span
+              className={`font-bold ${
+                isDead
+                  ? 'text-red-400'
+                  : isSagActive
+                  ? 'text-amber-400'
+                  : charge < 50
+                  ? 'text-yellow-400'
+                  : 'text-emerald-400'
+              }`}
+            >
+              {charge.toFixed(0)}%
+            </span>
+          </div>
+
+          <div className="w-full h-1.5 rounded-full bg-void-950 border border-white/10 overflow-hidden relative">
+            <div
+              className={`h-full rounded-full transition-all duration-300 ${
+                isDead
+                  ? 'bg-red-500/40'
+                  : isSagActive
+                  ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]'
+                  : charge < 50
+                  ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]'
+                  : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]'
+              }`}
+              style={{ width: `${charge}%` }}
+            />
+          </div>
+
+          {chargeState === 'charging' && (
+            <div className="flex items-center justify-center gap-1 py-0.5 px-1.5 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[9px] font-mono font-bold animate-pulse">
+              <Zap className="w-2.5 h-2.5" />
+              <span>⚡ CHARGING</span>
+            </div>
+          )}
+          {chargeState === 'discharging' && (
+            <div className="flex items-center justify-center gap-1 py-0.5 px-1.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[9px] font-mono font-bold">
+              <BatteryCharging className="w-2.5 h-2.5" />
+              <span>🔋 DISCHARGING</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Interactive Slot Controls (for both touch/mobile and desktop) */}
       <div className="flex items-center justify-between gap-1.5 mt-2 mb-2">
