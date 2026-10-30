@@ -45,11 +45,8 @@ export function migrateWiredBulbsToSockets(
   return nodes.map((node) => {
     if (node.data?.type === 'bulb' && wiredNodeIds.has(node.id)) {
       const bulbType = node.data.bulbType ?? 'incandescent';
-      // Loose indicator LED ('led_green') connects directly via pins and does NOT use sockets!
-      if (bulbType === 'led_green') {
-        return node;
-      }
-      if (bulbType === 'halogen') {
+      // Pin-base bulbs (halogen and led_green) migrate to ceramic 'pin-socket'
+      if (bulbType === 'halogen' || bulbType === 'led_green') {
         return {
           ...node,
           type: 'pin-socket',
@@ -498,16 +495,19 @@ export function createUltimatePowerGridPreset(
     },
     {
       id: 'bulb_led_green',
-      type: 'bulb',
+      type: 'pin-socket',
       position: { x: 1200, y: 800 },
       data: {
         id: 'bulb_led_green',
-        type: 'bulb',
-        bulbType: 'led_green',
-        resistance: 2000,
-        powerRating: 0.5,
-        isBlown: false,
-        label: isId ? 'LED Indikator (5mm Kaki)' : '5mm Indicator LED',
+        type: 'pin-socket',
+        label: isId ? 'Fiting Keramik Putih' : 'Pin Socket',
+        installedBulb: {
+          id: 'bulb_led_green_unit',
+          bulbType: 'led_green',
+          resistance: 2000,
+          powerRating: 0.5,
+          label: isId ? 'LED Indikator (5mm Kaki)' : '5mm Indicator LED',
+        },
       },
     },
 

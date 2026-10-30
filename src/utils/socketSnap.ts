@@ -29,8 +29,8 @@ export const SOCKET_NODE_SIZE = { width: 38, height: 56 } as const;
 export const PIN_SOCKET_NODE_SIZE = { width: 38, height: 58 } as const;
 /** How deep (px) the bulb base sits inside the socket mouth when snapped. */
 export const BULB_INSERT_DEPTH = 44;
-/** How deep (px) the halogen pin bulb sits inside the ceramic bi-pin socket when snapped. */
-export const PIN_BULB_INSERT_DEPTH = 14;
+/** How deep (px) the pin bulb sits inside the ceramic bi-pin socket when snapped (112 - 86 = 26px). */
+export const PIN_BULB_INSERT_DEPTH = 26;
 /** Max distance (px) between a dropped bulb and a socket's snap point to attach. */
 export const SNAP_RADIUS = 90;
 /** Distance (px) a rejected bulb is pushed away from the socket it cannot fit. */
@@ -53,17 +53,19 @@ export const PIN_SOCKET_FRONT_LIP_CLIP_PATH =
   'polygon(0% 4.8%, 10% 3.6%, 20% 2.8%, 30% 2.6%, 40% 2.9%, 50% 3.2%, 60% 2.9%, 70% 2.6%, 80% 2.8%, 90% 3.6%, 100% 4.8%, 100% 100%, 0% 100%)';
 
 /**
- * Returns the vertical top offset (in px) for an installed bulb inside a SocketNode
+ * Returns the vertical top offset (in px) for an installed bulb inside a SocketNode or PinSocketNode
  * so its glass/ballast shoulder sits flush against the socket's front lip without floating gaps,
- * completely concealing the metal screw threads inside the socket cavity.
+ * completely concealing the metal screw threads or pins inside the socket cavity.
  * Time Complexity: O(1).
  *
  * Calibration:
  * - 'incandescent': Glass collar flares at 78.2px -> -66px (sits at +12.2px)
  * - 'edison': Amber glass shoulder ends at 86.9px -> -74px (sits at +12.9px, flush with front lip)
- * - 'cfl': White plastic ballast shoulder ends at 88.8px -> -76px (sits at +12.8px, flush on socket rim)
+ * - 'cfl': White plastic ballast shoulder ends at 85.4px -> -72px (sits at +13.4px, flush on socket rim, zero drat gap)
  * - 'led_standard': Diffuser collar flares at 87.5px -> -74px (sits at +13.5px)
  * - 'led_rgb': Diffuser collar flares at 87.2px -> -74px (sits at +13.2px)
+ * - 'halogen': Dark pinch collar ends at 86.0px -> -86px (pins penetrate 26px into ceramic slots, zero gap)
+ * - 'led_green': Green epoxy dome base ends at 48.0px -> -46px (pins penetrate into ceramic slots, zero gap)
  *
  * @param bulbType - Type of bulb installed in the socket
  * @returns Negative top offset in pixels
@@ -75,10 +77,14 @@ export function getInstalledBulbTopOffset(bulbType?: BulbType): number {
     case 'edison':
       return -74;
     case 'cfl':
-      return -76;
+      return -72;
     case 'led_standard':
     case 'led_rgb':
       return -74;
+    case 'halogen':
+      return -86;
+    case 'led_green':
+      return -46;
     default:
       return -74;
   }
@@ -133,7 +139,9 @@ export function findNearestFreeSocket(
   for (const candidate of allNodes) {
     const isSocket = candidate.data.type === 'socket' || candidate.data.type === 'pin-socket';
     if (!isSocket || candidate.data.bulbId || candidate.data.installedBulb) continue;
-    const distance = distanceToSocketSnapPoint(bulbNode.position, candidate.position);
+    const distance = candidate.data.type === 'pin-socket'
+      ? distanceToPinSocketSnapPoint(bulbNode.position, candidate.position)
+      : distanceToSocketSnapPoint(bulbNode.position, candidate.position);
     if (distance <= nearestDistance) {
       nearestDistance = distance;
       nearestSocket = candidate;
@@ -250,11 +258,11 @@ export const SOCKET_NOTICES = {
     en: 'This E27 socket is for screw-base bulbs only! Pin-base bulbs (Halogen & Indicator LED) do not fit.',
   },
   pinOnly: {
-    id: 'Fiting pin keramik ini khusus lampu Halogen tipe pin! Lampu tipe ulir (E27) tidak muat.',
-    en: 'This ceramic pin socket is for pin-base Halogen bulbs only! Screw-base bulbs do not fit.',
+    id: 'Fiting pin keramik ini khusus lampu tipe pin (Halogen & LED Indikator)! Lampu tipe ulir (E27) tidak muat.',
+    en: 'This ceramic pin socket is for pin-base bulbs (Halogen & Indicator LED) only! Screw-base bulbs do not fit.',
   },
   detachedByType: {
-    id: 'Lampu dilepas dari fiting karena menggunakan kaki pin langsung, bukan ulir E27.',
-    en: 'Bulb detached because it uses direct pin terminals, not an E27 screw base.',
+    id: 'Lampu dilepas dari fiting karena menggunakan kaki pin, bukan ulir E27.',
+    en: 'Bulb detached because it uses pin terminals, not an E27 screw base.',
   },
 } as const;

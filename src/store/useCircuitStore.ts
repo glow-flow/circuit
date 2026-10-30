@@ -130,15 +130,11 @@ function recalculateCircuit(
   nodes: Node<CircuitElementData>[],
   edges: Edge[]
 ): { simulation: SimulationResult; updatedNodes: Node<CircuitElementData>[] } {
-  // Detached screw-base bulbs and detached halogen cannot connect wires directly.
-  // Loose indicator LED ('led_green') is the only standalone bulb that has active pin handles.
+  // Detached bulbs (screw-base, halogen, and led_green) cannot connect wires directly.
+  // All standalone bulbs are passive inventory items awaiting placement into sockets.
   const standalonePassiveBulbIds = new Set(
     nodes
-      .filter(
-        (node) =>
-          node.data.type === 'bulb' &&
-          node.data.bulbType !== 'led_green'
-      )
+      .filter((node) => node.data.type === 'bulb')
       .map((node) => node.id)
   );
   const validEdges = edges.filter(
@@ -233,37 +229,7 @@ function recalculateCircuit(
       const spec = getBulbSpec(node.data.bulbType);
       const effectiveResistance = node.data.resistance ?? spec.resistance;
 
-      // Only standalone indicator LED ('led_green') conducts electricity directly via its terminal pins
-      if (node.data.bulbType === 'led_green') {
-        const { powerWatts, voltageDrop, isOverloaded } = computeBulbPhotometrics(
-          branchCurrent,
-          effectiveResistance,
-          spec
-        );
-        const isBlown = Boolean(
-          node.data.isBlown ||
-            isOverloaded ||
-            Math.abs(branchCurrent) > 2.5
-        );
-
-        return {
-          ...node,
-          data: {
-            ...node.data,
-            bulbType: spec.type,
-            resistance: effectiveResistance,
-            powerRating: node.data.powerRating ?? spec.maxPower,
-            power: powerWatts,
-            calculatedCurrent: branchCurrent,
-            calculatedVoltage: voltageDrop,
-            calculatedPower: powerWatts,
-            isShortCircuit,
-            isBlown,
-          },
-        };
-      }
-
-      // Standalone screw-base bulbs and standalone halogen are purely inventory items and NEVER conduct current without socket
+      // Standalone bulbs (screw-base, halogen, led_green) are purely inventory items and NEVER conduct current without socket
       return {
         ...node,
         data: {
@@ -354,33 +320,20 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     const targetNode = currentNodes.find((n) => n.id === connection.target);
     const isId = get().language === 'id';
 
-    // Screw-base bulbs and halogen CANNOT be wired directly (must be snapped into their respective sockets).
-    // Only loose indicator LED ('led_green') has active pin handles and can be wired directly!
-    const sourceIsPassive =
-      sourceNode?.data.type === 'bulb' && sourceNode.data.bulbType !== 'led_green';
-    const targetIsPassive =
-      targetNode?.data.type === 'bulb' && targetNode.data.bulbType !== 'led_green';
+    // Standalone bulbs CANNOT be wired directly (must be snapped into their respective sockets).
+    // Pin-base bulbs ('halogen', 'led_green') must go into ceramic pin sockets; screw-base into E27 sockets.
+    const sourceIsPassive = sourceNode?.data.type === 'bulb';
+    const targetIsPassive = targetNode?.data.type === 'bulb';
 
-    if (sourceIsPassive) {
-      const isHalogen = sourceNode?.data.bulbType === 'halogen';
+    if (sourceIsPassive || targetIsPassive) {
+      const passiveNode = sourceIsPassive ? sourceNode : targetNode;
+      const isPinBulb =
+        passiveNode?.data.bulbType === 'halogen' || passiveNode?.data.bulbType === 'led_green';
       get().notify(
-        isHalogen
+        isPinBulb
           ? (isId
-              ? 'Lampu Halogen harus dipasang ke fiting pin keramik terlebih dahulu!'
-              : 'Halogen bulbs must be installed into a ceramic pin socket first!')
-          : (isId
-              ? 'Lampu ulir (E27) harus dipasang ke fiting lampu (Socket) terlebih dahulu!'
-              : 'Screw-base bulbs (E27) must be installed into a lamp socket first!')
-      );
-      return;
-    }
-    if (targetIsPassive) {
-      const isHalogen = targetNode?.data.bulbType === 'halogen';
-      get().notify(
-        isHalogen
-          ? (isId
-              ? 'Lampu Halogen harus dipasang ke fiting pin keramik terlebih dahulu!'
-              : 'Halogen bulbs must be installed into a ceramic pin socket first!')
+              ? 'Lampu pin (Halogen & LED Indikator) harus dipasang ke fiting pin keramik terlebih dahulu!'
+              : 'Pin-base bulbs (Halogen & Indicator LED) must be installed into a ceramic pin socket first!')
           : (isId
               ? 'Lampu ulir (E27) harus dipasang ke fiting lampu (Socket) terlebih dahulu!'
               : 'Screw-base bulbs (E27) must be installed into a lamp socket first!')
@@ -585,8 +538,8 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
         get().detachBulbFromSocket(targetNode.id);
         get().notify(
           isId
-            ? 'Lampu dilepas dari fiting keramik karena bukan tipe pin (Halogen).'
-            : 'Bulb detached from ceramic socket because it is not a pin-base bulb (Halogen).'
+            ? 'Lampu dilepas dari fiting keramik karena bukan tipe pin (Halogen & LED Indikator).'
+            : 'Bulb detached from ceramic socket because it is not a pin-base bulb (Halogen & Indicator LED).'
         );
         return;
       }

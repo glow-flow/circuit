@@ -23,9 +23,9 @@ describe('PinSocketNode Architecture & Geometry', () => {
     expect(PIN_SOCKET_TERMINALS.p2).toBe('72%');
   });
 
-  it('calibrates halogen bulb vertical top offset so contact pins penetrate down into ceramic slots', () => {
-    // Halogen bulb height is 112px; at -98px top offset, the bottom 14px metal pins penetrate into socket mouth
-    expect(HALOGEN_BULB_TOP_OFFSET).toBe(-98);
+  it('calibrates halogen bulb vertical top offset so contact pins penetrate down into ceramic slots without gap', () => {
+    // Halogen bulb height is 112px; at -86px top offset, pins penetrate 26px into ceramic slots with zero gap
+    expect(HALOGEN_BULB_TOP_OFFSET).toBe(-86);
   });
 
   it('defines polygon clip-path for front ceramic socket lip overlay (Layer 3)', () => {

@@ -5,10 +5,11 @@ import { CircuitElementData, InstalledBulbData } from '../../../types/circuit';
 import { useCircuitStore } from '../../../store/useCircuitStore';
 import {
   BulbType,
+  canBulbFitPinSocket,
   computeBulbPhotometrics,
   getBulbSpec,
 } from '../../../constants/bulbCatalog';
-import { BULB_NODE_SIZE } from '../../../utils/socketSnap';
+import { BULB_NODE_SIZE, getInstalledBulbTopOffset } from '../../../utils/socketSnap';
 import { TRANSLATIONS } from '../../../i18n/translations';
 import { NodeInfoPopover } from './NodeInfoPopover';
 
@@ -27,10 +28,10 @@ export const PIN_SOCKET_TERMINALS = { p1: '28%', p2: '72%' } as const;
 
 /**
  * Top offset (px) for an installed Halogen bulb inside the PinSocketNode.
- * Calibrated so the two metal pins penetrate DOWN into the top insertion slots,
- * while the glass capsule rests flush against the ceramic mouth.
+ * Calibrated so the metal contact pins penetrate DOWN into the top insertion slots,
+ * while the dark collar rests flush against the ceramic mouth with zero gap.
  */
-export const HALOGEN_BULB_TOP_OFFSET = -98;
+export const HALOGEN_BULB_TOP_OFFSET = getInstalledBulbTopOffset('halogen');
 
 /**
  * Polygon clip-path tracing the front ceramic lip of the bi-pin socket.
@@ -121,12 +122,14 @@ export const PinSocketNode: React.FC<NodeProps<CircuitElementData>> = ({
     ? (rawInstalledBulb as BulbType)
     : undefined;
 
-  // Ceramic bi-pin socket strictly accepts pin-base bulbs (halogen or pin capsule)
+  // Ceramic bi-pin socket strictly accepts pin-base bulbs (halogen or green indicator LED)
   const candidateSpec = installedBulbType ? getBulbSpec(installedBulbType) : undefined;
   const installedSpec =
-    candidateSpec && (candidateSpec.baseType === 'pin' || candidateSpec.type === 'halogen')
+    candidateSpec && (candidateSpec.baseType === 'pin' || canBulbFitPinSocket(candidateSpec.type))
       ? candidateSpec
       : undefined;
+
+  const bulbTopOffset = getInstalledBulbTopOffset(installedSpec?.type);
 
   const isBlown = Boolean(
     (installedBulbObj && installedBulbObj.isBlown) || data.isBlown
@@ -228,7 +231,7 @@ export const PinSocketNode: React.FC<NodeProps<CircuitElementData>> = ({
           className="pointer-events-none absolute select-none"
           style={{
             left: '50%',
-            top: HALOGEN_BULB_TOP_OFFSET + 50,
+            top: bulbTopOffset + (installedSpec.type === 'led_green' ? 25 : 44),
             transform: 'translate(-50%, -50%)',
             zIndex: 14,
             width: 0,
@@ -274,14 +277,14 @@ export const PinSocketNode: React.FC<NodeProps<CircuitElementData>> = ({
         </div>
       )}
 
-      {/* LAYER 2 (zIndex: 20): Installed Halogen Bulb Artwork (Fixed size, pins penetrate down) */}
+      {/* LAYER 2 (zIndex: 20): Installed Pin Bulb Artwork (Fixed size, pins penetrate down) */}
       {installedSpec && (
         <div
           className="pointer-events-none absolute left-1/2 flex items-center justify-center select-none"
           style={{
             width: BULB_NODE_SIZE.width,
             height: BULB_NODE_SIZE.height,
-            top: HALOGEN_BULB_TOP_OFFSET,
+            top: bulbTopOffset,
             transform: 'translateX(-50%)',
             zIndex: 20,
           }}
@@ -349,9 +352,11 @@ export const PinSocketNode: React.FC<NodeProps<CircuitElementData>> = ({
           <div className="mb-1.5 flex items-center justify-between gap-1.5">
             <div className="min-w-0">
               <div className="truncate text-xs font-bold tracking-tight text-slate-100">
-                {isIndonesian ? 'Fiting Keramik Bi-Pin' : 'Bi-Pin Ceramic Socket'}
+                {isIndonesian ? 'Fiting Keramik Pin' : 'Ceramic Pin Socket'}
                 <span className="ml-1 font-mono text-[10px] text-amber-300">
-                  {isIndonesian ? '(G4 / Halogen)' : '(G4 / Halogen)'}
+                  {installedSpec?.type === 'led_green'
+                    ? (isIndonesian ? '(LED Indikator)' : '(Indicator LED)')
+                    : (isIndonesian ? '(G4 / Halogen)' : '(G4 / Halogen)')}
                 </span>
               </div>
               <div className="truncate text-[10px] text-slate-400">

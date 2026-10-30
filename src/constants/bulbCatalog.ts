@@ -277,16 +277,15 @@ export function canBulbFitSocket(bulbType?: BulbType | string): boolean {
 
 /**
  * Checks whether a bulb can fit into a ceramic bi-pin socket (G4/G9).
- * Specifically designed for bi-pin capsule bulbs ('halogen').
- * Discrete indicator LEDs (e.g. 'led_green') are direct-wired and do not mount into ceramic sockets.
- * Returns true ONLY for `bulbType === 'halogen'` (or pin bulbs designed for the ceramic bi-pin socket).
- * Time Complexity: O(1).
+ * Accepts pin-base bulbs ('halogen' and 'led_green').
+ * Screw-base bulbs (E27) do not fit and return false.
+ * Time Complexity: O(1) via hash map lookup.
  *
  * @param bulbType - Bulb model identifier being mounted
- * @returns true ONLY when the bulb is compatible with ceramic pin sockets ('halogen')
+ * @returns true ONLY when the bulb has a 'pin' base type ('halogen' | 'led_green')
  */
 export function canBulbFitPinSocket(bulbType?: BulbType | string): boolean {
   if (!bulbType) return false;
   const spec = getBulbSpec(bulbType);
-  return spec.type === 'halogen' && spec.baseType === 'pin';
+  return spec.baseType === 'pin';
 }

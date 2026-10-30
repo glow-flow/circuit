@@ -544,11 +544,7 @@ export function getComponentPinIdentifiers(component: CircuitElementData): strin
     case 'socket-pin':
       return [`${component.id}:p1`, `${component.id}:p2`];
     case 'bulb': {
-      // Pin-base bulbs: only led_green has standalone direct physical contact pins
-      if (component.bulbType === 'led_green') {
-        return [`${component.id}:p1`, `${component.id}:p2`];
-      }
-      // Detached screw-base bulbs and standalone halogen have no direct handles (passive inventory items)
+      // Standalone bulbs (screw-base, halogen, led_green) have no direct wire handles (pure inventory items)
       return [];
     }
     case 'ground':
@@ -627,13 +623,7 @@ export function getComponentEffectiveResistance(component: CircuitElementData): 
     case 'resistor':
       return Math.max(0.1, component.resistance ?? 100);
     case 'bulb': {
-      // Only standalone led_green can conduct current on its own as a loose DIP component
-      if (component.bulbType === 'led_green') {
-        if (component.isBlown) return 1e9;
-        const spec = getBulbSpec(component.bulbType);
-        return Math.max(0.1, component.resistance ?? spec.resistance);
-      }
-      // Detached screw-base bulbs and standalone halogen cannot conduct current on their own (1e9)
+      // Standalone bulbs (screw-base, halogen, led_green) cannot conduct current without a socket (1e9)
       return 1e9;
     }
     case 'socket':

@@ -550,12 +550,26 @@ describe('Modified Nodal Analysis (MNA) Physics Engine', () => {
       bulbType: 'led_green',
       label: 'LED Indikator Standalone',
     };
-    expect(getComponentEffectiveResistance(standaloneLedGreen)).toBe(5000);
+    expect(getComponentEffectiveResistance(standaloneLedGreen)).toBe(1e9);
+
+    const pinSocketWithLed: CircuitElementData = {
+      id: 'ps_led',
+      type: 'pin-socket',
+      label: 'Fiting Pin LED',
+      installedBulb: {
+        id: 'b_led',
+        bulbType: 'led_green',
+        resistance: 5000,
+        powerRating: 3,
+      },
+    };
+    expect(getComponentEffectiveResistance(pinSocketWithLed)).toBe(5000);
 
     expect(getComponentPinIdentifiers(emptyPinSocket)).toEqual(['ps_empty:p1', 'ps_empty:p2']);
     expect(getComponentPinIdentifiers(standaloneHalogen)).toEqual([]);
     expect(getComponentPinIdentifiers(standaloneScrew)).toEqual([]);
-    expect(getComponentPinIdentifiers(standaloneLedGreen)).toEqual(['b_led_green:p1', 'b_led_green:p2']);
+    expect(getComponentPinIdentifiers(standaloneLedGreen)).toEqual([]);
+    expect(getComponentPinIdentifiers(pinSocketWithLed)).toEqual(['ps_led:p1', 'ps_led:p2']);
   });
 
   it('conducts through pin-socket only when Halogen is installed and accurately calculates current, power, and overvoltage', () => {

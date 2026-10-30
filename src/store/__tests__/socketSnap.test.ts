@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useCircuitStore } from '../useCircuitStore';
 import { BULB_CATALOG, BulbType, canBulbFitSocket, canBulbFitPinSocket } from '../../constants/bulbCatalog';
-import { getBulbSnapPosition, SOCKET_NOTICES } from '../../utils/socketSnap';
+import { getBulbSnapPosition, getInstalledBulbTopOffset, SOCKET_NOTICES } from '../../utils/socketSnap';
 
 /** Places a socket and a bulb, and drops the bulb exactly on the socket's snap point. */
 function placeSocketAndBulb(bulbType: BulbType): { socketId: string; bulbId: string } {
@@ -33,19 +33,34 @@ describe('Bulb base types', () => {
     expect(baseByType.led_rgb).toBe('screw');
   });
 
-  it('canBulbFitSocket accepts screw bulbs and rejects pin bulbs', () => {
+  it('canBulbFitSocket accepts screw bulbs and rejects pin bulbs (Halogen & Indicator LED)', () => {
     expect(canBulbFitSocket('incandescent')).toBe(true);
+    expect(canBulbFitSocket('edison')).toBe(true);
+    expect(canBulbFitSocket('cfl')).toBe(true);
+    expect(canBulbFitSocket('led_standard')).toBe(true);
+    expect(canBulbFitSocket('led_rgb')).toBe(true);
     expect(canBulbFitSocket('halogen')).toBe(false);
     expect(canBulbFitSocket('led_green')).toBe(false);
   });
 
-  it('canBulbFitPinSocket accepts halogen and rejects screw bulbs', () => {
+  it('canBulbFitPinSocket accepts pin bulbs (Halogen & Indicator LED) and rejects screw bulbs', () => {
     expect(canBulbFitPinSocket('halogen')).toBe(true);
+    expect(canBulbFitPinSocket('led_green')).toBe(true);
     expect(canBulbFitPinSocket('incandescent')).toBe(false);
     expect(canBulbFitPinSocket('edison')).toBe(false);
     expect(canBulbFitPinSocket('cfl')).toBe(false);
     expect(canBulbFitPinSocket('led_standard')).toBe(false);
     expect(canBulbFitPinSocket('led_rgb')).toBe(false);
+  });
+
+  it('calibrates top offsets for all bulbs to guarantee zero-gap snapping', () => {
+    expect(getInstalledBulbTopOffset('incandescent')).toBe(-66);
+    expect(getInstalledBulbTopOffset('edison')).toBe(-74);
+    expect(getInstalledBulbTopOffset('cfl')).toBe(-72);
+    expect(getInstalledBulbTopOffset('led_standard')).toBe(-74);
+    expect(getInstalledBulbTopOffset('led_rgb')).toBe(-74);
+    expect(getInstalledBulbTopOffset('halogen')).toBe(-86);
+    expect(getInstalledBulbTopOffset('led_green')).toBe(-46);
   });
 });
 
@@ -168,11 +183,11 @@ describe('Socket (fiting) snapping & MNA physics', () => {
     expect(notification).not.toBeNull();
   });
 
-  it('allows direct wiring to indicator LED but blocks direct wiring to screw bulbs and halogen', () => {
+  it('blocks direct wiring to all standalone bulbs (requiring sockets)', () => {
     useCircuitStore.getState().addComponent('battery9v', { x: 0, y: 0 });
-    useCircuitStore.getState().addComponent('bulb', { x: 200, y: 0 }, { bulbType: 'led_green' }); // loose DIP indicator
-    useCircuitStore.getState().addComponent('bulb', { x: 400, y: 0 }, { bulbType: 'halogen' }); // needs pin-socket
-    useCircuitStore.getState().addComponent('bulb', { x: 600, y: 0 }, { bulbType: 'incandescent' }); // screw base
+    useCircuitStore.getState().addComponent('bulb', { x: 200, y: 0 }, { bulbType: 'led_green' }); // requires ceramic pin socket
+    useCircuitStore.getState().addComponent('bulb', { x: 400, y: 0 }, { bulbType: 'halogen' }); // requires ceramic pin socket
+    useCircuitStore.getState().addComponent('bulb', { x: 600, y: 0 }, { bulbType: 'incandescent' }); // requires screw socket
 
     const currentNodes = useCircuitStore.getState().nodes;
     const bat = currentNodes.find((n) => n.data.type === 'battery9v')!;
@@ -180,14 +195,15 @@ describe('Socket (fiting) snapping & MNA physics', () => {
     const halogen = currentNodes.find((n) => n.data.bulbType === 'halogen')!;
     const incand = currentNodes.find((n) => n.data.bulbType === 'incandescent')!;
 
-    // Connecting to loose indicator LED (led_green) should succeed
+    // Connecting to detached indicator LED (led_green) should fail with notification
     useCircuitStore.getState().onConnect({
       source: bat.id,
       sourceHandle: 'pos',
       target: ledGreen.id,
       targetHandle: 'p1',
     });
-    expect(useCircuitStore.getState().edges).toHaveLength(1);
+    expect(useCircuitStore.getState().edges).toHaveLength(0);
+    expect(useCircuitStore.getState().notification?.message).toContain('Lampu pin');
 
     // Connecting to detached halogen should fail with notification
     useCircuitStore.getState().onConnect({
@@ -196,8 +212,8 @@ describe('Socket (fiting) snapping & MNA physics', () => {
       target: halogen.id,
       targetHandle: 'p1',
     });
-    expect(useCircuitStore.getState().edges).toHaveLength(1); // unchanged
-    expect(useCircuitStore.getState().notification?.message).toContain('Lampu Halogen');
+    expect(useCircuitStore.getState().edges).toHaveLength(0);
+    expect(useCircuitStore.getState().notification?.message).toContain('Lampu pin');
 
     // Connecting to screw bulb should fail with notification
     useCircuitStore.getState().onConnect({
@@ -206,8 +222,47 @@ describe('Socket (fiting) snapping & MNA physics', () => {
       target: incand.id,
       targetHandle: 'p1',
     });
-    expect(useCircuitStore.getState().edges).toHaveLength(1); // unchanged
+    expect(useCircuitStore.getState().edges).toHaveLength(0);
     expect(useCircuitStore.getState().notification?.message).toContain('Lampu ulir');
+  });
+
+  it('snaps Green Indicator LED into a nearby PinSocketNode and absorbs it into installedBulb', () => {
+    const store = useCircuitStore.getState();
+    store.addComponent('pin-socket', { x: 400, y: 400 });
+    store.addComponent('bulb', { x: 0, y: 0 }, { bulbType: 'led_green' });
+
+    const placedNodes = useCircuitStore.getState().nodes;
+    const pinSocketNode = placedNodes.find((n) => n.data.type === 'pin-socket')!;
+    const ledNode = placedNodes.find((n) => n.data.type === 'bulb')!;
+
+    useCircuitStore.setState({
+      nodes: placedNodes.map((n) =>
+        n.id === ledNode.id ? { ...n, position: getBulbSnapPosition(pinSocketNode.position) } : n
+      ),
+    });
+
+    useCircuitStore.getState().settleBulbAfterDrag(ledNode.id);
+
+    const { nodes, notification } = useCircuitStore.getState();
+    const updatedSocket = nodes.find((n) => n.id === pinSocketNode.id);
+
+    expect(updatedSocket?.data.installedBulb).toBeDefined();
+    expect((updatedSocket?.data.installedBulb as any)?.bulbType).toBe('led_green');
+    expect(nodes.find((n) => n.id === ledNode.id)).toBeUndefined();
+    expect(notification).toBeNull();
+  });
+
+  it('rejects Green Indicator LED when dropped near an E27 screw socket', () => {
+    const { socketId, bulbId } = placeSocketAndBulb('led_green');
+    useCircuitStore.getState().settleBulbAfterDrag(bulbId);
+
+    const { nodes, edges, notification } = useCircuitStore.getState();
+    const socketNode = nodes.find((n) => n.id === socketId);
+
+    expect(socketNode?.data.installedBulb).toBeUndefined();
+    expect(nodes.find((n) => n.id === bulbId)).toBeDefined();
+    expect(edges).toHaveLength(0);
+    expect(notification?.message).toBe(SOCKET_NOTICES.screwOnly.id);
   });
 
   it('snaps a CFL screw bulb into a nearby E27 SocketNode and installs it into socket without hidden wires', () => {
@@ -350,7 +405,7 @@ describe('Socket (fiting) snapping & MNA physics', () => {
     expect(simulation.isShortCircuit).toBe(false);
   });
 
-  it('loads ultimate-power-grid preset with screw sockets, pin-socket for halogen, and direct bulb for indicator LED', () => {
+  it('loads ultimate-power-grid preset with screw sockets and pin-sockets for halogen and indicator LED', () => {
     const store = useCircuitStore.getState();
     store.loadPreset('ultimate-power-grid');
 
@@ -364,7 +419,7 @@ describe('Socket (fiting) snapping & MNA physics', () => {
     const ledStd = nodes.find((n) => n.id === 'bulb_led_standard');
 
     expect(halogen?.type).toBe('pin-socket');
-    expect(ledGreen?.type).toBe('bulb');
+    expect(ledGreen?.type).toBe('pin-socket');
     expect(incand?.type).toBe('socket');
     expect(edison?.type).toBe('socket');
     expect(cfl?.type).toBe('socket');
