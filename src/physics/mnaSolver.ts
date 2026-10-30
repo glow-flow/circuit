@@ -297,8 +297,7 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
         component.type === 'battery9v' ||
         component.type === 'battery-holder' ||
         component.type === 'ground' ||
-        component.type === 'waypoint' ||
-        component.type === 'socket' // Socket is a passive holder: only the bulb screwed into it conducts
+        component.type === 'waypoint'
       ) {
         continue;
       }
@@ -386,9 +385,12 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
     let isOverallShortCircuit = false;
     let totalPowerDrawn = 0;
 
-    // Default 0 current for unloaded battery holders
+    // Default 0 current for unloaded battery holders and detached bulbs
     for (const component of components) {
-      if (component.type === 'battery-holder' && !isActiveVoltageSource(component)) {
+      if (
+        (component.type === 'battery-holder' && !isActiveVoltageSource(component)) ||
+        component.type === 'bulb'
+      ) {
         branchCurrentMap[component.id] = 0;
       }
     }
@@ -417,8 +419,7 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
         component.type === 'battery9v' ||
         component.type === 'battery-holder' ||
         component.type === 'ground' ||
-        component.type === 'waypoint' ||
-        component.type === 'socket'
+        component.type === 'waypoint'
       ) {
         continue;
       }
@@ -434,22 +435,24 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
       const voltageDrop = voltageA - voltageB;
 
       const resistance = getComponentEffectiveResistance(component);
-      const branchCurrent = resistance > 0 ? voltageDrop / resistance : 0;
+      const branchCurrent = resistance > 0 && resistance < 1e8 ? voltageDrop / resistance : 0;
       branchCurrentMap[component.id] = branchCurrent;
+
+      // If socket has installed bulb, propagate current to the bulb's id as well
+      if (component.type === 'socket' && component.installedBulb) {
+        const installedBulbId =
+          typeof component.installedBulb === 'object'
+            ? component.installedBulb.id
+            : component.bulbId;
+        if (installedBulbId) {
+          branchCurrentMap[installedBulbId] = branchCurrent;
+        }
+      }
 
       if (Math.abs(branchCurrent) > SHORT_CIRCUIT_CURRENT_THRESHOLD) {
         isOverallShortCircuit = true;
         shortCircuitBranches.push(component.id);
       }
-    }
-
-    // 8b. A socket carries exactly the current of the bulb screwed into it (0 when empty),
-    // so wires attached to the socket animate correctly. O(S) with S = socket count.
-    for (const component of components) {
-      if (component.type !== 'socket') continue;
-      branchCurrentMap[component.id] = component.bulbId
-        ? branchCurrentMap[component.bulbId] ?? 0
-        : 0;
     }
 
     // 9. Propagate branch currents through Waypoint nodes so bent wire segments glow seamlessly
@@ -527,13 +530,15 @@ export function getComponentPinIdentifiers(component: CircuitElementData): strin
     case 'battery-holder':
       return [`${component.id}:pos`, `${component.id}:neg`];
     case 'resistor':
-    case 'bulb':
     case 'switch':
     case 'voltmeter':
     case 'ammeter':
     case 'waypoint':
     case 'socket':
       return [`${component.id}:p1`, `${component.id}:p2`];
+    case 'bulb':
+      // Standalone/detached bulbs have NO electrical terminals; only a SocketNode has terminals
+      return [];
     case 'ground':
       return [`${component.id}:gnd`];
     default:
@@ -543,12 +548,13 @@ export function getComponentPinIdentifiers(component: CircuitElementData): strin
 
 /**
  * Calculates effective conductance (g = 1/R) for passive elements.
+ * Returns 0 for infinite resistance / open circuit.
  * @param component - Electrical component
  * @returns Conductance in Siemens (Mho)
  */
 function calculateComponentConductance(component: CircuitElementData): number {
   const resistance = getComponentEffectiveResistance(component);
-  if (resistance <= 0 || !Number.isFinite(resistance)) {
+  if (resistance <= 0 || !Number.isFinite(resistance) || resistance >= 1e8) {
     return 0;
   }
   return 1 / resistance;
@@ -556,6 +562,9 @@ function calculateComponentConductance(component: CircuitElementData): number {
 
 /**
  * Retrieves the effective resistance of a component in Ohms.
+ * - Socket without installed bulb acts as Open Circuit (Infinity / 1GΩ).
+ * - Socket with installed bulb takes the resistance of that bulb.
+ * 
  * @param component - Electrical component
  * @returns Resistance in Ohms
  */
@@ -563,9 +572,26 @@ export function getComponentEffectiveResistance(component: CircuitElementData): 
   switch (component.type) {
     case 'resistor':
       return Math.max(0.1, component.resistance ?? 100);
-    case 'bulb': {
-      const fallbackResistance = getBulbSpec(component.bulbType).resistance;
-      return Math.max(0.1, component.resistance ?? fallbackResistance);
+    case 'bulb':
+      // Detached bulb cannot conduct current on its own (must be installed in a SocketNode)
+      return 1e9;
+    case 'socket': {
+      if (!component.installedBulb) {
+        return 1e9; // Open Circuit (Infinity): socket without bulb does not conduct
+      }
+      const bulbData = component.installedBulb;
+      const bulbType = typeof bulbData === 'object' ? bulbData.bulbType : bulbData;
+      const isBlown =
+        typeof bulbData === 'object'
+          ? Boolean(bulbData.isBlown)
+          : Boolean(component.isBlown);
+      if (isBlown) {
+        return 1e9; // Blown filament = open circuit
+      }
+      const fallbackResistance = getBulbSpec(bulbType).resistance;
+      const customResistance =
+        typeof bulbData === 'object' ? bulbData.resistance : component.resistance;
+      return Math.max(0.1, customResistance ?? fallbackResistance);
     }
     case 'switch':
       return component.isOpen ? SWITCH_OPEN_RESISTANCE : SWITCH_CLOSED_RESISTANCE;

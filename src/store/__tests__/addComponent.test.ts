@@ -45,16 +45,24 @@ describe('Ultimate Power Grid (9V Smart Grid) Preset', () => {
     expect(state.fitViewTrigger).toBe(1);
     expect(state.simulation.isShortCircuit).toBe(false);
 
-    // Verify all 7 bulb types are present and powered
-    const bulbNodes = state.nodes.filter((n) => n.data.type === 'bulb');
-    expect(bulbNodes).toHaveLength(7);
-    const bulbTypes = bulbNodes.map((n) => n.data.bulbType).sort();
+    // Verify all 7 bulb types are mounted in sockets (fiting) and powered
+    const socketNodes = state.nodes.filter(
+      (n) => n.data.type === 'socket' && Boolean(n.data.installedBulb)
+    );
+    expect(socketNodes).toHaveLength(7);
+    const bulbTypes = socketNodes
+      .map((n) =>
+        typeof n.data.installedBulb === 'object' && n.data.installedBulb
+          ? n.data.installedBulb.bulbType
+          : n.data.bulbType
+      )
+      .sort();
     expect(bulbTypes).toEqual(
       ['cfl', 'edison', 'halogen', 'incandescent', 'led_green', 'led_rgb', 'led_standard'].sort()
     );
 
-    for (const bulb of bulbNodes) {
-      const current = Math.abs(state.simulation.branchCurrents[bulb.id] ?? 0);
+    for (const socket of socketNodes) {
+      const current = Math.abs(state.simulation.branchCurrents[socket.id] ?? 0);
       expect(current).toBeGreaterThan(0.0005);
     }
 

@@ -32,10 +32,7 @@ import {
 } from '../constants/bulbCatalog';
 import {
   REJECT_PUSH_DISTANCE,
-  SNAP_RADIUS,
   SOCKET_NOTICES,
-  createSnapEdges,
-  distanceToSocketSnapPoint,
   findNearestFreeSocket,
   getBulbSnapPosition,
   removeSnapEdges,
@@ -132,8 +129,15 @@ function recalculateCircuit(
   nodes: Node<CircuitElementData>[],
   edges: Edge[]
 ): { simulation: SimulationResult; updatedNodes: Node<CircuitElementData>[] } {
+  const standaloneBulbIds = new Set(
+    nodes.filter((node) => node.data.type === 'bulb').map((node) => node.id)
+  );
+  const validEdges = edges.filter(
+    (edge) => !standaloneBulbIds.has(edge.source) && !standaloneBulbIds.has(edge.target)
+  );
+
   const components: CircuitElementData[] = nodes.map((node) => node.data);
-  const wires: WireConnection[] = edges.map((edge) => ({
+  const wires: WireConnection[] = validEdges.map((edge) => ({
     id: edge.id,
     source: edge.source,
     sourceHandle: edge.sourceHandle ?? 'p1',
@@ -148,17 +152,76 @@ function recalculateCircuit(
     const branchCurrent = simulation.branchCurrents[node.id] ?? 0;
     const isShortCircuit = simulation.shortCircuitBranches.includes(node.id);
 
+    if (node.data.type === 'socket') {
+      const installedBulb = node.data.installedBulb;
+      if (installedBulb) {
+        const bulbType =
+          typeof installedBulb === 'object' ? installedBulb.bulbType : installedBulb;
+        const spec = getBulbSpec(bulbType);
+        const effectiveResistance =
+          (typeof installedBulb === 'object' ? installedBulb.resistance : undefined) ??
+          node.data.resistance ??
+          spec.resistance;
+        const { powerWatts, voltageDrop, isOverloaded } = computeBulbPhotometrics(
+          branchCurrent,
+          effectiveResistance,
+          spec
+        );
+        const isBlown = Boolean(
+          (typeof installedBulb === 'object' && installedBulb.isBlown) ||
+            node.data.isBlown ||
+            isOverloaded ||
+            Math.abs(branchCurrent) > 2.5
+        );
+
+        const updatedInstalledBulb =
+          typeof installedBulb === 'object'
+            ? {
+                ...installedBulb,
+                isBlown,
+                power: powerWatts,
+                resistance: effectiveResistance,
+              }
+            : {
+                id: node.data.bulbId ?? `bulb_${node.id}`,
+                bulbType,
+                resistance: effectiveResistance,
+                power: powerWatts,
+                isBlown,
+              };
+
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            bulbType,
+            resistance: effectiveResistance,
+            installedBulb: updatedInstalledBulb,
+            calculatedCurrent: branchCurrent,
+            calculatedVoltage: voltageDrop,
+            calculatedPower: powerWatts,
+            isShortCircuit,
+            isBlown,
+          },
+        };
+      } else {
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            calculatedCurrent: 0,
+            calculatedVoltage: 0,
+            calculatedPower: 0,
+            isShortCircuit: false,
+          },
+        };
+      }
+    }
+
     if (node.data.type === 'bulb') {
+      // Standalone/detached bulb is purely an inventory item and NEVER conducts current
       const spec = getBulbSpec(node.data.bulbType);
       const effectiveResistance = node.data.resistance ?? spec.resistance;
-      const { powerWatts, voltageDrop, isOverloaded } = computeBulbPhotometrics(
-        branchCurrent,
-        effectiveResistance,
-        spec
-      );
-      const isBlown = Boolean(
-        node.data.isBlown || isOverloaded || Math.abs(branchCurrent) > 2.5
-      );
 
       return {
         ...node,
@@ -167,12 +230,11 @@ function recalculateCircuit(
           bulbType: node.data.bulbType ?? 'incandescent',
           resistance: effectiveResistance,
           powerRating: node.data.powerRating ?? spec.maxPower,
-          power: powerWatts,
-          calculatedCurrent: branchCurrent,
-          calculatedVoltage: voltageDrop,
-          calculatedPower: powerWatts,
-          isShortCircuit,
-          isBlown,
+          power: 0,
+          calculatedCurrent: 0,
+          calculatedVoltage: 0,
+          calculatedPower: 0,
+          isShortCircuit: false,
         },
       };
     }
@@ -187,7 +249,7 @@ function recalculateCircuit(
     };
   });
 
-  saveWorkspaceAutosave(updatedNodes, edges);
+  saveWorkspaceAutosave(updatedNodes, validEdges);
 
   return { simulation, updatedNodes };
 }
@@ -245,18 +307,28 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   },
 
   onConnect: (connection: Connection) => {
+    if (!connection.source || !connection.target) return;
+    const currentNodes = get().nodes;
+    const sourceNode = currentNodes.find((n) => n.id === connection.source);
+    const targetNode = currentNodes.find((n) => n.id === connection.target);
+
+    // Strictly forbid connecting wires directly to a standalone bulb without a socket
+    if (sourceNode?.data.type === 'bulb' || targetNode?.data.type === 'bulb') {
+      return;
+    }
+
     const customEdge: Edge = {
       ...connection,
       id: `wire_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       type: 'wire',
-      source: connection.source!,
-      target: connection.target!,
+      source: connection.source,
+      target: connection.target,
       sourceHandle: connection.sourceHandle,
       targetHandle: connection.targetHandle,
     };
 
     const nextEdges = addEdge(customEdge, get().edges);
-    const { simulation, updatedNodes } = recalculateCircuit(get().nodes, nextEdges);
+    const { simulation, updatedNodes } = recalculateCircuit(currentNodes, nextEdges);
 
     set({
       edges: nextEdges,
@@ -396,8 +468,42 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   setBulbType: (id: string, bulbType: BulbType) => {
     const nextSpec = getBulbSpec(bulbType);
     const isId = get().language === 'id';
-    const wasSnapped = Boolean(get().nodes.find((n) => n.id === id)?.data.socketId);
+    const targetNode = get().nodes.find(
+      (n) =>
+        n.id === id ||
+        n.data.bulbId === id ||
+        (n.data.installedBulb &&
+          typeof n.data.installedBulb === 'object' &&
+          n.data.installedBulb.id === id)
+    );
+    if (!targetNode) return;
 
+    if (targetNode.data.type === 'socket') {
+      if (!canBulbFitSocket(nextSpec.type)) {
+        get().detachBulbFromSocket(targetNode.id);
+        get().notify(SOCKET_NOTICES.detachedByType[isId ? 'id' : 'en']);
+        return;
+      }
+      if (targetNode.data.installedBulb) {
+        const existingBulb =
+          typeof targetNode.data.installedBulb === 'object'
+            ? targetNode.data.installedBulb
+            : { id: `bulb_${Date.now()}` };
+        get().updateComponentData(targetNode.id, {
+          installedBulb: {
+            ...existingBulb,
+            bulbType: nextSpec.type,
+            resistance: nextSpec.resistance,
+            powerRating: nextSpec.maxPower,
+            isBlown: false,
+            label: isId ? nextSpec.label : nextSpec.labelEn,
+          },
+        });
+      }
+      return;
+    }
+
+    const wasSnapped = Boolean(targetNode.data.socketId);
     get().updateComponentData(id, {
       bulbType: nextSpec.type,
       label: isId ? nextSpec.label : nextSpec.labelEn,
@@ -466,11 +572,11 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   },
 
   /**
-   * Called when the user releases a dragged bulb. Decides between three outcomes:
-   * 1. Bulb already in a socket and still close  -> re-snap it neatly.
-   * 2. Bulb in a socket but dragged far away      -> unscrew it (detach).
-   * 3. Free bulb dropped near a free socket       -> snap if base fits, else reject + toast.
-   * Time Complexity: O(N + E) (one node scan + edge filter + one MNA solve).
+   * Called when the user releases a dragged bulb.
+   * - If dropped near a free socket and base matches ('screw'), snaps into the socket.
+   * - The bulb is absorbed into SocketNode.installedBulb and rendered inside SocketNode.
+   * - If base is incompatible ('pin', like Halogen), rejects with notice and pushes away.
+   * Time Complexity: O(N + E).
    *
    * @param bulbId - Id of the bulb node that was just dropped
    */
@@ -481,25 +587,7 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       if (!bulbNode) return;
       const isId = get().language === 'id';
 
-      // Case 1 & 2: bulb already sits in a socket
-      if (bulbNode.data.socketId) {
-        const ownSocket = currentNodes.find((n) => n.id === bulbNode.data.socketId);
-        const isStillClose =
-          ownSocket &&
-          distanceToSocketSnapPoint(bulbNode.position, ownSocket.position) <= SNAP_RADIUS;
-        if (ownSocket && isStillClose) {
-          set({
-            nodes: currentNodes.map((n) =>
-              n.id === bulbId ? { ...n, position: getBulbSnapPosition(ownSocket.position) } : n
-            ),
-          });
-        } else {
-          get().detachBulbFromSocket(bulbId);
-        }
-        return;
-      }
-
-      // Case 3: free bulb dropped somewhere
+      // Find nearest free socket within SNAP_RADIUS
       const targetSocket = findNearestFreeSocket(bulbNode, currentNodes);
       if (!targetSocket) return;
 
@@ -522,28 +610,40 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
         return;
       }
 
-      const linkedNodes = currentNodes.map((n) => {
-        if (n.id === bulbId) {
-          return {
-            ...n,
-            selected: false,
-            zIndex: 10,
-            position: getBulbSnapPosition(targetSocket.position),
-            data: { ...n.data, socketId: targetSocket.id },
-          };
-        }
-        if (n.id === targetSocket.id) {
-          return { ...n, zIndex: 12, data: { ...n.data, bulbId } };
-        }
-        return n;
-      });
-      const linkedEdges = [...removeSnapEdges(get().edges, bulbId), ...createSnapEdges(bulbId, targetSocket.id)];
-      const { simulation, updatedNodes } = recalculateCircuit(linkedNodes, linkedEdges);
+      const installedBulb = {
+        id: bulbId,
+        bulbType: bulbNode.data.bulbType ?? 'incandescent',
+        resistance: bulbNode.data.resistance,
+        powerRating: bulbNode.data.powerRating,
+        isBlown: bulbNode.data.isBlown,
+        label: bulbNode.data.label,
+      };
+
+      // Absorb the bulb into target socket and remove standalone bulb node
+      const nextNodes = currentNodes
+        .filter((n) => n.id !== bulbId)
+        .map((n) => {
+          if (n.id === targetSocket.id) {
+            return {
+              ...n,
+              data: {
+                ...n.data,
+                installedBulb,
+                bulbId,
+              },
+            };
+          }
+          return n;
+        });
+
+      const nextEdges = removeSnapEdges(get().edges, bulbId);
+      const { simulation, updatedNodes } = recalculateCircuit(nextNodes, nextEdges);
+
       set({
         nodes: updatedNodes,
-        edges: linkedEdges,
+        edges: nextEdges,
         simulation,
-        selectedNodeId: null,
+        selectedNodeId: targetSocket.id,
       });
     } catch (error) {
       console.warn('Failed to settle bulb after drag:', error);
@@ -551,20 +651,100 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   },
 
   /**
-   * Unscrews a bulb from its socket: removes the invisible snap wires and clears both links.
-   * Time Complexity: O(N + E)
+   * Unscrews a bulb from its socket:
+   * - Clears installedBulb from SocketNode (socket becomes open circuit).
+   * - Restores the bulb as a separate standalone node on the canvas (no handles, purely inventory item).
+   * Time Complexity: O(N + E).
    *
-   * @param bulbId - Id of the bulb to detach
+   * @param identifier - Id of the socket or the bulb to detach
    */
-  detachBulbFromSocket: (bulbId: string) => {
-    const nextNodes = get().nodes.map((n) => {
-      if (n.id === bulbId) return { ...n, data: { ...n.data, socketId: undefined } };
-      if (n.data.bulbId === bulbId) return { ...n, data: { ...n.data, bulbId: undefined } };
-      return n;
-    });
-    const nextEdges = removeSnapEdges(get().edges, bulbId);
-    const { simulation, updatedNodes } = recalculateCircuit(nextNodes, nextEdges);
-    set({ nodes: updatedNodes, edges: nextEdges, simulation });
+  detachBulbFromSocket: (identifier: string) => {
+    try {
+      const currentNodes = get().nodes;
+      const isId = get().language === 'id';
+
+      // Find socket holding this bulb or socket with this id
+      const targetSocket = currentNodes.find(
+        (n) =>
+          n.id === identifier ||
+          n.data.bulbId === identifier ||
+          (n.data.installedBulb &&
+            typeof n.data.installedBulb === 'object' &&
+            n.data.installedBulb.id === identifier)
+      );
+
+      if (!targetSocket || !targetSocket.data.installedBulb) {
+        // Fallback for standalone bulb node if any socketId reference lingers
+        const nextNodes = currentNodes.map((n) => {
+          if (n.id === identifier) return { ...n, data: { ...n.data, socketId: undefined } };
+          if (n.data.bulbId === identifier) return { ...n, data: { ...n.data, bulbId: undefined, installedBulb: undefined } };
+          return n;
+        });
+        const nextEdges = removeSnapEdges(get().edges, identifier);
+        const { simulation, updatedNodes } = recalculateCircuit(nextNodes, nextEdges);
+        set({ nodes: updatedNodes, edges: nextEdges, simulation });
+        return;
+      }
+
+      const installed = targetSocket.data.installedBulb;
+      const bulbType: BulbType =
+        typeof installed === 'object' ? installed.bulbType : (installed ?? 'incandescent');
+      const bulbId: string =
+        (typeof installed === 'object' ? installed.id : targetSocket.data.bulbId) ||
+        `bulb_${Date.now()}`;
+      const spec = getBulbSpec(bulbType);
+      const resistance = typeof installed === 'object' ? installed.resistance : undefined;
+      const powerRating = typeof installed === 'object' ? installed.powerRating : undefined;
+      const isBlown = typeof installed === 'object' ? installed.isBlown : false;
+
+      // Restore detached bulb as a standalone node on canvas (purely inventory, NO handles)
+      const detachedBulbNode: Node<CircuitElementData> = {
+        id: bulbId,
+        type: 'bulb',
+        position: {
+          x: targetSocket.position.x + 120,
+          y: targetSocket.position.y - 10,
+        },
+        data: {
+          id: bulbId,
+          type: 'bulb',
+          bulbType,
+          resistance: resistance ?? spec.resistance,
+          powerRating: powerRating ?? spec.maxPower,
+          isBlown,
+          label: isId ? spec.label : spec.labelEn,
+        },
+      };
+
+      // Clear the socket so it becomes open circuit
+      const nextNodes = currentNodes.map((n) => {
+        if (n.id === targetSocket.id) {
+          return {
+            ...n,
+            data: {
+              ...n.data,
+              installedBulb: undefined,
+              bulbId: undefined,
+            },
+          };
+        }
+        return n;
+      });
+
+      nextNodes.push(detachedBulbNode);
+
+      const nextEdges = removeSnapEdges(get().edges, bulbId);
+      const { simulation, updatedNodes } = recalculateCircuit(nextNodes, nextEdges);
+
+      set({
+        nodes: updatedNodes,
+        edges: nextEdges,
+        simulation,
+        selectedNodeId: detachedBulbNode.id,
+      });
+    } catch (error) {
+      console.warn('Failed to detach bulb from socket:', error);
+    }
   },
 
   /**
@@ -866,15 +1046,22 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
         },
         {
           id: 'bulb_1',
-          type: 'bulb',
-          position: { x: 640, y: 130 },
+          type: 'socket',
+          position: { x: 660, y: 185 },
           data: {
             id: 'bulb_1',
-            type: 'bulb',
+            type: 'socket',
             bulbType: 'incandescent',
             resistance: 800,
             powerRating: 40,
-            label: 'Lampu Pijar',
+            label: 'Fiting + Lampu Pijar',
+            installedBulb: {
+              id: 'bulb_1_unit',
+              bulbType: 'incandescent',
+              resistance: 800,
+              powerRating: 40,
+              label: 'Lampu Pijar',
+            },
           },
         },
         {
@@ -915,41 +1102,62 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
         },
         {
           id: 'bulb_1',
-          type: 'bulb',
-          position: { x: 380, y: 10 },
+          type: 'socket',
+          position: { x: 400, y: 65 },
           data: {
             id: 'bulb_1',
-            type: 'bulb',
+            type: 'socket',
             bulbType: 'incandescent',
             resistance: 800,
             powerRating: 40,
-            label: 'Lampu Pijar',
+            label: 'Fiting + Lampu Pijar 1',
+            installedBulb: {
+              id: 'bulb_1_unit',
+              bulbType: 'incandescent',
+              resistance: 800,
+              powerRating: 40,
+              label: 'Lampu Pijar',
+            },
           },
         },
         {
           id: 'bulb_2',
-          type: 'bulb',
-          position: { x: 740, y: 190 },
+          type: 'socket',
+          position: { x: 760, y: 245 },
           data: {
             id: 'bulb_2',
-            type: 'bulb',
+            type: 'socket',
             bulbType: 'incandescent',
             resistance: 800,
             powerRating: 40,
-            label: 'Lampu Pijar',
+            label: 'Fiting + Lampu Pijar 2',
+            installedBulb: {
+              id: 'bulb_2_unit',
+              bulbType: 'incandescent',
+              resistance: 800,
+              powerRating: 40,
+              label: 'Lampu Pijar',
+            },
           },
         },
         {
           id: 'bulb_3',
-          type: 'bulb',
-          position: { x: 380, y: 410 },
+          type: 'socket',
+          position: { x: 400, y: 465 },
           data: {
             id: 'bulb_3',
-            type: 'bulb',
+            type: 'socket',
             bulbType: 'incandescent',
             resistance: 800,
             powerRating: 40,
-            label: 'Lampu Pijar',
+            label: 'Fiting + Lampu Pijar 3',
+            installedBulb: {
+              id: 'bulb_3_unit',
+              bulbType: 'incandescent',
+              resistance: 800,
+              powerRating: 40,
+              label: 'Lampu Pijar',
+            },
           },
         },
         {
@@ -1005,41 +1213,62 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
         },
         {
           id: 'bulb_1',
-          type: 'bulb',
-          position: { x: 350, y: 180 },
+          type: 'socket',
+          position: { x: 370, y: 235 },
           data: {
             id: 'bulb_1',
-            type: 'bulb',
+            type: 'socket',
             bulbType: 'incandescent',
             resistance: 800,
             powerRating: 40,
-            label: 'Lampu Pijar',
+            label: 'Fiting + Lampu Pijar',
+            installedBulb: {
+              id: 'bulb_1_unit',
+              bulbType: 'incandescent',
+              resistance: 800,
+              powerRating: 40,
+              label: 'Lampu Pijar',
+            },
           },
         },
         {
           id: 'bulb_2',
-          type: 'bulb',
-          position: { x: 640, y: 180 },
+          type: 'socket',
+          position: { x: 660, y: 235 },
           data: {
             id: 'bulb_2',
-            type: 'bulb',
+            type: 'socket',
             bulbType: 'edison',
             resistance: 1200,
             powerRating: 30,
-            label: 'Lampu Edison',
+            label: 'Fiting + Lampu Edison',
+            installedBulb: {
+              id: 'bulb_2_unit',
+              bulbType: 'edison',
+              resistance: 1200,
+              powerRating: 30,
+              label: 'Lampu Edison',
+            },
           },
         },
         {
           id: 'bulb_3',
-          type: 'bulb',
-          position: { x: 930, y: 180 },
+          type: 'socket',
+          position: { x: 950, y: 235 },
           data: {
             id: 'bulb_3',
-            type: 'bulb',
+            type: 'socket',
             bulbType: 'led_rgb',
             resistance: 6000,
             powerRating: 7,
-            label: 'Smart LED',
+            label: 'Fiting + Smart LED',
+            installedBulb: {
+              id: 'bulb_3_unit',
+              bulbType: 'led_rgb',
+              resistance: 6000,
+              powerRating: 7,
+              label: 'Smart LED',
+            },
           },
         },
         // Top Rail Junctions (+)

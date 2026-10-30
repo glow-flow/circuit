@@ -40,7 +40,7 @@ describe('Bulb base types', () => {
   });
 });
 
-describe('Socket (fiting) snapping', () => {
+describe('Socket (fiting) snapping & MNA physics', () => {
   beforeEach(() => {
     useCircuitStore.setState({
       nodes: [],
@@ -52,14 +52,20 @@ describe('Socket (fiting) snapping', () => {
     });
   });
 
-  it('snaps a screw bulb into a nearby socket and links both nodes with hidden wires', () => {
+  it('snaps a screw bulb into a nearby socket and installs it into socket without hidden wires', () => {
     const { socketId, bulbId } = placeSocketAndBulb('incandescent');
     useCircuitStore.getState().settleBulbAfterDrag(bulbId);
 
     const { nodes, edges, notification } = useCircuitStore.getState();
-    expect(nodes.find((n) => n.id === bulbId)?.data.socketId).toBe(socketId);
-    expect(nodes.find((n) => n.id === socketId)?.data.bulbId).toBe(bulbId);
-    expect(edges.filter((e) => e.hidden)).toHaveLength(2);
+    const socketNode = nodes.find((n) => n.id === socketId);
+    
+    // Bulb is installed directly into the socket node
+    expect(socketNode?.data.installedBulb).toBeDefined();
+    expect((socketNode?.data.installedBulb as any)?.bulbType).toBe('incandescent');
+    // Bulb is absorbed from the standalone nodes list
+    expect(nodes.find((n) => n.id === bulbId)).toBeUndefined();
+    // No hidden wires needed
+    expect(edges.filter((e) => e.hidden)).toHaveLength(0);
     expect(notification).toBeNull();
   });
 
@@ -68,13 +74,15 @@ describe('Socket (fiting) snapping', () => {
     useCircuitStore.getState().settleBulbAfterDrag(bulbId);
 
     const { nodes, edges, notification } = useCircuitStore.getState();
-    expect(nodes.find((n) => n.id === bulbId)?.data.socketId).toBeUndefined();
-    expect(nodes.find((n) => n.id === socketId)?.data.bulbId).toBeUndefined();
+    const socketNode = nodes.find((n) => n.id === socketId);
+    
+    expect(socketNode?.data.installedBulb).toBeUndefined();
+    expect(nodes.find((n) => n.id === bulbId)).toBeDefined();
     expect(edges).toHaveLength(0);
     expect(notification?.message).toBe('Fiting ini hanya untuk lampu ulir (screw)!');
   });
 
-  it('powers the snapped bulb through socket wiring (MNA still works)', () => {
+  it('powers the socket with installedBulb through socket handles (MNA works directly on SocketNode)', () => {
     const store = useCircuitStore.getState();
     store.addComponent('battery9v', { x: 0, y: 0 });
     const batteryId = useCircuitStore.getState().nodes.find((n) => n.data.type === 'battery9v')!.id;
@@ -91,36 +99,63 @@ describe('Socket (fiting) snapping', () => {
     useCircuitStore.getState().runSimulation();
 
     const { simulation } = useCircuitStore.getState();
-    expect(Math.abs(simulation.branchCurrents[bulbId])).toBeGreaterThan(0.005); // ~9V / 800Ω
-    expect(Math.abs(simulation.branchCurrents[socketId])).toBeCloseTo(
-      Math.abs(simulation.branchCurrents[bulbId]),
+    // Current flows through SocketNode based on incandescent bulb resistance (800Ω)
+    expect(Math.abs(simulation.branchCurrents[socketId])).toBeGreaterThan(0.005); // ~9V / 800Ω ≈ 0.011A
+    expect(Math.abs(simulation.branchCurrents[bulbId])).toBeCloseTo(
+      Math.abs(simulation.branchCurrents[socketId]),
       6
     );
   });
 
-  it('detaches the bulb and removes hidden wires, then clears links when the socket is deleted', () => {
+  it('an empty socket acts as an open circuit (0 current)', () => {
+    const store = useCircuitStore.getState();
+    store.addComponent('battery9v', { x: 0, y: 0 });
+    const batteryId = useCircuitStore.getState().nodes.find((n) => n.data.type === 'battery9v')!.id;
+    store.addComponent('socket', { x: 400, y: 400 });
+    const socketId = useCircuitStore.getState().nodes.find((n) => n.data.type === 'socket')!.id;
+
+    useCircuitStore.setState({
+      edges: [
+        { id: 'w1', source: batteryId, sourceHandle: 'pos', target: socketId, targetHandle: 'p1', type: 'wire' },
+        { id: 'w2', source: socketId, sourceHandle: 'p2', target: batteryId, targetHandle: 'neg', type: 'wire' },
+      ],
+    });
+    useCircuitStore.getState().runSimulation();
+
+    const { simulation } = useCircuitStore.getState();
+    expect(Math.abs(simulation.branchCurrents[socketId] ?? 0)).toBe(0);
+    expect(simulation.isShortCircuit).toBe(false);
+  });
+
+  it('detaches the bulb into a standalone node when detached, and empty socket stops conducting', () => {
     const { socketId, bulbId } = placeSocketAndBulb('incandescent');
     useCircuitStore.getState().settleBulbAfterDrag(bulbId);
 
+    // Detach bulb from socket
     useCircuitStore.getState().detachBulbFromSocket(bulbId);
     let state = useCircuitStore.getState();
-    expect(state.edges).toHaveLength(0);
-    expect(state.nodes.find((n) => n.id === bulbId)?.data.socketId).toBeUndefined();
-
-    useCircuitStore.getState().settleBulbAfterDrag(bulbId); // re-snap
-    useCircuitStore.getState().removeComponent(socketId);
-    state = useCircuitStore.getState();
-    expect(state.nodes.find((n) => n.id === bulbId)?.data.socketId).toBeUndefined();
-    expect(state.edges).toHaveLength(0);
+    
+    // Bulb is restored as a standalone node on canvas
+    const restoredBulb = state.nodes.find((n) => n.id === bulbId);
+    expect(restoredBulb).toBeDefined();
+    expect(restoredBulb?.data.type).toBe('bulb');
+    
+    // Socket is now empty
+    const socket = state.nodes.find((n) => n.id === socketId);
+    expect(socket?.data.installedBulb).toBeUndefined();
+    expect(socket?.data.bulbId).toBeUndefined();
   });
 
   it('ejects the bulb when its type is switched to a pin-base model inside a socket', () => {
-    const { bulbId } = placeSocketAndBulb('incandescent');
+    const { socketId, bulbId } = placeSocketAndBulb('incandescent');
     useCircuitStore.getState().settleBulbAfterDrag(bulbId);
 
     useCircuitStore.getState().setBulbType(bulbId, 'halogen');
     const { nodes, notification } = useCircuitStore.getState();
-    expect(nodes.find((n) => n.id === bulbId)?.data.socketId).toBeUndefined();
+    
+    // Bulb should be ejected back to canvas
+    expect(nodes.find((n) => n.id === socketId)?.data.installedBulb).toBeUndefined();
+    expect(nodes.find((n) => n.id === bulbId)).toBeDefined();
     expect(notification).not.toBeNull();
   });
 });

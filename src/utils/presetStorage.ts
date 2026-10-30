@@ -20,6 +20,54 @@ const CUSTOM_PRESETS_STORAGE_KEY = 'circuit_sandbox_custom_presets_v1';
 const AUTOSAVE_WORKSPACE_KEY = 'circuit_sandbox_autosave_v2';
 
 /**
+ * Automatically upgrades any legacy wired `bulb` nodes into `socket` nodes with `installedBulb`.
+ * Detached bulbs (not connected to any wire) remain standalone `bulb` inventory items.
+ * This ensures backward compatibility with saved localStorage circuits while strictly enforcing
+ * the rule that a bulb can NEVER be wired directly without a socket (fiting).
+ * Time Complexity: O(N + E) where N is node count and E is edge count.
+ *
+ * @param nodes - Array of circuit nodes
+ * @param edges - Array of circuit edges
+ * @returns Migrated nodes array
+ */
+export function migrateWiredBulbsToSockets(
+  nodes: Node<CircuitElementData>[],
+  edges: Edge[]
+): Node<CircuitElementData>[] {
+  const wiredNodeIds = new Set<string>();
+  for (const edge of edges) {
+    if (!edge.hidden) {
+      wiredNodeIds.add(edge.source);
+      wiredNodeIds.add(edge.target);
+    }
+  }
+
+  return nodes.map((node) => {
+    if (node.data?.type === 'bulb' && wiredNodeIds.has(node.id)) {
+      const bulbType = node.data.bulbType ?? 'incandescent';
+      return {
+        ...node,
+        type: 'socket',
+        data: {
+          ...node.data,
+          type: 'socket',
+          bulbId: node.id,
+          installedBulb: {
+            id: node.id,
+            bulbType,
+            resistance: node.data.resistance,
+            powerRating: node.data.powerRating,
+            isBlown: node.data.isBlown,
+            label: node.data.label,
+          },
+        },
+      };
+    }
+    return node;
+  });
+}
+
+/**
  * Loads all user-saved custom presets from browser localStorage.
  * Includes defensive try-catch and schema validation to prevent crashes on corrupted cache.
  * Time Complexity: O(P) where P is the number of saved presets.
@@ -37,16 +85,21 @@ export function loadCustomPresetsFromStorage(): CustomCircuitPreset[] {
     const parsed = JSON.parse(rawJson);
     if (!Array.isArray(parsed)) return [];
 
-    return parsed.filter(
-      (item): item is CustomCircuitPreset =>
-        Boolean(
-          item &&
-            typeof item.id === 'string' &&
-            typeof item.name === 'string' &&
-            Array.isArray(item.nodes) &&
-            Array.isArray(item.edges)
-        )
-    );
+    return parsed
+      .filter(
+        (item): item is CustomCircuitPreset =>
+          Boolean(
+            item &&
+              typeof item.id === 'string' &&
+              typeof item.name === 'string' &&
+              Array.isArray(item.nodes) &&
+              Array.isArray(item.edges)
+          )
+      )
+      .map((preset) => ({
+        ...preset,
+        nodes: migrateWiredBulbsToSockets(preset.nodes, preset.edges),
+      }));
   } catch (error) {
     console.warn('Failed to read custom presets from localStorage:', error);
     return [];
@@ -117,7 +170,10 @@ export function loadWorkspaceAutosave(): {
       parsed.nodes.length > 0 &&
       Array.isArray(parsed.edges)
     ) {
-      return { nodes: parsed.nodes, edges: parsed.edges };
+      return {
+        nodes: migrateWiredBulbsToSockets(parsed.nodes, parsed.edges),
+        edges: parsed.edges,
+      };
     }
     return null;
   } catch (error) {
@@ -260,28 +316,42 @@ export function createUltimatePowerGridPreset(
     },
     {
       id: 'bulb_incandescent',
-      type: 'bulb',
+      type: 'socket',
       position: { x: 1200, y: 50 },
       data: {
         id: 'bulb_incandescent',
-        type: 'bulb',
+        type: 'socket',
         bulbType: 'incandescent',
         resistance: 800,
         powerRating: 40,
-        label: isId ? 'Lampu Pijar' : 'Incandescent Bulb',
+        label: isId ? 'Fiting + Lampu Pijar' : 'Socket + Incandescent Bulb',
+        installedBulb: {
+          id: 'bulb_incandescent_unit',
+          bulbType: 'incandescent',
+          resistance: 800,
+          powerRating: 40,
+          label: isId ? 'Lampu Pijar' : 'Incandescent Bulb',
+        },
       },
     },
     {
       id: 'bulb_halogen',
-      type: 'bulb',
+      type: 'socket',
       position: { x: 1200, y: 200 },
       data: {
         id: 'bulb_halogen',
-        type: 'bulb',
+        type: 'socket',
         bulbType: 'halogen',
         resistance: 1500,
         powerRating: 50,
-        label: isId ? 'Lampu Halogen' : 'Halogen Bulb',
+        label: isId ? 'Fiting + Lampu Halogen' : 'Socket + Halogen Bulb',
+        installedBulb: {
+          id: 'bulb_halogen_unit',
+          bulbType: 'halogen',
+          resistance: 1500,
+          powerRating: 50,
+          label: isId ? 'Lampu Halogen' : 'Halogen Bulb',
+        },
       },
     },
 
@@ -299,28 +369,42 @@ export function createUltimatePowerGridPreset(
     },
     {
       id: 'bulb_edison',
-      type: 'bulb',
+      type: 'socket',
       position: { x: 1000, y: 400 },
       data: {
         id: 'bulb_edison',
-        type: 'bulb',
+        type: 'socket',
         bulbType: 'edison',
         resistance: 1200,
         powerRating: 30,
-        label: isId ? 'Lampu Edison' : 'Edison Bulb',
+        label: isId ? 'Fiting + Lampu Edison' : 'Socket + Edison Bulb',
+        installedBulb: {
+          id: 'bulb_edison_unit',
+          bulbType: 'edison',
+          resistance: 1200,
+          powerRating: 30,
+          label: isId ? 'Lampu Edison' : 'Edison Bulb',
+        },
       },
     },
     {
       id: 'bulb_cfl',
-      type: 'bulb',
+      type: 'socket',
       position: { x: 1200, y: 400 },
       data: {
         id: 'bulb_cfl',
-        type: 'bulb',
+        type: 'socket',
         bulbType: 'cfl',
         resistance: 3000,
         powerRating: 15,
-        label: isId ? 'Lampu Neon (CFL)' : 'CFL Tube Bulb',
+        label: isId ? 'Fiting + Lampu Neon (CFL)' : 'Socket + CFL Tube Bulb',
+        installedBulb: {
+          id: 'bulb_cfl_unit',
+          bulbType: 'cfl',
+          resistance: 3000,
+          powerRating: 15,
+          label: isId ? 'Lampu Neon (CFL)' : 'CFL Tube Bulb',
+        },
       },
     },
 
@@ -349,41 +433,62 @@ export function createUltimatePowerGridPreset(
     },
     {
       id: 'bulb_led_rgb',
-      type: 'bulb',
+      type: 'socket',
       position: { x: 1200, y: 600 },
       data: {
         id: 'bulb_led_rgb',
-        type: 'bulb',
+        type: 'socket',
         bulbType: 'led_rgb',
         resistance: 6000,
         powerRating: 7,
-        label: isId ? 'Smart LED' : 'Smart RGB LED',
+        label: isId ? 'Fiting + Smart LED' : 'Socket + Smart RGB LED',
+        installedBulb: {
+          id: 'bulb_led_rgb_unit',
+          bulbType: 'led_rgb',
+          resistance: 6000,
+          powerRating: 7,
+          label: isId ? 'Smart LED' : 'Smart RGB LED',
+        },
       },
     },
     {
       id: 'bulb_led_standard',
-      type: 'bulb',
+      type: 'socket',
       position: { x: 1400, y: 600 },
       data: {
         id: 'bulb_led_standard',
-        type: 'bulb',
+        type: 'socket',
         bulbType: 'led_standard',
         resistance: 4500,
         powerRating: 9,
-        label: isId ? 'Lampu LED' : 'Standard LED Bulb',
+        label: isId ? 'Fiting + Lampu LED' : 'Socket + Standard LED Bulb',
+        installedBulb: {
+          id: 'bulb_led_standard_unit',
+          bulbType: 'led_standard',
+          resistance: 4500,
+          powerRating: 9,
+          label: isId ? 'Lampu LED' : 'Standard LED Bulb',
+        },
       },
     },
     {
       id: 'bulb_led_green',
-      type: 'bulb',
+      type: 'socket',
       position: { x: 1200, y: 800 },
       data: {
         id: 'bulb_led_green',
-        type: 'bulb',
+        type: 'socket',
         bulbType: 'led_green',
         resistance: 2000,
         powerRating: 0.5,
-        label: isId ? 'LED Indikator' : 'Green Indicator LED',
+        label: isId ? 'Fiting + LED Indikator' : 'Socket + Green Indicator LED',
+        installedBulb: {
+          id: 'bulb_led_green_unit',
+          bulbType: 'led_green',
+          resistance: 2000,
+          powerRating: 0.5,
+          label: isId ? 'LED Indikator' : 'Green Indicator LED',
+        },
       },
     },
 

@@ -120,9 +120,14 @@ describe('Modified Nodal Analysis (MNA) Physics Engine', () => {
 
     const lightBulb: CircuitElementData = {
       id: 'bulb_1',
-      type: 'bulb',
-      label: 'Light Bulb',
+      type: 'socket',
+      label: 'Socket + Light Bulb',
       resistance: 15,
+      installedBulb: {
+        id: 'bulb_unit_sw',
+        bulbType: 'incandescent',
+        resistance: 15,
+      },
     };
 
     const switchComp: CircuitElementData = {
@@ -251,9 +256,14 @@ describe('Modified Nodal Analysis (MNA) Physics Engine', () => {
     };
     const lamp: CircuitElementData = {
       id: 'lamp_1',
-      type: 'bulb',
+      type: 'socket',
       resistance: 10,
-      label: 'Light Bulb',
+      label: 'Socket + Light Bulb',
+      installedBulb: {
+        id: 'bulb_unit_1',
+        bulbType: 'incandescent',
+        resistance: 10,
+      },
     };
     const completeWires: WireConnection[] = [
       { id: 'w1', source: 'bat_1', sourceHandle: 'pos', target: 'lamp_1', targetHandle: 'p1' },
@@ -276,6 +286,32 @@ describe('Modified Nodal Analysis (MNA) Physics Engine', () => {
     expect(Math.abs(openCircuit.branchCurrents['lamp_1'] ?? 0)).toBe(0);
   });
 
+  it('strictly prevents standalone bulb nodes (without socket) from conducting electricity', () => {
+    const battery: CircuitElementData = {
+      id: 'bat_1',
+      type: 'battery',
+      voltage: 9.0,
+      label: '9V Battery',
+    };
+    const standaloneBulb: CircuitElementData = {
+      id: 'bulb_loose',
+      type: 'bulb',
+      bulbType: 'incandescent',
+      resistance: 10,
+      label: 'Loose Bulb Without Socket',
+    };
+    const illegalWires: WireConnection[] = [
+      { id: 'w1', source: 'bat_1', sourceHandle: 'pos', target: 'bulb_loose', targetHandle: 'p1' },
+      { id: 'w2', source: 'bulb_loose', sourceHandle: 'p2', target: 'bat_1', targetHandle: 'neg' },
+    ];
+
+    const res = solveCircuitMNA({
+      components: [battery, standaloneBulb],
+      wires: illegalWires,
+    });
+    expect(Math.abs(res.branchCurrents['bulb_loose'] ?? 0)).toBe(0);
+  });
+
   it('verifies Grade 9 IPA 3-branch Parallel ladder law (I_total = I1 + I2 + I3) with Waypoint rails', () => {
     const holder: CircuitElementData = {
       id: 'holder_1',
@@ -285,9 +321,27 @@ describe('Modified Nodal Analysis (MNA) Physics Engine', () => {
       voltage: 3.0,
       label: 'Sumber V (3.0V)',
     };
-    const r1: CircuitElementData = { id: 'bulb_1', type: 'bulb', resistance: 10, label: 'R1' };
-    const r2: CircuitElementData = { id: 'bulb_2', type: 'bulb', resistance: 10, label: 'R2' };
-    const r3: CircuitElementData = { id: 'bulb_3', type: 'bulb', resistance: 10, label: 'R3' };
+    const r1: CircuitElementData = {
+      id: 'bulb_1',
+      type: 'socket',
+      resistance: 10,
+      installedBulb: { id: 'b1', bulbType: 'incandescent', resistance: 10 },
+      label: 'R1',
+    };
+    const r2: CircuitElementData = {
+      id: 'bulb_2',
+      type: 'socket',
+      resistance: 10,
+      installedBulb: { id: 'b2', bulbType: 'incandescent', resistance: 10 },
+      label: 'R2',
+    };
+    const r3: CircuitElementData = {
+      id: 'bulb_3',
+      type: 'socket',
+      resistance: 10,
+      installedBulb: { id: 'b3', bulbType: 'incandescent', resistance: 10 },
+      label: 'R3',
+    };
     const wpTop1: CircuitElementData = { id: 'wp_top_1', type: 'waypoint', label: 'Top 1' };
     const wpBot1: CircuitElementData = { id: 'wp_bot_1', type: 'waypoint', label: 'Bot 1' };
 
@@ -335,26 +389,36 @@ describe('Modified Nodal Analysis (MNA) Physics Engine', () => {
       { id: 'w2', source: 'bulb_1', sourceHandle: 'p2', target: 'holder_1', targetHandle: 'neg' },
     ];
 
-    // 1. Incandescent (800Ω)
+    // 1. Incandescent (800Ω) installed in SocketNode
     const incandescentSpec = getBulbSpec('incandescent');
     const bulbIncandescent: CircuitElementData = {
       id: 'bulb_1',
-      type: 'bulb',
+      type: 'socket',
       bulbType: 'incandescent',
       resistance: incandescentSpec.resistance,
+      installedBulb: {
+        id: 'b_inc',
+        bulbType: 'incandescent',
+        resistance: incandescentSpec.resistance,
+      },
       label: incandescentSpec.label,
     };
     const resInc = solveCircuitMNA({ components: [holder, bulbIncandescent], wires });
     const currentInc = Math.abs(resInc.branchCurrents['bulb_1']);
     const photoInc = computeBulbPhotometrics(currentInc, incandescentSpec.resistance, incandescentSpec);
 
-    // 2. Standard LED (4500Ω)
+    // 2. Standard LED (4500Ω) installed in SocketNode
     const ledSpec = getBulbSpec('led_standard');
     const bulbLed: CircuitElementData = {
       id: 'bulb_1',
-      type: 'bulb',
+      type: 'socket',
       bulbType: 'led_standard',
       resistance: ledSpec.resistance,
+      installedBulb: {
+        id: 'b_led',
+        bulbType: 'led_standard',
+        resistance: ledSpec.resistance,
+      },
       label: ledSpec.label,
     };
     const resLed = solveCircuitMNA({ components: [holder, bulbLed], wires });
@@ -391,10 +455,15 @@ describe('Modified Nodal Analysis (MNA) Physics Engine', () => {
     };
     const bulbHalogen: CircuitElementData = {
       id: 'bulb_h',
-      type: 'bulb',
+      type: 'socket',
       bulbType: 'halogen',
       resistance: 1500,
-      label: 'Lampu Halogen (1500Ω)',
+      installedBulb: {
+        id: 'b_hal',
+        bulbType: 'halogen',
+        resistance: 1500,
+      },
+      label: 'Socket + Lampu Halogen (1500Ω)',
     };
 
     // Connect two 9V batteries in series: b9_1(-) -> ground, b9_1(+) -> b9_2(-), b9_2(+) -> bulb(p1) -> bulb(p2) -> b9_1(-)

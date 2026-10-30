@@ -8,18 +8,58 @@
  */
 
 import { Edge, Node } from 'reactflow';
+import { BulbType } from '../constants/bulbCatalog';
 import { CircuitElementData } from '../types/circuit';
 
-/** Rendered size (px) of an image-only BulbNode. Must match BulbNode.tsx. */
-export const BULB_NODE_SIZE = { width: 88, height: 104 } as const;
-/** Rendered size (px) of an image-only SocketNode. Must match SocketNode.tsx. */
-export const SOCKET_NODE_SIZE = { width: 96, height: 112 } as const;
+/**
+ * Rendered size (px) of an image-only BulbNode. Must match BulbNode.tsx & SocketNode.tsx.
+ * Calibrated so the glass globe (~68px wide) is naturally wider than the E27 socket (44px wide),
+ * while the bulb's E27 metal screw base (~28px-33px wide) fits snugly inside the socket mouth (~34px wide).
+ */
+export const BULB_NODE_SIZE = { width: 92, height: 112 } as const;
+/**
+ * Rendered size (px) of a SocketNode (E27 Fiting Lampu). Must match SocketNode.tsx.
+ * Preserves exact 546x808 PNG aspect ratio (0.676) at realistic scale relative to the bulb.
+ */
+export const SOCKET_NODE_SIZE = { width: 44, height: 65 } as const;
 /** How deep (px) the bulb base sits inside the socket mouth when snapped. */
-const BULB_INSERT_DEPTH = 34;
+const BULB_INSERT_DEPTH = 38;
 /** Max distance (px) between a dropped bulb and a socket's snap point to attach. */
-export const SNAP_RADIUS = 80;
+export const SNAP_RADIUS = 90;
 /** Distance (px) a rejected bulb is pushed away from the socket it cannot fit. */
 export const REJECT_PUSH_DISTANCE = 140;
+
+/**
+ * Polygon clip-path tracing the exact front elliptical rim of `socket.png`.
+ * Used on the foreground socket layer (`z-index: 30`) so the front lip of the socket
+ * wraps in front of the bulb's screw thread (`z-index: 20`), while the back rim of the socket
+ * (`z-index: 10`) stays behind the bulb neck.
+ */
+export const SOCKET_FRONT_LIP_CLIP_PATH =
+  'polygon(0% 13%, 10% 17.5%, 20% 20.5%, 30% 22.1%, 40% 22.9%, 50% 23.1%, 60% 22.9%, 70% 22.1%, 80% 20.5%, 90% 17.5%, 100% 13%, 100% 100%, 0% 100%)';
+
+/**
+ * Returns the vertical top offset (in px) for an installed bulb inside a SocketNode
+ * so its glass-to-metal collar sits right at the socket's rim.
+ * Time Complexity: O(1).
+ *
+ * @param bulbType - Type of bulb installed in the socket
+ * @returns Negative top offset in pixels
+ */
+export function getInstalledBulbTopOffset(bulbType?: BulbType): number {
+  switch (bulbType) {
+    case 'incandescent':
+      return -73;
+    case 'edison':
+    case 'led_standard':
+    case 'led_rgb':
+      return -78;
+    case 'cfl':
+      return -72;
+    default:
+      return -75;
+  }
+}
 
 export interface Point {
   x: number;
@@ -66,7 +106,7 @@ export function findNearestFreeSocket(
   let nearestDistance = SNAP_RADIUS;
 
   for (const candidate of allNodes) {
-    if (candidate.data.type !== 'socket' || candidate.data.bulbId) continue;
+    if (candidate.data.type !== 'socket' || candidate.data.bulbId || candidate.data.installedBulb) continue;
     const distance = distanceToSocketSnapPoint(bulbNode.position, candidate.position);
     if (distance <= nearestDistance) {
       nearestDistance = distance;

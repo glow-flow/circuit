@@ -27,6 +27,16 @@ export interface ComponentPin {
   nodeId?: string; // Resolved electrical net ID during simulation
 }
 
+export interface InstalledBulbData {
+  id: string;
+  bulbType: BulbType;
+  resistance?: number;
+  powerRating?: number;
+  power?: number;
+  isBlown?: boolean;
+  label?: string;
+}
+
 export interface CircuitElementData {
   id: string;
   type: ComponentType;
@@ -43,6 +53,8 @@ export interface CircuitElementData {
   batteryCount?: number;       // For battery-holder: number of 1.5V AA cells inserted (0, 1, or 2)
   bulbId?: string;             // For socket: id of the bulb currently screwed in
   socketId?: string;           // For bulb: id of the socket it is snapped into
+  installedBulb?: InstalledBulbData | BulbType | null; // For socket: bulb installed in this socket
+
   
   // Real-time calculated simulation results
   calculatedVoltage?: number;  // Voltage drop across component (V)
