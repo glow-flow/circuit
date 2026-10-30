@@ -28,9 +28,16 @@ describe('Component palette catalog', () => {
     });
   });
 
-  it('groups power sources (AA, 9V, holder, solar-panel) under energy category', () => {
+  it('groups power sources (AA, 9V, holder, solar-panel, transmission-tower, wind-turbine) under energy category', () => {
     const batteryTypes = getEntriesByCategory('battery').map((entry) => entry.type);
-    expect(batteryTypes).toEqual(['battery', 'battery9v', 'battery-holder', 'solar-panel']);
+    expect(batteryTypes).toEqual([
+      'battery',
+      'battery9v',
+      'battery-holder',
+      'solar-panel',
+      'transmission-tower',
+      'wind-turbine',
+    ]);
   });
 
   it('includes both E27 screw socket and ceramic pin-socket in the light category', () => {

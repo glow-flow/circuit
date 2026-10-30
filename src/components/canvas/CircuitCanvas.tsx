@@ -26,6 +26,8 @@ import { VoltmeterNode } from './nodes/VoltmeterNode';
 import { AmmeterNode } from './nodes/AmmeterNode';
 import { WaypointNode } from './nodes/WaypointNode';
 import { SolarPanelNode } from './nodes/SolarPanelNode';
+import { TransmissionTowerNode } from './nodes/TransmissionTowerNode';
+import { WindTurbineNode } from './nodes/WindTurbineNode';
 import { WireEdge } from './WireEdge';
 
 interface CircuitCanvasInnerProps {
@@ -76,6 +78,10 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
       waypoint: WaypointNode,
       'solar-panel': SolarPanelNode,
       'solar_panel': SolarPanelNode,
+      'transmission-tower': TransmissionTowerNode,
+      'transmission_tower': TransmissionTowerNode,
+      'wind-turbine': WindTurbineNode,
+      'wind_turbine': WindTurbineNode,
     }),
     []
   );
@@ -208,22 +214,30 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
       className="w-full h-full relative overflow-hidden bg-void-950 transition-colors duration-500"
       ref={reactFlowWrapper}
     >
-      {/* Dynamic Nature Environment Background Layer */}
-      {environment !== 'lab' && (
-        <div
-          className="absolute inset-0 bg-cover bg-center transition-all duration-700 pointer-events-none z-0"
-          style={{
-            backgroundImage: `url(${
-              environment === 'sunny'
-                ? '/assets/nature-sunny.png'
-                : '/assets/nature-cloudy.png'
-            })`,
-          }}
-        >
-          {/* Transparent Dark Overlay for Neon Cable Contrast & Text Legibility */}
-          <div className="absolute inset-0 bg-black/40 backdrop-brightness-[0.88]" />
-        </div>
-      )}
+      {/* Dynamic Nature Environment Background Layers (Preloaded & Seamlessly Cross-faded) */}
+      <div
+        className={`absolute inset-0 bg-cover bg-center transition-opacity duration-700 pointer-events-none z-0 ${
+          environment === 'sunny' ? 'opacity-100' : 'opacity-0'
+        }`}
+        style={{
+          backgroundImage: "url('/assets/nature-sunny.png')",
+        }}
+      >
+        {/* Dark contrast overlay for neon wires and text legibility */}
+        <div className="absolute inset-0 bg-black/40 backdrop-brightness-[0.9]" />
+      </div>
+
+      <div
+        className={`absolute inset-0 bg-cover bg-center transition-opacity duration-700 pointer-events-none z-0 ${
+          environment === 'cloudy' ? 'opacity-100' : 'opacity-0'
+        }`}
+        style={{
+          backgroundImage: "url('/assets/nature-cloudy.png')",
+        }}
+      >
+        {/* Dark contrast overlay for neon wires and text legibility */}
+        <div className="absolute inset-0 bg-black/40 backdrop-brightness-[0.9]" />
+      </div>
 
       <ReactFlow
         nodes={nodes}

@@ -101,6 +101,28 @@ const BATTERY_ENTRIES: PaletteEntry[] = [
     spec: '0 - 12 V',
     image: '/assets/solar-panel.png',
   },
+  {
+    id: 'transmission-tower',
+    type: 'transmission-tower',
+    category: 'battery',
+    label: 'Menara Transmisi',
+    labelEn: 'Transmission Tower',
+    hint: 'Kabel virtual antar-ruang: menyalurkan listrik tanpa batas dari alam luar ke laboratorium.',
+    hintEn: 'Virtual grid power link: delivers lossless electricity across environments between outdoor and lab.',
+    spec: 'Virtual Grid',
+    image: '/assets/transmission-tower.png',
+  },
+  {
+    id: 'wind-turbine',
+    type: 'wind-turbine',
+    category: 'battery',
+    label: 'Turbin Angin',
+    labelEn: 'Wind Turbine',
+    hint: 'Pembangkit listrik tenaga bayu. Atur kecepatan putaran 0-100% untuk menghasilkan 0 - 12 V.',
+    hintEn: 'Wind power generator. Adjust rotor speed from 0-100% to generate 0 - 12 V DC.',
+    spec: '0 - 12 V',
+    image: '/assets/wind-turbine.png',
+  },
 ];
 
 const LIGHT_ENTRIES: PaletteEntry[] = [

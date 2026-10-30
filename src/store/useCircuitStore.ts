@@ -176,6 +176,10 @@ function recalculateCircuit(
   const simulation = solveCircuitMNA({ components, wires });
 
   // Update node data with calculated voltages, currents, power, and thermal overload status
+  const totalTowers = nodes.filter(
+    (n) => n.data.type === 'transmission-tower' || n.data.type === 'transmission_tower'
+  ).length;
+
   const updatedNodes = nodes.map((node) => {
     const branchCurrent = simulation.branchCurrents[node.id] ?? 0;
     const isShortCircuit = simulation.shortCircuitBranches.includes(node.id);
@@ -281,6 +285,37 @@ function recalculateCircuit(
           calculatedCurrent: branchCurrent,
           calculatedVoltage: outputVoltage,
           calculatedPower: outputPower,
+          isShortCircuit,
+        },
+      };
+    }
+
+    if (node.data.type === 'wind-turbine' || node.data.type === 'wind_turbine') {
+      const speed = node.data.speed ?? 50;
+      const outputVoltage = (speed / 100) * 12.0;
+      const outputPower = Math.abs(branchCurrent * outputVoltage);
+
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          speed,
+          voltage: outputVoltage,
+          calculatedCurrent: branchCurrent,
+          calculatedVoltage: outputVoltage,
+          calculatedPower: outputPower,
+          isShortCircuit,
+        },
+      };
+    }
+
+    if (node.data.type === 'transmission-tower' || node.data.type === 'transmission_tower') {
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          towerConnectedCount: totalTowers,
+          calculatedCurrent: branchCurrent,
           isShortCircuit,
         },
       };
@@ -521,6 +556,28 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
           environment: env,
           internalResistance: SOLAR_PANEL_INTERNAL_RESISTANCE,
           label: isId ? 'Panel Surya' : 'Solar Panel',
+        };
+        break;
+      }
+      case 'transmission-tower':
+      case 'transmission_tower':
+        defaultData = {
+          ...defaultData,
+          type: 'transmission-tower',
+          label: isId ? 'Menara Transmisi' : 'Transmission Tower',
+        };
+        break;
+      case 'wind-turbine':
+      case 'wind_turbine': {
+        const defaultSpeed = 50;
+        const outVoltage = (defaultSpeed / 100) * 12.0;
+        defaultData = {
+          ...defaultData,
+          type: 'wind-turbine',
+          speed: defaultSpeed,
+          voltage: outVoltage,
+          internalResistance: 0.1,
+          label: isId ? 'Turbin Angin' : 'Wind Turbine',
         };
         break;
       }

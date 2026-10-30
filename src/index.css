@@ -20,8 +20,24 @@ body {
 }
 
 /* React Flow customizations */
+.react-flow,
+.react-flow__pane,
+.react-flow__viewport,
 .react-flow__background {
-  background-color: #09090b !important;
+  background-color: transparent !important;
+}
+
+@keyframes spin-clockwise {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-turbine {
+  animation: spin-clockwise linear infinite;
 }
 
 .react-flow__handle {

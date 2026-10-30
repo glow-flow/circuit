@@ -555,6 +555,87 @@ export const Inspector: React.FC<InspectorProps> = ({
               </div>
             )}
 
+            {/* Wind Turbine Controls */}
+            {(componentData.type === 'wind-turbine' || componentData.type === 'wind_turbine') && (
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-semibold text-slate-200">
+                    {language === 'id' ? 'Kecepatan Baling-Baling' : 'Rotor Speed'}
+                  </span>
+                  <span className="text-xs font-mono font-bold text-cyan-400">
+                    {componentData.speed ?? 50}% ({(((componentData.speed ?? 50) / 100) * 12.0).toFixed(1)} V)
+                  </span>
+                </div>
+
+                <Slider.Root
+                  className="relative flex items-center select-none touch-none w-full h-6 cursor-pointer"
+                  value={[componentData.speed ?? 50]}
+                  min={0}
+                  max={100}
+                  step={1}
+                  onValueChange={([val]) =>
+                    updateComponentData(selectedNode.id, {
+                      speed: val,
+                      voltage: (val / 100) * 12.0,
+                    })
+                  }
+                >
+                  <Slider.Track className="bg-void-900 relative grow rounded-full h-2 border border-white/10">
+                    <Slider.Range className="absolute bg-cyan-400 rounded-full h-full" />
+                  </Slider.Track>
+                  <Slider.Thumb className="block w-5 h-5 bg-white rounded-full shadow-md focus:outline-none focus:ring-2 focus:ring-cyan-400 transition-transform active:scale-125" />
+                </Slider.Root>
+
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  {language === 'id'
+                    ? 'Turbin angin menghasilkan tegangan DC 0 - 12 V proporsional dengan kecepatan angin/putaran baling-baling.'
+                    : 'Wind turbine generates 0 - 12 V DC proportional to rotor rotational speed.'}
+                </p>
+              </div>
+            )}
+
+            {/* Transmission Tower Virtual Grid Controls */}
+            {(componentData.type === 'transmission-tower' || componentData.type === 'transmission_tower') && (
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-semibold text-slate-200">
+                    {language === 'id' ? 'Status Jaringan Virtual' : 'Virtual Grid Bus'}
+                  </span>
+                  <span
+                    className={`text-xs font-mono font-bold px-2 py-0.5 rounded border ${
+                      (componentData.towerConnectedCount ?? 1) > 1
+                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                        : 'bg-void-950 text-slate-400 border-white/10'
+                    }`}
+                  >
+                    {(componentData.towerConnectedCount ?? 1) > 1
+                      ? language === 'id'
+                        ? 'Grid Terhubung'
+                        : 'Grid Linked'
+                      : language === 'id'
+                      ? 'Standby'
+                      : 'Standby'}
+                  </span>
+                </div>
+
+                <div className="p-3 rounded-xl bg-void-950/70 border border-white/5 space-y-2 text-xs">
+                  <div className="flex justify-between items-center text-[11px]">
+                    <span className="text-slate-400 font-sans">
+                      {language === 'id' ? 'Total Menara di Kanvas:' : 'Total Towers on Canvas:'}
+                    </span>
+                    <span className="font-mono font-bold text-slate-200">
+                      {componentData.towerConnectedCount ?? 1}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    {language === 'id'
+                      ? 'Dua atau lebih Menara Transmisi secara otomatis menyatukan kutub positif dan negatifnya menjadi jaringan transmisi virtual tanpa hambatan (R = 0Ω).'
+                      : 'Two or more Transmission Towers automatically unite positive and negative terminals into a lossless virtual transmission bus (R = 0Ω).'}
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Resistor Controls */}
             {componentData.type === 'resistor' && (
               <div className="space-y-3">

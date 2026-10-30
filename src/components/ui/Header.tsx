@@ -44,7 +44,9 @@ export const Header: React.FC = () => {
     const val = e.target.value;
     if (!val) return;
 
-    if (val.startsWith('custom:')) {
+    if (val === 'action:save') {
+      setIsSaveModalOpen(true);
+    } else if (val.startsWith('custom:')) {
       const customId = val.replace('custom:', '');
       loadCustomPreset(customId);
     } else {
@@ -63,16 +65,16 @@ export const Header: React.FC = () => {
 
   return (
     <>
-      <header className="h-13 sm:h-14 border-b border-white/10 bg-void-900 px-2.5 sm:px-4 flex items-center justify-between gap-1.5 sm:gap-2 z-20 shrink-0">
+      <header className="h-12 sm:h-14 border-b border-white/10 bg-void-900/95 backdrop-blur-md px-2 sm:px-4 flex items-center justify-between gap-1 sm:gap-2 z-20 shrink-0 select-none">
         {/* Brand & Title */}
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 shrink-0">
           <div className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-electric-500/15 border border-electric-500/30 text-electric-400 shadow-glow shrink-0">
             <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-electric-400" />
           </div>
           <div className="min-w-0">
-            <h1 className="text-xs sm:text-sm font-bold text-slate-100 tracking-tight flex items-center gap-2 whitespace-nowrap">
-              <span className="hidden xs:inline">Circuit Sandbox</span>
-              <span className="xs:hidden">Circuit</span>
+            <h1 className="text-xs sm:text-sm font-bold text-slate-100 tracking-tight flex items-center gap-1.5 whitespace-nowrap">
+              <span className="hidden sm:inline">Circuit Sandbox</span>
+              <span className="sm:hidden font-mono font-bold">Circuit</span>
               <span className="hidden lg:inline-block text-[10px] font-mono px-1.5 py-0.5 rounded bg-electric-500/10 text-electric-400 border border-electric-500/20 font-medium whitespace-nowrap">
                 IPA Kelas 9
               </span>
@@ -83,9 +85,9 @@ export const Header: React.FC = () => {
           </div>
         </div>
 
-        {/* Center Presets Dropdown + Save Custom Preset Button */}
-        <div className="flex items-center gap-1 sm:gap-1.5 min-w-0">
-          <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-400 mr-0.5 shrink-0">
+        {/* Center Presets Dropdown */}
+        <div className="flex items-center gap-1 sm:gap-1.5 min-w-0 mx-1">
+          <div className="hidden md:flex items-center gap-1 text-xs text-slate-400 mr-0.5 shrink-0">
             <BookOpen className="w-3.5 h-3.5" />
           </div>
           <select
@@ -93,7 +95,7 @@ export const Header: React.FC = () => {
             onChange={handlePresetSelectChange}
             defaultValue=""
             aria-label="Circuit Presets"
-            className="text-[11px] sm:text-xs bg-void-950 border border-white/10 text-slate-200 rounded-lg px-2 sm:px-2.5 py-1.5 max-w-[115px] xs:max-w-[155px] sm:max-w-[230px] truncate focus:outline-none focus:border-electric-500 transition-colors cursor-pointer"
+            className="text-[11px] sm:text-xs bg-void-950 border border-white/10 text-slate-200 rounded-lg px-1.5 sm:px-2.5 py-1 sm:py-1.5 w-28 xs:w-36 sm:w-48 md:w-56 truncate focus:outline-none focus:border-electric-500 transition-colors cursor-pointer"
           >
             <option value="" disabled>
               {t.selectPreset}
@@ -114,15 +116,18 @@ export const Header: React.FC = () => {
                 ))}
               </optgroup>
             )}
+            <option value="action:save" className="text-electric-400 font-semibold">
+              + {t.savePresetBtn}...
+            </option>
           </select>
 
-          {/* Save Custom Preset to Browser Cache Button */}
+          {/* Save Custom Preset to Browser Cache Button (visible on tablet/desktop) */}
           <button
             id="tour-btn-save"
             type="button"
             onClick={() => setIsSaveModalOpen(true)}
             title={t.savePresetModalTitle}
-            className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg bg-electric-500/15 hover:bg-electric-500/25 border border-electric-500/30 text-electric-400 text-[11px] sm:text-xs font-semibold transition-all active:scale-95 shrink-0 cursor-pointer"
+            className="hidden sm:flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg bg-electric-500/15 hover:bg-electric-500/25 border border-electric-500/30 text-electric-400 text-[11px] sm:text-xs font-semibold transition-all active:scale-95 shrink-0 cursor-pointer"
           >
             <BookmarkPlus className="w-3.5 h-3.5 shrink-0" />
             <span className="hidden md:inline">{t.savePresetBtn}</span>
@@ -131,7 +136,7 @@ export const Header: React.FC = () => {
           <button
             type="button"
             onClick={() => loadPreset('simple-lamp')}
-            className="p-1.5 rounded-lg bg-void-850 hover:bg-void-800 border border-white/10 text-slate-300 hover:text-white transition-all active:scale-95 shrink-0 cursor-pointer"
+            className="hidden sm:flex p-1.5 rounded-lg bg-void-850 hover:bg-void-800 border border-white/10 text-slate-300 hover:text-white transition-all active:scale-95 shrink-0 cursor-pointer"
             title={t.resetTitle}
             onClickCapture={runSimulation}
           >
@@ -139,15 +144,15 @@ export const Header: React.FC = () => {
           </button>
         </div>
 
-        {/* Right Help Button, Language Toggle, Circuit Health & Clear */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        {/* Right Help Button, Language Toggle, Environment & Clear */}
+        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
           {/* Environment / Weather Toggle Button */}
           <button
             type="button"
             onClick={cycleEnvironment}
             title={t.environmentToggleTitle}
             aria-label={t.environmentToggleTitle}
-            className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[10px] sm:text-xs font-semibold transition-all active:scale-95 shrink-0 cursor-pointer ${
+            className={`flex items-center gap-1 sm:gap-1.5 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg border text-[10px] sm:text-xs font-semibold transition-all active:scale-95 shrink-0 cursor-pointer ${
               environment === 'sunny'
                 ? 'bg-amber-500/20 hover:bg-amber-500/30 border-amber-400/50 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.25)]'
                 : environment === 'cloudy'
@@ -163,11 +168,22 @@ export const Header: React.FC = () => {
               <Globe className="w-3.5 h-3.5 text-slate-400 shrink-0" />
             )}
             <span className="font-mono text-[10px] sm:text-[11px] font-bold">
-              {environment === 'sunny'
-                ? t.environmentSunny
-                : environment === 'cloudy'
-                ? t.environmentCloudy
-                : t.environmentLab}
+              {environment === 'sunny' ? (
+                <>
+                  <span className="hidden sm:inline">{t.environmentSunny}</span>
+                  <span className="sm:hidden">12V</span>
+                </>
+              ) : environment === 'cloudy' ? (
+                <>
+                  <span className="hidden sm:inline">{t.environmentCloudy}</span>
+                  <span className="sm:hidden">5V</span>
+                </>
+              ) : (
+                <>
+                  <span className="hidden sm:inline">{t.environmentLab}</span>
+                  <span className="sm:hidden">Lab</span>
+                </>
+              )}
             </span>
           </button>
 
@@ -186,7 +202,7 @@ export const Header: React.FC = () => {
                 ? 'Mulai Panduan Interaktif'
                 : 'Start Interactive Tour'
             }
-            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-400/40 text-cyan-300 text-[10px] sm:text-xs font-semibold transition-all active:scale-95 shrink-0 cursor-pointer"
+            className="flex items-center gap-1 p-1.5 sm:px-2 sm:py-1 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-400/40 text-cyan-300 text-[10px] sm:text-xs font-semibold transition-all active:scale-95 shrink-0 cursor-pointer"
           >
             <HelpCircle className="w-3.5 h-3.5" />
             <span className="hidden lg:inline">
@@ -199,23 +215,22 @@ export const Header: React.FC = () => {
             type="button"
             onClick={toggleLanguage}
             title={t.langToggleTitle}
-            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-electric-500/15 hover:bg-electric-500/25 border border-electric-500/30 text-electric-400 text-[10px] sm:text-xs font-mono font-bold transition-all active:scale-95 shrink-0 cursor-pointer"
+            className="flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-lg bg-electric-500/15 hover:bg-electric-500/25 border border-electric-500/30 text-electric-400 text-[10px] sm:text-xs font-mono font-bold transition-all active:scale-95 shrink-0 cursor-pointer"
           >
-            <Globe className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+            <Globe className="w-3 h-3 sm:w-3.5 sm:h-3.5 hidden xs:inline" />
             <span>{language === 'id' ? 'ID' : 'EN'}</span>
           </button>
 
           {simulation.isShortCircuit ? (
-            <div className="flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-full bg-danger-500/15 border border-danger-500/40 text-danger-500 text-[10px] sm:text-xs font-semibold animate-pulse shadow-glow-danger whitespace-nowrap">
+            <div className="flex items-center gap-1 px-1.5 sm:px-2.5 py-1 rounded-full bg-danger-500/15 border border-danger-500/40 text-danger-500 text-[10px] sm:text-xs font-semibold animate-pulse shadow-glow-danger whitespace-nowrap shrink-0">
               <AlertOctagon className="w-3.5 h-3.5 shrink-0" />
               <span className="hidden md:inline">{t.statusShort}</span>
-              <span className="md:hidden">Korslet!</span>
+              <span className="md:hidden">Korslet</span>
             </div>
           ) : (
-            <div className="hidden sm:flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] sm:text-xs font-medium whitespace-nowrap">
+            <div className="hidden lg:flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] sm:text-xs font-medium whitespace-nowrap shrink-0">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-              <span className="hidden md:inline">{t.statusStable}</span>
-              <span className="md:hidden">{language === 'id' ? 'Aman' : 'Stable'}</span>
+              <span>{t.statusStable}</span>
             </div>
           )}
 
@@ -223,7 +238,7 @@ export const Header: React.FC = () => {
             id="tour-btn-reset"
             type="button"
             onClick={clearCanvas}
-            className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-lg bg-void-850 hover:bg-red-950/40 border border-white/10 hover:border-red-500/30 text-xs text-slate-300 hover:text-red-300 transition-all active:scale-95 shrink-0 cursor-pointer"
+            className="flex items-center gap-1 p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg bg-void-850 hover:bg-red-950/40 border border-white/10 hover:border-red-500/30 text-xs text-slate-300 hover:text-red-300 transition-all active:scale-95 shrink-0 cursor-pointer"
             title={t.clearTitle}
           >
             <Trash2 className="w-3.5 h-3.5" />

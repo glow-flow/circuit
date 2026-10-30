@@ -64,6 +64,9 @@ export function isActiveVoltageSource(component: CircuitElementData): boolean {
   if (component.type === 'solar-panel' || component.type === 'solar_panel') {
     return true;
   }
+  if (component.type === 'wind-turbine' || component.type === 'wind_turbine') {
+    return true;
+  }
   return false;
 }
 
@@ -94,6 +97,9 @@ export function getVoltageSourceNominalVoltage(component: CircuitElementData): n
     baseVoltage = component.voltage ?? cellCount * 1.5;
   } else if (component.type === 'solar-panel' || component.type === 'solar_panel') {
     return component.voltage ?? getSolarPanelVoltage(component.environment ?? 'lab');
+  } else if (component.type === 'wind-turbine' || component.type === 'wind_turbine') {
+    const turbineSpeed = component.speed ?? 50;
+    return component.voltage ?? (turbineSpeed / 100) * 12.0;
   } else {
     return 0;
   }
@@ -219,6 +225,19 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
       }
     }
 
+    // Virtual Transmission Grid: Unify all Transmission Towers across the canvas into a lossless common bus
+    const transmissionTowers = components.filter(
+      (c) => c.type === 'transmission-tower' || c.type === 'transmission_tower'
+    );
+    if (transmissionTowers.length > 1) {
+      const primaryTower = transmissionTowers[0];
+      for (let i = 1; i < transmissionTowers.length; i++) {
+        const peerTower = transmissionTowers[i];
+        netUnionFind.union(`${primaryTower.id}:pos`, `${peerTower.id}:pos`);
+        netUnionFind.union(`${primaryTower.id}:neg`, `${peerTower.id}:neg`);
+      }
+    }
+
     // Merge pins connected by wires
     for (const wire of wires) {
       const sourcePinKey = `${wire.source}:${wire.sourceHandle}`;
@@ -313,6 +332,10 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
         component.type === 'battery-holder' ||
         component.type === 'solar-panel' ||
         component.type === 'solar_panel' ||
+        component.type === 'wind-turbine' ||
+        component.type === 'wind_turbine' ||
+        component.type === 'transmission-tower' ||
+        component.type === 'transmission_tower' ||
         component.type === 'ground' ||
         component.type === 'waypoint'
       ) {
@@ -377,6 +400,8 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
           sourceComp.internalResistance ?? BATTERY_INTERNAL_RESISTANCE * Math.max(1, cellCount);
       } else if (sourceComp.type === 'solar-panel' || sourceComp.type === 'solar_panel') {
         seriesInternalResistance = Math.max(0.01, sourceComp.internalResistance ?? SOLAR_PANEL_INTERNAL_RESISTANCE);
+      } else if (sourceComp.type === 'wind-turbine' || sourceComp.type === 'wind_turbine') {
+        seriesInternalResistance = Math.max(0.01, sourceComp.internalResistance ?? 0.1);
       } else if (sourceComp.internalResistance !== undefined) {
         seriesInternalResistance = Math.max(0.01, sourceComp.internalResistance);
       }
@@ -439,6 +464,10 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
         component.type === 'battery-holder' ||
         component.type === 'solar-panel' ||
         component.type === 'solar_panel' ||
+        component.type === 'wind-turbine' ||
+        component.type === 'wind_turbine' ||
+        component.type === 'transmission-tower' ||
+        component.type === 'transmission_tower' ||
         component.type === 'ground' ||
         component.type === 'waypoint'
       ) {
@@ -556,6 +585,10 @@ export function getComponentPinIdentifiers(component: CircuitElementData): strin
     case 'battery-holder':
     case 'solar-panel':
     case 'solar_panel':
+    case 'transmission-tower':
+    case 'transmission_tower':
+    case 'wind-turbine':
+    case 'wind_turbine':
       return [`${component.id}:pos`, `${component.id}:neg`];
     case 'resistor':
     case 'switch':

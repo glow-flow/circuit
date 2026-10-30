@@ -2,7 +2,8 @@
  * Circuit Sandbox Type Definitions
  * 
  * Strict typing for electrical components, simulation state,
- * MNA equations, environmental modes, and React Flow node extensions.
+ * MNA equations, environmental modes, virtual transmission grid,
+ * and React Flow node extensions.
  */
 
 import { BulbType } from '../constants/bulbCatalog';
@@ -13,6 +14,10 @@ export type ComponentType =
   | 'battery-holder'
   | 'solar-panel'
   | 'solar_panel'
+  | 'transmission-tower'
+  | 'transmission_tower'
+  | 'wind-turbine'
+  | 'wind_turbine'
   | 'resistor'
   | 'bulb'
   | 'switch'
@@ -51,8 +56,8 @@ export interface CircuitElementData {
   label: string;
   // Electrical properties
   bulbType?: BulbType;         // For bulb carousel ('incandescent' | 'halogen' | 'edison' | 'cfl' | 'led_standard' | 'led_rgb' | 'led_green')
-  voltage?: number;            // For battery / battery9v / battery-holder / solar-panel (Volts)
-  internalResistance?: number; // Internal series resistance in Ohms (e.g., 2.0Ω for 9V battery, 0.2Ω for solar panel)
+  voltage?: number;            // For battery / battery9v / battery-holder / solar-panel / wind-turbine (Volts)
+  internalResistance?: number; // Internal series resistance in Ohms (e.g., 2.0Ω for 9V battery, 0.2Ω for solar/wind)
   resistance?: number;         // For resistor, bulb, ammeter (Ohms)
   power?: number;              // Real-time or rated power for bulb (Watts)
   powerRating?: number;        // Max rated power for bulb (Watts)
@@ -70,6 +75,12 @@ export interface CircuitElementData {
 
   // Environment state for environmental transducers (Solar Panel)
   environment?: CircuitEnvironment;
+
+  // Wind Turbine properties
+  speed?: number;              // Wind turbine rotational speed (0 - 100, default 50)
+
+  // Transmission Tower properties
+  towerConnectedCount?: number; // Total number of active transmission towers sharing this virtual grid bus
   
   // Real-time calculated simulation results
   calculatedVoltage?: number;  // Voltage drop across component (V)
