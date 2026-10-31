@@ -28,6 +28,7 @@ export const Inspector: React.FC<InspectorProps> = ({
   const removeComponent = useCircuitStore((state) => state.removeComponent);
   const removeEdge = useCircuitStore((state) => state.removeEdge);
   const disconnectNodeWires = useCircuitStore((state) => state.disconnectNodeWires);
+  const disconnectAndResetMcb = useCircuitStore((state) => state.disconnectAndResetMcb);
   const toggleSwitch = useCircuitStore((state) => state.toggleSwitch);
   const rechargeBattery = useCircuitStore((state) => state.rechargeBattery);
   const simulation = useCircuitStore((state) => state.simulation);
@@ -261,16 +262,34 @@ export const Inspector: React.FC<InspectorProps> = ({
           ) && (
             <button
               type="button"
-              onClick={() => disconnectNodeWires(selectedNode.id)}
+              onClick={() => {
+                if (selectedNode.data.isMcbTripped) {
+                  disconnectAndResetMcb(selectedNode.id);
+                } else {
+                  disconnectNodeWires(selectedNode.id);
+                }
+              }}
               className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-red-950/60 hover:bg-red-900 text-red-300 border border-red-500/40 text-[10px] font-semibold transition-colors active:scale-95 cursor-pointer"
               title={
                 language === 'id'
-                  ? 'Putus semua kabel pada komponen ini'
+                  ? selectedNode.data.isMcbTripped
+                    ? 'Putus kabel korslet dan reset MCB'
+                    : 'Putus semua kabel pada komponen ini'
+                  : selectedNode.data.isMcbTripped
+                  ? 'Disconnect shorted wires and reset MCB'
                   : 'Disconnect all wires on this component'
               }
             >
               <Scissors className="w-3.5 h-3.5 text-red-400" />
-              <span>{language === 'id' ? 'Putus Kabel' : 'Cut Wires'}</span>
+              <span>
+                {selectedNode.data.isMcbTripped
+                  ? language === 'id'
+                    ? 'Putus & Reset'
+                    : 'Cut & Reset'
+                  : language === 'id'
+                  ? 'Putus Kabel'
+                  : 'Cut Wires'}
+              </span>
             </button>
           )}
           <button

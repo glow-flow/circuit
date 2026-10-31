@@ -40,6 +40,22 @@ body {
   animation: spin-clockwise linear infinite;
 }
 
+@keyframes shake-mcb {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  20%, 60% {
+    transform: translateX(-4px);
+  }
+  40%, 80% {
+    transform: translateX(4px);
+  }
+}
+
+.animate-shake {
+  animation: shake-mcb 0.35s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
 .react-flow__handle {
   width: 10px;
   height: 10px;

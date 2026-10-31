@@ -24,6 +24,7 @@ export const App: React.FC = () => {
   const selectedEdgeId = useCircuitStore((state) => state.selectedEdgeId);
   const removeEdge = useCircuitStore((state) => state.removeEdge);
   const disconnectNodeWires = useCircuitStore((state) => state.disconnectNodeWires);
+  const disconnectAndResetMcb = useCircuitStore((state) => state.disconnectAndResetMcb);
   const splitEdgeAtMidpoint = useCircuitStore((state) => state.splitEdgeAtMidpoint);
   const simulation = useCircuitStore((state) => state.simulation);
   const language = useCircuitStore((state) => state.language);
@@ -105,11 +106,25 @@ export const App: React.FC = () => {
               {selectedNodeHasWires && (
                 <button
                   type="button"
-                  onClick={() => disconnectNodeWires(selectedNode.id)}
+                  onClick={() => {
+                    if (selectedNode.data.isMcbTripped) {
+                      disconnectAndResetMcb(selectedNode.id);
+                    } else {
+                      disconnectNodeWires(selectedNode.id);
+                    }
+                  }}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-600/95 hover:bg-red-500 text-white text-xs font-bold shadow-[0_0_16px_rgba(239,68,68,0.65)] border border-red-300/60 active:scale-95 transition-all shrink-0 cursor-pointer"
                 >
                   <Scissors className="w-3.5 h-3.5 shrink-0" />
-                  <span>{language === 'id' ? 'Putus Kabel' : 'Cut Wires'}</span>
+                  <span>
+                    {selectedNode.data.isMcbTripped
+                      ? language === 'id'
+                        ? 'Putus Kabel & Reset'
+                        : 'Cut Wires & Reset'
+                      : language === 'id'
+                      ? 'Putus Kabel'
+                      : 'Cut Wires'}
+                  </span>
                 </button>
               )}
             </div>

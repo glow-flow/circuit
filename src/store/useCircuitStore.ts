@@ -73,6 +73,7 @@ import {
   saveCustomPresetsToStorage,
   saveWorkspaceAutosave,
 } from '../utils/presetStorage';
+import { checkPanelDirectShort } from '../utils/circuitShortCircuitUtils';
 
 interface CircuitState {
   nodes: Node<CircuitElementData>[];
@@ -152,6 +153,8 @@ interface CircuitState {
   removeComponent: (id: string) => void;
   removeEdge: (edgeId: string) => void;
   disconnectNodeWires: (nodeId: string) => void;
+  resetLabPanelMcb: (id: string) => boolean;
+  disconnectAndResetMcb: (id: string) => void;
   insertBatteryIntoHolder: (batteryNodeId: string, holderNodeId: string) => void;
   ejectBatteryFromHolder: (holderNodeId: string) => void;
   splitEdgeWithWaypoint: (edgeId: string, position: { x: number; y: number }) => void;
@@ -227,36 +230,39 @@ function recalculateCircuit(
   let simulation = solveCircuitMNA({ components, wires });
 
   // Automatic MCB Short-Circuit Protection (Standar PUIL):
-  // If a short circuit occurs across the virtual grid while a Lab Distribution Panel's MCB is ON,
+  // If a short circuit occurs across the virtual grid or directly across a Lab Distribution Panel's terminals,
   // automatically trip the MCB to interrupt the fault current and protect laboratory equipment.
-  if (simulation.isShortCircuit) {
-    const overloadedLabPanelIds = new Set(
-      workingNodes
-        .filter(
-          (n) =>
-            isTransmissionNodeActive(n.data) &&
-            n.data.worldMode !== 'outside' &&
-            Math.abs(simulation.branchCurrents[n.id] ?? 0) > SHORT_CIRCUIT_CURRENT_THRESHOLD
-        )
-        .map((n) => n.id)
-    );
+  const overloadedLabPanelIds = new Set(
+    workingNodes
+      .filter((n) => {
+        if (!isTransmissionNodeActive(n.data) || n.data.worldMode === 'outside') return false;
+        // Direct terminal short circuit (pos and neg bridged directly or via the same junction)
+        const isDirectShorted = checkPanelDirectShort(n.id, wires).isShorted;
+        // Overcurrent fault from grid
+        const isOvercurrent =
+          simulation.isShortCircuit &&
+          Math.abs(simulation.branchCurrents[n.id] ?? 0) > SHORT_CIRCUIT_CURRENT_THRESHOLD;
 
-    if (overloadedLabPanelIds.size > 0) {
-      workingNodes = workingNodes.map((n) =>
-        overloadedLabPanelIds.has(n.id)
-          ? {
-              ...n,
-              data: {
-                ...n.data,
-                isMcbOn: false,
-                isMcbTripped: true,
-              },
-            }
-          : n
-      );
-      components = workingNodes.map((node) => node.data);
-      simulation = solveCircuitMNA({ components, wires });
-    }
+        return isDirectShorted || isOvercurrent;
+      })
+      .map((n) => n.id)
+  );
+
+  if (overloadedLabPanelIds.size > 0) {
+    workingNodes = workingNodes.map((n) =>
+      overloadedLabPanelIds.has(n.id)
+        ? {
+            ...n,
+            data: {
+              ...n.data,
+              isMcbOn: false,
+              isMcbTripped: true,
+            },
+          }
+        : n
+    );
+    components = workingNodes.map((node) => node.data);
+    simulation = solveCircuitMNA({ components, wires });
   }
 
   // Update node data with calculated voltages, currents, power, and thermal overload status
@@ -1671,6 +1677,108 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       isId
         ? 'Semua kabel pada komponen ini berhasil diputus!'
         : 'All wires on this component have been disconnected!'
+    );
+  },
+
+  /**
+   * Resets the MCB safety breaker on an indoor Lab Distribution Panel.
+   * If the output wires are still physically short-circuited (dead short), the PUIL safety
+   * mechanism will immediately trip the breaker again to protect equipment. In this case,
+   * it alerts the user with an actionable educational explanation instead of failing silently.
+   *
+   * Time Complexity: O(N + M^3) where N is node count and M is MNA matrix dimension.
+   *
+   * @param id - Unique node ID of the target Lab Distribution Panel
+   * @returns boolean indicating whether reset succeeded (false if active short circuit blocked it)
+   */
+  resetLabPanelMcb: (id: string): boolean => {
+    const isId = get().language === 'id';
+    const targetNode = get().nodes.find((node) => node.id === id);
+    if (!targetNode) return false;
+
+    // Tentatively arm the MCB
+    const candidateNodes = get().nodes.map((node) =>
+      node.id === id
+        ? {
+            ...node,
+            data: {
+              ...node.data,
+              isMcbOn: true,
+              isMcbTripped: false,
+            },
+          }
+        : node
+    );
+
+    const { simulation, updatedNodes } = recalculateCircuit(candidateNodes, get().edges);
+    const resultingNode = updatedNodes.find((node) => node.id === id);
+    const isStillTripped = Boolean(resultingNode?.data.isMcbTripped);
+
+    set({
+      nodes: updatedNodes,
+      simulation,
+    });
+
+    if (isStillTripped) {
+      get().notify(
+        isId
+          ? '⚠️ Gagal reset MCB! Kabel (+) dan (-) masih korsleting langsung. Putus atau pisahkan kabel terlebih dahulu!'
+          : '⚠️ MCB Reset Failed! Output wires (+) and (-) are still short-circuited. Disconnect shorted wire first!'
+      );
+      return false;
+    }
+
+    get().notify(
+      isId
+        ? '✅ Tuas MCB Panel Distribusi Lab: ON (Aliran Listrik Terhubung)'
+        : '✅ Lab Distribution Panel MCB: ON (Grid Connected)'
+    );
+    return true;
+  },
+
+  /**
+   * One-tap recovery: Disconnects all wires attached to the Lab Distribution Panel and
+   * resets the MCB breaker to ON. Solves the issue where shorted wires are hard to deselect on mobile.
+   *
+   * Time Complexity: O(E + N + M^3) where E is edge count, N is node count, and M is MNA dimension.
+   *
+   * @param id - Unique node ID of the target Lab Distribution Panel
+   */
+  disconnectAndResetMcb: (id: string) => {
+    const isId = get().language === 'id';
+    const currentEdges = get().edges;
+    const nextEdges = currentEdges.filter(
+      (edge) =>
+        edge.data?.isSnapWire ||
+        (edge.source !== id && edge.target !== id && edge.source !== edge.target)
+    );
+
+    const candidateNodes = get().nodes.map((node) =>
+      node.id === id
+        ? {
+            ...node,
+            data: {
+              ...node.data,
+              isMcbOn: true,
+              isMcbTripped: false,
+            },
+          }
+        : node
+    );
+
+    const { simulation, updatedNodes } = recalculateCircuit(candidateNodes, nextEdges);
+
+    set({
+      edges: nextEdges,
+      nodes: updatedNodes,
+      simulation,
+      selectedEdgeId: null,
+    });
+
+    get().notify(
+      isId
+        ? '✅ Kabel korslet dilepas & MCB Panel Distribusi berhasil di-reset (ON)!'
+        : '✅ Shorted wires removed & Lab MCB successfully reset (ON)!'
     );
   },
 

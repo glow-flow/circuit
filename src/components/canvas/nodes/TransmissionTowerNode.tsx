@@ -1,8 +1,12 @@
-import React, { memo, useCallback } from 'react';
+import React, { memo, useCallback, useMemo, useState } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
 import { CircuitElementData } from '../../../types/circuit';
-import { AlertTriangle, Power, Radio, ShieldCheck, Zap } from 'lucide-react';
+import { AlertTriangle, Power, Radio, Scissors, ShieldCheck, Zap } from 'lucide-react';
 import { useCircuitStore } from '../../../store/useCircuitStore';
+import {
+  checkPanelDirectShort,
+  getShortCircuitGuidance,
+} from '../../../utils/circuitShortCircuitUtils';
 
 const STEP_DOWN_OPTIONS: Array<{ label: string; value: number | null }> = [
   { label: 'Auto', value: null },
@@ -30,14 +34,29 @@ const STEP_DOWN_OPTIONS: Array<{ label: string; value: number | null }> = [
 export const TransmissionTowerNode: React.FC<NodeProps<CircuitElementData>> = memo(
   ({ id, data, selected }) => {
     const language = useCircuitStore((state) => state.language);
+    const edges = useCircuitStore((state) => state.edges);
     const updateComponentData = useCircuitStore((state) => state.updateComponentData);
+    const resetLabPanelMcb = useCircuitStore((state) => state.resetLabPanelMcb);
+    const disconnectAndResetMcb = useCircuitStore((state) => state.disconnectAndResetMcb);
     const notify = useCircuitStore((state) => state.notify);
     const isId = language === 'id';
+
+    const [isShaking, setIsShaking] = useState(false);
 
     const isOutdoorTower = data.worldMode === 'outside';
     const isMcbOn = data.isMcbOn !== false && !data.isMcbTripped;
     const isMcbTripped = Boolean(data.isMcbTripped);
     const stepDownVoltage = data.stepDownVoltage ?? null;
+
+    const directShortResult = useMemo(() => {
+      if (!isMcbTripped) return { isShorted: false, shortType: 'none' as const };
+      return checkPanelDirectShort(id, edges);
+    }, [edges, id, isMcbTripped]);
+
+    const shortCircuitGuidance = useMemo(() => {
+      if (!isMcbTripped) return '';
+      return getShortCircuitGuidance(directShortResult, isId);
+    }, [directShortResult, isId, isMcbTripped]);
 
     const connectedCount = data.towerConnectedCount ?? 1;
     const isGridConnected = isMcbOn && connectedCount > 1;
@@ -52,6 +71,16 @@ export const TransmissionTowerNode: React.FC<NodeProps<CircuitElementData>> = me
     const handleToggleMcb = useCallback(
       (e: React.MouseEvent) => {
         e.stopPropagation();
+
+        if (isMcbTripped) {
+          const success = resetLabPanelMcb(id);
+          if (!success) {
+            setIsShaking(true);
+            window.setTimeout(() => setIsShaking(false), 450);
+          }
+          return;
+        }
+
         const nextMcbState = !isMcbOn;
         updateComponentData(id, {
           isMcbOn: nextMcbState,
@@ -67,7 +96,15 @@ export const TransmissionTowerNode: React.FC<NodeProps<CircuitElementData>> = me
             : 'Lab Distribution Panel MCB: OFF (Grid Disconnected)'
         );
       },
-      [id, isId, isMcbOn, notify, updateComponentData]
+      [id, isId, isMcbOn, isMcbTripped, notify, resetLabPanelMcb, updateComponentData]
+    );
+
+    const handleDisconnectAndReset = useCallback(
+      (e: React.MouseEvent) => {
+        e.stopPropagation();
+        disconnectAndResetMcb(id);
+      },
+      [disconnectAndResetMcb, id]
     );
 
     const handleSelectStepDown = useCallback(
@@ -178,8 +215,10 @@ export const TransmissionTowerNode: React.FC<NodeProps<CircuitElementData>> = me
             onPointerDown={(e) => e.stopPropagation()}
             onClick={handleToggleMcb}
             className={`nodrag mt-2 w-full py-1 px-2 rounded-lg font-mono text-[9px] font-bold border flex items-center justify-between transition-all active:scale-95 cursor-pointer ${
+              isShaking ? 'animate-shake' : ''
+            } ${
               isMcbTripped
-                ? 'bg-red-950/90 hover:bg-red-900 text-red-200 border-red-400 animate-pulse'
+                ? 'bg-red-950/90 hover:bg-red-900 text-red-200 border-red-400 animate-pulse shadow-[0_0_12px_rgba(239,68,68,0.4)]'
                 : isMcbOn
                 ? 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border-emerald-400/40'
                 : 'bg-slate-800/90 hover:bg-slate-700 text-slate-300 border-white/15'
@@ -214,6 +253,30 @@ export const TransmissionTowerNode: React.FC<NodeProps<CircuitElementData>> = me
               {isMcbOn ? 'I' : 'O'}
             </span>
           </button>
+
+          {/* Quick Helper for Active Short Circuit Recovery */}
+          {isMcbTripped && (
+            <div className="nodrag mt-1.5 flex flex-col gap-1">
+              <div className="text-[7.5px] font-mono font-medium text-red-300 bg-red-950/80 border border-red-500/40 rounded px-1.5 py-1 leading-tight flex items-start gap-1 shadow-[0_0_8px_rgba(239,68,68,0.25)]">
+                <AlertTriangle className="w-2.5 h-2.5 text-red-400 shrink-0 mt-0.5" />
+                <span>{shortCircuitGuidance}</span>
+              </div>
+              <button
+                type="button"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={handleDisconnectAndReset}
+                className="w-full py-1 px-1.5 rounded-lg font-mono text-[8.5px] font-bold bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-400/50 flex items-center justify-center gap-1 transition-all active:scale-95 cursor-pointer shadow-[0_0_10px_rgba(245,158,11,0.25)]"
+                title={
+                  isId
+                    ? 'Cabut semua kabel yang korslet dan nyalakan kembali MCB'
+                    : 'Disconnect shorted wires and reset MCB'
+                }
+              >
+                <Scissors className="w-2.5 h-2.5 text-amber-400 shrink-0" />
+                <span>{isId ? '✂️ Putus Kabel & Reset' : '✂️ Cut Wires & Reset'}</span>
+              </button>
+            </div>
+          )}
 
           {/* Step-Down DC Voltage Regulator Selector */}
           <div className="nodrag mt-1.5">
