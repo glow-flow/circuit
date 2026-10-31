@@ -31,6 +31,7 @@ import {
   evaluateComponentDropPhysics,
   findTerrainSurfaceY,
   getComponentBoundingBox,
+  getHillEdgeSlopeSide,
   GRID_COLS,
   GRID_ROWS,
   OUTDOOR_WORLD_MIN_WIDTH,
@@ -138,6 +139,7 @@ const OutdoorSandboxInner: React.FC = () => {
   const language = useCircuitStore((state) => state.language);
 
   const terrainGrid = useCircuitStore((state) => state.terrainGrid);
+  const dirtExposureMap = useCircuitStore((state) => state.dirtExposureMap);
   const terrainBrush = useCircuitStore((state) => state.terrainBrush);
   const setTerrainBrush = useCircuitStore((state) => state.setTerrainBrush);
   const paintTerrainCell = useCircuitStore((state) => state.paintTerrainCell);
@@ -705,14 +707,30 @@ const OutdoorSandboxInner: React.FC = () => {
                   );
                 }
 
-                // Both 'DIRT' and 'GRASS' have a solid 'tile-dirt.png' earth foundation
+                // Both 'DIRT' and 'GRASS' have a solid 'tile-dirt.png' earth foundation.
+                // After 3 seconds of air exposure on a hill edge, the sharp 90° corner slumps
+                // into a smooth diagonal slope ('left' = / ramp, 'right' = \ ramp).
+                const slopeSide = getHillEdgeSlopeSide(
+                  terrainGrid,
+                  dirtExposureMap,
+                  rIdx,
+                  cIdx
+                );
+                const dirtClipPath =
+                  slopeSide === 'left'
+                    ? 'polygon(0% 100%, 100% 0%, 100% 100%)'
+                    : slopeSide === 'right'
+                    ? 'polygon(0% 0%, 100% 100%, 0% 100%)'
+                    : 'polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)';
+
                 return (
                   <div
                     key={key}
-                    className="w-[calc(100%+1px)] h-[calc(100%+1px)] relative"
+                    className="w-[calc(100%+1px)] h-[calc(100%+1px)] relative transition-[clip-path] duration-500 ease-out"
                     style={{
                       backgroundImage: "url('/assets/tile-dirt.png')",
                       backgroundSize: '100% 100%',
+                      clipPath: dirtClipPath,
                     }}
                   />
                 );
@@ -789,13 +807,52 @@ const OutdoorSandboxInner: React.FC = () => {
                   return <div key={key} />;
                 }
 
+                const slopeSide = getHillEdgeSlopeSide(
+                  terrainGrid,
+                  dirtExposureMap,
+                  rIdx,
+                  cIdx
+                );
+
                 return (
-                  <div key={key} className="relative w-full h-full overflow-visible">
+                  <div
+                    key={key}
+                    className={`relative w-full h-full ${
+                      slopeSide ? 'overflow-hidden' : 'overflow-visible'
+                    }`}
+                  >
                     <img
                       src="/assets/grass-layer.png"
                       alt=""
                       draggable={false}
-                      className="absolute inset-x-0 -top-[24%] w-[108%] -left-[4%] h-[108%] max-w-none object-cover pointer-events-none select-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.45)]"
+                      style={
+                        slopeSide === 'left'
+                          ? {
+                              position: 'absolute',
+                              width: '142%',
+                              height: '105%',
+                              left: '-21%',
+                              top: '2%',
+                              transform: 'rotate(-36deg)',
+                              transformOrigin: 'center center',
+                            }
+                          : slopeSide === 'right'
+                          ? {
+                              position: 'absolute',
+                              width: '142%',
+                              height: '105%',
+                              left: '-21%',
+                              top: '2%',
+                              transform: 'rotate(36deg)',
+                              transformOrigin: 'center center',
+                            }
+                          : undefined
+                      }
+                      className={
+                        slopeSide
+                          ? 'max-w-none object-cover pointer-events-none select-none transition-transform duration-500 drop-shadow-[0_2px_4px_rgba(0,0,0,0.45)]'
+                          : 'absolute inset-x-0 -top-[24%] w-[108%] -left-[4%] h-[108%] max-w-none object-cover pointer-events-none select-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.45)]'
+                      }
                     />
                   </div>
                 );

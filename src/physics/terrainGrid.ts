@@ -306,17 +306,27 @@ export function settleTerrainGravityImmediate(
 }
 
 /**
- * Evaluates the 3-second grass growth rule across the terrain grid:
- * - If a settled 'DIRT' cell has 'EMPTY' above it (or is at row 0), its exposure start timestamp
- *   is tracked in `exposureMap` (hash map keyed by `"row,col"` for O(1) lookup).
- * - Once `currentTimeMs - exposedSince >= growthDelayMs` (default 3000ms), the cell transforms into 'GRASS'.
+ * Evaluates the 3-second grass growth AND 3-second hill-edge collapse/slope erosion rules:
+ * 1. Grass Growth:
+ *    - If a settled 'DIRT' cell has 'EMPTY' above it (or is at row 0), its exposure start timestamp
+ *      is tracked in `exposureMap` (hash map keyed by `"row,col"` for O(1) lookup).
+ *    - Once `currentTimeMs - exposedSince >= growthDelayMs` (default 3000ms), the cell transforms into 'GRASS'.
+ * 2. Hill-Edge Collapse & Slope Erosion ("Ujung Bukit Roboh dalam 3 Detik"):
+ *    - If a top surface block ('DIRT' or 'GRASS') has an open 'EMPTY' side on its left or right,
+ *      its edge exposure timestamp is tracked under `"edge:row,col"`.
+ *    - After `growthDelayMs` (3000ms):
+ *      a) If there is a steep vertical cliff drop (>= 2 empty rows on the side), the top edge block
+ *         physically collapses sideways into the lower column and falls by gravity.
+ *      b) If it is an isolated 1-column pointy spike (`leftAir && rightAir`), the block collapses.
+ *      c) If it is a 1-block hill step edge, its sharp 90° square corner collapses into a smooth
+ *         diagonal hill slope (`"slumped:row,col"`), eliminating blocky/pointy hill ends.
  *
  * Time Complexity: O(R * C) with O(1) hash map lookups per cell.
  *
  * @param currentGrid - Current 2D terrain grid
- * @param exposureMap - Hash map of cell `"row,col"` -> timestamp (ms) when first exposed to air
+ * @param exposureMap - Hash map of cell exposure timestamps (ms) and slumped slope flags
  * @param currentTimeMs - Current timestamp in milliseconds
- * @param growthDelayMs - Required air exposure duration in ms before DIRT becomes GRASS (default 3000ms)
+ * @param growthDelayMs - Required exposure duration in ms (default 3000ms)
  * @returns Updated grid, updated exposure map, and `changed` flag
  */
 export function evaluateGrassGrowth(
@@ -340,15 +350,25 @@ export function evaluateGrassGrowth(
   const nextExposureMap: Record<string, number> = {};
   let mapChanged = false;
 
+  const ensureClonedGrid = () => {
+    if (!gridCloned) {
+      nextGrid = currentGrid.map((row) => [...row]);
+      gridCloned = true;
+    }
+  };
+
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      const cell = currentGrid[r][c];
-      if (cell !== 'DIRT') continue;
+      const cell = nextGrid[r][c];
+      if (cell !== 'DIRT' && cell !== 'GRASS') continue;
 
       const isAirAbove = r === 0 || currentGrid[r - 1][c] === 'EMPTY';
       const isSupportedBelow = r === rows - 1 || currentGrid[r + 1][c] !== 'EMPTY';
 
-      if (isAirAbove && isSupportedBelow) {
+      if (!isAirAbove || !isSupportedBelow) continue;
+
+      // 1. 3-Second Grass Growth on air-exposed DIRT
+      if (cell === 'DIRT') {
         const cellKey = `${r},${c}`;
         const firstExposedAt = exposureMap[cellKey];
 
@@ -356,14 +376,59 @@ export function evaluateGrassGrowth(
           nextExposureMap[cellKey] = currentTimeMs;
           mapChanged = true;
         } else if (currentTimeMs - firstExposedAt >= growthDelayMs) {
-          if (!gridCloned) {
-            nextGrid = currentGrid.map((row) => [...row]);
-            gridCloned = true;
-          }
+          ensureClonedGrid();
           nextGrid[r][c] = 'GRASS';
           mapChanged = true;
         } else {
           nextExposureMap[cellKey] = firstExposedAt;
+        }
+      }
+
+      // 2. 3-Second Hill-Edge Collapse & Corner Slumping (only above bottom-most bedrock row)
+      if (r < rows - 1) {
+        const leftAir = c > 0 && currentGrid[r][c - 1] === 'EMPTY';
+        const rightAir = c < cols - 1 && currentGrid[r][c + 1] === 'EMPTY';
+
+        if (leftAir || rightAir) {
+          const edgeKey = `edge:${r},${c}`;
+          const slumpKey = `slumped:${r},${c}`;
+          const firstEdgeExposedAt = exposureMap[edgeKey];
+
+          if (firstEdgeExposedAt === undefined) {
+            nextExposureMap[edgeKey] = currentTimeMs;
+            mapChanged = true;
+          } else if (currentTimeMs - firstEdgeExposedAt >= growthDelayMs) {
+            const steepLeftDrop = leftAir && currentGrid[r + 1][c - 1] === 'EMPTY';
+            const steepRightDrop = rightAir && currentGrid[r + 1][c + 1] === 'EMPTY';
+
+            if (steepLeftDrop && nextGrid[r + 1][c - 1] === 'EMPTY') {
+              // Steep left cliff (>= 2 blocks): top corner block tumbles down-left
+              ensureClonedGrid();
+              nextGrid[r + 1][c - 1] = 'DIRT';
+              nextGrid[r][c] = 'EMPTY';
+              mapChanged = true;
+            } else if (steepRightDrop && nextGrid[r + 1][c + 1] === 'EMPTY') {
+              // Steep right cliff (>= 2 blocks): top corner block tumbles down-right
+              ensureClonedGrid();
+              nextGrid[r + 1][c + 1] = 'DIRT';
+              nextGrid[r][c] = 'EMPTY';
+              mapChanged = true;
+            } else if (leftAir && rightAir) {
+              // Single 1-column jutting spike on top of a hill: crumbles flat after 3 seconds
+              ensureClonedGrid();
+              nextGrid[r][c] = 'EMPTY';
+              mapChanged = true;
+            } else {
+              // 1-block hill step edge: sharp 90° square corner slumps into a smooth diagonal slope
+              nextExposureMap[edgeKey] = firstEdgeExposedAt;
+              if (exposureMap[slumpKey] === undefined) {
+                mapChanged = true;
+              }
+              nextExposureMap[slumpKey] = 1;
+            }
+          } else {
+            nextExposureMap[edgeKey] = firstEdgeExposedAt;
+          }
         }
       }
     }
@@ -378,6 +443,34 @@ export function evaluateGrassGrowth(
     nextExposureMap,
     changed: gridCloned || mapChanged,
   };
+}
+
+/**
+ * Determines whether a terrain cell at `(row, col)` has completed its 3-second
+ * hill-edge corner collapse (`slumped:row,col`) and returns which side slopes down
+ * (`'left'` for `/` ramp or `'right'` for `\` ramp).
+ * Time Complexity: O(1).
+ */
+export function getHillEdgeSlopeSide(
+  grid: TerrainCellType[][],
+  exposureMap: Record<string, number>,
+  row: number,
+  col: number
+): 'left' | 'right' | null {
+  if (!exposureMap || !exposureMap[`slumped:${row},${col}`]) return null;
+  const cell = grid[row]?.[col];
+  if (cell !== 'DIRT' && cell !== 'GRASS') return null;
+
+  const isAirAbove = row === 0 || grid[row - 1]?.[col] === 'EMPTY';
+  if (!isAirAbove) return null;
+
+  const cols = grid[0]?.length ?? 0;
+  const leftAir = col > 0 && grid[row]?.[col - 1] === 'EMPTY';
+  const rightAir = col < cols - 1 && grid[row]?.[col + 1] === 'EMPTY';
+
+  if (leftAir && !rightAir) return 'left';
+  if (rightAir && !leftAir) return 'right';
+  return null;
 }
 
 /**

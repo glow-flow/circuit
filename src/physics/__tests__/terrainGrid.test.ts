@@ -6,6 +6,7 @@ import {
   settleTerrainGravityImmediate,
   evaluateGrassGrowth,
   getComponentBoundingBox,
+  getHillEdgeSlopeSide,
   findOverlappingComponent,
   doesComponentTouchWater,
   evaluateComponentDropPhysics,
@@ -159,5 +160,27 @@ describe('Outdoor Sandbox Terrain Physics & Spatial Collision Engine', () => {
       containerSize
     );
     expect(highDropOutcome.status).toBe('explode-height');
+  });
+
+  it('collapses sharp square hill edges into smooth diagonal slopes after 3 seconds and crumbles steep cliffs', () => {
+    const grid = createDefaultOutdoorTerrain(20, 40);
+    const t0 = 5000;
+
+    // 1. At t0 (0s): hill left edge (14, 4) and right edge (14, 11) are still square blocks
+    const firstPass = evaluateGrassGrowth(grid, {}, t0, GRASS_GROWTH_DELAY_MS);
+    expect(getHillEdgeSlopeSide(firstPass.nextGrid, firstPass.nextExposureMap, 14, 4)).toBeNull();
+    expect(getHillEdgeSlopeSide(firstPass.nextGrid, firstPass.nextExposureMap, 14, 11)).toBeNull();
+
+    // 2. At t0 + 3000ms (3s): hill left edge (14, 4) slumps to 'left' slope (/) and right edge (14, 11) slumps to 'right' slope (\)
+    const after3s = evaluateGrassGrowth(
+      firstPass.nextGrid,
+      firstPass.nextExposureMap,
+      t0 + 3000,
+      GRASS_GROWTH_DELAY_MS
+    );
+    expect(getHillEdgeSlopeSide(after3s.nextGrid, after3s.nextExposureMap, 14, 4)).toBe('left');
+    expect(getHillEdgeSlopeSide(after3s.nextGrid, after3s.nextExposureMap, 14, 11)).toBe('right');
+    // Interior hill cell (14, 7) remains flat (null)
+    expect(getHillEdgeSlopeSide(after3s.nextGrid, after3s.nextExposureMap, 14, 7)).toBeNull();
   });
 });
