@@ -52,24 +52,24 @@ export const SidebarPalette: React.FC<SidebarPaletteProps> = ({
 
   const handlePlace = (entry: PaletteEntry) => {
     if (worldMode === 'outside') {
-      const canvasEl = document.getElementById('tour-canvas-area');
-      const rect = canvasEl?.getBoundingClientRect();
-      const containerWidth = rect && rect.width > 200 ? rect.width : 960;
-      const containerHeight = rect && rect.height > 250 ? rect.height : 680;
-      // Drop from a safe height just above the terrain surface (~65% down the canvas)
+      const worldStageEl = document.getElementById('outdoor-world-stage');
+      const scrollViewportEl = document.getElementById('outdoor-scroll-viewport');
+      const stageRect = worldStageEl?.getBoundingClientRect();
+      const containerWidth = stageRect && stageRect.width > 400 ? stageRect.width : 1360;
+      const containerHeight = stageRect && stageRect.height > 250 ? stageRect.height : 680;
+      const scrollLeft = scrollViewportEl?.scrollLeft ?? 0;
+
+      // Drop from a safe height just above the terrain surface (~42% down the canvas)
       const safeDropY = Math.round(containerHeight * 0.42);
-      const isNarrow = containerWidth < 560;
-      const candidatePositions = isNarrow
-        ? [
-            { x: 10, y: safeDropY },
-            { x: Math.round(containerWidth * 0.34), y: safeDropY },
-            { x: Math.round(containerWidth * 0.64), y: safeDropY },
-          ]
-        : [
-            { x: Math.round(containerWidth * 0.05), y: safeDropY },
-            { x: Math.round(containerWidth * 0.25), y: safeDropY },
-            { x: Math.round(containerWidth * 0.45), y: safeDropY },
-          ];
+      const baseX = Math.max(24, Math.min(720, Math.round(scrollLeft + 24)));
+      const candidatePositions = [
+        { x: baseX, y: safeDropY },
+        { x: baseX + 185, y: safeDropY },
+        { x: baseX + 370, y: safeDropY },
+        { x: 50, y: safeDropY },
+        { x: 240, y: safeDropY },
+        { x: 430, y: safeDropY },
+      ];
       let placed = false;
       for (const candidate of candidatePositions) {
         if (
@@ -88,7 +88,7 @@ export const SidebarPalette: React.FC<SidebarPaletteProps> = ({
         placeOutdoorComponent(
           entry.type,
           {
-            x: 16 + Math.floor(Math.random() * Math.max(80, containerWidth * 0.45)),
+            x: 30 + Math.floor(Math.random() * 580),
             y: safeDropY,
           },
           { width: containerWidth, height: containerHeight },

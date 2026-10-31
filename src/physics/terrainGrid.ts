@@ -15,6 +15,7 @@ import { CircuitElementData, ComponentType, TerrainCellType } from '../types/cir
 export const GRID_COLS = 40;
 export const GRID_ROWS = 20;
 export const GRASS_GROWTH_DELAY_MS = 3000;
+export const OUTDOOR_WORLD_MIN_WIDTH = 1360;
 
 /**
  * Maximum safe vertical drop distance (in grid row units) before a falling outdoor
@@ -58,12 +59,12 @@ export type DropPhysicsOutcome =
  * Used for AABB overlap rejection, ground gravity settling, and water hazard collision checks.
  */
 const COMPONENT_DIMENSIONS: Partial<Record<ComponentType, { width: number; height: number }>> = {
-  'solar-panel': { width: 168, height: 156 },
-  solar_panel: { width: 168, height: 156 },
-  'wind-turbine': { width: 164, height: 248 },
-  wind_turbine: { width: 164, height: 248 },
-  'transmission-tower': { width: 148, height: 236 },
-  transmission_tower: { width: 148, height: 236 },
+  'solar-panel': { width: 144, height: 156 },
+  solar_panel: { width: 144, height: 156 },
+  'wind-turbine': { width: 144, height: 232 },
+  wind_turbine: { width: 144, height: 232 },
+  'transmission-tower': { width: 132, height: 226 },
+  transmission_tower: { width: 132, height: 226 },
 };
 
 const DEFAULT_COMPONENT_DIMENSION = { width: 150, height: 170 };

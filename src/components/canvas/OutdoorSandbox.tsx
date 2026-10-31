@@ -8,6 +8,9 @@ import ReactFlow, {
   ReactFlowProvider,
 } from 'reactflow';
 import {
+  ChevronLeft,
+  ChevronRight,
+  Compass,
   Droplets,
   Eraser,
   Flame,
@@ -16,7 +19,6 @@ import {
   RotateCcw,
   Sparkles,
   Sprout,
-  Zap,
 } from 'lucide-react';
 import { useCircuitStore } from '../../store/useCircuitStore';
 import {
@@ -31,6 +33,7 @@ import {
   getComponentBoundingBox,
   GRID_COLS,
   GRID_ROWS,
+  OUTDOOR_WORLD_MIN_WIDTH,
 } from '../../physics/terrainGrid';
 import { SolarPanelNode } from './nodes/SolarPanelNode';
 import { WindTurbineNode } from './nodes/WindTurbineNode';
@@ -147,9 +150,23 @@ const OutdoorSandboxInner: React.FC = () => {
   const explosions = useCircuitStore((state) => state.explosions);
 
   const isId = language === 'id';
+  const scrollViewportRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
   const [isPaintingTerrain, setIsPaintingTerrain] = useState(false);
+  const [cameraScrollX, setCameraScrollX] = useState(0);
+  const [maxCameraScrollX, setMaxCameraScrollX] = useState(800);
+
+  // Track sky/terrain drag-to-pan state when terrainBrush === 'cursor'
+  const panDragStateRef = useRef<{
+    isPanning: boolean;
+    startClientX: number;
+    startScrollLeft: number;
+  }>({
+    isPanning: false,
+    startClientX: 0,
+    startScrollLeft: 0,
+  });
 
   // Store each node's initial position before dragging so overlap rejection can snap it back
   const dragStartPositionsRef = useRef<Record<string, { x: number; y: number }>>({});
@@ -166,6 +183,27 @@ const OutdoorSandboxInner: React.FC = () => {
     const outdoorIds = new Set(outdoorNodes.map((n) => n.id));
     return edges.filter((e) => outdoorIds.has(e.source) && outdoorIds.has(e.target));
   }, [edges, outdoorNodes]);
+
+  // Keep camera scroll slider synchronized with viewport size & scroll position
+  const syncCameraScrollMetrics = useCallback(() => {
+    const vp = scrollViewportRef.current;
+    if (!vp) return;
+    const maxScroll = Math.max(0, vp.scrollWidth - vp.clientWidth);
+    setMaxCameraScrollX(maxScroll);
+    setCameraScrollX(Math.round(vp.scrollLeft));
+  }, []);
+
+  useEffect(() => {
+    syncCameraScrollMetrics();
+    window.addEventListener('resize', syncCameraScrollMetrics);
+    return () => window.removeEventListener('resize', syncCameraScrollMetrics);
+  }, [syncCameraScrollMetrics]);
+
+  const scrollWorldBy = useCallback((deltaX: number) => {
+    const vp = scrollViewportRef.current;
+    if (!vp) return;
+    vp.scrollBy({ left: deltaX, behavior: 'smooth' });
+  }, []);
 
   // Run Gravity (falling Dirt/Water + Liquid Leveling) and 3-Second Grass Growth physics loop
   useEffect(() => {
@@ -371,12 +409,15 @@ const OutdoorSandboxInner: React.FC = () => {
 
   /**
    * Spawns a ready-to-use Outdoor Renewable Power Station (Solar Panel 12V + Wind Turbine + Transmission Tower)
-   * grounded directly on the grassy terrain surface!
+   * grounded directly on the grassy terrain surface across the spacious 1360px panoramic world!
    */
   const handleSpawnOutdoorPowerStation = useCallback(() => {
     const state = useCircuitStore.getState();
     const bounds = containerRef.current?.getBoundingClientRect();
-    const canvasWidth = bounds && bounds.width > 200 ? bounds.width : 960;
+    const canvasWidth =
+      bounds && bounds.width >= OUTDOOR_WORLD_MIN_WIDTH
+        ? bounds.width
+        : OUTDOOR_WORLD_MIN_WIDTH;
     const canvasHeight = bounds && bounds.height > 250 ? bounds.height : 680;
 
     // Clear existing outdoor nodes first to avoid overlap
@@ -392,17 +433,15 @@ const OutdoorSandboxInner: React.FC = () => {
     const turbineId = `wind_out_${Date.now() + 1}`;
     const towerId = `tower_out_${Date.now() + 2}`;
 
-    // Calculate responsive X positions on the left grassy highland (columns 0..22, avoiding water at cols 24..32)
-    const isCompactViewport = canvasWidth < 600;
-    const solarX = isCompactViewport ? 8 : Math.round(canvasWidth * 0.04);
-    const turbineX = isCompactViewport
-      ? Math.round(canvasWidth * 0.34)
-      : Math.round(canvasWidth * 0.24);
-    const towerX = isCompactViewport
-      ? Math.round(canvasWidth * 0.66)
-      : Math.round(canvasWidth * 0.44);
+    // Spacious placement across the left & center grassy highland (columns 1..22)
+    const solarX = 60;
+    const turbineX = 290;
+    const towerX = 530;
 
-    const computeGroundedY = (x: number, type: 'solar-panel' | 'wind-turbine' | 'transmission-tower') => {
+    const computeGroundedY = (
+      x: number,
+      type: 'solar-panel' | 'wind-turbine' | 'transmission-tower'
+    ) => {
       const box = getComponentBoundingBox({ x, y: 0 }, type);
       const { surfaceY } = findTerrainSurfaceY(
         box,
@@ -534,210 +573,249 @@ const OutdoorSandboxInner: React.FC = () => {
   ];
 
   return (
-    <div
-      ref={containerRef}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
-      onPointerDown={(e) => {
-        // Never block or hijack pointer events when touching a component node, handle, or wire!
-        const targetEl = e.target as HTMLElement | null;
-        if (
-          targetEl?.closest(
-            '.react-flow__node, .react-flow__handle, .react-flow__edge, button, input'
-          )
-        ) {
-          return;
-        }
-        if (terrainBrush !== 'cursor') {
-          setIsPaintingTerrain(true);
-          handleTerrainPointerAction(e.clientX, e.clientY);
-        }
-      }}
-      onPointerMove={(e) => {
-        if (
-          isPaintingTerrain &&
-          terrainBrush !== 'cursor' &&
-          !activeDraggedNodeIdRef.current
-        ) {
-          handleTerrainPointerAction(e.clientX, e.clientY);
-        }
-      }}
-      onPointerUp={() => setIsPaintingTerrain(false)}
-      onPointerLeave={() => setIsPaintingTerrain(false)}
-      className={`w-full h-full relative overflow-hidden select-none ${
-        terrainBrush !== 'cursor' ? 'cursor-crosshair' : ''
-      }`}
-    >
+    <div className="w-full h-full relative overflow-hidden select-none">
       {/* ====================================================================
-          LAYER 0 (z-0): Blue Sky Nature Background (`nature-sunny.png`)
+          PANORAMIC SCROLLABLE WORLD VIEWPORT (1360px Minimum Width)
+          Allows panning across the entire 40-column landscape on mobile & desktop!
          ==================================================================== */}
       <div
-        className="absolute inset-0 bg-cover bg-center pointer-events-none z-0"
-        style={{
-          backgroundImage: "url('/assets/nature-sunny.png')",
-        }}
+        id="outdoor-scroll-viewport"
+        ref={scrollViewportRef}
+        onScroll={syncCameraScrollMetrics}
+        className="w-full h-full overflow-x-auto overflow-y-hidden scroll-smooth"
       >
-        {/* Subtle atmospheric sky gradient for crisp UI contrast */}
-        <div className="absolute inset-0 bg-gradient-to-b from-sky-950/25 via-transparent to-black/25" />
-      </div>
-
-      {/* ====================================================================
-          LAYER 1 (z-10): 40x20 2D Terrain Grid (DIRT & Cohesive Liquid WATER)
-         ==================================================================== */}
-      <div
-        className="absolute inset-0 grid pointer-events-none z-10"
-        style={{
-          gridTemplateColumns: `repeat(${GRID_COLS}, minmax(0, 1fr))`,
-          gridTemplateRows: `repeat(${GRID_ROWS}, minmax(0, 1fr))`,
-        }}
-      >
-        {terrainGrid.map((rowCells, rIdx) =>
-          rowCells.map((cellType, cIdx) => {
-            const key = `${rIdx}-${cIdx}`;
-            if (cellType === 'EMPTY') {
-              return (
-                <div
-                  key={key}
-                  className={
-                    terrainBrush !== 'cursor'
-                      ? 'border-[0.5px] border-white/[0.04]'
-                      : ''
-                  }
-                />
-              );
+        <div
+          id="outdoor-world-stage"
+          ref={containerRef}
+          style={{ minWidth: `${OUTDOOR_WORLD_MIN_WIDTH}px` }}
+          onDragOver={onDragOver}
+          onDrop={onDrop}
+          onPointerDown={(e) => {
+            // Never block or hijack pointer events when touching a component node, handle, or wire!
+            const targetEl = e.target as HTMLElement | null;
+            if (
+              targetEl?.closest(
+                '.react-flow__node, .react-flow__handle, .react-flow__edge, button, input'
+              )
+            ) {
+              return;
             }
-
-            if (cellType === 'WATER') {
-              const isTopWaterSurface =
-                rIdx === 0 || terrainGrid[rIdx - 1]?.[cIdx] === 'EMPTY';
-              return (
-                <div
-                  key={key}
-                  className="w-[calc(100%+1px)] h-[calc(100%+1px)] relative overflow-hidden bg-sky-500/25"
-                  style={{
-                    backgroundImage: "url('/assets/tile-water.png')",
-                    backgroundSize: '120px 120px',
-                    backgroundPosition: `-${(cIdx % 6) * 20}px -${(rIdx % 6) * 20}px`,
-                    opacity: 0.72,
-                  }}
-                >
-                  {/* Continuous liquid surface crest highlight only on top-most water row */}
-                  {isTopWaterSurface && (
-                    <div className="absolute inset-x-0 top-0 h-[3px] bg-cyan-200/85 shadow-[0_0_8px_rgba(103,232,249,0.95)]" />
-                  )}
-                </div>
-              );
+            if (terrainBrush !== 'cursor') {
+              setIsPaintingTerrain(true);
+              handleTerrainPointerAction(e.clientX, e.clientY);
+            } else if (scrollViewportRef.current) {
+              // In 'Geser & Kabel' mode, dragging empty sky/terrain smoothly pans the camera horizontally!
+              panDragStateRef.current = {
+                isPanning: true,
+                startClientX: e.clientX,
+                startScrollLeft: scrollViewportRef.current.scrollLeft,
+              };
             }
-
-            // Both 'DIRT' and 'GRASS' have a solid 'tile-dirt.png' earth foundation
-            return (
-              <div
-                key={key}
-                className="w-[calc(100%+1px)] h-[calc(100%+1px)] relative"
-                style={{
-                  backgroundImage: "url('/assets/tile-dirt.png')",
-                  backgroundSize: '100% 100%',
-                }}
-              />
-            );
-          })
-        )}
-      </div>
-
-      {/* ====================================================================
-          LAYER 2 (z-20): Free-Position Power Source Components & Wires
-          (Always pointer-events-auto on nodes so dragging NEVER gets stuck!)
-         ==================================================================== */}
-      <div className="absolute inset-0 z-20 pointer-events-auto">
-        <ReactFlow
-          nodes={outdoorNodes}
-          edges={outdoorEdges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          onInit={(instance) => {
-            setReactFlowInstance(instance);
-            instance.setViewport({ x: 0, y: 0, zoom: 1 });
           }}
-          onNodeDragStart={onNodeDragStart}
-          onNodeDragStop={onNodeDragStop}
-          onEdgeDoubleClick={onEdgeDoubleClick}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          defaultEdgeOptions={defaultEdgeOptions}
-          connectionLineType={ConnectionLineType.Bezier}
-          connectionMode={ConnectionMode.Loose}
-          connectionLineStyle={connectionLineStyle}
-          onNodeClick={(_, node) => {
-            selectEdge(null);
-            selectNode(node.id);
-          }}
-          onEdgeClick={(_, edge) => {
-            selectNode(null);
-            selectEdge(edge.id);
-          }}
-          onPaneClick={() => {
-            selectNode(null);
-            selectEdge(null);
-          }}
-          defaultViewport={{ x: 0, y: 0, zoom: 1 }}
-          minZoom={1}
-          maxZoom={1}
-          panOnDrag={false}
-          zoomOnScroll={false}
-          zoomOnPinch={false}
-          zoomOnDoubleClick={false}
-          preventScrolling={false}
-          snapToGrid={false}
-          deleteKeyCode={['Backspace', 'Delete']}
-          className="bg-transparent w-full h-full"
-        />
-      </div>
-
-      {/* ====================================================================
-          LAYER 3 (z-30, HIGHEST OVER GRID & COMPONENTS): Grass Layer Overlay
-          Uses `grass-layer.png` with `pointer-events: none` so placed components
-          look naturally embedded / sunken into the lush green grass blades!
-         ==================================================================== */}
-      <div
-        className="absolute inset-0 grid pointer-events-none z-30"
-        style={{
-          gridTemplateColumns: `repeat(${GRID_COLS}, minmax(0, 1fr))`,
-          gridTemplateRows: `repeat(${GRID_ROWS}, minmax(0, 1fr))`,
-        }}
-      >
-        {terrainGrid.map((rowCells, rIdx) =>
-          rowCells.map((cellType, cIdx) => {
-            const key = `grass-${rIdx}-${cIdx}`;
-            if (cellType !== 'GRASS') {
-              return <div key={key} />;
+          onPointerMove={(e) => {
+            if (
+              isPaintingTerrain &&
+              terrainBrush !== 'cursor' &&
+              !activeDraggedNodeIdRef.current
+            ) {
+              handleTerrainPointerAction(e.clientX, e.clientY);
+            } else if (
+              panDragStateRef.current.isPanning &&
+              terrainBrush === 'cursor' &&
+              !activeDraggedNodeIdRef.current &&
+              scrollViewportRef.current
+            ) {
+              const deltaX = e.clientX - panDragStateRef.current.startClientX;
+              scrollViewportRef.current.scrollLeft =
+                panDragStateRef.current.startScrollLeft - deltaX;
             }
+          }}
+          onPointerUp={() => {
+            setIsPaintingTerrain(false);
+            panDragStateRef.current.isPanning = false;
+          }}
+          onPointerLeave={() => {
+            setIsPaintingTerrain(false);
+            panDragStateRef.current.isPanning = false;
+          }}
+          className={`w-full h-full relative overflow-hidden select-none ${
+            terrainBrush !== 'cursor'
+              ? 'cursor-crosshair'
+              : 'cursor-grab active:cursor-grabbing'
+          }`}
+        >
+          {/* ====================================================================
+              LAYER 0 (z-0): Blue Sky Nature Background (`nature-sunny.png`)
+             ==================================================================== */}
+          <div
+            className="absolute inset-0 bg-cover bg-center pointer-events-none z-0"
+            style={{
+              backgroundImage: "url('/assets/nature-sunny.png')",
+            }}
+          >
+            {/* Subtle atmospheric sky gradient for crisp UI contrast */}
+            <div className="absolute inset-0 bg-gradient-to-b from-sky-950/25 via-transparent to-black/25" />
+          </div>
 
-            return (
-              <div key={key} className="relative w-full h-full overflow-visible">
-                <img
-                  src="/assets/grass-layer.png"
-                  alt=""
-                  draggable={false}
-                  className="absolute inset-x-0 -top-[65%] w-[108%] -left-[4%] h-[145%] max-w-none object-cover pointer-events-none select-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.45)]"
-                />
-              </div>
-            );
-          })
-        )}
+          {/* ====================================================================
+              LAYER 1 (z-10): 40x20 2D Terrain Grid (DIRT & Cohesive Liquid WATER)
+             ==================================================================== */}
+          <div
+            className="absolute inset-0 grid pointer-events-none z-10"
+            style={{
+              gridTemplateColumns: `repeat(${GRID_COLS}, minmax(0, 1fr))`,
+              gridTemplateRows: `repeat(${GRID_ROWS}, minmax(0, 1fr))`,
+            }}
+          >
+            {terrainGrid.map((rowCells, rIdx) =>
+              rowCells.map((cellType, cIdx) => {
+                const key = `${rIdx}-${cIdx}`;
+                if (cellType === 'EMPTY') {
+                  return (
+                    <div
+                      key={key}
+                      className={
+                        terrainBrush !== 'cursor'
+                          ? 'border-[0.5px] border-white/[0.04]'
+                          : ''
+                      }
+                    />
+                  );
+                }
+
+                if (cellType === 'WATER') {
+                  const isTopWaterSurface =
+                    rIdx === 0 || terrainGrid[rIdx - 1]?.[cIdx] === 'EMPTY';
+                  return (
+                    <div
+                      key={key}
+                      className="w-[calc(100%+1px)] h-[calc(100%+1px)] relative overflow-hidden bg-sky-500/25"
+                      style={{
+                        backgroundImage: "url('/assets/tile-water.png')",
+                        backgroundSize: '120px 120px',
+                        backgroundPosition: `-${(cIdx % 6) * 20}px -${(rIdx % 6) * 20}px`,
+                        opacity: 0.72,
+                      }}
+                    >
+                      {/* Continuous liquid surface crest highlight only on top-most water row */}
+                      {isTopWaterSurface && (
+                        <div className="absolute inset-x-0 top-0 h-[3px] bg-cyan-200/85 shadow-[0_0_8px_rgba(103,232,249,0.95)]" />
+                      )}
+                    </div>
+                  );
+                }
+
+                // Both 'DIRT' and 'GRASS' have a solid 'tile-dirt.png' earth foundation
+                return (
+                  <div
+                    key={key}
+                    className="w-[calc(100%+1px)] h-[calc(100%+1px)] relative"
+                    style={{
+                      backgroundImage: "url('/assets/tile-dirt.png')",
+                      backgroundSize: '100% 100%',
+                    }}
+                  />
+                );
+              })
+            )}
+          </div>
+
+          {/* ====================================================================
+              LAYER 2 (z-20): Free-Position Power Source Components & Wires
+              (Always pointer-events-auto on nodes so dragging NEVER gets stuck!)
+             ==================================================================== */}
+          <div className="absolute inset-0 z-20 pointer-events-auto">
+            <ReactFlow
+              nodes={outdoorNodes}
+              edges={outdoorEdges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
+              onInit={(instance) => {
+                setReactFlowInstance(instance);
+                instance.setViewport({ x: 0, y: 0, zoom: 1 });
+              }}
+              onNodeDragStart={onNodeDragStart}
+              onNodeDragStop={onNodeDragStop}
+              onEdgeDoubleClick={onEdgeDoubleClick}
+              nodeTypes={nodeTypes}
+              edgeTypes={edgeTypes}
+              defaultEdgeOptions={defaultEdgeOptions}
+              connectionLineType={ConnectionLineType.Bezier}
+              connectionMode={ConnectionMode.Loose}
+              connectionLineStyle={connectionLineStyle}
+              onNodeClick={(_, node) => {
+                selectEdge(null);
+                selectNode(node.id);
+              }}
+              onEdgeClick={(_, edge) => {
+                selectNode(null);
+                selectEdge(edge.id);
+              }}
+              onPaneClick={() => {
+                selectNode(null);
+                selectEdge(null);
+              }}
+              defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+              minZoom={1}
+              maxZoom={1}
+              panOnDrag={false}
+              zoomOnScroll={false}
+              zoomOnPinch={false}
+              zoomOnDoubleClick={false}
+              preventScrolling={false}
+              snapToGrid={false}
+              deleteKeyCode={['Backspace', 'Delete']}
+              className="bg-transparent w-full h-full"
+            />
+          </div>
+
+          {/* ====================================================================
+              LAYER 3 (z-30, LOW-PROFILE GRASS BLADES): Grass Layer Overlay
+              Uses `-top-[24%] h-[108%]` with `pointer-events: none` so component
+              feet look naturally planted in grass WITHOUT covering `+` / `-` handles!
+             ==================================================================== */}
+          <div
+            className="absolute inset-0 grid pointer-events-none z-30"
+            style={{
+              gridTemplateColumns: `repeat(${GRID_COLS}, minmax(0, 1fr))`,
+              gridTemplateRows: `repeat(${GRID_ROWS}, minmax(0, 1fr))`,
+            }}
+          >
+            {terrainGrid.map((rowCells, rIdx) =>
+              rowCells.map((cellType, cIdx) => {
+                const key = `grass-${rIdx}-${cIdx}`;
+                if (cellType !== 'GRASS') {
+                  return <div key={key} />;
+                }
+
+                return (
+                  <div key={key} className="relative w-full h-full overflow-visible">
+                    <img
+                      src="/assets/grass-layer.png"
+                      alt=""
+                      draggable={false}
+                      className="absolute inset-x-0 -top-[24%] w-[108%] -left-[4%] h-[108%] max-w-none object-cover pointer-events-none select-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.45)]"
+                    />
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* ====================================================================
+              LAYER 4 (z-40): Water / Height Explosion Particle Overlay
+             ==================================================================== */}
+          <div className="absolute inset-0 pointer-events-none z-40 overflow-hidden">
+            {explosions.map((exp) => (
+              <WaterExplosionEffect key={exp.id} explosion={exp} />
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* ====================================================================
-          LAYER 4 (z-40): Water Short-Circuit Explosion Particle Overlay
-         ==================================================================== */}
-      <div className="absolute inset-0 pointer-events-none z-40 overflow-hidden">
-        {explosions.map((exp) => (
-          <WaterExplosionEffect key={exp.id} explosion={exp} />
-        ))}
-      </div>
-
-      {/* ====================================================================
-          TOP FLOATING SANDBOX TOOLBAR (Terrain Brushes & Power Station Spawner)
+          TOP FLOATING SANDBOX TOOLBAR (Fixed to Screen Viewport)
          ==================================================================== */}
       <div
         onPointerDown={(e) => e.stopPropagation()}
@@ -780,7 +858,7 @@ const OutdoorSandboxInner: React.FC = () => {
           </button>
         </div>
 
-        {/* Right: Quick Demo Generator & Physics Rules Hint */}
+        {/* Right: Quick Demo Generator */}
         <div className="flex items-center gap-2 pointer-events-auto">
           <button
             type="button"
@@ -797,29 +875,52 @@ const OutdoorSandboxInner: React.FC = () => {
         </div>
       </div>
 
-      {/* Bottom-Left Educational Physics Legend */}
-      <div className="hidden sm:flex absolute bottom-3 left-3 z-40 items-center gap-3 px-3.5 py-2 rounded-2xl bg-void-950/85 backdrop-blur-md border border-white/15 text-[11px] text-slate-200 shadow-xl pointer-events-none">
-        <span className="flex items-center gap-1 text-emerald-300 font-medium">
-          <Sprout className="w-3.5 h-3.5 text-emerald-400" />
-          {isId
-            ? 'Tanah terpapar udara 3 detik → Tumbuh Rumput'
-            : 'Air-exposed Dirt (3s) → Grows Grass'}
-        </span>
-        <span className="text-white/20">|</span>
-        <span className="flex items-center gap-1 text-sky-300 font-medium">
-          <Droplets className="w-3.5 h-3.5 text-sky-400" />
-          {isId
-            ? 'Jatuhkan komponen ke Air → Meledak Korsleting!'
-            : 'Drop component on Water → Short-Circuit Explosion!'}
-        </span>
-        <span className="text-white/20">|</span>
-        <span className="flex items-center gap-1 text-amber-300 font-medium">
-          <Zap className="w-3.5 h-3.5 text-amber-400" />
-          {isId
-            ? 'Sambung ke Menara Transmisi untuk kirim daya ke Lab'
-            : 'Wire to Transmission Tower to send power to Lab'}
-        </span>
-      </div>
+      {/* ====================================================================
+          BOTTOM WORLD CAMERA NAVIGATION BAR (Visible when World > Viewport)
+         ==================================================================== */}
+      {maxCameraScrollX > 10 && (
+        <div
+          onPointerDown={(e) => e.stopPropagation()}
+          className="absolute bottom-2.5 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 px-3 py-1.5 rounded-full bg-void-950/90 backdrop-blur-md border border-white/15 shadow-[0_8px_25px_rgba(0,0,0,0.65)] pointer-events-auto max-w-[92vw]"
+        >
+          <button
+            type="button"
+            onClick={() => scrollWorldBy(-280)}
+            className="p-1 rounded-full bg-void-850 hover:bg-void-800 text-cyan-300 border border-white/10 active:scale-95 cursor-pointer"
+            title={isId ? 'Geser Kamera ke Kiri' : 'Pan Camera Left'}
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+
+          <div className="flex items-center gap-2 min-w-[140px] sm:min-w-[200px]">
+            <Compass className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <input
+              type="range"
+              min={0}
+              max={maxCameraScrollX}
+              value={Math.min(cameraScrollX, maxCameraScrollX)}
+              onChange={(e) => {
+                const nextX = Number(e.target.value);
+                setCameraScrollX(nextX);
+                if (scrollViewportRef.current) {
+                  scrollViewportRef.current.scrollLeft = nextX;
+                }
+              }}
+              className="w-full h-1.5 bg-void-800 rounded-lg appearance-none cursor-pointer accent-emerald-400"
+              aria-label={isId ? 'Geser Kamera Dunia Alam' : 'Pan Outdoor World Camera'}
+            />
+          </div>
+
+          <button
+            type="button"
+            onClick={() => scrollWorldBy(280)}
+            className="p-1 rounded-full bg-void-850 hover:bg-void-800 text-cyan-300 border border-white/10 active:scale-95 cursor-pointer"
+            title={isId ? 'Geser Kamera ke Kanan (Sungai)' : 'Pan Camera Right (River)'}
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Suppress unused reactFlowInstance lint warning while keeping reference */}
       {reactFlowInstance ? null : null}

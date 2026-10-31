@@ -52,12 +52,12 @@ export const WindTurbineNode: React.FC<NodeProps<CircuitElementData>> = memo(
 
     return (
       <div
-        className={`relative flex flex-col items-center select-none transition-all duration-200 group w-[164px] ${
+        className={`relative flex flex-col items-center select-none transition-all duration-200 group w-[144px] ${
           selected ? 'filter drop-shadow-[0_0_18px_rgba(34,211,238,0.6)]' : ''
         }`}
       >
-        {/* Top Floating Control & Voltage Pill (Above Rotor so Base Feet Sit on Ground) */}
-        <div className="nodrag mb-1.5 w-full px-2.5 py-1.5 rounded-2xl bg-void-950/85 backdrop-blur-md border border-cyan-400/35 shadow-[0_8px_20px_rgba(0,0,0,0.45)] flex flex-col gap-1 z-30">
+        {/* Top Floating Control & Voltage Pill */}
+        <div className="nodrag mb-1 w-full px-2 py-1.5 rounded-2xl bg-void-950/90 backdrop-blur-md border border-cyan-400/40 shadow-[0_8px_20px_rgba(0,0,0,0.45)] flex flex-col gap-1 z-30">
           <div className="flex items-center justify-between text-[10px] font-mono">
             <span className="flex items-center gap-1 font-bold text-cyan-300 truncate">
               <Wind
@@ -92,22 +92,22 @@ export const WindTurbineNode: React.FC<NodeProps<CircuitElementData>> = memo(
           </div>
         </div>
 
-        {/* Physical Wind Turbine Assembly: Mast Base Anchored at Bottom-0 (Planted in Grass) */}
-        <div className="relative w-[164px] h-[196px] flex items-end justify-center overflow-visible">
-          {/* Stationary Tapered Tower Mast (height 152px, hub center at 7.54% from top = 140.5px from bottom) */}
+        {/* Physical Wind Turbine Assembly: Mast Base Anchored at Bottom-0 */}
+        <div className="relative w-[144px] h-[184px] flex items-end justify-center overflow-visible">
+          {/* Stationary Tapered Tower Mast (height 144px, hub center at 7.54% from top = 133.1px from bottom) */}
           <img
             src="/assets/wind-turbine-mast.png"
             alt="Turbine Mast"
-            className="h-[152px] w-auto object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.45)] pointer-events-none select-none z-10"
+            className="h-[144px] w-auto object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.45)] pointer-events-none select-none z-10"
             draggable={false}
           />
 
-          {/* 3-Blade Rotor Locked to Exact Nacelle Hub Center (left: 50%, bottom: 140.5px) */}
+          {/* 3-Blade Rotor Locked to Exact Nacelle Hub Center (left: 50%, bottom: 133.1px) */}
           <div
-            className="absolute w-[152px] h-[152px] flex items-center justify-center z-20 pointer-events-none"
+            className="absolute w-[142px] h-[142px] flex items-center justify-center z-20 pointer-events-none"
             style={{
               left: '50%',
-              bottom: '140.5px',
+              bottom: '133.1px',
               transform: 'translate(-50%, 50%)',
             }}
           >
@@ -156,23 +156,31 @@ export const WindTurbineNode: React.FC<NodeProps<CircuitElementData>> = memo(
             />
           </div>
 
-          {/* Grounded Base Terminals (+ and -) Right on the Mast Footing */}
+          {/* High-Visibility Terminals (+ and -) Positioned at Lower Service Box ABOVE Grass Line! */}
           <Handle
             type="source"
             position={Position.Bottom}
             id="pos"
-            style={{ left: '38%', bottom: '2px' }}
-            className="!w-4 !h-4 !bg-red-500 !border-2 !border-white !rounded-full shadow-[0_0_10px_rgba(239,68,68,0.9)] hover:!scale-125 transition-transform cursor-crosshair z-30"
+            style={{ left: '34%', bottom: '18px', transform: 'translateX(-50%)' }}
+            className="!w-5 !h-5 !bg-red-500 !border-2 !border-white !rounded-full shadow-[0_0_12px_rgba(239,68,68,0.95)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center"
             title={isId ? 'Kutub Positif (+)' : 'Positive Terminal (+)'}
-          />
+          >
+            <span className="text-[10px] font-mono font-black text-white leading-none pointer-events-none">
+              +
+            </span>
+          </Handle>
           <Handle
             type="source"
             position={Position.Bottom}
             id="neg"
-            style={{ left: '62%', bottom: '2px' }}
-            className="!w-4 !h-4 !bg-sky-400 !border-2 !border-white !rounded-full shadow-[0_0_10px_rgba(56,189,248,0.9)] hover:!scale-125 transition-transform cursor-crosshair z-30"
+            style={{ left: '66%', bottom: '18px', transform: 'translateX(-50%)' }}
+            className="!w-5 !h-5 !bg-sky-500 !border-2 !border-white !rounded-full shadow-[0_0_12px_rgba(56,189,248,0.95)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center"
             title={isId ? 'Kutub Negatif (-)' : 'Negative Terminal (-)'}
-          />
+          >
+            <span className="text-[11px] font-mono font-black text-white leading-none pointer-events-none">
+              -
+            </span>
+          </Handle>
         </div>
       </div>
     );

@@ -70,16 +70,16 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
 
   return (
     <div
-      className={`relative flex flex-col items-center select-none transition-all duration-200 w-[168px] group ${
+      className={`relative flex flex-col items-center select-none transition-all duration-200 w-[144px] group ${
         selected ? 'filter drop-shadow-[0_0_18px_rgba(245,158,11,0.55)]' : ''
       }`}
     >
-      {/* Top Floating Control & Weather Pill (Above Panel so Mounting Legs Sit on Grass) */}
+      {/* Top Floating Control & Weather Pill */}
       <div
-        className={`nodrag mb-1 w-full px-2.5 py-1.5 rounded-2xl backdrop-blur-md border shadow-[0_8px_20px_rgba(0,0,0,0.45)] flex flex-col gap-1 z-30 ${
+        className={`nodrag mb-1 w-full px-2 py-1.5 rounded-2xl backdrop-blur-md border shadow-[0_8px_20px_rgba(0,0,0,0.45)] flex flex-col gap-1 z-30 ${
           isShorted
             ? 'bg-red-950/90 border-danger-500 animate-pulse'
-            : 'bg-void-950/85 border-amber-400/35'
+            : 'bg-void-950/90 border-amber-400/40'
         }`}
       >
         <div className="flex items-center justify-between gap-1 text-[10px] font-mono">
@@ -162,13 +162,13 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
         />
       </div>
 
-      {/* Physical Photovoltaic Panel Asset: Base Feet Anchored at Bottom-0 (Planted in Grass) */}
-      <div className="relative w-[156px] h-[96px] flex items-end justify-center">
+      {/* Physical Photovoltaic Panel + Ground Support Stand (Elevates Terminals Above Grass!) */}
+      <div className="relative w-[136px] h-[98px] flex flex-col items-center justify-end pb-3.5 overflow-visible">
         <img
           src="/assets/solar-panel.png"
           alt={t.title}
           draggable={false}
-          className={`w-full h-full object-contain pointer-events-none select-none transition-all duration-300 ${
+          className={`w-full h-[84px] object-contain pointer-events-none select-none transition-all duration-300 z-10 ${
             isDark ? 'opacity-60 grayscale-[0.45]' : ''
           } ${
             isGenerating
@@ -177,31 +177,45 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
           }`}
         />
 
+        {/* Metallic Ground Support Stakes (planted into grass so terminals stay clearly visible above grass) */}
+        <div className="w-[46%] flex justify-between px-1 -mt-1 pointer-events-none z-0">
+          <div className="w-2 h-4 bg-gradient-to-b from-slate-300 to-slate-600 rounded-b-sm shadow" />
+          <div className="w-2 h-4 bg-gradient-to-b from-slate-300 to-slate-600 rounded-b-sm shadow" />
+        </div>
+
         {isDark && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
             <span className="bg-void-950/90 text-slate-300 border border-white/15 text-[9px] font-mono font-semibold px-2 py-0.5 rounded shadow">
               {isId ? '0V / Gelap' : '0V / Dark'}
             </span>
           </div>
         )}
 
-        {/* Grounded Base Terminals (+ and -) at the Copper Stand Feet */}
+        {/* Elevated, High-Visibility Terminals (+ and -) Clearly Above the Grass Line */}
         <Handle
           type="source"
           position={Position.Bottom}
           id="pos"
-          style={{ left: '41%', bottom: '2px' }}
-          className="!w-4 !h-4 !bg-red-500 !border-2 !border-white !rounded-full shadow-[0_0_10px_rgba(239,68,68,0.9)] hover:!scale-125 transition-transform cursor-crosshair z-30"
+          style={{ left: '38%', bottom: '12px', transform: 'translateX(-50%)' }}
+          className="!w-5 !h-5 !bg-red-500 !border-2 !border-white !rounded-full shadow-[0_0_12px_rgba(239,68,68,0.95)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center"
           title={isId ? 'Kutub Positif (+)' : 'Positive Terminal (+)'}
-        />
+        >
+          <span className="text-[10px] font-mono font-black text-white leading-none pointer-events-none">
+            +
+          </span>
+        </Handle>
         <Handle
           type="source"
           position={Position.Bottom}
           id="neg"
-          style={{ left: '59%', bottom: '2px' }}
-          className="!w-4 !h-4 !bg-sky-400 !border-2 !border-white !rounded-full shadow-[0_0_10px_rgba(56,189,248,0.9)] hover:!scale-125 transition-transform cursor-crosshair z-30"
+          style={{ left: '62%', bottom: '12px', transform: 'translateX(-50%)' }}
+          className="!w-5 !h-5 !bg-sky-500 !border-2 !border-white !rounded-full shadow-[0_0_12px_rgba(56,189,248,0.95)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center"
           title={`${formattedCurrent} (-)`}
-        />
+        >
+          <span className="text-[11px] font-mono font-black text-white leading-none pointer-events-none">
+            -
+          </span>
+        </Handle>
       </div>
     </div>
   );
