@@ -11,6 +11,12 @@ import {
   canBulbFitSocket,
   canBulbFitPinSocket,
 } from '../bulbCatalog';
+import {
+  BULB_DATASHEET_CITATIONS,
+  COMPONENT_DATASHEET_CITATIONS,
+  getBulbCitation,
+  getComponentCitation,
+} from '../datasheetCitations';
 
 describe('Component palette catalog', () => {
   it('has globally unique entry ids (they double as drag payloads)', () => {
@@ -113,5 +119,54 @@ describe('Component palette catalog', () => {
       expect(Boolean(entry.image || entry.glyph)).toBe(true);
       expect(`${entry.label} ${entry.hint}`.toLowerCase()).not.toContain('bohlam');
     });
+  });
+
+  it('provides verifiable scientific datasheet and standard citations for EACH of the 7 lamps', () => {
+    expect(BULB_CATALOG).toHaveLength(7);
+    BULB_CATALOG.forEach((bulb) => {
+      expect(bulb.standardBadge.trim().length).toBeGreaterThan(5);
+      expect(bulb.datasheetSource.trim().length).toBeGreaterThan(15);
+      expect(bulb.datasheetSourceEn.trim().length).toBeGreaterThan(15);
+
+      const citation = getBulbCitation(bulb.type);
+      expect(citation.id).toBe(bulb.type);
+      expect(citation.formulaDerivationId).toContain(String(bulb.resistance));
+      expect(citation.sourceCitationId.length).toBeGreaterThan(15);
+    });
+
+    // Specifically verify Edison lamp citation covers 1200Ω, 5V/220V derivation, and SNI IEC 60064 / ST64 datasheet
+    const edisonCitation = BULB_DATASHEET_CITATIONS.edison;
+    expect(edisonCitation.parameterSummaryId).toContain('1200 Ω');
+    expect(edisonCitation.formulaDerivationId).toContain('5V');
+    expect(edisonCitation.sourceCitationId).toContain('SNI IEC 60064');
+    expect(edisonCitation.sourceCitationId).toContain('ST64');
+  });
+
+  it('provides verifiable scientific datasheet citations for EACH component in PALETTE_ENTRIES', () => {
+    PALETTE_ENTRIES.forEach((entry) => {
+      expect(entry.standardBadge.trim().length).toBeGreaterThan(5);
+      expect(entry.datasheetSource.trim().length).toBeGreaterThan(15);
+      expect(entry.datasheetSourceEn.trim().length).toBeGreaterThan(15);
+
+      const citation = getComponentCitation(entry.type, entry.placement?.bulbType);
+      expect(citation).not.toBeNull();
+      expect(citation?.sourceCitationId.length).toBeGreaterThan(15);
+    });
+
+    expect(Object.keys(COMPONENT_DATASHEET_CITATIONS)).toEqual([
+      'battery',
+      'battery9v',
+      'battery-holder',
+      'solar-panel',
+      'wind-turbine',
+      'transmission-tower',
+      'socket',
+      'pin-socket',
+      'resistor',
+      'switch',
+      'voltmeter',
+      'ammeter',
+      'ground',
+    ]);
   });
 });

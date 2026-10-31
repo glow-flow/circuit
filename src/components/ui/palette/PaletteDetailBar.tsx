@@ -33,6 +33,15 @@ export const PaletteDetailBar: React.FC<PaletteDetailBarProps> = ({
         <span className="shrink-0 font-mono text-[11px] text-electric-400">{entry.spec}</span>
       </div>
       <p className="mt-1 text-xs leading-snug text-slate-300 min-h-[2.25rem]">{displayHint}</p>
+      {entry.standardBadge && (
+        <div
+          className="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-400/25 text-[10px] font-mono text-emerald-300 truncate max-w-full"
+          title={entry.datasheetSource}
+        >
+          <span className="shrink-0">📚</span>
+          <span className="truncate">{entry.standardBadge}</span>
+        </div>
+      )}
       <button
         type="button"
         onClick={() => onPlace(entry)}

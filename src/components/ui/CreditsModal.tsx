@@ -1,9 +1,11 @@
 import React from 'react';
 import {
   Award,
+  BookOpen,
   Code2,
   Cpu,
   GraduationCap,
+  Lightbulb,
   Mail,
   Phone,
   ShieldCheck,
@@ -12,6 +14,11 @@ import {
   X,
 } from 'lucide-react';
 import { useCircuitStore } from '../../store/useCircuitStore';
+import {
+  BULB_DATASHEET_CITATIONS,
+  COMPONENT_DATASHEET_CITATIONS,
+  PLN_TARIFF_CITATION,
+} from '../../constants/datasheetCitations';
 
 export interface CreditsModalProps {
   isOpen: boolean;
@@ -261,6 +268,116 @@ export const CreditsModal: React.FC<CreditsModalProps> = ({ isOpen, onClose }) =
                   {tool}
                 </span>
               ))}
+            </div>
+          </div>
+
+          {/* Complete Scientific Datasheet & Standard Citations (Each of the 7 Lamps & Each Component) */}
+          <div className="rounded-xl bg-void-950 border border-emerald-500/30 p-3.5 space-y-3">
+            <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2">
+              <span className="text-[11px] font-bold text-emerald-300 flex items-center gap-1.5">
+                <BookOpen className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                {isId
+                  ? 'Sumber Data Ilmiah & Standar Datasheet (Tiap Lampu & Alat)'
+                  : 'Scientific Datasheet & Standard Citations (Each Lamp & Part)'}
+              </span>
+              <span className="px-2 py-0.5 rounded bg-emerald-500/15 border border-emerald-400/30 text-[9px] font-mono font-bold text-emerald-300">
+                SNI • IEC • PUIL
+              </span>
+            </div>
+
+            <p className="text-[11px] text-slate-300 leading-relaxed">
+              {isId
+                ? 'Seluruh parameter tegangan (V), hambatan (Ω), daya maksimum (W), hambatan dalam baterai, serta tarif listrik dihitung menggunakan rumus fisika (R = V²/P, Hukum Ohm & Kirchhoff) berdasarkan standar resmi dan datasheet pabrikan berikut:'
+                : 'All voltage (V), resistance (Ω), max power (W), battery internal resistance, and tariff parameters are derived from physics laws (R = V²/P, Ohm’s & Kirchhoff’s Laws) and cited from official standards and manufacturer datasheets:'}
+            </p>
+
+            {/* 1. All 7 Lamps */}
+            <div className="space-y-2">
+              <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
+                <Lightbulb className="w-3.5 h-3.5 text-amber-400" />
+                <span>
+                  {isId
+                    ? 'A. Spesifikasi & Sumber Data 7 Jenis Lampu (E.A.C.H Lamp)'
+                    : 'A. Specifications & Citations for Each of the 7 Lamps'}
+                </span>
+              </div>
+              <div className="space-y-2">
+                {Object.values(BULB_DATASHEET_CITATIONS).map((item) => (
+                  <div
+                    key={item.id}
+                    className="rounded-lg bg-void-900/90 border border-white/10 p-2.5 space-y-1 text-[10px]"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-1">
+                      <span className="font-bold text-white text-[11px]">
+                        {isId ? item.titleId : item.titleEn}
+                      </span>
+                      <span className="px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-400/30 font-mono text-[9px] text-amber-300">
+                        {item.standardBadge}
+                      </span>
+                    </div>
+                    <div className="font-mono text-electric-300">
+                      {isId ? item.parameterSummaryId : item.parameterSummaryEn}
+                    </div>
+                    <p className="text-slate-300 leading-relaxed">
+                      {isId ? item.formulaDerivationId : item.formulaDerivationEn}
+                    </p>
+                    <div className="text-emerald-300 font-mono pt-0.5">
+                      📚 {isId ? item.sourceCitationId : item.sourceCitationEn}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 2. All Other Components */}
+            <div className="space-y-2 pt-2 border-t border-white/10">
+              <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-cyan-300 flex items-center gap-1.5">
+                <Cpu className="w-3.5 h-3.5 text-cyan-400" />
+                <span>
+                  {isId
+                    ? 'B. Spesifikasi & Sumber Data Seluruh Komponen & Alat Ukur'
+                    : 'B. Specifications & Citations for Each Circuit Component'}
+                </span>
+              </div>
+              <div className="space-y-2">
+                {Object.values(COMPONENT_DATASHEET_CITATIONS).map((item) => (
+                  <div
+                    key={item.id}
+                    className="rounded-lg bg-void-900/90 border border-white/10 p-2.5 space-y-1 text-[10px]"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-1">
+                      <span className="font-bold text-white text-[11px]">
+                        {isId ? item.titleId : item.titleEn}
+                      </span>
+                      <span className="px-1.5 py-0.5 rounded bg-cyan-500/15 border border-cyan-400/30 font-mono text-[9px] text-cyan-300">
+                        {item.standardBadge}
+                      </span>
+                    </div>
+                    <div className="font-mono text-electric-300">
+                      {isId ? item.parameterSummaryId : item.parameterSummaryEn}
+                    </div>
+                    <p className="text-slate-300 leading-relaxed">
+                      {isId ? item.formulaDerivationId : item.formulaDerivationEn}
+                    </p>
+                    <div className="text-emerald-300 font-mono pt-0.5">
+                      📚 {isId ? item.sourceCitationId : item.sourceCitationEn}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 3. Official PLN Tariff Citation */}
+            <div className="rounded-lg bg-electric-500/10 border border-electric-400/30 p-2.5 text-[10px] space-y-1">
+              <div className="font-bold text-electric-300">
+                {isId ? PLN_TARIFF_CITATION.titleId : PLN_TARIFF_CITATION.titleEn}
+              </div>
+              <div className="font-mono text-slate-200 leading-relaxed">
+                📚{' '}
+                {isId
+                  ? PLN_TARIFF_CITATION.sourceCitationId
+                  : PLN_TARIFF_CITATION.sourceCitationEn}
+              </div>
             </div>
           </div>
         </div>

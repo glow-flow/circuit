@@ -4,6 +4,10 @@ import { Sliders, Trash2, Cpu, ShieldCheck, AlertTriangle, X, BookOpen, Scissors
 import { useCircuitStore } from '../../store/useCircuitStore';
 import { countVisibleWires } from '../../utils/socketSnap';
 import { BULB_CATALOG, BulbType, getBulbSpec } from '../../constants/bulbCatalog';
+import {
+  COMPONENT_DATASHEET_CITATIONS,
+  getComponentCitation,
+} from '../../constants/datasheetCitations';
 import { TRANSLATIONS } from '../../i18n/translations';
 import { PlnCostCalculatorCard } from './PlnCostCalculatorCard';
 
@@ -921,15 +925,23 @@ export const Inspector: React.FC<InspectorProps> = ({
             )}
 
             {(componentData.type === 'bulb' ||
-              (componentData.type === 'socket' && Boolean(componentData.installedBulb))) && (
+              ((componentData.type === 'socket' || componentData.type === 'pin-socket') &&
+                Boolean(componentData.installedBulb))) && (
               <div className="flex justify-between items-center">
                 <span className="text-slate-400 font-sans text-[11px]">{t.powerDissipated}</span>
                 <span className="text-amber-400 font-bold">
                   {(() => {
+                    const installedBulbType =
+                      componentData.installedBulb &&
+                      typeof componentData.installedBulb === 'object'
+                        ? componentData.installedBulb.bulbType
+                        : typeof componentData.installedBulb === 'string'
+                        ? componentData.installedBulb
+                        : componentData.bulbType;
                     const p =
                       branchCurrent *
                       branchCurrent *
-                      (componentData.resistance ?? getBulbSpec(componentData.bulbType).resistance);
+                      (componentData.resistance ?? getBulbSpec(installedBulbType).resistance);
                     return p > 0 && p < 0.1
                       ? `${(p * 1000).toFixed(2)} mW`
                       : `${p.toFixed(2)} W`;
@@ -939,6 +951,91 @@ export const Inspector: React.FC<InspectorProps> = ({
             )}
           </div>
         )}
+
+        {/* Verifiable Scientific Datasheet & Standard Citation Card (For Each Lamp & Each Component) */}
+        {(() => {
+          const activeBulbType =
+            (componentData.type === 'socket' || componentData.type === 'pin-socket') &&
+            componentData.installedBulb
+              ? typeof componentData.installedBulb === 'object'
+                ? componentData.installedBulb.bulbType
+                : componentData.installedBulb
+              : componentData.bulbType;
+
+          const primaryCitation = getComponentCitation(componentData.type, activeBulbType);
+          const socketHardwareCitation =
+            (componentData.type === 'socket' || componentData.type === 'pin-socket') &&
+            componentData.installedBulb
+              ? COMPONENT_DATASHEET_CITATIONS[componentData.type]
+              : null;
+
+          if (!primaryCitation) return null;
+
+          return (
+            <div className="rounded-xl bg-emerald-950/25 border border-emerald-500/30 p-3.5 space-y-2.5 text-xs">
+              <div className="flex items-center justify-between gap-2 border-b border-emerald-500/20 pb-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-300 flex items-center gap-1.5">
+                  <BookOpen className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span>
+                    {language === 'id'
+                      ? 'Sumber Data Ilmiah & Standar (SNI/IEC)'
+                      : 'Scientific Datasheet & Standard Citation'}
+                  </span>
+                </span>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex flex-wrap items-center justify-between gap-1.5">
+                  <span className="font-bold text-slate-100 text-[11px]">
+                    {language === 'id' ? primaryCitation.titleId : primaryCitation.titleEn}
+                  </span>
+                  <span className="px-2 py-0.5 rounded bg-emerald-500/15 border border-emerald-400/35 text-[9px] font-mono font-bold text-emerald-300">
+                    {primaryCitation.standardBadge}
+                  </span>
+                </div>
+
+                <div className="p-2 rounded-lg bg-void-950/80 border border-white/5 font-mono text-[10px] text-electric-300 leading-relaxed">
+                  {language === 'id'
+                    ? primaryCitation.parameterSummaryId
+                    : primaryCitation.parameterSummaryEn}
+                </div>
+
+                <p className="text-[11px] text-slate-300 leading-relaxed">
+                  <strong className="text-emerald-300">
+                    {language === 'id' ? 'Asal-Usul Data & Rumus: ' : 'Data Origin & Formula: '}
+                  </strong>
+                  {language === 'id'
+                    ? primaryCitation.formulaDerivationId
+                    : primaryCitation.formulaDerivationEn}
+                </p>
+
+                <div className="pt-1.5 border-t border-white/10 text-[10px] text-slate-300 leading-relaxed">
+                  <strong className="text-amber-300 font-semibold">
+                    {language === 'id' ? '📚 Sitasi Referensi: ' : '📚 Cited Source: '}
+                  </strong>
+                  <span className="font-mono text-slate-200">
+                    {language === 'id'
+                      ? primaryCitation.sourceCitationId
+                      : primaryCitation.sourceCitationEn}
+                  </span>
+                </div>
+
+                {socketHardwareCitation && (
+                  <div className="pt-1.5 border-t border-white/10 text-[10px] text-slate-400 leading-relaxed">
+                    <strong className="text-slate-200">
+                      {language === 'id' ? 'Standar Dudukan Fiting: ' : 'Socket Standard: '}
+                    </strong>
+                    <span className="font-mono">
+                      {language === 'id'
+                        ? socketHardwareCitation.sourceCitationId
+                        : socketHardwareCitation.sourceCitationEn}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Quick Button to View Global Circuit Telemetry & PLN Cost Calculator */}
         <button

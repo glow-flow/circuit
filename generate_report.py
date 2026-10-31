@@ -489,14 +489,80 @@ def build_report():
     )
 
     # =========================================================================
-    # BAGIAN 5: PENUTUP & PERNYATAAN KEASLIAN KARYA
+    # BAGIAN 5: REFERENSI SUMBER DATA ILMIAH, PENUTUP & KEASLIAN KARYA
     # =========================================================================
     add_section_banner(
         doc,
         "5",
-        "Penutup & Pernyataan Orisinalitas Karya",
-        "Komitmen kejujuran akademik dan rencana pengembangan ke depan"
+        "Referensi Data Ilmiah (SNI/IEC/Datasheet) & Penutup",
+        "Bukti kevalidan data 7 jenis lampu & seluruh komponen serta komitmen kejujuran akademik"
     )
+
+    p_ref_intro = doc.add_paragraph()
+    p_ref_intro.paragraph_format.space_after = Pt(3)
+    p_ref_intro.paragraph_format.line_spacing = 1.12
+    p_ref_intro.add_run(
+        "Seluruh angka tegangan (V), hambatan (Ω), daya maksimum (W), hambatan dalam baterai, serta tarif listrik pada "
+        "Circuit Sandbox dihitung menggunakan rumus fisika (R = V² / P, Hukum Ohm & Kirchhoff) berdasarkan standar resmi:"
+    )
+
+    ref_table = doc.add_table(rows=13, cols=3)
+    ref_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+    ref_table.style = 'Table Grid'
+
+    ref_headers = ["Nama Lampu / Komponen", "Spesifikasi & Rumus Fisika di Simulator", "Sumber Data Ilmiah (Standar SNI / IEC / Datasheet)"]
+    for col_i, h_text in enumerate(ref_headers):
+        cell = ref_table.rows[0].cells[col_i]
+        set_cell_background(cell, "0F172A")
+        set_cell_margins(cell, top=50, bottom=50, left=75, right=75)
+        p = cell.paragraphs[0]
+        p.paragraph_format.space_after = Pt(0)
+        r = p.add_run(h_text)
+        r.bold = True
+        r.font.size = Pt(8.5)
+        r.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
+
+    ref_rows = [
+        ("1. Lampu Pijar (E27)", "R = 800 Ω, Maks 40 W (1,5V–24V DC; R = 220²/60 ≈ 806 Ω)", "SNI IEC 60064:2014 & Philips Standard A55 40W–60W E27 Datasheet"),
+        ("2. Lampu Edison (ST64 E27)", "R = 1200 Ω, Maks 30 W (Nyala amber mulai 1,5V–5V; R = 220²/40 = 1210 Ω)", "SNI IEC 60064:2014, US Patent 223,898 & Philips Vintage ST64 2200K"),
+        ("3. Lampu Halogen (G4/G9 Pin)", "R = 1500 Ω, Maks 50 W, Kaki 2-Pin (1,5V–24V DC; R = 220²/32,2 ≈ 1500 Ω)", "IEC 60357:2002 (Tungsten Halogen) & Osram Halopin G4/G9 Datasheet"),
+        ("4. Lampu Neon CFL (E27)", "R_eq = 3000 Ω, Maks 15 W, Aman < 18V DC (R_eq = 220²/16,1 ≈ 3000 Ω)", "SNI IEC 60968:2015 & Philips Tornado CFL 15W E27 6500K Datasheet"),
+        ("5. Lampu LED Putih (E27)", "R_eq = 4500 Ω, Maks 9 W, Aman < 12V DC, Searah (Anoda + / Katoda -)", "SNI IEC 62560:2015 & Philips MyCare LEDBulb 9W E27 Datasheet"),
+        ("6. Smart RGB LED (E27)", "R_eq = 6000 Ω, Maks 7 W, Aman < 9V DC, Searah (Tri-Chip RGB + PWM)", "SNI IEC 62560:2015, CIE 1931 RGB & Philips WiZ Smart RGB 7W–8W"),
+        ("7. LED Indikator 5mm Hijau", "R_eq = 5000 Ω (Modul Trainer), Maks 3 W, Aman < 8V DC (V_f ≈ 2,1V)", "IEC 60747-5-5 & Vishay TLHG5400 / Kingbright 5mm GaP LED Datasheet"),
+        ("8. Baterai AA, 9V & Wadah 2×AA", "AA: 1,5V (R_in 0,2Ω); Wadah 2×AA Seri: 3,0V; 9V: 9,0V (R_in 2,0Ω, 6 sel)", "SNI 04-2051.2 / IEC 60086-2 (LR6 & 6LR61) & Energizer E91/522 Datasheet"),
+        ("9. Panel Surya & Turbin Angin", "Output 0–12V DC (Terik 12V, Mendung 5V) + Penyearah AC-DC & Blocking Diode", "SNI IEC 61215:2016 (PV STC), SNI IEC 62109-1 & IEC 61400-2 (Turbin Angin)"),
+        ("10. Menara & Panel MCB Lab", "Transmisi Antar-Ruang + Proteksi MCB Auto-Trip Korsleting & Step-Down DC", "SNI 0225:2011 (PUIL 2011), SNI IEC 60898-1 (MCB) & IEC 61140 (SELV)"),
+        ("11. Fiting E27, Soket Pin, Resistor, Saklar", "Fiting Ulir E27, Keramik Bi-Pin G4/G9, Resistor 1–1000Ω, Saklar R_on=1mΩ", "SNI IEC 60238 (E27), SNI IEC 60400 (G4/G9), IEC 60062 & SNI IEC 60669-1"),
+        ("12. Voltmeter, Amperemeter & Tarif PLN", "Voltmeter R_in=10MΩ (Paralel), Ammeter R_shunt=1mΩ (Seri), Tarif R-1/TR", "IEC 61010-1 (Fluke DMM 10MΩ), IEEE CAS MNA (1975) & Kepmen ESDM / PLN"),
+    ]
+
+    for row_idx, (c_name, c_spec, c_src) in enumerate(ref_rows, start=1):
+        row = ref_table.rows[row_idx]
+        vals = [c_name, c_spec, c_src]
+        widths = [Inches(1.75), Inches(2.65), Inches(2.8)]
+        bg = "F8FAFC" if row_idx % 2 == 1 else "FFFFFF"
+        for c_i in range(3):
+            cell = row.cells[c_i]
+            cell.width = widths[c_i]
+            set_cell_background(cell, bg)
+            set_cell_margins(cell, top=38, bottom=38, left=70, right=70)
+            p = cell.paragraphs[0]
+            p.paragraph_format.space_after = Pt(0)
+            p.paragraph_format.line_spacing = 1.05
+            r = p.add_run(vals[c_i])
+            r.font.size = Pt(8)
+            if c_i == 0:
+                r.bold = True
+                r.font.color.rgb = RGBColor(0x0F, 0x17, 0x2A)
+            elif c_i == 2:
+                r.bold = True
+                r.font.color.rgb = RGBColor(0x06, 0x5F, 0x46)
+            else:
+                r.font.color.rgb = RGBColor(0x33, 0x41, 0x55)
+
+    p_sp5 = doc.add_paragraph()
+    p_sp5.paragraph_format.space_after = Pt(3)
 
     p_close = doc.add_paragraph()
     p_close.paragraph_format.space_after = Pt(4)

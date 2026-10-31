@@ -14,6 +14,7 @@
 
 import { ComponentType, PlacementOptions } from '../types/circuit';
 import { BULB_CATALOG } from './bulbCatalog';
+import { COMPONENT_DATASHEET_CITATIONS } from './datasheetCitations';
 
 export type PaletteCategoryId = 'battery' | 'light' | 'control' | 'measure';
 
@@ -47,6 +48,12 @@ export interface PaletteEntry {
   glyph?: PaletteGlyphId;
   /** Variant picked at placement time (e.g. which bulb model). */
   placement?: PlacementOptions;
+  /** Short scientific standard / datasheet badge (e.g. "IEC 60086-2 (LR6)"). */
+  standardBadge: string;
+  /** Verifiable scientific / datasheet citation in Indonesian. */
+  datasheetSource: string;
+  /** Verifiable scientific / datasheet citation in English. */
+  datasheetSourceEn: string;
 }
 
 export const PALETTE_CATEGORIES: readonly PaletteCategory[] = [
@@ -67,6 +74,9 @@ const BATTERY_ENTRIES: PaletteEntry[] = [
     hintEn: 'One 1.5 V cell. Put it in a holder or wire it directly.',
     spec: '1.5 V',
     image: '/assets/processed/battery-aa.png',
+    standardBadge: COMPONENT_DATASHEET_CITATIONS.battery.standardBadge,
+    datasheetSource: COMPONENT_DATASHEET_CITATIONS.battery.sourceCitationId,
+    datasheetSourceEn: COMPONENT_DATASHEET_CITATIONS.battery.sourceCitationEn,
   },
   {
     id: 'battery9v',
@@ -78,6 +88,9 @@ const BATTERY_ENTRIES: PaletteEntry[] = [
     hintEn: 'High voltage. Good for high-power lamps.',
     spec: '9 V',
     image: '/assets/battery-9v.png',
+    standardBadge: COMPONENT_DATASHEET_CITATIONS.battery9v.standardBadge,
+    datasheetSource: COMPONENT_DATASHEET_CITATIONS.battery9v.sourceCitationId,
+    datasheetSourceEn: COMPONENT_DATASHEET_CITATIONS.battery9v.sourceCitationEn,
   },
   {
     id: 'battery-holder',
@@ -89,6 +102,9 @@ const BATTERY_ENTRIES: PaletteEntry[] = [
     hintEn: 'Holds 2 AA cells in series: 1.5 + 1.5 = 3 V. Drag a cell onto it.',
     spec: '3 V',
     image: '/assets/processed/battery-holder.png',
+    standardBadge: COMPONENT_DATASHEET_CITATIONS['battery-holder'].standardBadge,
+    datasheetSource: COMPONENT_DATASHEET_CITATIONS['battery-holder'].sourceCitationId,
+    datasheetSourceEn: COMPONENT_DATASHEET_CITATIONS['battery-holder'].sourceCitationEn,
   },
   {
     id: 'solar-panel',
@@ -100,6 +116,9 @@ const BATTERY_ENTRIES: PaletteEntry[] = [
     hintEn: 'Converts sunlight into electricity: 12V sunny, 5V cloudy, 0V lab.',
     spec: '0 - 12 V',
     image: '/assets/solar-panel.png',
+    standardBadge: COMPONENT_DATASHEET_CITATIONS['solar-panel'].standardBadge,
+    datasheetSource: COMPONENT_DATASHEET_CITATIONS['solar-panel'].sourceCitationId,
+    datasheetSourceEn: COMPONENT_DATASHEET_CITATIONS['solar-panel'].sourceCitationEn,
   },
   {
     id: 'transmission-tower',
@@ -111,6 +130,9 @@ const BATTERY_ENTRIES: PaletteEntry[] = [
     hintEn: 'Virtual grid power link: delivers lossless electricity across environments between outdoor and lab.',
     spec: 'Virtual Grid',
     image: '/assets/transmission-tower.png',
+    standardBadge: COMPONENT_DATASHEET_CITATIONS['transmission-tower'].standardBadge,
+    datasheetSource: COMPONENT_DATASHEET_CITATIONS['transmission-tower'].sourceCitationId,
+    datasheetSourceEn: COMPONENT_DATASHEET_CITATIONS['transmission-tower'].sourceCitationEn,
   },
   {
     id: 'wind-turbine',
@@ -122,6 +144,9 @@ const BATTERY_ENTRIES: PaletteEntry[] = [
     hintEn: 'Wind power generator. Adjust rotor speed from 0-100% to generate 0 - 12 V DC.',
     spec: '0 - 12 V',
     image: '/assets/wind-turbine.png',
+    standardBadge: COMPONENT_DATASHEET_CITATIONS['wind-turbine'].standardBadge,
+    datasheetSource: COMPONENT_DATASHEET_CITATIONS['wind-turbine'].sourceCitationId,
+    datasheetSourceEn: COMPONENT_DATASHEET_CITATIONS['wind-turbine'].sourceCitationEn,
   },
 ];
 
@@ -136,6 +161,9 @@ const LIGHT_ENTRIES: PaletteEntry[] = [
     hintEn: 'Holder for E27 screw-base bulbs. Drag a screw bulb onto it to snap in. Pin bulbs (Halogen) do not fit.',
     spec: 'Ulir E27',
     image: '/assets/socket.png',
+    standardBadge: COMPONENT_DATASHEET_CITATIONS.socket.standardBadge,
+    datasheetSource: COMPONENT_DATASHEET_CITATIONS.socket.sourceCitationId,
+    datasheetSourceEn: COMPONENT_DATASHEET_CITATIONS.socket.sourceCitationEn,
   },
   {
     id: 'pin-socket',
@@ -147,6 +175,9 @@ const LIGHT_ENTRIES: PaletteEntry[] = [
     hintEn: 'Ceramic holder for pin-base bulbs (Halogen). Drag a Halogen bulb onto it to snap in. Screw bulbs do not fit.',
     spec: 'Pin G4/G9',
     image: '/assets/socket-pin.png',
+    standardBadge: COMPONENT_DATASHEET_CITATIONS['pin-socket'].standardBadge,
+    datasheetSource: COMPONENT_DATASHEET_CITATIONS['pin-socket'].sourceCitationId,
+    datasheetSourceEn: COMPONENT_DATASHEET_CITATIONS['pin-socket'].sourceCitationEn,
   },
   ...BULB_CATALOG.map(
     (bulbSpec): PaletteEntry => ({
@@ -161,6 +192,9 @@ const LIGHT_ENTRIES: PaletteEntry[] = [
       image: bulbSpec.image,
       imageRotated: bulbSpec.imageRotated,
       placement: { bulbType: bulbSpec.type },
+      standardBadge: bulbSpec.standardBadge,
+      datasheetSource: bulbSpec.datasheetSource,
+      datasheetSourceEn: bulbSpec.datasheetSourceEn,
     })
   ),
 ];
@@ -176,6 +210,9 @@ const CONTROL_ENTRIES: PaletteEntry[] = [
     hintEn: 'Limits current. Bigger resistance, smaller current (V = I × R).',
     spec: '100 Ω',
     image: '/assets/processed/resistor.png',
+    standardBadge: COMPONENT_DATASHEET_CITATIONS.resistor.standardBadge,
+    datasheetSource: COMPONENT_DATASHEET_CITATIONS.resistor.sourceCitationId,
+    datasheetSourceEn: COMPONENT_DATASHEET_CITATIONS.resistor.sourceCitationEn,
   },
   {
     id: 'switch',
@@ -187,6 +224,9 @@ const CONTROL_ENTRIES: PaletteEntry[] = [
     hintEn: 'ON lets current flow, OFF stops it.',
     spec: 'ON / OFF',
     glyph: 'switch',
+    standardBadge: COMPONENT_DATASHEET_CITATIONS.switch.standardBadge,
+    datasheetSource: COMPONENT_DATASHEET_CITATIONS.switch.sourceCitationId,
+    datasheetSourceEn: COMPONENT_DATASHEET_CITATIONS.switch.sourceCitationEn,
   },
 ];
 
@@ -201,6 +241,9 @@ const MEASURE_ENTRIES: PaletteEntry[] = [
     hintEn: 'Measures voltage. Connect in parallel with the part you measure.',
     spec: 'Volt',
     glyph: 'voltmeter',
+    standardBadge: COMPONENT_DATASHEET_CITATIONS.voltmeter.standardBadge,
+    datasheetSource: COMPONENT_DATASHEET_CITATIONS.voltmeter.sourceCitationId,
+    datasheetSourceEn: COMPONENT_DATASHEET_CITATIONS.voltmeter.sourceCitationEn,
   },
   {
     id: 'ammeter',
@@ -212,6 +255,9 @@ const MEASURE_ENTRIES: PaletteEntry[] = [
     hintEn: 'Measures current. Connect in series, inside the wire path.',
     spec: 'Ampere',
     glyph: 'ammeter',
+    standardBadge: COMPONENT_DATASHEET_CITATIONS.ammeter.standardBadge,
+    datasheetSource: COMPONENT_DATASHEET_CITATIONS.ammeter.sourceCitationId,
+    datasheetSourceEn: COMPONENT_DATASHEET_CITATIONS.ammeter.sourceCitationEn,
   },
   {
     id: 'ground',
@@ -223,6 +269,9 @@ const MEASURE_ENTRIES: PaletteEntry[] = [
     hintEn: 'The 0 volt reference point for the whole circuit.',
     spec: '0 V',
     glyph: 'ground',
+    standardBadge: COMPONENT_DATASHEET_CITATIONS.ground.standardBadge,
+    datasheetSource: COMPONENT_DATASHEET_CITATIONS.ground.sourceCitationId,
+    datasheetSourceEn: COMPONENT_DATASHEET_CITATIONS.ground.sourceCitationEn,
   },
 ];
 

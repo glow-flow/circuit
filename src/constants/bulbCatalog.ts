@@ -9,6 +9,8 @@
  * - Lookup by bulbType (`getBulbSpec`): O(1) via hash map (`BULB_SPEC_MAP`)
  */
 
+import { BULB_DATASHEET_CITATIONS } from './datasheetCitations';
+
 export type BulbType =
   | 'incandescent'
   | 'halogen'
@@ -64,6 +66,12 @@ export interface BulbSpec {
   traitsEn: string;
   glowColor: string; // CSS color for radial drop-shadow / aura
   safeMaxVoltage: number; // Voltage threshold above which fragile bulbs (like LEDs) overheat/blow
+  /** Short standard / datasheet badge (e.g. "SNI IEC 60064 • Philips ST64 Vintage"). */
+  standardBadge: string;
+  /** Verifiable scientific / datasheet citation in Indonesian. */
+  datasheetSource: string;
+  /** Verifiable scientific / datasheet citation in English. */
+  datasheetSourceEn: string;
 }
 
 export const BULB_CATALOG: readonly BulbSpec[] = [
@@ -81,6 +89,9 @@ export const BULB_CATALOG: readonly BulbSpec[] = [
     traitsEn: 'High heat output, warm yellow/orange glow.',
     glowColor: 'rgba(251, 191, 36, 0.65)',
     safeMaxVoltage: 24,
+    standardBadge: BULB_DATASHEET_CITATIONS.incandescent.standardBadge,
+    datasheetSource: BULB_DATASHEET_CITATIONS.incandescent.sourceCitationId,
+    datasheetSourceEn: BULB_DATASHEET_CITATIONS.incandescent.sourceCitationEn,
   },
   {
     type: 'halogen',
@@ -96,6 +107,9 @@ export const BULB_CATALOG: readonly BulbSpec[] = [
     traitsEn: 'Very bright, high heat, shorter lifespan.',
     glowColor: 'rgba(254, 240, 138, 0.7)',
     safeMaxVoltage: 24,
+    standardBadge: BULB_DATASHEET_CITATIONS.halogen.standardBadge,
+    datasheetSource: BULB_DATASHEET_CITATIONS.halogen.sourceCitationId,
+    datasheetSourceEn: BULB_DATASHEET_CITATIONS.halogen.sourceCitationEn,
   },
   {
     type: 'edison',
@@ -111,6 +125,9 @@ export const BULB_CATALOG: readonly BulbSpec[] = [
     traitsEn: 'Aesthetic spiral filament, warm amber glow, medium heat.',
     glowColor: 'rgba(245, 158, 11, 0.65)',
     safeMaxVoltage: 24,
+    standardBadge: BULB_DATASHEET_CITATIONS.edison.standardBadge,
+    datasheetSource: BULB_DATASHEET_CITATIONS.edison.sourceCitationId,
+    datasheetSourceEn: BULB_DATASHEET_CITATIONS.edison.sourceCitationEn,
   },
   {
     type: 'cfl',
@@ -127,6 +144,9 @@ export const BULB_CATALOG: readonly BulbSpec[] = [
     traitsEn: 'Energy efficient, crisp cool white light, low heat.',
     glowColor: 'rgba(224, 242, 254, 0.75)',
     safeMaxVoltage: 18,
+    standardBadge: BULB_DATASHEET_CITATIONS.cfl.standardBadge,
+    datasheetSource: BULB_DATASHEET_CITATIONS.cfl.sourceCitationId,
+    datasheetSourceEn: BULB_DATASHEET_CITATIONS.cfl.sourceCitationEn,
   },
   {
     type: 'led_standard',
@@ -142,6 +162,9 @@ export const BULB_CATALOG: readonly BulbSpec[] = [
     traitsEn: 'Ultra energy-saving, cool operation, clean brightness.',
     glowColor: 'rgba(186, 230, 253, 0.65)',
     safeMaxVoltage: 12,
+    standardBadge: BULB_DATASHEET_CITATIONS.led_standard.standardBadge,
+    datasheetSource: BULB_DATASHEET_CITATIONS.led_standard.sourceCitationId,
+    datasheetSourceEn: BULB_DATASHEET_CITATIONS.led_standard.sourceCitationEn,
   },
   {
     type: 'led_rgb',
@@ -157,6 +180,9 @@ export const BULB_CATALOG: readonly BulbSpec[] = [
     traitsEn: 'Lowest power consumption, multi-color RGB spectrum.',
     glowColor: 'rgba(192, 132, 252, 0.7)',
     safeMaxVoltage: 9,
+    standardBadge: BULB_DATASHEET_CITATIONS.led_rgb.standardBadge,
+    datasheetSource: BULB_DATASHEET_CITATIONS.led_rgb.sourceCitationId,
+    datasheetSourceEn: BULB_DATASHEET_CITATIONS.led_rgb.sourceCitationEn,
   },
   {
     type: 'led_green',
@@ -172,6 +198,9 @@ export const BULB_CATALOG: readonly BulbSpec[] = [
     traitsEn: 'Indicator diode only, operates at micro/milliampere current.',
     glowColor: 'rgba(52, 211, 153, 0.75)',
     safeMaxVoltage: 8,
+    standardBadge: BULB_DATASHEET_CITATIONS.led_green.standardBadge,
+    datasheetSource: BULB_DATASHEET_CITATIONS.led_green.sourceCitationId,
+    datasheetSourceEn: BULB_DATASHEET_CITATIONS.led_green.sourceCitationEn,
   },
 ] as const;
 

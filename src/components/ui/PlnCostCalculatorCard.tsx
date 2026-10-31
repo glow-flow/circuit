@@ -9,6 +9,7 @@ import {
   PlnScaleMultiplier,
   PlnTariffTierId,
 } from '../../physics/plnCostCalculator';
+import { PLN_TARIFF_CITATION } from '../../constants/datasheetCitations';
 
 const SCALE_OPTIONS: ReadonlyArray<{
   value: PlnScaleMultiplier;
@@ -316,6 +317,14 @@ export const PlnCostCalculatorCard: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Official PLN Tariff & CO2 Emission Factor Citation */}
+      <div className="pt-2 border-t border-white/10 text-[9px] text-slate-400 leading-relaxed font-mono">
+        <strong className="text-slate-300">
+          {isId ? '📚 Sumber Tarif Resmi: ' : '📚 Official Tariff Citation: '}
+        </strong>
+        {isId ? PLN_TARIFF_CITATION.sourceCitationId : PLN_TARIFF_CITATION.sourceCitationEn}
+      </div>
     </div>
   );
 };
