@@ -61,8 +61,8 @@ export type DropPhysicsOutcome =
 const COMPONENT_DIMENSIONS: Partial<Record<ComponentType, { width: number; height: number }>> = {
   'solar-panel': { width: 144, height: 156 },
   solar_panel: { width: 144, height: 156 },
-  'wind-turbine': { width: 144, height: 232 },
-  wind_turbine: { width: 144, height: 232 },
+  'wind-turbine': { width: 144, height: 260 },
+  wind_turbine: { width: 144, height: 260 },
   'transmission-tower': { width: 132, height: 226 },
   transmission_tower: { width: 132, height: 226 },
 };
@@ -693,8 +693,11 @@ export function evaluateComponentDropPhysics(
     containerSize.height
   );
 
-  // Plant the component's base 6px into the grass/ground surface so it never floats
-  const settledY = Math.max(8, Math.round(surfaceY - rawBox.height + 6));
+  // Plant the component's base onto the terrain surface:
+  // For wind turbine, groundOffset is 0 so the mast base sits flush on the turf without penetrating the dirt.
+  // For other outdoor components (solar panel, transmission tower), 6px embeds them naturally into grass.
+  const groundOffset = type === 'wind-turbine' || type === 'wind_turbine' ? 0 : 6;
+  const settledY = Math.max(8, Math.round(surfaceY - rawBox.height + groundOffset));
   const settledPosition = {
     x: Math.round(position.x),
     y: settledY,

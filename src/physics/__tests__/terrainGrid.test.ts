@@ -183,4 +183,35 @@ describe('Outdoor Sandbox Terrain Physics & Spatial Collision Engine', () => {
     // Interior hill cell (14, 7) remains flat (null)
     expect(getHillEdgeSlopeSide(after3s.nextGrid, after3s.nextExposureMap, 14, 7)).toBeNull();
   });
+
+  it('settles wind turbine flush with the ground surface without penetrating into the dirt layer', () => {
+    const grid = createDefaultOutdoorTerrain(20, 40);
+    const containerSize = { width: 1360, height: 680 }; // 34px per row
+    const cellHeight = 680 / 20; // 34px
+
+    // Verify calibrated bounding box matches DOM rendered height (260px)
+    const turbineBox = getComponentBoundingBox({ x: 290, y: 100 }, 'wind-turbine');
+    expect(turbineBox.height).toBe(260);
+
+    const outcome = evaluateComponentDropPhysics(
+      { x: 290, y: 150 },
+      'wind-turbine',
+      null,
+      [],
+      grid,
+      containerSize
+    );
+
+    expect(outcome.status).toBe('settled');
+    if (outcome.status === 'settled') {
+      const settledBottom = outcome.settledPosition.y + turbineBox.height;
+      // In default terrain at col ~8..11 (x=290), surface elevation is row 14 (hill) or row 15 (flat)
+      // Surface elevation Y in pixels = surfaceRow * cellHeight
+      const expectedSurfaceY = Math.round(14 * cellHeight); // ~476px
+
+      // The base of the turbine mast must rest exactly on surfaceY without sinking into the dirt row below
+      expect(Math.abs(settledBottom - expectedSurfaceY)).toBeLessThanOrEqual(2);
+      expect(settledBottom).toBeLessThan(expectedSurfaceY + 10);
+    }
+  });
 });

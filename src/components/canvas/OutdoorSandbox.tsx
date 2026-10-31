@@ -451,7 +451,8 @@ const OutdoorSandboxInner: React.FC = () => {
         canvasWidth,
         canvasHeight
       );
-      return Math.max(8, Math.round(surfaceY - box.height + 6));
+      const offset = type === 'wind-turbine' ? 0 : 6;
+      return Math.max(8, Math.round(surfaceY - box.height + offset));
     };
 
     const newOutdoorNodes: Node<CircuitElementData>[] = [

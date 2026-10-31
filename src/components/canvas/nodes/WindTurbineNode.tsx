@@ -172,7 +172,7 @@ export const WindTurbineNode: React.FC<NodeProps<CircuitElementData>> = memo(
             type="source"
             position={Position.Bottom}
             id="pos"
-            style={{ left: '34%', bottom: '18px', transform: 'translateX(-50%)' }}
+            style={{ left: '34%', bottom: '22px', transform: 'translateX(-50%)' }}
             className="!w-5 !h-5 !bg-red-500 !border-2 !border-white !rounded-full shadow-[0_0_12px_rgba(239,68,68,0.95)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center"
             title={isId ? 'Kutub Positif (+)' : 'Positive Terminal (+)'}
           >
@@ -184,7 +184,7 @@ export const WindTurbineNode: React.FC<NodeProps<CircuitElementData>> = memo(
             type="source"
             position={Position.Bottom}
             id="neg"
-            style={{ left: '66%', bottom: '18px', transform: 'translateX(-50%)' }}
+            style={{ left: '66%', bottom: '22px', transform: 'translateX(-50%)' }}
             className="!w-5 !h-5 !bg-sky-500 !border-2 !border-white !rounded-full shadow-[0_0_12px_rgba(56,189,248,0.95)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center"
             title={isId ? 'Kutub Negatif (-)' : 'Negative Terminal (-)'}
           >
