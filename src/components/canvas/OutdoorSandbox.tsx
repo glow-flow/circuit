@@ -822,7 +822,10 @@ const OutdoorSandboxInner: React.FC = () => {
         className="absolute top-3 left-3 right-3 z-40 flex flex-wrap items-center justify-between gap-2 pointer-events-none"
       >
         {/* Left: Terrain Brush Selector */}
-        <div className="flex flex-wrap items-center gap-1.5 px-2.5 py-1.5 rounded-2xl bg-void-950/90 backdrop-blur-md border border-white/15 shadow-[0_10px_30px_rgba(0,0,0,0.65)] pointer-events-auto">
+        <div
+          id="tour-outdoor-brushes"
+          className="flex flex-wrap items-center gap-1.5 px-2.5 py-1.5 rounded-2xl bg-void-950/90 backdrop-blur-md border border-white/15 shadow-[0_10px_30px_rgba(0,0,0,0.65)] pointer-events-auto"
+        >
           <span className="hidden xl:flex items-center gap-1 text-[10px] font-mono uppercase tracking-wider text-emerald-400 px-1.5 font-bold">
             <Sprout className="w-3.5 h-3.5" />
             {isId ? 'Medan 40×20:' : '40×20 Terrain:'}
@@ -861,6 +864,7 @@ const OutdoorSandboxInner: React.FC = () => {
         {/* Right: Quick Demo Generator */}
         <div className="flex items-center gap-2 pointer-events-auto">
           <button
+            id="tour-outdoor-spawn"
             type="button"
             onClick={handleSpawnOutdoorPowerStation}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/50 text-emerald-200 text-[11px] font-bold shadow-[0_8px_24px_rgba(16,185,129,0.25)] backdrop-blur-md active:scale-95 transition-all cursor-pointer"
@@ -880,6 +884,7 @@ const OutdoorSandboxInner: React.FC = () => {
          ==================================================================== */}
       {maxCameraScrollX > 10 && (
         <div
+          id="tour-outdoor-camera"
           onPointerDown={(e) => e.stopPropagation()}
           className="absolute bottom-2.5 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 px-3 py-1.5 rounded-full bg-void-950/90 backdrop-blur-md border border-white/15 shadow-[0_8px_25px_rgba(0,0,0,0.65)] pointer-events-auto max-w-[92vw]"
         >

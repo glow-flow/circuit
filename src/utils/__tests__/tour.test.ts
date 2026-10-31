@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   TOUR_STEPS,
+  OUTDOOR_TOUR_STEPS,
   prepareViewportForTourStep,
+  prepareOutdoorViewportForTourStep,
   registerTourMobileSheetController,
   TourMobileSheetState,
 } from '../tour';
@@ -47,6 +49,39 @@ describe('Interactive Spotlight Tour (driver.js) & Welcome Persistence', () => {
       'Bersihkan Kanvas',
       'Panduan Ulang',
     ]);
+  });
+
+  it('defines dedicated Outdoor Nature Sandbox tour steps (OUTDOOR_TOUR_STEPS) and synchronizes outdoor mobile drawers', () => {
+    expect(OUTDOOR_TOUR_STEPS).toHaveLength(6);
+    expect(OUTDOOR_TOUR_STEPS.map((s) => s.element)).toEqual([
+      '#tour-outdoor-brushes',
+      '#tour-outdoor-spawn',
+      '#tour-canvas-area',
+      '#tour-panel-komponen',
+      '#tour-panel-inspector',
+      '#tour-btn-world',
+    ]);
+
+    let activeSheet: TourMobileSheetState = 'none';
+    registerTourMobileSheetController((sheet) => {
+      activeSheet = sheet;
+    });
+
+    const originalWindow = (globalThis as any).window;
+    (globalThis as any).window = { innerWidth: 390 };
+
+    try {
+      prepareOutdoorViewportForTourStep(3);
+      expect(activeSheet).toBe('palette');
+
+      prepareOutdoorViewportForTourStep(4);
+      expect(activeSheet).toBe('inspector');
+
+      prepareOutdoorViewportForTourStep(5);
+      expect(activeSheet).toBe('none');
+    } finally {
+      (globalThis as any).window = originalWindow;
+    }
   });
 
   it('synchronizes mobile drawers, component selection, and wire selection across tour steps', () => {

@@ -167,6 +167,15 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose }) =
               {isId ? 'Lewati' : 'Skip'}
             </button>
           </div>
+
+          <div className="pt-2.5 border-t border-white/10 flex items-center justify-between gap-2 text-[10px] font-mono text-slate-400">
+            <span>
+              {isId
+                ? 'Karya Orisinal: Kenzie Raka Romero (SMPN 12 Surabaya)'
+                : 'Created by: Kenzie Raka Romero (SMPN 12 Surabaya)'}
+            </span>
+            <span className="text-cyan-400 font-semibold">v2.5 PLN & Alam</span>
+          </div>
         </div>
       </div>
     </div>

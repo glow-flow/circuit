@@ -16,18 +16,29 @@ const OUTDOOR_ALLOWED_ENTRY_IDS = new Set<string>([
   'transmission-tower',
 ]);
 
+/** Outdoor-exclusive generators excluded from the Indoor Lab palette (`worldMode === 'lab'`). */
+const LAB_EXCLUDED_ENTRY_IDS = new Set<string>([
+  'solar-panel',
+  'wind-turbine',
+]);
+
 /** Entry count per category in Lab mode, computed once (catalog is static). O(N). */
 const LAB_COUNT_BY_CATEGORY: Readonly<Record<string, number>> = PALETTE_ENTRIES.reduce<
   Record<string, number>
 >((counts, entry) => {
-  counts[entry.category] = (counts[entry.category] ?? 0) + 1;
+  if (!LAB_EXCLUDED_ENTRY_IDS.has(entry.id)) {
+    counts[entry.category] = (counts[entry.category] ?? 0) + 1;
+  }
   return counts;
 }, {});
 
 /**
  * UI state for the component box: which category is open and which part is selected.
- * In `worldMode === 'outside'`, filters strictly to Outdoor Power & Grid items
- * (`solar-panel`, `wind-turbine`, `transmission-tower`) so indoor lab items are hidden.
+ * - In `worldMode === 'outside'`, filters strictly to Outdoor Power & Grid items
+ *   (`solar-panel`, `wind-turbine`, `transmission-tower`) so indoor lab items are hidden.
+ * - In `worldMode === 'lab'`, excludes `solar-panel` and `wind-turbine` (which belong
+ *   exclusively to the Outdoor Sandbox) while keeping `transmission-tower` so users can
+ *   receive transmitted outdoor power inside the Lab.
  *
  * Time Complexity: O(1) per interaction.
  */
@@ -39,13 +50,15 @@ export function usePaletteBrowser() {
     getEntriesByCategory(firstCategoryId)[0]?.id ?? ''
   );
 
-  // When switching to 'outside', force category to 'battery' (Sumber Energi Alam)
+  // Synchronize default selection when switching between 'outside' and 'lab'
   useEffect(() => {
     if (worldMode === 'outside') {
       setActiveCategoryId('battery');
       setSelectedEntryId('solar-panel');
+    } else if (LAB_EXCLUDED_ENTRY_IDS.has(selectedEntryId)) {
+      setSelectedEntryId('battery-aa');
     }
-  }, [worldMode]);
+  }, [worldMode, selectedEntryId]);
 
   const categories = useMemo(() => {
     if (worldMode === 'outside') {
@@ -61,7 +74,7 @@ export function usePaletteBrowser() {
     if (worldMode === 'outside') {
       return rawEntries.filter((entry) => OUTDOOR_ALLOWED_ENTRY_IDS.has(entry.id));
     }
-    return rawEntries;
+    return rawEntries.filter((entry) => !LAB_EXCLUDED_ENTRY_IDS.has(entry.id));
   }, [activeCategoryId, worldMode]);
 
   const countByCategory = useMemo(() => {

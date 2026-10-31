@@ -5,6 +5,7 @@ import { useCircuitStore } from '../../store/useCircuitStore';
 import { countVisibleWires } from '../../utils/socketSnap';
 import { BULB_CATALOG, BulbType, getBulbSpec } from '../../constants/bulbCatalog';
 import { TRANSLATIONS } from '../../i18n/translations';
+import { PlnCostCalculatorCard } from './PlnCostCalculatorCard';
 
 interface InspectorProps {
   isMobileDrawer?: boolean;
@@ -199,6 +200,9 @@ export const Inspector: React.FC<InspectorProps> = ({
               </span>
             </div>
           </div>
+
+          {/* Interactive PLN Electricity Bill & Green Energy Cost Simulator */}
+          <PlnCostCalculatorCard />
 
           {/* Grade 9 Physics Quick Cheat-Sheet Box */}
           <div className="p-3 rounded-xl bg-electric-500/5 border border-electric-500/20 text-[11px] space-y-1.5">
@@ -864,6 +868,20 @@ export const Inspector: React.FC<InspectorProps> = ({
             )}
           </div>
         )}
+
+        {/* Quick Button to View Global Circuit Telemetry & PLN Cost Calculator */}
+        <button
+          type="button"
+          onClick={() => useCircuitStore.getState().selectNode(null)}
+          className="w-full py-2 px-3 rounded-xl bg-electric-500/15 hover:bg-electric-500/25 border border-electric-500/35 text-electric-300 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+        >
+          <Cpu className="w-3.5 h-3.5 text-electric-400" />
+          <span>
+            {language === 'id'
+              ? 'Lihat Kalkulator Tagihan PLN & Rumus'
+              : 'View PLN Bill Calculator & Formulas'}
+          </span>
+        </button>
       </div>
     </aside>
   );

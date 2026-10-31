@@ -12,10 +12,12 @@ import {
   HelpCircle,
   Trees,
   FlaskConical,
+  Users,
 } from 'lucide-react';
 import { useCircuitStore } from '../../store/useCircuitStore';
 import { TRANSLATIONS } from '../../i18n/translations';
 import { startTour } from '../../utils/tour';
+import { CreditsModal } from './CreditsModal';
 
 export const Header: React.FC = () => {
   const simulation = useCircuitStore((state) => state.simulation);
@@ -33,6 +35,7 @@ export const Header: React.FC = () => {
   const triggerWorldTransition = useCircuitStore((state) => state.triggerWorldTransition);
 
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const [isCreditsModalOpen, setIsCreditsModalOpen] = useState(false);
   const [presetNameInput, setPresetNameInput] = useState('');
 
   const t = TRANSLATIONS[language].header;
@@ -123,13 +126,13 @@ export const Header: React.FC = () => {
               </option>
             </select>
 
-            {/* Save Custom Preset to Browser Cache Button (visible on tablet/desktop) */}
+            {/* Save Custom Preset to Browser Cache Button (visible on all viewports) */}
             <button
               id="tour-btn-save"
               type="button"
               onClick={() => setIsSaveModalOpen(true)}
               title={t.savePresetModalTitle}
-              className="hidden sm:flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg bg-electric-500/15 hover:bg-electric-500/25 border border-electric-500/30 text-electric-400 text-[11px] sm:text-xs font-semibold transition-all active:scale-95 shrink-0 cursor-pointer"
+              className="flex items-center gap-1 p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg bg-electric-500/15 hover:bg-electric-500/25 border border-electric-500/30 text-electric-400 text-[11px] sm:text-xs font-semibold transition-all active:scale-95 shrink-0 cursor-pointer"
             >
               <BookmarkPlus className="w-3.5 h-3.5 shrink-0" />
               <span className="hidden md:inline">{t.savePresetBtn}</span>
@@ -158,6 +161,7 @@ export const Header: React.FC = () => {
         <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
           {/* World Transition Button (Go Outside / Inside with 2s CSS Cloud Animation) */}
           <button
+            id="tour-btn-world"
             type="button"
             disabled={isTransitioningWorld}
             onClick={() => triggerWorldTransition()}
@@ -198,6 +202,29 @@ export const Header: React.FC = () => {
                   <span className="sm:hidden">Alam</span>
                 </>
               )}
+            </span>
+          </button>
+
+          {/* Developers & Contributors Modal Trigger Button */}
+          <button
+            id="tour-btn-credits"
+            type="button"
+            onClick={() => setIsCreditsModalOpen(true)}
+            title={
+              language === 'id'
+                ? 'Daftar Developer & Kontributor (SMPN 12 Surabaya)'
+                : 'Developers & Contributors (SMPN 12 Surabaya)'
+            }
+            aria-label={
+              language === 'id'
+                ? 'Daftar Developer & Kontributor'
+                : 'Developers & Contributors'
+            }
+            className="flex items-center gap-1 p-1.5 sm:px-2 sm:py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/40 text-amber-300 text-[10px] sm:text-xs font-semibold transition-all active:scale-95 shrink-0 cursor-pointer"
+          >
+            <Users className="w-3.5 h-3.5" />
+            <span className="hidden xl:inline">
+              {language === 'id' ? 'Tim' : 'Team'}
             </span>
           </button>
 
@@ -357,6 +384,12 @@ export const Header: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Modal: Developers & Contributors Roster (SMPN 12 Surabaya) */}
+      <CreditsModal
+        isOpen={isCreditsModalOpen}
+        onClose={() => setIsCreditsModalOpen(false)}
+      />
     </>
   );
 };

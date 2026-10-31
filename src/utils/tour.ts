@@ -2,13 +2,17 @@
  * Interactive Product Spotlight Tour Module (`driver.js`).
  *
  * Guides students and teachers step-by-step across the real Circuit Sandbox UI
- * elements using a 10-step spotlight sequence. Automatically synchronizes mobile
- * bottom-sheet drawers (`palette` / `inspector`), component selection, and wire
- * selection so every target element (`#tour-panel-inspector`, `#tour-wire-actions`, etc.)
- * is visible and accurately highlighted on both Mobile and Desktop viewports.
+ * elements in both:
+ * 1. **Indoor Lab Mode (`TOUR_STEPS`, 10 steps)** — Covers presets, component box,
+ *    inspector, PLN electricity bill calculator, wire anchor bends, saving custom
+ *    presets to browser cache, and going outside to nature.
+ * 2. **Outdoor Nature Mode (`OUTDOOR_TOUR_STEPS`, 6 steps)** — Covers the 40x20
+ *    gravity terrain brushes (Dirt, Water, Dig), 1-click 12V Power Station spawn,
+ *    component gravity & water short-circuit explosions, outdoor generator palette,
+ *    weather/PLN savings inspector, and transmitting clean energy back to the Lab.
  *
  * Time Complexity:
- * - Tour initialization (`startTour`): O(1) over the fixed 10-step configuration
+ * - Tour initialization (`startTour`): O(1) over the fixed step configurations
  * - Step transition preparation (`prepareViewportForTourStep`): O(N + E) where N is node count and E is edge count
  */
 
@@ -27,7 +31,7 @@ let activeDriverInstance: Driver | null = null;
 /**
  * Registers a synchronous controller from `App.tsx` so the spotlight tour can
  * automatically open/close the mobile Component Box (`#tour-panel-komponen`)
- * and Inspector (`#tour-panel-inspector`) drawers during Step 3 and Step 4.
+ * and Inspector (`#tour-panel-inspector`) drawers during the tour.
  *
  * @param controller Callback that updates `activeMobileSheet` in `App.tsx`
  */
@@ -38,7 +42,7 @@ export function registerTourMobileSheetController(
 }
 
 /**
- * Exports the 10 spotlight steps in a structured constant so unit tests can
+ * Exports the 10 Lab Mode spotlight steps in a structured constant so unit tests can
  * verify target selectors, titles, and descriptions without requiring a full browser.
  */
 export const TOUR_STEPS: DriveStep[] = [
@@ -47,7 +51,7 @@ export const TOUR_STEPS: DriveStep[] = [
     popover: {
       title: 'Template Rangkaian',
       description:
-        'Bingung mulai dari mana? Pilih contoh rangkaian Seri atau Paralel di sini.',
+        'Bingung mulai dari mana? Pilih contoh rangkaian Seri, Paralel, atau buka rangkaian buatanmu sendiri yang sudah disimpan di sini.',
       side: 'bottom',
       align: 'start',
     },
@@ -57,7 +61,7 @@ export const TOUR_STEPS: DriveStep[] = [
     popover: {
       title: 'Tambah Komponen',
       description:
-        'Klik di sini untuk membuka kotak komponen (Baterai, Lampu, dll).',
+        'Klik di sini untuk membuka kotak komponen Lab (Baterai, 7 jenis Lampu, Saklar, Resistor, dan Alat Ukur).',
       side: 'top',
       align: 'start',
     },
@@ -87,7 +91,7 @@ export const TOUR_STEPS: DriveStep[] = [
     popover: {
       title: 'Info & Rumus',
       description:
-        'Klik di sini untuk melihat detail perhitungan (V, I, R, P) dari rangkaianmu.',
+        'Klik di sini untuk melihat detail perhitungan (V, I, R, P) sekaligus Kalkulator Tagihan Listrik PLN (Rupiah & kWh) dari rangkaianmu!',
       side: 'top',
       align: 'end',
     },
@@ -116,7 +120,8 @@ export const TOUR_STEPS: DriveStep[] = [
     element: '#tour-btn-save',
     popover: {
       title: 'Simpan Karya',
-      description: 'Jangan lupa simpan rangkaianmu agar tidak hilang.',
+      description:
+        'Sudah diperbarui! Klik tombol Simpan ini (atau pilih "+ Simpan Rangkaian..." di menu Contoh) untuk menyimpan rangkaianmu ke memori browser agar tidak hilang. Kamu juga bisa klik tombol "Keluar ke Alam" di kanan atas untuk membangun Pembangkit Listrik Tenaga Surya & Angin!',
       side: 'bottom',
       align: 'center',
     },
@@ -136,7 +141,73 @@ export const TOUR_STEPS: DriveStep[] = [
     popover: {
       title: 'Panduan Ulang',
       description:
-        'Kamu bisa memutar ulang tutorial ini kapan saja dengan menekan tombol ini.',
+        'Kamu bisa memutar ulang tutorial ini kapan saja (baik di mode Lab maupun saat berada di Zona Alam Terbuka) dengan menekan tombol ini.',
+      side: 'bottom',
+      align: 'end',
+    },
+  },
+];
+
+/**
+ * Dedicated 6-step spotlight tour for the Outdoor Nature Sandbox (`worldMode === 'outside'`).
+ */
+export const OUTDOOR_TOUR_STEPS: DriveStep[] = [
+  {
+    element: '#tour-outdoor-brushes',
+    popover: {
+      title: 'Kuas Medan Alam 40×20',
+      description:
+        'Ubah lanskap alam secara bebas! Gunakan "+ Tanah (Gravity)" untuk menimbun bukit (tanah yang terkena udara otomatis tumbuh rumput dalam 3 detik), "+ Air (Bahaya!)" untuk membuat aliran air, atau "Geser & Kabel" untuk menyambung kabel dan menggeser kamera.',
+      side: 'bottom',
+      align: 'start',
+    },
+  },
+  {
+    element: '#tour-outdoor-spawn',
+    popover: {
+      title: 'Pasang Pembangkit Alam (12V)',
+      description:
+        'Ingin langsung mencoba? Klik tombol ini untuk menerjunkan paket Pembangkit Listrik Alam (Panel Surya 12V, Turbin Angin 12V, dan Menara Transmisi SUTET) lengkap dengan kabelnya di atas bukit rumput!',
+      side: 'bottom',
+      align: 'end',
+    },
+  },
+  {
+    element: '#tour-canvas-area',
+    popover: {
+      title: 'Gravitasi & Bahaya Air Sungai',
+      description:
+        'Setiap pembangkit yang ditaruh di alam otomatis turun menapak tanah karena gravitasi. Hati-hati: jangan menjatuhkan komponen dari langit yang terlalu tinggi (> 6 blok) atau di atas air sungai, karena komponen akan meledak korsleting!',
+      side: 'bottom',
+      align: 'center',
+    },
+  },
+  {
+    element: '#tour-panel-komponen',
+    popover: {
+      title: 'Kotak Pembangkit Energi Hijau',
+      description:
+        'Di Zona Alam Terbuka, kotak komponen khusus menampilkan pembangkit energi bersih: Panel Surya (0–12V), Turbin Angin (0–12V), dan Menara Transmisi (Jaringan Virtual SUTET).',
+      side: 'top',
+      align: 'center',
+    },
+  },
+  {
+    element: '#tour-panel-inspector',
+    popover: {
+      title: 'Cuaca & Penghematan Tagihan PLN',
+      description:
+        'Klik Panel Surya atau Turbin Angin untuk mengatur terik matahari dan kecepatan angin, atau cek Kalkulator Tagihan Listrik PLN untuk melihat berapa Rupiah biaya listrik yang dihemat hingga Rp 0 (Gratis dari Alam)!',
+      side: 'top',
+      align: 'center',
+    },
+  },
+  {
+    element: '#tour-btn-world',
+    popover: {
+      title: 'Salurkan Listrik ke Laboratorium',
+      description:
+        'Setelah Panel Surya atau Turbin Angin disambungkan ke isolator atas Menara Transmisi, klik "Masuk ke Lab" dan pasang Menara Transmisi kedua di Lab untuk menyalakan lampu-lampu dengan energi ramah lingkungan!',
       side: 'bottom',
       align: 'end',
     },
@@ -145,8 +216,8 @@ export const TOUR_STEPS: DriveStep[] = [
 
 /**
  * Prepares the UI viewport (mobile drawers, selected component node, and selected
- * wire edge) before a specific step index is highlighted so `driver.js` always
- * measures a visible DOM element.
+ * wire edge) before a specific Lab tour step index is highlighted so `driver.js`
+ * always measures a visible DOM element.
  * Time Complexity: O(N + E) where N is node count and E is edge count on the canvas.
  *
  * @param stepIndex 0-based index in `TOUR_STEPS`
@@ -214,9 +285,58 @@ export function prepareViewportForTourStep(stepIndex: number): void {
 }
 
 /**
- * Launches the 10-step interactive `driver.js` spotlight product tour.
- * Defensive against SSR/missing DOM and persists `has_seen_tutorial = 'true'`
- * upon completion.
+ * Prepares the UI viewport for a specific step in the Outdoor Nature Sandbox tour
+ * (`OUTDOOR_TOUR_STEPS`). Synchronizes mobile drawers (`palette` on index 3,
+ * `inspector` on index 4) so mobile users can seamlessly view every outdoor feature.
+ * Time Complexity: O(N) where N is node count.
+ *
+ * @param stepIndex 0-based index in `OUTDOOR_TOUR_STEPS`
+ */
+export function prepareOutdoorViewportForTourStep(stepIndex: number): void {
+  try {
+    const storeState = useCircuitStore.getState();
+
+    if (stepIndex === 4) {
+      // Step 5 (#tour-panel-inspector): Select an outdoor generator if one exists, or null for PLN overview
+      const outdoorGen = storeState.nodes.find(
+        (n) =>
+          n.data.worldMode === 'outside' &&
+          (n.data.type === 'solar-panel' || n.data.type === 'wind-turbine')
+      );
+      storeState.selectNode(outdoorGen ? outdoorGen.id : null);
+    } else {
+      if (storeState.selectedNodeId) storeState.selectNode(null);
+      if (storeState.selectedEdgeId) storeState.selectEdge(null);
+    }
+
+    if (!registeredMobileSheetController) return;
+
+    const isMobileViewport =
+      typeof window !== 'undefined' && window.innerWidth < 768;
+
+    if (!isMobileViewport) {
+      registeredMobileSheetController('none');
+      return;
+    }
+
+    if (stepIndex === 3) {
+      // Step 4: #tour-panel-komponen
+      registeredMobileSheetController('palette');
+    } else if (stepIndex === 4) {
+      // Step 5: #tour-panel-inspector
+      registeredMobileSheetController('inspector');
+    } else {
+      registeredMobileSheetController('none');
+    }
+  } catch (error) {
+    console.warn('Failed to prepare outdoor viewport for tour step:', error);
+  }
+}
+
+/**
+ * Launches the interactive `driver.js` spotlight product tour.
+ * Automatically selects `OUTDOOR_TOUR_STEPS` when `worldMode === 'outside'`,
+ * or `TOUR_STEPS` when `worldMode === 'lab'`.
  * Time Complexity: O(1)
  */
 export function startTour(): void {
@@ -229,7 +349,13 @@ export function startTour(): void {
       activeDriverInstance.destroy();
     }
 
-    prepareViewportForTourStep(0);
+    const isOutdoorMode = useCircuitStore.getState().worldMode === 'outside';
+    const activeSteps = isOutdoorMode ? OUTDOOR_TOUR_STEPS : TOUR_STEPS;
+    const prepareStepFn = isOutdoorMode
+      ? prepareOutdoorViewportForTourStep
+      : prepareViewportForTourStep;
+
+    prepareStepFn(0);
 
     const driverObj = driver({
       showProgress: true,
@@ -243,10 +369,10 @@ export function startTour(): void {
       nextBtnText: 'Lanjut',
       prevBtnText: 'Kembali',
       doneBtnText: 'Selesai',
-      steps: TOUR_STEPS,
+      steps: activeSteps,
       onHighlightStarted: (_element, _step, opts) => {
         const idx = opts.state.activeIndex ?? 0;
-        prepareViewportForTourStep(idx);
+        prepareStepFn(idx);
         window.requestAnimationFrame(() => {
           if (driverObj.isActive()) {
             driverObj.refresh();
@@ -266,13 +392,13 @@ export function startTour(): void {
           driverObj.destroy();
           return;
         }
-        prepareViewportForTourStep(currentIndex + 1);
+        prepareStepFn(currentIndex + 1);
         driverObj.moveNext();
       },
       onPrevClick: () => {
         const currentIndex = driverObj.getActiveIndex() ?? 0;
         if (currentIndex > 0) {
-          prepareViewportForTourStep(currentIndex - 1);
+          prepareStepFn(currentIndex - 1);
         }
         driverObj.movePrevious();
       },
