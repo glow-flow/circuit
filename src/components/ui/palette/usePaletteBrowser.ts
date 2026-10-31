@@ -10,14 +10,14 @@ import {
 import { useCircuitStore } from '../../../store/useCircuitStore';
 
 /** Outdoor-only component IDs allowed when `worldMode === 'outside'`. */
-const OUTDOOR_ALLOWED_ENTRY_IDS = new Set<string>([
+export const OUTDOOR_ALLOWED_ENTRY_IDS = new Set<string>([
   'solar-panel',
   'wind-turbine',
   'transmission-tower',
 ]);
 
 /** Outdoor-exclusive generators excluded from the Indoor Lab palette (`worldMode === 'lab'`). */
-const LAB_EXCLUDED_ENTRY_IDS = new Set<string>([
+export const LAB_EXCLUDED_ENTRY_IDS = new Set<string>([
   'solar-panel',
   'wind-turbine',
 ]);
@@ -50,15 +50,19 @@ export function usePaletteBrowser() {
     getEntriesByCategory(firstCategoryId)[0]?.id ?? ''
   );
 
-  // Synchronize default selection when switching between 'outside' and 'lab'
+  // Synchronize category and item selection strictly when switching worldMode ('outside' vs 'lab')
   useEffect(() => {
     if (worldMode === 'outside') {
       setActiveCategoryId('battery');
-      setSelectedEntryId('solar-panel');
-    } else if (LAB_EXCLUDED_ENTRY_IDS.has(selectedEntryId)) {
-      setSelectedEntryId('battery-aa');
+      setSelectedEntryId((prev) =>
+        OUTDOOR_ALLOWED_ENTRY_IDS.has(prev) ? prev : 'solar-panel'
+      );
+    } else {
+      setSelectedEntryId((prev) =>
+        LAB_EXCLUDED_ENTRY_IDS.has(prev) ? 'battery' : prev
+      );
     }
-  }, [worldMode, selectedEntryId]);
+  }, [worldMode]);
 
   const categories = useMemo(() => {
     if (worldMode === 'outside') {
