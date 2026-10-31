@@ -74,6 +74,7 @@ import {
   saveWorkspaceAutosave,
 } from '../utils/presetStorage';
 import { checkPanelDirectShort } from '../utils/circuitShortCircuitUtils';
+import { getComponentDisplayName } from '../utils/nodeLocalization';
 
 interface CircuitState {
   nodes: Node<CircuitElementData>[];
@@ -85,6 +86,8 @@ interface CircuitState {
   language: AppLanguage;
   customPresets: CustomCircuitPreset[];
   fitViewTrigger: number;
+  activeModal: 'gallery' | 'missions' | 'oscilloscope' | 'share' | null;
+  setActiveModal: (modal: 'gallery' | 'missions' | 'oscilloscope' | 'share' | null) => void;
 
   // World Mode & CSS Cloud Transition State
   worldMode: WorldMode;
@@ -485,6 +488,8 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   language: 'id',
   customPresets: loadCustomPresetsFromStorage(),
   fitViewTrigger: 0,
+  activeModal: null,
+  setActiveModal: (modal) => set({ activeModal: modal }),
   notification: null,
 
   // World Mode & CSS Cloud Transition State
@@ -807,7 +812,22 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   },
 
   setLanguage: (language: AppLanguage) => {
-    set({ language });
+    const updatedNodes = get().nodes.map((node) => {
+      const currentLabel = node.data?.label;
+      if (!currentLabel) return node;
+      const localizedLabel = getComponentDisplayName(node.data, language);
+      if (localizedLabel && localizedLabel !== currentLabel) {
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            label: localizedLabel,
+          },
+        };
+      }
+      return node;
+    });
+    set({ language, nodes: updatedNodes });
   },
 
   onNodesChange: (changes: NodeChange[]) => {
@@ -1948,6 +1968,7 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   },
 
   loadPreset: (presetName) => {
+    const isId = get().language === 'id';
     let presetNodes: Node<CircuitElementData>[] = [];
     let presetEdges: Edge[] = [];
 
@@ -1957,7 +1978,12 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
           id: 'bat_extra',
           type: 'battery',
           position: { x: -220, y: 150 },
-          data: { id: 'bat_extra', type: 'battery', voltage: 1.5, label: 'Baterai AA 1.5V' },
+          data: {
+            id: 'bat_extra',
+            type: 'battery',
+            voltage: 1.5,
+            label: isId ? 'Baterai AA 1.5V' : '1.5V AA Battery',
+          },
         },
         {
           id: 'holder_1',
@@ -1969,14 +1995,19 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
             hasBattery: true,
             batteryCount: 2,
             voltage: 3.0,
-            label: 'Wadah AA (3.0V)',
+            label: isId ? 'Wadah AA (3.0V)' : '2× AA Holder (3.0V)',
           },
         },
         {
           id: 'sw_1',
           type: 'switch',
           position: { x: 340, y: 20 },
-          data: { id: 'sw_1', type: 'switch', isOpen: false, label: 'Saklar Utama' },
+          data: {
+            id: 'sw_1',
+            type: 'switch',
+            isOpen: false,
+            label: isId ? 'Saklar Utama' : 'Main Switch',
+          },
         },
         {
           id: 'bulb_1',
@@ -1988,13 +2019,13 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
             bulbType: 'incandescent',
             resistance: 800,
             powerRating: 40,
-            label: 'Fiting + Lampu Pijar',
+            label: isId ? 'Fiting + Lampu Pijar' : 'Socket + Incandescent Bulb',
             installedBulb: {
               id: 'bulb_1_unit',
               bulbType: 'incandescent',
               resistance: 800,
               powerRating: 40,
-              label: 'Lampu Pijar',
+              label: isId ? 'Lampu Pijar' : 'Incandescent Bulb',
             },
           },
         },
@@ -2002,13 +2033,21 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
           id: 'wp_s1',
           type: 'waypoint',
           position: { x: 840, y: 430 },
-          data: { id: 'wp_s1', type: 'waypoint', label: 'Sudut Kanan Bawah' },
+          data: {
+            id: 'wp_s1',
+            type: 'waypoint',
+            label: isId ? 'Sudut Kanan Bawah' : 'Bottom Right Corner',
+          },
         },
         {
           id: 'wp_s2',
           type: 'waypoint',
           position: { x: 115, y: 430 },
-          data: { id: 'wp_s2', type: 'waypoint', label: 'Sudut Kiri Bawah' },
+          data: {
+            id: 'wp_s2',
+            type: 'waypoint',
+            label: isId ? 'Sudut Kiri Bawah' : 'Bottom Left Corner',
+          },
         },
       ];
       presetEdges = [
@@ -2031,7 +2070,7 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
             hasBattery: true,
             batteryCount: 2,
             voltage: 3.0,
-            label: 'Sumber V (3.0V)',
+            label: isId ? 'Sumber V (3.0V)' : '3.0V Voltage Source',
           },
         },
         {
@@ -2044,13 +2083,13 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
             bulbType: 'incandescent',
             resistance: 800,
             powerRating: 40,
-            label: 'Fiting + Lampu Pijar 1',
+            label: isId ? 'Fiting + Lampu Pijar 1' : 'Socket + Incandescent Bulb 1',
             installedBulb: {
               id: 'bulb_1_unit',
               bulbType: 'incandescent',
               resistance: 800,
               powerRating: 40,
-              label: 'Lampu Pijar',
+              label: isId ? 'Lampu Pijar' : 'Incandescent Bulb',
             },
           },
         },
@@ -2064,13 +2103,13 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
             bulbType: 'incandescent',
             resistance: 800,
             powerRating: 40,
-            label: 'Fiting + Lampu Pijar 2',
+            label: isId ? 'Fiting + Lampu Pijar 2' : 'Socket + Incandescent Bulb 2',
             installedBulb: {
               id: 'bulb_2_unit',
               bulbType: 'incandescent',
               resistance: 800,
               powerRating: 40,
-              label: 'Lampu Pijar',
+              label: isId ? 'Lampu Pijar' : 'Incandescent Bulb',
             },
           },
         },
@@ -2084,13 +2123,13 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
             bulbType: 'incandescent',
             resistance: 800,
             powerRating: 40,
-            label: 'Fiting + Lampu Pijar 3',
+            label: isId ? 'Fiting + Lampu Pijar 3' : 'Socket + Incandescent Bulb 3',
             installedBulb: {
               id: 'bulb_3_unit',
               bulbType: 'incandescent',
               resistance: 800,
               powerRating: 40,
-              label: 'Lampu Pijar',
+              label: isId ? 'Lampu Pijar' : 'Incandescent Bulb',
             },
           },
         },
@@ -2098,25 +2137,41 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
           id: 'wp_tl',
           type: 'waypoint',
           position: { x: 115, y: 110 },
-          data: { id: 'wp_tl', type: 'waypoint', label: 'Sudut Atas Kiri' },
+          data: {
+            id: 'wp_tl',
+            type: 'waypoint',
+            label: isId ? 'Sudut Atas Kiri' : 'Top Left Corner',
+          },
         },
         {
           id: 'wp_tr',
           type: 'waypoint',
           position: { x: 690, y: 110 },
-          data: { id: 'wp_tr', type: 'waypoint', label: 'Sudut Atas Kanan' },
+          data: {
+            id: 'wp_tr',
+            type: 'waypoint',
+            label: isId ? 'Sudut Atas Kanan' : 'Top Right Corner',
+          },
         },
         {
           id: 'wp_br',
           type: 'waypoint',
           position: { x: 950, y: 510 },
-          data: { id: 'wp_br', type: 'waypoint', label: 'Sudut Bawah Kanan' },
+          data: {
+            id: 'wp_br',
+            type: 'waypoint',
+            label: isId ? 'Sudut Bawah Kanan' : 'Bottom Right Corner',
+          },
         },
         {
           id: 'wp_bl',
           type: 'waypoint',
           position: { x: 115, y: 510 },
-          data: { id: 'wp_bl', type: 'waypoint', label: 'Sudut Bawah Kiri' },
+          data: {
+            id: 'wp_bl',
+            type: 'waypoint',
+            label: isId ? 'Sudut Bawah Kiri' : 'Bottom Left Corner',
+          },
         },
       ];
       presetEdges = [
@@ -2142,7 +2197,7 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
             hasBattery: true,
             batteryCount: 2,
             voltage: 3.0,
-            label: 'Sumber V (3.0V)',
+            label: isId ? 'Sumber V (3.0V)' : '3.0V Voltage Source',
           },
         },
         {
@@ -2155,13 +2210,13 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
             bulbType: 'incandescent',
             resistance: 800,
             powerRating: 40,
-            label: 'Fiting + Lampu Pijar',
+            label: isId ? 'Fiting + Lampu Pijar' : 'Socket + Incandescent Bulb',
             installedBulb: {
               id: 'bulb_1_unit',
               bulbType: 'incandescent',
               resistance: 800,
               powerRating: 40,
-              label: 'Lampu Pijar',
+              label: isId ? 'Lampu Pijar' : 'Incandescent Bulb',
             },
           },
         },
@@ -2175,13 +2230,13 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
             bulbType: 'edison',
             resistance: 1200,
             powerRating: 30,
-            label: 'Fiting + Lampu Edison',
+            label: isId ? 'Fiting + Lampu Edison' : 'Socket + Edison Bulb',
             installedBulb: {
               id: 'bulb_2_unit',
               bulbType: 'edison',
               resistance: 1200,
               powerRating: 30,
-              label: 'Lampu Edison',
+              label: isId ? 'Lampu Edison' : 'Edison Bulb',
             },
           },
         },
@@ -2195,13 +2250,13 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
             bulbType: 'led_rgb',
             resistance: 6000,
             powerRating: 7,
-            label: 'Fiting + Smart LED',
+            label: isId ? 'Fiting + Smart LED' : 'Socket + Smart LED',
             installedBulb: {
               id: 'bulb_3_unit',
               bulbType: 'led_rgb',
               resistance: 6000,
               powerRating: 7,
-              label: 'Smart LED',
+              label: isId ? 'Smart LED' : 'Smart LED',
             },
           },
         },
@@ -2210,38 +2265,62 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
           id: 'wp_top_1',
           type: 'waypoint',
           position: { x: 320, y: 50 },
-          data: { id: 'wp_top_1', type: 'waypoint', label: 'Simpul Atas 1' },
+          data: {
+            id: 'wp_top_1',
+            type: 'waypoint',
+            label: isId ? 'Simpul Atas 1' : 'Top Rail Node 1',
+          },
         },
         {
           id: 'wp_top_2',
           type: 'waypoint',
           position: { x: 610, y: 50 },
-          data: { id: 'wp_top_2', type: 'waypoint', label: 'Simpul Atas 2' },
+          data: {
+            id: 'wp_top_2',
+            type: 'waypoint',
+            label: isId ? 'Simpul Atas 2' : 'Top Rail Node 2',
+          },
         },
         {
           id: 'wp_top_3',
           type: 'waypoint',
           position: { x: 900, y: 50 },
-          data: { id: 'wp_top_3', type: 'waypoint', label: 'Simpul Atas 3' },
+          data: {
+            id: 'wp_top_3',
+            type: 'waypoint',
+            label: isId ? 'Simpul Atas 3' : 'Top Rail Node 3',
+          },
         },
         // Bottom Rail Junctions (-)
         {
           id: 'wp_bot_1',
           type: 'waypoint',
           position: { x: 550, y: 490 },
-          data: { id: 'wp_bot_1', type: 'waypoint', label: 'Simpul Bawah 1' },
+          data: {
+            id: 'wp_bot_1',
+            type: 'waypoint',
+            label: isId ? 'Simpul Bawah 1' : 'Bottom Rail Node 1',
+          },
         },
         {
           id: 'wp_bot_2',
           type: 'waypoint',
           position: { x: 840, y: 490 },
-          data: { id: 'wp_bot_2', type: 'waypoint', label: 'Simpul Bawah 2' },
+          data: {
+            id: 'wp_bot_2',
+            type: 'waypoint',
+            label: isId ? 'Simpul Bawah 2' : 'Bottom Rail Node 2',
+          },
         },
         {
           id: 'wp_bot_3',
           type: 'waypoint',
           position: { x: 1130, y: 490 },
-          data: { id: 'wp_bot_3', type: 'waypoint', label: 'Simpul Bawah 3' },
+          data: {
+            id: 'wp_bot_3',
+            type: 'waypoint',
+            label: isId ? 'Simpul Bawah 3' : 'Bottom Rail Node 3',
+          },
         },
       ];
       presetEdges = [
@@ -2274,14 +2353,19 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
             hasBattery: true,
             batteryCount: 2,
             voltage: 3.0,
-            label: 'Wadah AA (3.0V)',
+            label: isId ? 'Wadah AA (3.0V)' : '2× AA Holder (3.0V)',
           },
         },
         {
           id: 'sw_1',
           type: 'switch',
           position: { x: 420, y: 200 },
-          data: { id: 'sw_1', type: 'switch', isOpen: true, label: 'Saklar Korsleting' },
+          data: {
+            id: 'sw_1',
+            type: 'switch',
+            isOpen: true,
+            label: isId ? 'Saklar Korsleting' : 'Short-Circuit Switch',
+          },
         },
       ];
       presetEdges = [

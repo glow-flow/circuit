@@ -12,6 +12,7 @@ import {
   Sparkles,
   Users,
   X,
+  Zap,
 } from 'lucide-react';
 import { useCircuitStore } from '../../store/useCircuitStore';
 import {
@@ -292,13 +293,18 @@ export const CreditsModal: React.FC<CreditsModalProps> = ({ isOpen, onClose }) =
             </p>
 
             {/* 1. All 7 Lamps */}
-            <div className="space-y-2">
-              <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
-                <Lightbulb className="w-3.5 h-3.5 text-amber-400" />
-                <span>
-                  {isId
-                    ? 'A. Spesifikasi & Sumber Data 7 Jenis Lampu (E.A.C.H Lamp)'
-                    : 'A. Specifications & Citations for Each of the 7 Lamps'}
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/25">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Lightbulb className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span className="text-xs font-bold text-amber-300 tracking-tight leading-snug truncate">
+                    {isId
+                      ? 'A. Spesifikasi & Rujukan Ilmiah 7 Jenis Lampu'
+                      : 'A. Specifications & Citations for 7 Bulb Models'}
+                  </span>
+                </div>
+                <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-400/20 text-amber-200 shrink-0">
+                  7 Bulbs
                 </span>
               </div>
               <div className="space-y-2">
@@ -330,13 +336,18 @@ export const CreditsModal: React.FC<CreditsModalProps> = ({ isOpen, onClose }) =
             </div>
 
             {/* 2. All Other Components */}
-            <div className="space-y-2 pt-2 border-t border-white/10">
-              <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-cyan-300 flex items-center gap-1.5">
-                <Cpu className="w-3.5 h-3.5 text-cyan-400" />
-                <span>
-                  {isId
-                    ? 'B. Spesifikasi & Sumber Data Seluruh Komponen & Alat Ukur'
-                    : 'B. Specifications & Citations for Each Circuit Component'}
+            <div className="space-y-2.5 pt-2 border-t border-white/10">
+              <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/25">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Cpu className="w-4 h-4 text-cyan-400 shrink-0" />
+                  <span className="text-xs font-bold text-cyan-300 tracking-tight leading-snug truncate">
+                    {isId
+                      ? 'B. Spesifikasi & Rujukan Komponen Rangkaian'
+                      : 'B. Specifications & Citations for Circuit Parts'}
+                  </span>
+                </div>
+                <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-cyan-400/20 text-cyan-200 shrink-0">
+                  Parts
                 </span>
               </div>
               <div className="space-y-2">
@@ -368,11 +379,14 @@ export const CreditsModal: React.FC<CreditsModalProps> = ({ isOpen, onClose }) =
             </div>
 
             {/* 3. Official PLN Tariff Citation */}
-            <div className="rounded-lg bg-electric-500/10 border border-electric-400/30 p-2.5 text-[10px] space-y-1">
-              <div className="font-bold text-electric-300">
-                {isId ? PLN_TARIFF_CITATION.titleId : PLN_TARIFF_CITATION.titleEn}
+            <div className="rounded-lg bg-electric-500/10 border border-electric-400/25 p-3 text-[10px] space-y-1.5">
+              <div className="flex items-center gap-2 font-bold text-electric-300 text-xs">
+                <Zap className="w-3.5 h-3.5 text-electric-400 shrink-0" />
+                <span>
+                  {isId ? PLN_TARIFF_CITATION.titleId : PLN_TARIFF_CITATION.titleEn}
+                </span>
               </div>
-              <div className="font-mono text-slate-200 leading-relaxed">
+              <div className="font-mono text-slate-300 leading-relaxed text-[10px]">
                 📚{' '}
                 {isId
                   ? PLN_TARIFF_CITATION.sourceCitationId

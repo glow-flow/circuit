@@ -1,6 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { PlusCircle, Sliders, Activity, Scissors, Pin } from 'lucide-react';
+import {
+  PlusCircle,
+  Sliders,
+  Activity,
+  Scissors,
+  Pin,
+  LayoutGrid,
+  Trophy,
+  Share2,
+} from 'lucide-react';
 import { Header } from './components/ui/Header';
 import { SidebarPalette } from './components/ui/SidebarPalette';
 import { CircuitCanvas } from './components/canvas/CircuitCanvas';
@@ -9,10 +18,13 @@ import { CloudOverlay } from './components/ui/CloudOverlay';
 import { Inspector } from './components/ui/Inspector';
 import { WelcomeModal } from './components/ui/WelcomeModal';
 import { Toast } from './components/ui/Toast';
+import { MobileBottomSheet, BottomSheetSnapState } from './components/ui/mobile/MobileBottomSheet';
 import { useCircuitStore } from './store/useCircuitStore';
 import { TRANSLATIONS } from './i18n/translations';
 import { hasSeenTutorial } from './utils/presetStorage';
 import { registerTourMobileSheetController, TourMobileSheetState } from './utils/tour';
+import { decodeShareableUrlHash } from './utils/workspaceManagement';
+import { getComponentDisplayName } from './utils/nodeLocalization';
 
 type MobileSheetType = TourMobileSheetState;
 
@@ -26,14 +38,16 @@ export const App: React.FC = () => {
   const disconnectNodeWires = useCircuitStore((state) => state.disconnectNodeWires);
   const disconnectAndResetMcb = useCircuitStore((state) => state.disconnectAndResetMcb);
   const splitEdgeAtMidpoint = useCircuitStore((state) => state.splitEdgeAtMidpoint);
-  const simulation = useCircuitStore((state) => state.simulation);
   const language = useCircuitStore((state) => state.language);
   const worldMode = useCircuitStore((state) => state.worldMode);
+  const setActiveModal = useCircuitStore((state) => state.setActiveModal);
 
   const t = TRANSLATIONS[language].mobileNav;
   const wireT = TRANSLATIONS[language].wire;
+  const isId = language === 'id';
 
   const [activeMobileSheet, setActiveMobileSheet] = useState<MobileSheetType>('none');
+  const [bottomSheetSnap, setBottomSheetSnap] = useState<BottomSheetSnapState>('closed');
   const [isWelcomeOpen, setIsWelcomeOpen] = useState<boolean>(() => !hasSeenTutorial());
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId);
@@ -52,29 +66,60 @@ export const App: React.FC = () => {
     return cleanup;
   }, []);
 
-  // Initialize with the Simple Lamp & Switch circuit preset on first mount
+  // Initialize with the Simple Lamp & Switch circuit preset or load URL hash on mount
   useEffect(() => {
+    // 1. Check for shared circuit URL hash (#circuit=...)
+    if (typeof window !== 'undefined' && window.location.hash) {
+      const decodedResult = decodeShareableUrlHash(window.location.hash);
+      if (decodedResult && decodedResult.isValid) {
+        const { payload } = decodedResult;
+        useCircuitStore.getState().setNodes(payload.nodes);
+        useCircuitStore.setState({
+          edges: payload.edges,
+          worldMode: payload.metadata.worldMode,
+        });
+        useCircuitStore.getState().runSimulation();
+        useCircuitStore.getState().notify(
+          isId
+            ? `Rangkaian "${payload.metadata.circuitTitle}" berhasil dimuat dari tautan!`
+            : `Circuit "${payload.metadata.circuitTitle}" loaded from shared link!`
+        );
+        window.history.replaceState(null, '', window.location.pathname);
+        return;
+      }
+    }
+
+    // 2. Fallback to Simple Lamp & Switch default
     if (nodes.length === 0) {
       loadPreset('simple-lamp');
     }
-  }, [loadPreset, nodes.length]);
+  }, [loadPreset, nodes.length, isId]);
 
   // Register mobile bottom-sheet controller so driver.js can open/close drawers during the tour
   useEffect(() => {
     registerTourMobileSheetController((nextSheet) => {
       flushSync(() => {
         setActiveMobileSheet(nextSheet);
+        setBottomSheetSnap(nextSheet === 'none' ? 'closed' : 'half');
       });
     });
     return () => registerTourMobileSheetController(null);
   }, []);
 
-  const toggleMobileSheet = (sheet: MobileSheetType) => {
-    setActiveMobileSheet((prev) => (prev === sheet ? 'none' : sheet));
+  const openMobileSheet = (sheet: 'palette' | 'inspector') => {
+    setActiveMobileSheet(sheet);
+    setBottomSheetSnap('half');
+  };
+
+  const handleSnapChange = (nextSnap: BottomSheetSnapState) => {
+    setBottomSheetSnap(nextSnap);
+    if (nextSnap === 'closed') {
+      setActiveMobileSheet('none');
+    }
   };
 
   return (
-    <div className="flex flex-col h-[100dvh] w-screen bg-void-950 text-slate-100 overflow-hidden font-sans">
+    <div className="flex flex-col min-h-[100dvh] w-screen bg-void-950 text-slate-100 overflow-hidden font-sans">
       {/* Top Utility Header */}
       <Header />
 
@@ -94,12 +139,13 @@ export const App: React.FC = () => {
           {selectedNode && activeMobileSheet === 'none' && (
             <div className="md:hidden absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 max-w-[94vw]">
               <button
-                onClick={() => setActiveMobileSheet('inspector')}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-electric-600/95 text-white text-xs font-semibold shadow-glow border border-electric-400/50 active:scale-95 transition-transform truncate"
+                type="button"
+                onClick={() => openMobileSheet('inspector')}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-electric-600/95 text-white text-xs font-semibold shadow-glow border border-electric-400/50 active:scale-95 transition-transform truncate cursor-pointer"
               >
                 <Sliders className="w-3.5 h-3.5 shrink-0" />
                 <span className="truncate">
-                  {language === 'id' ? 'Atur' : 'Edit'} {selectedNode.data.label}
+                  {isId ? 'Atur' : 'Edit'} {getComponentDisplayName(selectedNode.data, language)}
                 </span>
               </button>
 
@@ -118,10 +164,10 @@ export const App: React.FC = () => {
                   <Scissors className="w-3.5 h-3.5 shrink-0" />
                   <span>
                     {selectedNode.data.isMcbTripped
-                      ? language === 'id'
+                      ? isId
                         ? 'Putus Kabel & Reset'
                         : 'Cut Wires & Reset'
-                      : language === 'id'
+                      : isId
                       ? 'Putus Kabel'
                       : 'Cut Wires'}
                   </span>
@@ -159,80 +205,119 @@ export const App: React.FC = () => {
         {/* Desktop Right Inspector & Telemetry */}
         <Inspector />
 
-        {/* Mobile Slide-Up Bottom Sheet Overlay */}
+        {/* High-Performance Mobile Draggable Bottom Sheet */}
         {activeMobileSheet !== 'none' && (
-          <div className="md:hidden fixed inset-0 z-40 flex flex-col justify-end bg-black/60 backdrop-blur-xs">
-            <div
-              className="flex-1"
-              onClick={() => setActiveMobileSheet('none')}
-              aria-hidden="true"
-            />
-            {activeMobileSheet === 'palette' && (
+          <MobileBottomSheet
+            snapState={bottomSheetSnap}
+            onSnapChange={handleSnapChange}
+            title={
+              activeMobileSheet === 'palette'
+                ? isId
+                  ? 'Palet Komponen Listrik'
+                  : 'Component Palette'
+                : selectedNode
+                ? getComponentDisplayName(selectedNode.data, language)
+                : isId
+                ? 'Inspektor Rangkaian'
+                : 'Circuit Inspector'
+            }
+            subtitle={
+              activeMobileSheet === 'palette'
+                ? isId
+                  ? 'Sentuh & geser untuk menambahkan komponen'
+                  : 'Drag or tap to place components'
+                : selectedNode
+                ? selectedNode.data.type.toUpperCase()
+                : isId
+                ? 'Telemetri Global & Rumus'
+                : 'Global Telemetry & Formulas'
+            }
+          >
+            {activeMobileSheet === 'palette' ? (
               <SidebarPalette
                 isMobileDrawer
-                onCloseMobile={() => setActiveMobileSheet('none')}
+                onCloseMobile={() => handleSnapChange('closed')}
               />
-            )}
-            {activeMobileSheet === 'inspector' && (
+            ) : (
               <Inspector
                 isMobileDrawer
-                onCloseMobile={() => setActiveMobileSheet('none')}
+                onCloseMobile={() => handleSnapChange('closed')}
               />
             )}
-          </div>
+          </MobileBottomSheet>
         )}
       </div>
 
-      {/* Mobile Bottom Navigation Bar */}
-      <nav className="tour-mobile-nav md:hidden h-14 bg-void-900 border-t border-white/10 px-3 flex items-center justify-between gap-2 z-30 shrink-0 select-none">
+      {/* Mobile Bottom Navigation Bar (WCAG AA compliant with 44px minimum tap targets) */}
+      <nav className="tour-mobile-nav md:hidden min-h-[52px] bg-void-900 border-t border-white/10 px-2 py-1 flex items-center justify-between gap-1 z-30 shrink-0 select-none">
+        {/* 1. Add Part Button */}
         <button
           id="tour-btn-tambah"
           type="button"
-          onClick={() => toggleMobileSheet('palette')}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all active:scale-95 ${
+          onClick={() => openMobileSheet('palette')}
+          className={`flex-1 min-h-[44px] flex flex-col items-center justify-center rounded-xl text-[10px] font-semibold transition-all active:scale-95 cursor-pointer ${
             activeMobileSheet === 'palette'
-              ? 'bg-electric-500/20 border-electric-500 text-electric-400'
-              : 'bg-void-850 border-white/10 text-slate-200'
+              ? 'bg-electric-500/20 text-electric-300 font-bold border border-electric-500/40'
+              : 'text-slate-300 hover:bg-white/5'
           }`}
         >
           <PlusCircle className="w-4 h-4 text-electric-400" />
-          <span>{t.addPart}</span>
+          <span className="truncate">{t.addPart}</span>
         </button>
 
-        {/* Center Live Power & Quick PLN Bill Calculator Trigger */}
+        {/* 2. Preset Gallery Button */}
         <button
           type="button"
-          onClick={() => {
-            useCircuitStore.getState().selectNode(null);
-            useCircuitStore.getState().selectEdge(null);
-            setActiveMobileSheet('inspector');
-          }}
-          title={
-            language === 'id'
-              ? 'Ketuk untuk cek Kalkulator Tagihan Listrik PLN (Rp)'
-              : 'Tap to open PLN Electricity Bill Calculator (IDR)'
-          }
-          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-void-950 hover:bg-void-850 border border-white/10 text-[11px] font-mono text-slate-200 transition-all active:scale-95 cursor-pointer"
+          onClick={() => setActiveModal('gallery')}
+          className="flex-1 min-h-[44px] flex flex-col items-center justify-center rounded-xl text-[10px] font-semibold text-slate-300 hover:bg-white/5 transition-all active:scale-95 cursor-pointer"
         >
-          <Activity className="w-3.5 h-3.5 text-electric-400 shrink-0" />
-          <span>{simulation.totalPowerDrawn.toFixed(2)}W</span>
-          <span className="text-[9px] font-sans font-semibold px-1.5 py-0.5 rounded bg-electric-500/15 text-electric-400 border border-electric-500/25">
-            {language === 'id' ? 'Cek Rp' : 'Cost'}
-          </span>
+          <LayoutGrid className="w-4 h-4 text-electric-400" />
+          <span className="truncate">{isId ? 'Galeri' : 'Gallery'}</span>
         </button>
 
+        {/* 3. Challenge Missions Button */}
+        <button
+          type="button"
+          onClick={() => setActiveModal('missions')}
+          className="flex-1 min-h-[44px] flex flex-col items-center justify-center rounded-xl text-[10px] font-semibold text-amber-300 hover:bg-amber-500/10 transition-all active:scale-95 cursor-pointer"
+        >
+          <Trophy className="w-4 h-4 text-amber-400" />
+          <span className="truncate">{isId ? 'Misi' : 'Missions'}</span>
+        </button>
+
+        {/* 4. Live Oscilloscope Button */}
+        <button
+          type="button"
+          onClick={() => setActiveModal('oscilloscope')}
+          className="flex-1 min-h-[44px] flex flex-col items-center justify-center rounded-xl text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/10 transition-all active:scale-95 cursor-pointer"
+        >
+          <Activity className="w-4 h-4 text-emerald-400" />
+          <span className="truncate">Scope</span>
+        </button>
+
+        {/* 5. Inspector Button */}
         <button
           id="tour-btn-info"
           type="button"
-          onClick={() => toggleMobileSheet('inspector')}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all active:scale-95 ${
+          onClick={() => openMobileSheet('inspector')}
+          className={`flex-1 min-h-[44px] flex flex-col items-center justify-center rounded-xl text-[10px] font-semibold transition-all active:scale-95 cursor-pointer ${
             activeMobileSheet === 'inspector' || selectedNode
-              ? 'bg-electric-500/20 border-electric-500/50 text-electric-400'
-              : 'bg-void-850 border-white/10 text-slate-200'
+              ? 'bg-electric-500/20 text-electric-300 font-bold border border-electric-500/40'
+              : 'text-slate-300 hover:bg-white/5'
           }`}
         >
           <Sliders className="w-4 h-4 text-electric-400" />
-          <span>{t.inspector}</span>
+          <span className="truncate">{t.inspector}</span>
+        </button>
+
+        {/* 6. Share & Persist Button */}
+        <button
+          type="button"
+          onClick={() => setActiveModal('share')}
+          className="flex-1 min-h-[44px] flex flex-col items-center justify-center rounded-xl text-[10px] font-semibold text-slate-300 hover:bg-white/5 transition-all active:scale-95 cursor-pointer"
+        >
+          <Share2 className="w-4 h-4 text-electric-400" />
+          <span className="truncate">{isId ? 'Bagikan' : 'Share'}</span>
         </button>
       </nav>
 
@@ -242,10 +327,10 @@ export const App: React.FC = () => {
         onClose={() => setIsWelcomeOpen(false)}
       />
 
-      {/* Transient notifications (e.g. wrong bulb base for a socket) */}
+      {/* Transient notifications */}
       <Toast />
 
-      {/* 2-Second Pure CSS Cloud Transition Overlay */}
+      {/* Pure CSS Cloud Transition Overlay */}
       <CloudOverlay />
     </div>
   );

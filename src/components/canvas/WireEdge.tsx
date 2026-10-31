@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   BaseEdge,
   EdgeProps,
@@ -56,7 +56,7 @@ function resolveWaypointPositions(
  * true branch current and turn off cleanly when a zone switch opens.
  * Time Complexity: O(1)
  */
-function resolveEdgeBranchCurrent(
+export function resolveEdgeBranchCurrent(
   source: string,
   target: string,
   branchCurrents: Record<string, number>
@@ -67,8 +67,6 @@ function resolveEdgeBranchCurrent(
   const isTargetWaypoint = target.startsWith('wp_');
 
   if (!isSourceWaypoint && !isTargetWaypoint) {
-    // Between two active/passive components (e.g. Ammeter -> Zone Switch, or Resistor -> Bulb),
-    // the wire carries the branch's series/split current
     return Math.min(rawSourceI, rawTargetI);
   }
   if (!isSourceWaypoint && isTargetWaypoint) {
@@ -80,16 +78,48 @@ function resolveEdgeBranchCurrent(
   return Math.max(rawSourceI, rawTargetI);
 }
 
+export type WirePolarity = 'positive' | 'negative' | 'neutral';
+
 /**
- * Custom Wire Edge with dynamic current glow, animated electron flow,
- * permanent high-contrast visibility, single-tap selection (which opens the
- * top floating toolbar to cut the wire), double-click waypoint anchor creation,
- * and support for both smoothstep orthogonal routing (`type: 'smoothstep'`) and bezier curves.
+ * Resolves polarity of a wire segment based on pin handles and component types.
+ * Accurately distinguishes supply paths (positive potential) from return paths (ground/negative).
+ * Time Complexity: O(1)
+ */
+export function resolveWirePolarity(
+  sourceHandle?: string | null,
+  targetHandle?: string | null
+): WirePolarity {
+  if (sourceHandle === 'pos' || targetHandle === 'pos') {
+    return 'positive';
+  }
+  if (
+    sourceHandle === 'neg' ||
+    targetHandle === 'neg' ||
+    sourceHandle === 'gnd' ||
+    targetHandle === 'gnd'
+  ) {
+    return 'negative';
+  }
+  return 'neutral';
+}
+
+/**
+ * Advanced Wire Edge Component with:
+ * - Simulation-driven electron flow animation (zero fake animation when I = 0)
+ * - Polarity-based coloring (positive supply path vs negative return path)
+ * - Component current-path tracing on component selection
+ * - Targeted short-circuit path highlighting
+ * - Interactive click selection and real-time electrical telemetry badge
+ * - Double-click Waypoint anchor creation
+ *
+ * Time Complexity: O(1) per edge render.
  */
 export const WireEdge: React.FC<EdgeProps> = ({
   id,
   source,
   target,
+  sourceHandleId,
+  targetHandleId,
   sourceX,
   sourceY,
   targetX,
@@ -106,19 +136,39 @@ export const WireEdge: React.FC<EdgeProps> = ({
   );
   const splitEdgeWithWaypoint = useCircuitStore((state) => state.splitEdgeWithWaypoint);
   const selectedEdgeId = useCircuitStore((state) => state.selectedEdgeId);
+  const selectedNodeId = useCircuitStore((state) => state.selectedNodeId);
   const selectEdge = useCircuitStore((state) => state.selectEdge);
+  const language = useCircuitStore((state) => state.language);
   const reactFlow = useReactFlow();
 
-  const isShortCircuit = simulation.isShortCircuit;
-  const isWireSelected = selected || selectedEdgeId === id;
+  const [isHovered, setIsHovered] = useState<boolean>(false);
 
-  // Derive current through this wire segment
-  const sourceCurrent = resolveEdgeBranchCurrent(
+  const isWireSelected = selected || selectedEdgeId === id;
+  const isOverallShortCircuit = simulation.isShortCircuit;
+
+  // Check if this specific wire participates in a short-circuited branch
+  const isBranchShortCircuit =
+    isOverallShortCircuit &&
+    (simulation.shortCircuitBranches.includes(source) ||
+      simulation.shortCircuitBranches.includes(target));
+
+  // Derive real simulation current through this wire segment
+  const wireCurrent = resolveEdgeBranchCurrent(
     source,
     target,
     simulation.branchCurrents
   );
-  const hasCurrent = sourceCurrent > 0.0001;
+  const hasCurrent = wireCurrent > 0.0001;
+
+  // Polarity determination
+  const polarity = resolveWirePolarity(sourceHandleId, targetHandleId);
+
+  // Check if connected to currently selected node (current-path highlighting)
+  const isConnectedToSelectedNode = Boolean(
+    selectedNodeId &&
+      (source === selectedNodeId || target === selectedNodeId) &&
+      hasCurrent
+  );
 
   const { effectiveSourcePos, effectiveTargetPos } = resolveWaypointPositions(
     source,
@@ -152,35 +202,51 @@ export const WireEdge: React.FC<EdgeProps> = ({
           curvature: 0.2,
         });
 
-  // Solid, high-contrast permanent wire styling
-  let strokeColor = '#64748B'; // Crisp slate-500 (100% visible on dark void background)
+  // Calculate visual appearance based on physical electrical state
+  let strokeColor = '#64748B'; // Default high-contrast slate-500
   let strokeWidth = 3;
   let glowFilter: string | undefined = undefined;
   let animationSpeed = '0s';
 
   if (isWireSelected) {
     strokeColor = '#F59E0B'; // Highlight amber for selected wire
-    strokeWidth = 4;
-    glowFilter = 'drop-shadow(0 0 10px rgba(245, 158, 11, 0.85))';
-  } else if (isShortCircuit) {
+    strokeWidth = 4.5;
+    glowFilter = 'drop-shadow(0 0 12px rgba(245, 158, 11, 0.9))';
+  } else if (isBranchShortCircuit) {
     strokeColor = '#EF4444'; // Neon danger red
-    strokeWidth = 3.5;
-    glowFilter = 'drop-shadow(0 0 10px rgba(239, 68, 68, 0.9))';
+    strokeWidth = 4;
+    glowFilter = 'drop-shadow(0 0 12px rgba(239, 68, 68, 0.95))';
+  } else if (isConnectedToSelectedNode) {
+    strokeColor = '#38BDF8'; // Electric cyan highlight ring
+    strokeWidth = 4;
+    glowFilter = 'drop-shadow(0 0 10px rgba(56, 189, 248, 0.85))';
+    const speed = Math.max(0.35, 1.8 / Math.max(1, wireCurrent * 10));
+    animationSpeed = `${speed.toFixed(2)}s`;
   } else if (hasCurrent) {
-    strokeColor = '#38BDF8'; // Vibrant electric sky blue
-    strokeWidth = 3;
-    glowFilter = 'drop-shadow(0 0 8px rgba(56, 189, 248, 0.7))';
-    const speed = Math.max(0.4, 2.0 / Math.max(1, sourceCurrent * 10));
+    if (polarity === 'positive') {
+      strokeColor = '#FB923C'; // Warm electric amber for positive path
+      strokeWidth = 3.2;
+      glowFilter = 'drop-shadow(0 0 8px rgba(251, 146, 60, 0.75))';
+    } else if (polarity === 'negative') {
+      strokeColor = '#38BDF8'; // Electric sky blue for negative return path
+      strokeWidth = 3.2;
+      glowFilter = 'drop-shadow(0 0 8px rgba(56, 189, 248, 0.7))';
+    } else {
+      strokeColor = '#38BDF8'; // Standard active conductor
+      strokeWidth = 3;
+      glowFilter = 'drop-shadow(0 0 8px rgba(56, 189, 248, 0.65))';
+    }
+    const speed = Math.max(0.35, 1.8 / Math.max(1, wireCurrent * 10));
     animationSpeed = `${speed.toFixed(2)}s`;
   }
 
-  // Handle single-click to select this wire (shows floating Cut/Anchor toolbar at top)
+  // Handle single-tap to select this wire
   const handleClick = (event: React.MouseEvent) => {
     event.stopPropagation();
     selectEdge(id);
   };
 
-  // Handle double-click to add a Waypoint Node (Anchor point) without cutting the wire
+  // Handle double-click to add a Waypoint Node (Anchor point)
   const handleDoubleClick = (event: React.MouseEvent) => {
     event.stopPropagation();
     event.preventDefault();
@@ -190,6 +256,8 @@ export const WireEdge: React.FC<EdgeProps> = ({
     });
     splitEdgeWithWaypoint(id, clickPosition);
   };
+
+  const isIndonesian = language === 'id';
 
   return (
     <>
@@ -215,27 +283,39 @@ export const WireEdge: React.FC<EdgeProps> = ({
           d={edgePath}
           fill="none"
           stroke="#FBBF24"
-          strokeWidth={9}
-          strokeOpacity={0.28}
+          strokeWidth={10}
+          strokeOpacity={0.35}
           className="pointer-events-none animate-pulse"
         />
       )}
 
-      {/* Animated electron flow pulse when current flows through circuit */}
-      {hasCurrent && !isShortCircuit && (
+      {/* Current path highlight halo when connected component is selected */}
+      {isConnectedToSelectedNode && !isWireSelected && (
         <path
           d={edgePath}
           fill="none"
-          stroke="#E0F2FE"
-          strokeWidth={2}
+          stroke="#38BDF8"
+          strokeWidth={8}
+          strokeOpacity={0.3}
+          className="pointer-events-none animate-pulse"
+        />
+      )}
+
+      {/* Animated electron flow pulse ONLY when simulation verifies real current */}
+      {hasCurrent && !isBranchShortCircuit && (
+        <path
+          d={edgePath}
+          fill="none"
+          stroke={polarity === 'positive' ? '#FEF08A' : '#E0F2FE'}
+          strokeWidth={2.2}
           strokeDasharray="6 12"
           className="animate-wire-flow pointer-events-none"
           style={{ animationDuration: animationSpeed }}
         />
       )}
 
-      {/* Sparks/hazard pulsating effect when short circuit occurs */}
-      {isShortCircuit && (
+      {/* Hazardous thermal pulsing along short-circuit branches */}
+      {isBranchShortCircuit && (
         <path
           d={edgePath}
           fill="none"
@@ -246,41 +326,84 @@ export const WireEdge: React.FC<EdgeProps> = ({
         />
       )}
 
-      {/* Invisible thick hit-area path for tap-to-select and double-click to add Waypoint */}
+      {/* Invisible thick hit-area path for tap-to-select and double-click waypoint */}
       <path
         d={edgePath}
         fill="none"
         stroke="transparent"
-        strokeWidth={30}
+        strokeWidth={32}
         className="cursor-pointer pointer-events-auto"
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
       />
 
-      {/* Current badge on wire (non-blocking for double-click waypoint creation) */}
-      {hasCurrent && (
-        <foreignObject
-          width={64}
-          height={24}
-          x={labelX - 32}
-          y={labelY - 12}
-          className="pointer-events-none"
-        >
-          <div className="flex items-center justify-center h-full">
-            <span
-              className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-void-950/95 border font-semibold shadow-md transition-colors ${
+      {/* Real-time Electrical Telemetry Badge & Tooltip on Wire Midpoint */}
+      <foreignObject
+        width={140}
+        height={48}
+        x={labelX - 70}
+        y={labelY - 24}
+        className="pointer-events-none overflow-visible"
+      >
+        <div className="flex flex-col items-center justify-center h-full select-none">
+          {/* Main Badge */}
+          {hasCurrent || isWireSelected || isHovered ? (
+            <div
+              className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border shadow-lg backdrop-blur-md transition-all ${
                 isWireSelected
-                  ? 'border-amber-400 text-amber-300'
-                  : 'border-white/20 text-sky-300'
+                  ? 'bg-void-950 border-amber-400 text-amber-300 ring-2 ring-amber-400/20'
+                  : isBranchShortCircuit
+                  ? 'bg-red-950 border-red-500 text-red-300 animate-pulse'
+                  : polarity === 'positive'
+                  ? 'bg-void-950/95 border-orange-400/50 text-orange-300'
+                  : 'bg-void-950/95 border-sky-400/50 text-sky-300'
               }`}
             >
-              {sourceCurrent < 1
-                ? `${(sourceCurrent * 1000).toFixed(0)}mA`
-                : `${sourceCurrent.toFixed(2)}A`}
-            </span>
-          </div>
-        </foreignObject>
-      )}
+              <div
+                className={`w-1.5 h-1.5 rounded-full ${
+                  isBranchShortCircuit
+                    ? 'bg-red-500 animate-ping'
+                    : hasCurrent
+                    ? polarity === 'positive'
+                      ? 'bg-orange-400'
+                      : 'bg-sky-400'
+                    : 'bg-slate-500'
+                }`}
+              />
+              <span className="text-[10px] font-mono font-bold">
+                {hasCurrent
+                  ? wireCurrent < 1
+                    ? `${(wireCurrent * 1000).toFixed(0)} mA`
+                    : `${wireCurrent.toFixed(2)} A`
+                  : isIndonesian
+                  ? '0.0 mA'
+                  : '0.0 mA'}
+              </span>
+            </div>
+          ) : null}
+
+          {/* Expanded Tooltip on Click or Hover */}
+          {(isWireSelected || isHovered) && (
+            <div className="mt-1 px-2 py-0.5 rounded-md bg-void-950/95 border border-white/15 text-[9px] font-sans text-slate-300 shadow-xl whitespace-nowrap">
+              {polarity === 'positive' ? (
+                <span className="text-orange-400 font-semibold">
+                  {isIndonesian ? '+ Jalur Positif' : '+ Positive Path'}
+                </span>
+              ) : polarity === 'negative' ? (
+                <span className="text-sky-400 font-semibold">
+                  {isIndonesian ? '- Jalur Negatif' : '- Return Path'}
+                </span>
+              ) : (
+                <span className="text-slate-400">
+                  {isIndonesian ? 'Kabel Penghubung' : 'Conductor'}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      </foreignObject>
     </>
   );
 };

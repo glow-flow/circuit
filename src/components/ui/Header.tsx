@@ -12,12 +12,19 @@ import {
   HelpCircle,
   Trees,
   FlaskConical,
-  Users,
+  LayoutGrid,
+  Trophy,
+  Activity,
+  Share2,
 } from 'lucide-react';
 import { useCircuitStore } from '../../store/useCircuitStore';
 import { TRANSLATIONS } from '../../i18n/translations';
 import { startTour } from '../../utils/tour';
 import { CreditsModal } from './CreditsModal';
+import { PresetGalleryModal } from './presets/PresetGalleryModal';
+import { MissionModal } from './missions/MissionModal';
+import { OscilloscopeModal } from './analytics/OscilloscopeModal';
+import { CircuitShareModal } from './workspace/CircuitShareModal';
 
 export const Header: React.FC = () => {
   const simulation = useCircuitStore((state) => state.simulation);
@@ -33,12 +40,15 @@ export const Header: React.FC = () => {
   const worldMode = useCircuitStore((state) => state.worldMode);
   const isTransitioningWorld = useCircuitStore((state) => state.isTransitioningWorld);
   const triggerWorldTransition = useCircuitStore((state) => state.triggerWorldTransition);
+  const activeModal = useCircuitStore((state) => state.activeModal);
+  const setActiveModal = useCircuitStore((state) => state.setActiveModal);
 
-  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
-  const [isCreditsModalOpen, setIsCreditsModalOpen] = useState(false);
-  const [presetNameInput, setPresetNameInput] = useState('');
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState<boolean>(false);
+  const [isCreditsModalOpen, setIsCreditsModalOpen] = useState<boolean>(false);
+  const [presetNameInput, setPresetNameInput] = useState<string>('');
 
   const t = TRANSLATIONS[language].header;
+  const isId = language === 'id';
 
   const toggleLanguage = () => {
     setLanguage(language === 'id' ? 'en' : 'id');
@@ -48,7 +58,9 @@ export const Header: React.FC = () => {
     const val = e.target.value;
     if (!val) return;
 
-    if (val === 'action:save') {
+    if (val === 'action:gallery') {
+      setActiveModal('gallery');
+    } else if (val === 'action:save') {
       setIsSaveModalOpen(true);
     } else if (val.startsWith('custom:')) {
       const customId = val.replace('custom:', '');
@@ -70,13 +82,13 @@ export const Header: React.FC = () => {
   return (
     <>
       <header className="h-12 sm:h-14 border-b border-white/10 bg-void-900/95 backdrop-blur-md px-2 sm:px-4 flex items-center justify-between gap-1.5 sm:gap-3 z-20 shrink-0 select-none">
-        {/* Left: Brand Identity */}
-        <div className="flex items-center gap-2 min-w-0 shrink-0">
+        {/* Left: Brand Identity & Feature Launchers */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 shrink-0">
           <button
             type="button"
             onClick={() => setIsCreditsModalOpen(true)}
             title={
-              language === 'id'
+              isId
                 ? 'Circuit Sandbox — Karya SMPN 12 Surabaya'
                 : 'Circuit Sandbox — By SMPN 12 Surabaya'
             }
@@ -95,14 +107,62 @@ export const Header: React.FC = () => {
               {t.appSubtitle}
             </p>
           </div>
+
+          {/* Quick-Access Top Pills: Preset Gallery, Missions, Oscilloscope */}
+          <div className="hidden lg:flex items-center gap-1 pl-1">
+            <button
+              type="button"
+              onClick={() => setActiveModal('gallery')}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-void-950 hover:bg-void-850 text-slate-200 hover:text-white border border-white/10 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
+              title={isId ? 'Buka Galeri Rangkaian Visual' : 'Open Visual Preset Gallery'}
+            >
+              <LayoutGrid className="w-3.5 h-3.5 text-electric-400" />
+              <span>{isId ? 'Galeri' : 'Gallery'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveModal('missions')}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
+              title={isId ? 'Misi & Tantangan Praktikum IPA' : 'Missions & Challenges'}
+            >
+              <Trophy className="w-3.5 h-3.5 text-amber-400" />
+              <span>{isId ? 'Tantangan' : 'Challenges'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveModal('oscilloscope')}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-void-950 hover:bg-void-850 text-slate-200 hover:text-white border border-white/10 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
+              title={isId ? 'Oskiloskop & Analitik Listrik' : 'Oscilloscope & Analytics'}
+            >
+              <Activity className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Scope</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveModal('share')}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-void-950 hover:bg-void-850 text-slate-200 hover:text-white border border-white/10 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
+              title={isId ? 'Ekspor, Impor & Bagikan QR' : 'Share & Export'}
+            >
+              <Share2 className="w-3.5 h-3.5 text-electric-400" />
+              <span>{isId ? 'Bagikan' : 'Share'}</span>
+            </button>
+          </div>
         </div>
 
         {/* Center: Unified Preset & Save Capsule (Lab Mode) or Nature Badge (Outdoor Mode) */}
         {worldMode === 'lab' ? (
           <div className="flex-1 min-w-0 max-w-[210px] xs:max-w-[240px] sm:max-w-xs md:max-w-md flex items-center bg-void-950/95 border border-white/10 rounded-xl p-0.5 shadow-inner">
-            <div className="hidden md:flex items-center pl-2.5 pr-1 text-slate-400 shrink-0">
+            <button
+              type="button"
+              onClick={() => setActiveModal('gallery')}
+              title={isId ? 'Buka Galeri Rangkaian' : 'Open Preset Gallery'}
+              className="hidden md:flex items-center pl-2.5 pr-1 text-slate-400 hover:text-white transition-colors cursor-pointer shrink-0"
+            >
               <BookOpen className="w-3.5 h-3.5 text-electric-400" />
-            </div>
+            </button>
             <select
               id="tour-dropdown-contoh"
               onChange={handlePresetSelectChange}
@@ -112,6 +172,9 @@ export const Header: React.FC = () => {
             >
               <option value="" disabled className="bg-void-950 text-slate-400">
                 {t.selectPreset}
+              </option>
+              <option value="action:gallery" className="bg-void-950 text-electric-400 font-bold">
+                ❖ {isId ? 'Buka Galeri Visual...' : 'Open Visual Gallery...'}
               </option>
               <optgroup label={t.builtinGroup} className="bg-void-950 text-slate-200">
                 <option value="simple-lamp">{t.presetSimpleLamp}</option>
@@ -136,7 +199,7 @@ export const Header: React.FC = () => {
 
             <div className="w-px h-4 bg-white/10 shrink-0 mx-0.5" />
 
-            {/* Save Custom Preset Action inside Unified Capsule (Zero Overlap!) */}
+            {/* Save Custom Preset Action inside Unified Capsule */}
             <button
               id="tour-btn-save"
               type="button"
@@ -163,12 +226,12 @@ export const Header: React.FC = () => {
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-void-950 border border-emerald-500/30 text-emerald-300 text-[10px] sm:text-xs font-mono font-semibold truncate min-w-0">
             <Trees className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
             <span className="truncate">
-              {language === 'id' ? 'Zona Alam Terbuka' : 'Outdoor Sandbox'}
+              {isId ? 'Zona Alam Terbuka' : 'Outdoor Sandbox'}
             </span>
           </div>
         )}
 
-        {/* Right: Cohesive World Switcher + Unified Dark-Glass Utility Dock */}
+        {/* Right: World Switcher + Unified Dark-Glass Utility Dock */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {/* Primary World Mode Switcher Pill */}
           <button
@@ -178,10 +241,10 @@ export const Header: React.FC = () => {
             onClick={() => triggerWorldTransition()}
             title={
               worldMode === 'lab'
-                ? language === 'id'
+                ? isId
                   ? 'Keluar ke Alam Terbuka (Outdoor Sandbox)'
                   : 'Go Outside (Outdoor Sandbox)'
-                : language === 'id'
+                : isId
                 ? 'Kembali ke Dalam Laboratorium'
                 : 'Go Inside (Back to Lab)'
             }
@@ -201,78 +264,43 @@ export const Header: React.FC = () => {
               {worldMode === 'outside' ? (
                 <>
                   <span className="hidden sm:inline">
-                    {language === 'id' ? 'Masuk Lab' : 'Lab Mode'}
+                    {isId ? 'Masuk Lab' : 'Lab Mode'}
                   </span>
-                  <span className="sm:hidden">Lab</span>
+                  <span className="sm:hidden">{isId ? 'Lab' : 'Lab'}</span>
                 </>
               ) : (
                 <>
                   <span className="hidden sm:inline">
-                    {language === 'id' ? 'Ke Alam' : 'Outside'}
+                    {isId ? 'Ke Alam' : 'Outside'}
                   </span>
-                  <span className="sm:hidden">Alam</span>
+                  <span className="sm:hidden">{isId ? 'Alam' : 'Outside'}</span>
                 </>
               )}
             </span>
           </button>
 
-          {/* Short-Circuit Alert Pill (Only when shorted) */}
+          {/* Short-Circuit Alert Pill */}
           {simulation.isShortCircuit && (
             <div className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-xl bg-danger-500/15 border border-danger-500/40 text-danger-500 text-[10px] sm:text-xs font-semibold animate-pulse whitespace-nowrap shrink-0">
               <AlertOctagon className="w-3.5 h-3.5 shrink-0" />
               <span className="hidden md:inline">{t.statusShort}</span>
-              <span className="md:hidden">Korslet</span>
+              <span className="md:hidden">{isId ? 'Korslet' : 'Short'}</span>
             </div>
           )}
 
-          {/* Unified Dark-Glass Utility Dock (Team, Guide, Language, Clear) */}
+          {/* Unified Dark-Glass Utility Dock */}
           <div className="flex items-center bg-void-950/95 border border-white/10 rounded-xl p-0.5 shadow-inner shrink-0">
-            {/* Developers & Contributors Modal Trigger */}
-            <button
-              id="tour-btn-credits"
-              type="button"
-              onClick={() => setIsCreditsModalOpen(true)}
-              title={
-                language === 'id'
-                  ? 'Daftar Developer & Kontributor (SMPN 12 Surabaya)'
-                  : 'Developers & Contributors (SMPN 12 Surabaya)'
-              }
-              aria-label={
-                language === 'id'
-                  ? 'Daftar Developer & Kontributor'
-                  : 'Developers & Contributors'
-              }
-              className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 text-[11px] font-medium transition-all active:scale-95 shrink-0 cursor-pointer"
-            >
-              <Users className="w-3.5 h-3.5 text-electric-400" />
-              <span className="hidden xl:inline">
-                {language === 'id' ? 'Tim' : 'Team'}
-              </span>
-            </button>
-
-            <div className="w-px h-4 bg-white/10 shrink-0" />
-
             {/* Interactive Spotlight Tour Trigger */}
             <button
               id="tour-btn-help"
               type="button"
               onClick={() => startTour()}
-              title={
-                language === 'id'
-                  ? 'Mulai Panduan Interaktif'
-                  : 'Start Interactive Tour'
-              }
-              aria-label={
-                language === 'id'
-                  ? 'Mulai Panduan Interaktif'
-                  : 'Start Interactive Tour'
-              }
+              title={isId ? 'Mulai Panduan Interaktif' : 'Start Interactive Tour'}
+              aria-label={isId ? 'Mulai Panduan Interaktif' : 'Start Interactive Tour'}
               className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 text-[11px] font-medium transition-all active:scale-95 shrink-0 cursor-pointer"
             >
               <HelpCircle className="w-3.5 h-3.5 text-electric-400" />
-              <span className="hidden lg:inline">
-                {language === 'id' ? 'Panduan' : 'Guide'}
-              </span>
+              <span className="hidden lg:inline">{isId ? 'Panduan' : 'Guide'}</span>
             </button>
 
             <div className="w-px h-4 bg-white/10 shrink-0" />
@@ -305,7 +333,31 @@ export const Header: React.FC = () => {
         </div>
       </header>
 
-      {/* Modal: Save Custom Preset & Manage Cached Browser Presets */}
+      {/* Preset Gallery Modal */}
+      <PresetGalleryModal
+        isOpen={activeModal === 'gallery'}
+        onClose={() => setActiveModal(null)}
+      />
+
+      {/* Mission & Challenge Mode Modal */}
+      <MissionModal
+        isOpen={activeModal === 'missions'}
+        onClose={() => setActiveModal(null)}
+      />
+
+      {/* Live Oscilloscope & Electrical Analytics Modal */}
+      <OscilloscopeModal
+        isOpen={activeModal === 'oscilloscope'}
+        onClose={() => setActiveModal(null)}
+      />
+
+      {/* Workspace Persistence, QR Code & Share Modal */}
+      <CircuitShareModal
+        isOpen={activeModal === 'share'}
+        onClose={() => setActiveModal(null)}
+      />
+
+      {/* Modal: Save Custom Preset */}
       {isSaveModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4">
           <div className="w-full max-w-md rounded-2xl bg-void-900 border border-white/15 shadow-2xl overflow-hidden">
@@ -319,7 +371,7 @@ export const Header: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsSaveModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -327,7 +379,7 @@ export const Header: React.FC = () => {
 
             <form onSubmit={handleSavePresetSubmit} className="p-4 space-y-4">
               <p className="text-xs text-slate-400 leading-relaxed">
-                {language === 'id'
+                {isId
                   ? 'Rangkaian yang kamu buat akan disimpan di cache browser (LocalStorage) agar tidak hilang dan bisa dibuka kapan saja dari daftar Contoh Rangkaian.'
                   : 'Your custom circuit will be saved in your browser cache (LocalStorage) and available anytime under the Presets dropdown.'}
               </p>
@@ -348,61 +400,51 @@ export const Header: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsSaveModalOpen(false)}
-                  className="px-3.5 py-2 rounded-xl bg-void-850 hover:bg-void-800 border border-white/10 text-xs font-medium text-slate-300 active:scale-95 transition-all"
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-void-850 hover:bg-white/5 text-slate-300 border border-white/10 active:scale-95 transition-all cursor-pointer"
                 >
-                  {t.savePresetCancel}
+                  {isId ? 'Batal' : 'Cancel'}
                 </button>
                 <button
                   type="submit"
                   disabled={!presetNameInput.trim()}
-                  className="px-4 py-2 rounded-xl bg-electric-500 hover:bg-electric-400 disabled:opacity-40 text-void-950 text-xs font-bold active:scale-95 transition-all cursor-pointer"
+                  className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-electric-500 hover:bg-electric-400 text-void-950 disabled:opacity-50 active:scale-95 transition-all cursor-pointer shadow-glow font-bold"
                 >
-                  {t.savePresetConfirm}
+                  {isId ? 'Simpan' : 'Save'}
                 </button>
               </div>
-            </form>
 
-            {/* List of Existing Custom Presets in Browser Cache */}
-            {customPresets.length > 0 && (
-              <div className="px-4 pb-4 pt-2 border-t border-white/10 bg-void-950/50">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block mb-2">
-                  {t.savedPresetsListTitle} ({customPresets.length})
-                </span>
-                <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
-                  {customPresets.map((preset) => (
-                    <div
-                      key={preset.id}
-                      className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-void-900 border border-white/10 text-xs"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          loadCustomPreset(preset.id);
-                          setIsSaveModalOpen(false);
-                        }}
-                        className="flex items-center gap-2 text-left text-slate-200 hover:text-electric-400 font-medium truncate flex-1 cursor-pointer"
+              {customPresets.length > 0 && (
+                <div className="pt-3 border-t border-white/10 space-y-2">
+                  <div className="text-[11px] font-semibold text-slate-400 flex items-center gap-1.5">
+                    <FolderOpen className="w-3.5 h-3.5 text-electric-400" />
+                    <span>{isId ? 'Preset Tersimpan di Browser' : 'Saved Browser Presets'}</span>
+                  </div>
+                  <div className="max-h-36 overflow-y-auto space-y-1 pr-1">
+                    {customPresets.map((preset) => (
+                      <div
+                        key={preset.id}
+                        className="flex items-center justify-between p-2 rounded-lg bg-void-950 border border-white/5 text-xs"
                       >
-                        <FolderOpen className="w-3.5 h-3.5 text-electric-400 shrink-0" />
-                        <span className="truncate">{preset.name}</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => deleteCustomPreset(preset.id)}
-                        title={language === 'id' ? 'Hapus Preset' : 'Delete Preset'}
-                        className="p-1 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-950/40 transition-colors shrink-0 cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))}
+                        <span className="text-slate-200 truncate pr-2">★ {preset.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => deleteCustomPreset(preset.id)}
+                          className="p-1 rounded hover:bg-red-950/60 text-slate-500 hover:text-red-400 transition-colors"
+                          title={isId ? 'Hapus' : 'Delete'}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </form>
           </div>
         </div>
       )}
 
-      {/* Modal: Developers & Contributors Roster (SMPN 12 Surabaya) */}
+      {/* Credits Modal */}
       <CreditsModal
         isOpen={isCreditsModalOpen}
         onClose={() => setIsCreditsModalOpen(false)}
@@ -410,4 +452,3 @@ export const Header: React.FC = () => {
     </>
   );
 };
-
