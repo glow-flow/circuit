@@ -69,17 +69,25 @@ export const Header: React.FC = () => {
 
   return (
     <>
-      <header className="h-12 sm:h-14 border-b border-white/10 bg-void-900/95 backdrop-blur-md px-2 sm:px-4 flex items-center justify-between gap-1 sm:gap-2 z-20 shrink-0 select-none">
-        {/* Brand & Title */}
-        <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 shrink-0">
-          <div className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-electric-500/15 border border-electric-500/30 text-electric-400 shadow-glow shrink-0">
-            <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-electric-400" />
-          </div>
-          <div className="min-w-0">
-            <h1 className="text-xs sm:text-sm font-bold text-slate-100 tracking-tight flex items-center gap-1.5 whitespace-nowrap">
-              <span className="hidden sm:inline">Circuit Sandbox</span>
-              <span className="sm:hidden font-mono font-bold">Circuit</span>
-              <span className="hidden lg:inline-block text-[10px] font-mono px-1.5 py-0.5 rounded bg-electric-500/10 text-electric-400 border border-electric-500/20 font-medium whitespace-nowrap">
+      <header className="h-12 sm:h-14 border-b border-white/10 bg-void-900/95 backdrop-blur-md px-2 sm:px-4 flex items-center justify-between gap-1.5 sm:gap-3 z-20 shrink-0 select-none">
+        {/* Left: Brand Identity */}
+        <div className="flex items-center gap-2 min-w-0 shrink-0">
+          <button
+            type="button"
+            onClick={() => setIsCreditsModalOpen(true)}
+            title={
+              language === 'id'
+                ? 'Circuit Sandbox — Karya SMPN 12 Surabaya'
+                : 'Circuit Sandbox — By SMPN 12 Surabaya'
+            }
+            className="flex items-center justify-center w-8 h-8 rounded-xl bg-electric-500/15 hover:bg-electric-500/25 border border-electric-500/30 text-electric-400 shadow-glow shrink-0 transition-transform active:scale-95 cursor-pointer"
+          >
+            <Zap className="w-4 h-4 fill-electric-400" />
+          </button>
+          <div className="hidden sm:block min-w-0">
+            <h1 className="text-xs sm:text-sm font-bold text-slate-100 tracking-tight flex items-center gap-1.5 whitespace-nowrap leading-[1.1]">
+              <span>Circuit Sandbox</span>
+              <span className="hidden lg:inline-block text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-electric-500/10 text-electric-400 border border-electric-500/20 font-medium whitespace-nowrap">
                 IPA Kelas 9
               </span>
             </h1>
@@ -89,23 +97,23 @@ export const Header: React.FC = () => {
           </div>
         </div>
 
-        {/* Center Presets Dropdown (Only shown in Indoor Lab Mode) */}
+        {/* Center: Unified Preset & Save Capsule (Lab Mode) or Nature Badge (Outdoor Mode) */}
         {worldMode === 'lab' ? (
-          <div className="flex items-center gap-1 sm:gap-1.5 min-w-0 mx-1">
-            <div className="hidden md:flex items-center gap-1 text-xs text-slate-400 mr-0.5 shrink-0">
-              <BookOpen className="w-3.5 h-3.5" />
+          <div className="flex-1 min-w-0 max-w-[210px] xs:max-w-[240px] sm:max-w-xs md:max-w-md flex items-center bg-void-950/95 border border-white/10 rounded-xl p-0.5 shadow-inner">
+            <div className="hidden md:flex items-center pl-2.5 pr-1 text-slate-400 shrink-0">
+              <BookOpen className="w-3.5 h-3.5 text-electric-400" />
             </div>
             <select
               id="tour-dropdown-contoh"
               onChange={handlePresetSelectChange}
               defaultValue=""
               aria-label="Circuit Presets"
-              className="text-[11px] sm:text-xs bg-void-950 border border-white/10 text-slate-200 rounded-lg px-1.5 sm:px-2.5 py-1 sm:py-1.5 w-28 xs:w-36 sm:w-48 md:w-56 truncate focus:outline-none focus:border-electric-500 transition-colors cursor-pointer"
+              className="flex-1 min-w-0 w-full text-[11px] sm:text-xs bg-transparent text-slate-200 rounded-lg px-2 py-1.5 truncate focus:outline-none cursor-pointer"
             >
-              <option value="" disabled>
+              <option value="" disabled className="bg-void-950 text-slate-400">
                 {t.selectPreset}
               </option>
-              <optgroup label={t.builtinGroup}>
+              <optgroup label={t.builtinGroup} className="bg-void-950 text-slate-200">
                 <option value="simple-lamp">{t.presetSimpleLamp}</option>
                 <option value="voltage-divider">{t.presetSeriesDivider}</option>
                 <option value="parallel-bulbs">{t.presetParallelBulbs}</option>
@@ -113,7 +121,7 @@ export const Header: React.FC = () => {
                 <option value="ultimate-power-grid">{t.presetUltimatePowerGrid}</option>
               </optgroup>
               {customPresets.length > 0 && (
-                <optgroup label={t.customGroup}>
+                <optgroup label={t.customGroup} className="bg-void-950 text-slate-200">
                   {customPresets.map((preset) => (
                     <option key={preset.id} value={`custom:${preset.id}`}>
                       ★ {preset.name}
@@ -121,18 +129,21 @@ export const Header: React.FC = () => {
                   ))}
                 </optgroup>
               )}
-              <option value="action:save" className="text-electric-400 font-semibold">
+              <option value="action:save" className="bg-void-950 text-electric-400 font-semibold">
                 + {t.savePresetBtn}...
               </option>
             </select>
 
-            {/* Save Custom Preset to Browser Cache Button (visible on all viewports) */}
+            <div className="w-px h-4 bg-white/10 shrink-0 mx-0.5" />
+
+            {/* Save Custom Preset Action inside Unified Capsule (Zero Overlap!) */}
             <button
               id="tour-btn-save"
               type="button"
               onClick={() => setIsSaveModalOpen(true)}
               title={t.savePresetModalTitle}
-              className="flex items-center gap-1 p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg bg-electric-500/15 hover:bg-electric-500/25 border border-electric-500/30 text-electric-400 text-[11px] sm:text-xs font-semibold transition-all active:scale-95 shrink-0 cursor-pointer"
+              aria-label={t.savePresetModalTitle}
+              className="flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg bg-electric-500/15 hover:bg-electric-500/25 text-electric-400 text-[11px] sm:text-xs font-semibold transition-all active:scale-95 shrink-0 cursor-pointer"
             >
               <BookmarkPlus className="w-3.5 h-3.5 shrink-0" />
               <span className="hidden md:inline">{t.savePresetBtn}</span>
@@ -141,7 +152,7 @@ export const Header: React.FC = () => {
             <button
               type="button"
               onClick={() => loadPreset('simple-lamp')}
-              className="hidden sm:flex p-1.5 rounded-lg bg-void-850 hover:bg-void-800 border border-white/10 text-slate-300 hover:text-white transition-all active:scale-95 shrink-0 cursor-pointer"
+              className="hidden lg:flex p-1.5 ml-0.5 rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all active:scale-95 shrink-0 cursor-pointer"
               title={t.resetTitle}
               onClickCapture={runSimulation}
             >
@@ -149,17 +160,17 @@ export const Header: React.FC = () => {
             </button>
           </div>
         ) : (
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-400/25 text-emerald-300 text-[10px] sm:text-xs font-mono font-semibold truncate">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-void-950 border border-emerald-500/30 text-emerald-300 text-[10px] sm:text-xs font-mono font-semibold truncate min-w-0">
             <Trees className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
             <span className="truncate">
-              {language === 'id' ? 'Zona Alam Terbuka' : 'Outdoor Nature Sandbox'}
+              {language === 'id' ? 'Zona Alam Terbuka' : 'Outdoor Sandbox'}
             </span>
           </div>
         )}
 
-        {/* Right Help Button, Language Toggle, Environment & Clear */}
-        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-          {/* World Transition Button (Go Outside / Inside with 2s CSS Cloud Animation) */}
+        {/* Right: Cohesive World Switcher + Unified Dark-Glass Utility Dock */}
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* Primary World Mode Switcher Pill */}
           <button
             id="tour-btn-world"
             type="button"
@@ -175,29 +186,29 @@ export const Header: React.FC = () => {
                 : 'Go Inside (Back to Lab)'
             }
             aria-label="Toggle World Mode"
-            className={`flex items-center gap-1 sm:gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg border text-[10px] sm:text-xs font-bold transition-all active:scale-95 shrink-0 cursor-pointer disabled:opacity-50 ${
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-xl border text-[11px] sm:text-xs font-semibold transition-all active:scale-95 shrink-0 cursor-pointer disabled:opacity-50 ${
               worldMode === 'outside'
-                ? 'bg-cyan-500/20 hover:bg-cyan-500/30 border-cyan-400/50 text-cyan-200 shadow-[0_0_14px_rgba(34,211,238,0.25)]'
-                : 'bg-emerald-500/20 hover:bg-emerald-500/30 border-emerald-400/50 text-emerald-200 shadow-[0_0_14px_rgba(16,185,129,0.25)]'
+                ? 'bg-electric-500/15 hover:bg-electric-500/25 border-electric-400/40 text-electric-300'
+                : 'bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-400/40 text-emerald-300'
             }`}
           >
             {worldMode === 'outside' ? (
-              <FlaskConical className="w-3.5 h-3.5 text-cyan-300 shrink-0" />
+              <FlaskConical className="w-3.5 h-3.5 text-electric-400 shrink-0" />
             ) : (
               <Trees className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
             )}
-            <span className="font-mono text-[10px] sm:text-[11px] font-bold">
+            <span className="tracking-tight">
               {worldMode === 'outside' ? (
                 <>
                   <span className="hidden sm:inline">
-                    {language === 'id' ? 'Masuk ke Lab' : 'Go Inside'}
+                    {language === 'id' ? 'Masuk Lab' : 'Lab Mode'}
                   </span>
                   <span className="sm:hidden">Lab</span>
                 </>
               ) : (
                 <>
                   <span className="hidden sm:inline">
-                    {language === 'id' ? 'Keluar ke Alam' : 'Go Outside'}
+                    {language === 'id' ? 'Ke Alam' : 'Outside'}
                   </span>
                   <span className="sm:hidden">Alam</span>
                 </>
@@ -205,86 +216,92 @@ export const Header: React.FC = () => {
             </span>
           </button>
 
-          {/* Developers & Contributors Modal Trigger Button */}
-          <button
-            id="tour-btn-credits"
-            type="button"
-            onClick={() => setIsCreditsModalOpen(true)}
-            title={
-              language === 'id'
-                ? 'Daftar Developer & Kontributor (SMPN 12 Surabaya)'
-                : 'Developers & Contributors (SMPN 12 Surabaya)'
-            }
-            aria-label={
-              language === 'id'
-                ? 'Daftar Developer & Kontributor'
-                : 'Developers & Contributors'
-            }
-            className="flex items-center gap-1 p-1.5 sm:px-2 sm:py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/40 text-amber-300 text-[10px] sm:text-xs font-semibold transition-all active:scale-95 shrink-0 cursor-pointer"
-          >
-            <Users className="w-3.5 h-3.5" />
-            <span className="hidden xl:inline">
-              {language === 'id' ? 'Tim' : 'Team'}
-            </span>
-          </button>
-
-          {/* Help / Interactive Spotlight Tour Button */}
-          <button
-            id="tour-btn-help"
-            type="button"
-            onClick={() => startTour()}
-            title={
-              language === 'id'
-                ? 'Mulai Panduan Interaktif'
-                : 'Start Interactive Tour'
-            }
-            aria-label={
-              language === 'id'
-                ? 'Mulai Panduan Interaktif'
-                : 'Start Interactive Tour'
-            }
-            className="flex items-center gap-1 p-1.5 sm:px-2 sm:py-1 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-400/40 text-cyan-300 text-[10px] sm:text-xs font-semibold transition-all active:scale-95 shrink-0 cursor-pointer"
-          >
-            <HelpCircle className="w-3.5 h-3.5" />
-            <span className="hidden lg:inline">
-              {language === 'id' ? 'Panduan' : 'Guide'}
-            </span>
-          </button>
-
-          {/* Language Switcher Button (ID / EN) */}
-          <button
-            type="button"
-            onClick={toggleLanguage}
-            title={t.langToggleTitle}
-            className="flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-lg bg-electric-500/15 hover:bg-electric-500/25 border border-electric-500/30 text-electric-400 text-[10px] sm:text-xs font-mono font-bold transition-all active:scale-95 shrink-0 cursor-pointer"
-          >
-            <Globe className="w-3 h-3 sm:w-3.5 sm:h-3.5 hidden xs:inline" />
-            <span>{language === 'id' ? 'ID' : 'EN'}</span>
-          </button>
-
-          {simulation.isShortCircuit ? (
-            <div className="flex items-center gap-1 px-1.5 sm:px-2.5 py-1 rounded-full bg-danger-500/15 border border-danger-500/40 text-danger-500 text-[10px] sm:text-xs font-semibold animate-pulse shadow-glow-danger whitespace-nowrap shrink-0">
+          {/* Short-Circuit Alert Pill (Only when shorted) */}
+          {simulation.isShortCircuit && (
+            <div className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-xl bg-danger-500/15 border border-danger-500/40 text-danger-500 text-[10px] sm:text-xs font-semibold animate-pulse whitespace-nowrap shrink-0">
               <AlertOctagon className="w-3.5 h-3.5 shrink-0" />
               <span className="hidden md:inline">{t.statusShort}</span>
               <span className="md:hidden">Korslet</span>
             </div>
-          ) : (
-            <div className="hidden lg:flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] sm:text-xs font-medium whitespace-nowrap shrink-0">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-              <span>{t.statusStable}</span>
-            </div>
           )}
 
-          <button
-            id="tour-btn-reset"
-            type="button"
-            onClick={clearCanvas}
-            className="flex items-center gap-1 p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg bg-void-850 hover:bg-red-950/40 border border-white/10 hover:border-red-500/30 text-xs text-slate-300 hover:text-red-300 transition-all active:scale-95 shrink-0 cursor-pointer"
-            title={t.clearTitle}
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">{t.clearAll}</span>
-          </button>
+          {/* Unified Dark-Glass Utility Dock (Team, Guide, Language, Clear) */}
+          <div className="flex items-center bg-void-950/95 border border-white/10 rounded-xl p-0.5 shadow-inner shrink-0">
+            {/* Developers & Contributors Modal Trigger */}
+            <button
+              id="tour-btn-credits"
+              type="button"
+              onClick={() => setIsCreditsModalOpen(true)}
+              title={
+                language === 'id'
+                  ? 'Daftar Developer & Kontributor (SMPN 12 Surabaya)'
+                  : 'Developers & Contributors (SMPN 12 Surabaya)'
+              }
+              aria-label={
+                language === 'id'
+                  ? 'Daftar Developer & Kontributor'
+                  : 'Developers & Contributors'
+              }
+              className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 text-[11px] font-medium transition-all active:scale-95 shrink-0 cursor-pointer"
+            >
+              <Users className="w-3.5 h-3.5 text-electric-400" />
+              <span className="hidden xl:inline">
+                {language === 'id' ? 'Tim' : 'Team'}
+              </span>
+            </button>
+
+            <div className="w-px h-4 bg-white/10 shrink-0" />
+
+            {/* Interactive Spotlight Tour Trigger */}
+            <button
+              id="tour-btn-help"
+              type="button"
+              onClick={() => startTour()}
+              title={
+                language === 'id'
+                  ? 'Mulai Panduan Interaktif'
+                  : 'Start Interactive Tour'
+              }
+              aria-label={
+                language === 'id'
+                  ? 'Mulai Panduan Interaktif'
+                  : 'Start Interactive Tour'
+              }
+              className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 text-[11px] font-medium transition-all active:scale-95 shrink-0 cursor-pointer"
+            >
+              <HelpCircle className="w-3.5 h-3.5 text-electric-400" />
+              <span className="hidden lg:inline">
+                {language === 'id' ? 'Panduan' : 'Guide'}
+              </span>
+            </button>
+
+            <div className="w-px h-4 bg-white/10 shrink-0" />
+
+            {/* Language Switcher (ID / EN) */}
+            <button
+              type="button"
+              onClick={toggleLanguage}
+              title={t.langToggleTitle}
+              className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 text-[10px] sm:text-xs font-mono font-bold transition-all active:scale-95 shrink-0 cursor-pointer"
+            >
+              <Globe className="w-3.5 h-3.5 text-slate-400 hidden sm:inline" />
+              <span>{language === 'id' ? 'ID' : 'EN'}</span>
+            </button>
+
+            <div className="w-px h-4 bg-white/10 shrink-0" />
+
+            {/* Clear Canvas Button */}
+            <button
+              id="tour-btn-reset"
+              type="button"
+              onClick={clearCanvas}
+              className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-950/40 text-xs font-medium transition-all active:scale-95 shrink-0 cursor-pointer"
+              title={t.clearTitle}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">{t.clearAll}</span>
+            </button>
+          </div>
         </div>
       </header>
 

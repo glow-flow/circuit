@@ -184,11 +184,27 @@ export const App: React.FC = () => {
           <span>{t.addPart}</span>
         </button>
 
-        {/* Center Live Power Readout */}
-        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-void-950 border border-white/5 text-[11px] font-mono text-slate-300">
-          <Activity className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+        {/* Center Live Power & Quick PLN Bill Calculator Trigger */}
+        <button
+          type="button"
+          onClick={() => {
+            useCircuitStore.getState().selectNode(null);
+            useCircuitStore.getState().selectEdge(null);
+            setActiveMobileSheet('inspector');
+          }}
+          title={
+            language === 'id'
+              ? 'Ketuk untuk cek Kalkulator Tagihan Listrik PLN (Rp)'
+              : 'Tap to open PLN Electricity Bill Calculator (IDR)'
+          }
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-void-950 hover:bg-void-850 border border-white/10 text-[11px] font-mono text-slate-200 transition-all active:scale-95 cursor-pointer"
+        >
+          <Activity className="w-3.5 h-3.5 text-electric-400 shrink-0" />
           <span>{simulation.totalPowerDrawn.toFixed(2)}W</span>
-        </div>
+          <span className="text-[9px] font-sans font-semibold px-1.5 py-0.5 rounded bg-electric-500/15 text-electric-400 border border-electric-500/25">
+            {language === 'id' ? 'Cek Rp' : 'Cost'}
+          </span>
+        </button>
 
         <button
           id="tour-btn-info"
