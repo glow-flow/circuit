@@ -74,7 +74,24 @@ export function usePaletteBrowser() {
     if (worldMode === 'outside') {
       return rawEntries.filter((entry) => OUTDOOR_ALLOWED_ENTRY_IDS.has(entry.id));
     }
-    return rawEntries.filter((entry) => !LAB_EXCLUDED_ENTRY_IDS.has(entry.id));
+    return rawEntries
+      .filter((entry) => !LAB_EXCLUDED_ENTRY_IDS.has(entry.id))
+      .map((entry): PaletteEntry => {
+        if (entry.id === 'transmission-tower') {
+          return {
+            ...entry,
+            label: 'Panel Distribusi Lab',
+            labelEn: 'Lab Distribution Panel',
+            hint: 'Box penerima listrik dari Menara Transmisi luar ke meja Lab lengkap dengan kWh Meter, proteksi MCB anti-korsleting, dan penurun tegangan (Step-Down DC).',
+            hintEn:
+              'Wall distribution box receiving outdoor Transmission Tower power into the Lab with a digital meter, short-circuit MCB breaker, and DC Step-Down regulator.',
+            spec: 'MCB · Step-Down',
+            image: undefined,
+            glyph: 'distribution-panel',
+          };
+        }
+        return entry;
+      });
   }, [activeCategoryId, worldMode]);
 
   const countByCategory = useMemo(() => {

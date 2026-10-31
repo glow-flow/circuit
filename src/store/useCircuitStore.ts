@@ -40,7 +40,11 @@ import {
   settleTerrainGravityImmediate,
   stepTerrainGravity,
 } from '../physics/terrainGrid';
-import { solveCircuitMNA } from '../physics/mnaSolver';
+import {
+  isTransmissionNodeActive,
+  SHORT_CIRCUIT_CURRENT_THRESHOLD,
+  solveCircuitMNA,
+} from '../physics/mnaSolver';
 import {
   computeEffectiveBatteryVoltage,
   determineBatteryChargeState,
@@ -210,7 +214,8 @@ function recalculateCircuit(
       !standalonePassiveBulbIds.has(edge.target)
   );
 
-  const components: CircuitElementData[] = nodes.map((node) => node.data);
+  let workingNodes = nodes;
+  let components: CircuitElementData[] = workingNodes.map((node) => node.data);
   const wires: WireConnection[] = validEdges.map((edge) => ({
     id: edge.id,
     source: edge.source,
@@ -219,19 +224,54 @@ function recalculateCircuit(
     targetHandle: edge.targetHandle ?? 'p2',
   }));
 
-  const simulation = solveCircuitMNA({ components, wires });
+  let simulation = solveCircuitMNA({ components, wires });
+
+  // Automatic MCB Short-Circuit Protection (Standar PUIL):
+  // If a short circuit occurs across the virtual grid while a Lab Distribution Panel's MCB is ON,
+  // automatically trip the MCB to interrupt the fault current and protect laboratory equipment.
+  if (simulation.isShortCircuit) {
+    const overloadedLabPanelIds = new Set(
+      workingNodes
+        .filter(
+          (n) =>
+            isTransmissionNodeActive(n.data) &&
+            n.data.worldMode !== 'outside' &&
+            Math.abs(simulation.branchCurrents[n.id] ?? 0) > SHORT_CIRCUIT_CURRENT_THRESHOLD
+        )
+        .map((n) => n.id)
+    );
+
+    if (overloadedLabPanelIds.size > 0) {
+      workingNodes = workingNodes.map((n) =>
+        overloadedLabPanelIds.has(n.id)
+          ? {
+              ...n,
+              data: {
+                ...n.data,
+                isMcbOn: false,
+                isMcbTripped: true,
+              },
+            }
+          : n
+      );
+      components = workingNodes.map((node) => node.data);
+      simulation = solveCircuitMNA({ components, wires });
+    }
+  }
 
   // Update node data with calculated voltages, currents, power, and thermal overload status
-  const totalTowers = nodes.filter(
-    (n) => n.data.type === 'transmission-tower' || n.data.type === 'transmission_tower'
-  ).length;
+  const activeTowersCount = workingNodes.filter((n) => isTransmissionNodeActive(n.data)).length;
+  const maxGridVoltage = Math.max(0, ...Object.values(simulation.nodeVoltages));
+  const reverseBiasedSet = new Set(simulation.reverseBiasedBranches ?? []);
+  const blockedGeneratorSet = new Set(simulation.blockedGeneratorIds ?? []);
 
-  const updatedNodes = nodes.map((node) => {
+  const updatedNodes = workingNodes.map((node) => {
     const branchCurrent = simulation.branchCurrents[node.id] ?? 0;
     const isShortCircuit = simulation.shortCircuitBranches.includes(node.id);
 
     if (node.data.type === 'socket' || node.data.type === 'pin-socket' || node.data.type === 'socket-pin') {
       const installedBulb = node.data.installedBulb;
+      const isReverseBiased = reverseBiasedSet.has(node.id);
       if (installedBulb) {
         const bulbType =
           typeof installedBulb === 'object' ? installedBulb.bulbType : installedBulb;
@@ -280,6 +320,7 @@ function recalculateCircuit(
             calculatedPower: powerWatts,
             isShortCircuit,
             isBlown,
+            isReverseBiased,
           },
         };
       } else {
@@ -291,6 +332,7 @@ function recalculateCircuit(
             calculatedVoltage: 0,
             calculatedPower: 0,
             isShortCircuit: false,
+            isReverseBiased: false,
           },
         };
       }
@@ -321,6 +363,7 @@ function recalculateCircuit(
       const sunlight = node.data.sunlight ?? 100;
       const outputVoltage = node.data.voltage ?? getSolarPanelVoltage(sunlight);
       const outputPower = Math.abs(branchCurrent * outputVoltage);
+      const isBlockingDiodeActive = blockedGeneratorSet.has(node.id);
 
       return {
         ...node,
@@ -332,6 +375,7 @@ function recalculateCircuit(
           calculatedVoltage: outputVoltage,
           calculatedPower: outputPower,
           isShortCircuit,
+          isBlockingDiodeActive,
         },
       };
     }
@@ -340,6 +384,7 @@ function recalculateCircuit(
       const speed = node.data.speed ?? 50;
       const outputVoltage = (speed / 100) * 12.0;
       const outputPower = Math.abs(branchCurrent * outputVoltage);
+      const isBlockingDiodeActive = blockedGeneratorSet.has(node.id);
 
       return {
         ...node,
@@ -351,17 +396,27 @@ function recalculateCircuit(
           calculatedVoltage: outputVoltage,
           calculatedPower: outputPower,
           isShortCircuit,
+          isBlockingDiodeActive,
         },
       };
     }
 
     if (node.data.type === 'transmission-tower' || node.data.type === 'transmission_tower') {
+      const isActive = isTransmissionNodeActive(node.data);
+      const effectiveConnectedCount = isActive ? activeTowersCount : 1;
+      const busVoltage = isActive && activeTowersCount > 1 ? maxGridVoltage : 0;
+
       return {
         ...node,
         data: {
           ...node.data,
-          towerConnectedCount: totalTowers,
+          isMcbOn: node.data.isMcbOn ?? true,
+          isMcbTripped: node.data.isMcbTripped ?? false,
+          stepDownVoltage: node.data.stepDownVoltage ?? null,
+          towerConnectedCount: effectiveConnectedCount,
           calculatedCurrent: branchCurrent,
+          calculatedVoltage: busVoltage,
+          calculatedPower: busVoltage * Math.abs(branchCurrent),
           isShortCircuit,
         },
       };
@@ -904,7 +959,17 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
         defaultData = {
           ...defaultData,
           type: 'transmission-tower',
-          label: isId ? 'Menara Transmisi' : 'Transmission Tower',
+          isMcbOn: true,
+          isMcbTripped: false,
+          stepDownVoltage: null,
+          label:
+            activeWorldMode === 'outside'
+              ? isId
+                ? 'Menara Transmisi'
+                : 'Transmission Tower'
+              : isId
+              ? 'Panel Distribusi Lab'
+              : 'Lab Distribution Panel',
         };
         break;
       case 'wind-turbine':

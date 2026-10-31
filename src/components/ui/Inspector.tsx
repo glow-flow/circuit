@@ -623,43 +623,114 @@ export const Inspector: React.FC<InspectorProps> = ({
               </div>
             )}
 
-            {/* Transmission Tower Virtual Grid Controls */}
+            {/* Transmission Tower & Lab Distribution Panel (MCB + Step-Down) Controls */}
             {(componentData.type === 'transmission-tower' || componentData.type === 'transmission_tower') && (
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-xs font-semibold text-slate-200">
-                    {language === 'id' ? 'Status Jaringan Virtual' : 'Virtual Grid Bus'}
+                    {language === 'id' ? 'Status Jaringan Transmisi' : 'Transmission Grid Bus'}
                   </span>
                   <span
                     className={`text-xs font-mono font-bold px-2 py-0.5 rounded border ${
-                      (componentData.towerConnectedCount ?? 1) > 1
+                      componentData.isMcbTripped
+                        ? 'bg-red-500/20 text-red-300 border-red-500/40 animate-pulse'
+                        : componentData.isMcbOn !== false && (componentData.towerConnectedCount ?? 1) > 1
                         ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
                         : 'bg-void-950 text-slate-400 border-white/10'
                     }`}
                   >
-                    {(componentData.towerConnectedCount ?? 1) > 1
+                    {componentData.isMcbTripped
+                      ? language === 'id'
+                        ? '⚠️ MCB TRIP!'
+                        : '⚠️ MCB TRIPPED!'
+                      : componentData.isMcbOn === false
+                      ? language === 'id'
+                        ? 'MCB Diputus (OFF)'
+                        : 'MCB Open (OFF)'
+                      : (componentData.towerConnectedCount ?? 1) > 1
                       ? language === 'id'
                         ? 'Grid Terhubung'
                         : 'Grid Linked'
-                      : language === 'id'
-                      ? 'Standby'
                       : 'Standby'}
                   </span>
                 </div>
 
-                <div className="p-3 rounded-xl bg-void-950/70 border border-white/5 space-y-2 text-xs">
+                {/* MCB Breaker Toggle & Reset */}
+                <div className="p-3 rounded-xl bg-void-950/70 border border-white/5 space-y-2.5 text-xs">
                   <div className="flex justify-between items-center text-[11px]">
                     <span className="text-slate-400 font-sans">
-                      {language === 'id' ? 'Total Menara di Kanvas:' : 'Total Towers on Canvas:'}
+                      {language === 'id' ? 'Proteksi MCB (Standar PUIL):' : 'MCB Breaker Protection:'}
                     </span>
-                    <span className="font-mono font-bold text-slate-200">
-                      {componentData.towerConnectedCount ?? 1}
-                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateComponentData(selectedNode.id, {
+                          isMcbOn: !(componentData.isMcbOn !== false && !componentData.isMcbTripped),
+                          isMcbTripped: false,
+                        })
+                      }
+                      className={`px-2.5 py-1 rounded-lg font-mono text-[10px] font-bold border transition-all active:scale-95 cursor-pointer ${
+                        componentData.isMcbTripped
+                          ? 'bg-red-600 hover:bg-red-500 text-white border-red-400'
+                          : componentData.isMcbOn !== false
+                          ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border-emerald-400/50'
+                          : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-white/15'
+                      }`}
+                    >
+                      {componentData.isMcbTripped
+                        ? language === 'id'
+                          ? 'Reset MCB (Trip)'
+                          : 'Reset MCB (Trip)'
+                        : componentData.isMcbOn !== false
+                        ? 'MCB: ON (Aktif)'
+                        : 'MCB: OFF (Putus)'}
+                    </button>
                   </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
+
+                  {/* Step-Down DC Voltage Ceiling Selector */}
+                  <div className="space-y-1.5 pt-2 border-t border-white/5">
+                    <div className="flex justify-between items-center text-[11px]">
+                      <span className="text-slate-400 font-sans">
+                        {language === 'id' ? 'Trafo Step-Down DC:' : 'DC Step-Down Regulator:'}
+                      </span>
+                      <span className="font-mono font-bold text-cyan-300">
+                        {componentData.stepDownVoltage == null
+                          ? language === 'id'
+                            ? 'Otomatis (Langsung)'
+                            : 'Auto (Direct)'
+                          : `Maks ${componentData.stepDownVoltage} V`}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-5 gap-1">
+                      {[
+                        { label: 'Auto', val: null },
+                        { label: '3V', val: 3 },
+                        { label: '6V', val: 6 },
+                        { label: '9V', val: 9 },
+                        { label: '12V', val: 12 },
+                      ].map((opt) => (
+                        <button
+                          key={opt.label}
+                          type="button"
+                          onClick={() =>
+                            updateComponentData(selectedNode.id, { stepDownVoltage: opt.val })
+                          }
+                          className={`py-1 rounded-lg font-mono text-[10px] font-bold border transition-all active:scale-95 cursor-pointer ${
+                            (componentData.stepDownVoltage ?? null) === opt.val
+                              ? 'bg-cyan-500/25 text-cyan-200 border-cyan-400/60'
+                              : 'bg-void-900 text-slate-400 border-white/10 hover:text-white'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-slate-400 leading-relaxed pt-1">
                     {language === 'id'
-                      ? 'Dua atau lebih Menara Transmisi secara otomatis menyatukan kutub positif dan negatifnya menjadi jaringan transmisi virtual tanpa hambatan (R = 0Ω).'
-                      : 'Two or more Transmission Towers automatically unite positive and negative terminals into a lossless virtual transmission bus (R = 0Ω).'}
+                      ? 'Menara Transmisi di Alam menyalurkan energi ke Panel Distribusi Lab. Dilengkapi MCB (otomatis trip saat korsleting) dan Step-Down DC sesuai Standar PUIL.'
+                      : 'Outdoor Transmission Tower delivers power to the Lab Distribution Panel, equipped with short-circuit MCB protection and DC Step-Down regulation.'}
                   </p>
                 </div>
               </div>

@@ -328,12 +328,17 @@ export const PinSocketNode: React.FC<NodeProps<CircuitElementData>> = ({
       {/* 
         LAYER 4 (zIndex: 40): ELECTRICAL HANDLES
         PinSocketNode possesses the wire connection handles directly on the bottom copper tabs.
+        For 5mm LED Indicator (`led_green`), p1 is Anode (+) and p2 is Cathode (-).
       */}
       <Handle
         type="source"
         position={Position.Bottom}
         id="p1"
-        title={isIndonesian ? 'Terminal Pin 1 / Tab Tembaga Kiri' : 'Pin 1 Terminal / Left Copper Tab'}
+        title={
+          isIndonesian
+            ? 'Terminal Pin 1 / Anoda (+) Tab Kiri'
+            : 'Pin 1 Terminal / Anode (+) Left Tab'
+        }
         className={handleClass}
         style={handleStyle(PIN_SOCKET_TERMINALS.p1)}
       />
@@ -341,10 +346,24 @@ export const PinSocketNode: React.FC<NodeProps<CircuitElementData>> = ({
         type="source"
         position={Position.Bottom}
         id="p2"
-        title={isIndonesian ? 'Terminal Pin 2 / Tab Tembaga Kanan' : 'Pin 2 Terminal / Right Copper Tab'}
+        title={
+          isIndonesian
+            ? 'Terminal Pin 2 / Katoda (-) Tab Kanan'
+            : 'Pin 2 Terminal / Cathode (-) Right Tab'
+        }
         className={handleClass}
         style={handleStyle(PIN_SOCKET_TERMINALS.p2)}
       />
+
+      {/* REVERSE-BIASED LED POLARITY WARNING BADGE */}
+      {data.isReverseBiased && installedSpec && (
+        <div
+          className="pointer-events-none absolute left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-amber-400/60 bg-amber-950/95 px-2 py-0.5 font-mono text-[9px] font-bold text-amber-200 shadow-[0_4px_12px_rgba(0,0,0,0.65)] animate-pulse"
+          style={{ bottom: -22, zIndex: 45 }}
+        >
+          {isIndonesian ? '⚠️ Kutub LED Terbalik (+/-)' : '⚠️ LED Reverse Polarity'}
+        </div>
+      )}
 
       {/* POPOVER TELEMETRY & CONTROLS: Shown while socket is selected */}
       {selected && (

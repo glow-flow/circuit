@@ -160,6 +160,12 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
           className="w-full h-1.5 bg-void-900 rounded-lg appearance-none cursor-pointer accent-amber-400 focus:outline-none"
           aria-label="Solar Irradiance"
         />
+
+        {data.isBlockingDiodeActive && (
+          <div className="px-1.5 py-0.5 rounded bg-emerald-950/90 border border-emerald-400/50 text-[8px] font-mono font-bold text-emerald-300 text-center">
+            {isId ? '🛡️ Dioda Penahan Arus Balik' : '🛡️ Blocking Diode Active'}
+          </div>
+        )}
       </div>
 
       {/* Physical Photovoltaic Panel + Ground Support Stand (Elevates Terminals Above Grass!) */}

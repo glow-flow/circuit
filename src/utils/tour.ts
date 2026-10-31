@@ -207,7 +207,7 @@ export const OUTDOOR_TOUR_STEPS: DriveStep[] = [
     popover: {
       title: 'Salurkan Listrik ke Laboratorium',
       description:
-        'Setelah Panel Surya atau Turbin Angin disambungkan ke isolator atas Menara Transmisi, klik "Masuk ke Lab" dan pasang Menara Transmisi kedua di Lab untuk menyalakan lampu-lampu dengan energi ramah lingkungan!',
+        'Setelah Panel Surya atau Turbin Angin disambungkan ke isolator atas Menara Transmisi, klik "Masuk ke Lab" dan pasang Panel Distribusi Lab (Box MCB + Step-Down) untuk menyalakan lampu-lampu dengan energi ramah lingkungan!',
       side: 'bottom',
       align: 'end',
     },

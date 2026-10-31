@@ -21,7 +21,7 @@ export type PaletteCategoryId = 'battery' | 'light' | 'control' | 'measure';
 export const PALETTE_DRAG_MIME = 'application/reactflow';
 
 /** Schematic symbol drawn in SVG for parts that have no photo asset. */
-export type PaletteGlyphId = 'switch' | 'ground' | 'voltmeter' | 'ammeter';
+export type PaletteGlyphId = 'switch' | 'ground' | 'voltmeter' | 'ammeter' | 'distribution-panel';
 
 export interface PaletteCategory {
   id: PaletteCategoryId;

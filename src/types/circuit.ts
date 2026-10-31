@@ -95,8 +95,15 @@ export interface CircuitElementData {
   // Wind Turbine properties
   speed?: number;              // Wind turbine rotational speed (0 - 100, default 50)
 
-  // Transmission Tower properties
-  towerConnectedCount?: number; // Total number of active transmission towers sharing this virtual grid bus
+  // Transmission Tower & Lab Distribution Panel (MCB + Step-Down) properties
+  towerConnectedCount?: number; // Total number of active transmission nodes sharing this virtual grid bus
+  isMcbOn?: boolean;            // For Lab Distribution Panel: whether the MCB breaker switch is ON (default true)
+  isMcbTripped?: boolean;       // For Lab Distribution Panel: whether the MCB tripped automatically due to short circuit
+  stepDownVoltage?: number | null; // Regulated DC output ceiling in Volts (null = Auto/Direct, or 3, 6, 9, 12 V)
+
+  // Real-world semiconductor protection & polarity states
+  isBlockingDiodeActive?: boolean; // True when a Solar Panel or Wind Turbine's internal Schottky diode blocks reverse current
+  isReverseBiased?: boolean;       // True when an LED bulb in a socket is wired with reversed polarity (V_p1 < V_p2)
   
   // Real-time calculated simulation results
   calculatedVoltage?: number;  // Voltage drop across component (V)
@@ -124,6 +131,8 @@ export interface SimulationResult {
   branchCurrents: Record<string, number>;  // Component ID -> current in Amperes
   isShortCircuit: boolean;
   shortCircuitBranches: string[];
+  blockedGeneratorIds?: string[];          // Renewable generators whose blocking diode prevented reverse current
+  reverseBiasedBranches?: string[];        // LED socket IDs wired with reversed polarity (Anode < Cathode)
   totalPowerDrawn: number;                 // Total active power in Watts
   errorMessage?: string;
   timestamp: number;

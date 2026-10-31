@@ -291,12 +291,17 @@ export const SocketNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, 
       {/* 
         ELECTRICAL HANDLES (zIndex: 40): 
         Only the SocketNode has wire connection handles, located at the bottom brass screws.
+        For LED bulbs (semiconductor diodes), p1 is Anode (+) and p2 is Cathode (-).
       */}
       <Handle
         type="source"
         position={Position.Bottom}
         id="p1"
-        title={isIndonesian ? 'Terminal Positif (+) / Pin 1' : 'Positive (+) Terminal / Pin 1'}
+        title={
+          isIndonesian
+            ? 'Terminal Positif (+) / Anoda LED (Pin 1)'
+            : 'Positive (+) Terminal / LED Anode (Pin 1)'
+        }
         className={handleClass}
         style={handleStyle(SOCKET_TERMINALS.p1)}
       />
@@ -304,10 +309,24 @@ export const SocketNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, 
         type="source"
         position={Position.Bottom}
         id="p2"
-        title={isIndonesian ? 'Terminal Negatif (-) / Pin 2' : 'Negative (-) Terminal / Pin 2'}
+        title={
+          isIndonesian
+            ? 'Terminal Negatif (-) / Katoda LED (Pin 2)'
+            : 'Negative (-) Terminal / LED Cathode (Pin 2)'
+        }
         className={handleClass}
         style={handleStyle(SOCKET_TERMINALS.p2)}
       />
+
+      {/* REVERSE-BIASED LED POLARITY WARNING BADGE */}
+      {data.isReverseBiased && installedSpec && (
+        <div
+          className="pointer-events-none absolute left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-amber-400/60 bg-amber-950/95 px-2 py-0.5 font-mono text-[9px] font-bold text-amber-200 shadow-[0_4px_12px_rgba(0,0,0,0.65)] animate-pulse"
+          style={{ bottom: -22, zIndex: 45 }}
+        >
+          {isIndonesian ? '⚠️ Kutub LED Terbalik (+/-)' : '⚠️ LED Reverse Polarity'}
+        </div>
+      )}
 
       {/* POPOVER TELEMETRY & CONTROLS: Only while selected */}
       {selected && (

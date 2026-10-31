@@ -44,6 +44,63 @@ export interface CircuitGraphInput {
 }
 
 /**
+ * Checks whether a component is a renewable generator equipped with an internal
+ * Schottky blocking diode (prevents reverse current from flowing into the generator).
+ * Time Complexity: O(1).
+ */
+export function isRenewableWithBlockingDiode(component: CircuitElementData): boolean {
+  return (
+    component.type === 'solar-panel' ||
+    component.type === 'solar_panel' ||
+    component.type === 'wind-turbine' ||
+    component.type === 'wind_turbine'
+  );
+}
+
+/**
+ * Checks whether a transmission tower or Lab Distribution Panel has its MCB breaker ON
+ * and is not tripped, allowing it to participate in the virtual transmission grid bus.
+ * Time Complexity: O(1).
+ */
+export function isTransmissionNodeActive(component: CircuitElementData): boolean {
+  return (
+    (component.type === 'transmission-tower' || component.type === 'transmission_tower') &&
+    component.isMcbOn !== false &&
+    !component.isMcbTripped
+  );
+}
+
+/**
+ * Checks whether a bulb type is a unidirectional semiconductor LED diode
+ * (conducts only in forward bias: Anode p1 potential > Cathode p2 potential).
+ * Incandescent, Halogen, Edison filaments and CFL bridge ballasts are bidirectional.
+ * Time Complexity: O(1).
+ */
+export function isUnidirectionalLedBulbType(bulbType: string | undefined): boolean {
+  return bulbType === 'led_standard' || bulbType === 'led_rgb' || bulbType === 'led_green';
+}
+
+/**
+ * Checks whether a socket component currently holds a unidirectional LED bulb.
+ * Time Complexity: O(1).
+ */
+export function isSocketWithUnidirectionalLed(component: CircuitElementData): boolean {
+  if (
+    component.type !== 'socket' &&
+    component.type !== 'pin-socket' &&
+    component.type !== 'socket-pin'
+  ) {
+    return false;
+  }
+  if (!component.installedBulb) return false;
+  const bulbType =
+    typeof component.installedBulb === 'object'
+      ? component.installedBulb.bulbType
+      : component.installedBulb;
+  return isUnidirectionalLedBulbType(bulbType);
+}
+
+/**
  * Determines whether a component currently acts as an active independent DC voltage source.
  * Supports both individual AA batteries (1.5V) and loaded Battery Holders (1.5V / 3.0V).
  * 
@@ -225,14 +282,13 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
       }
     }
 
-    // Virtual Transmission Grid: Unify all Transmission Towers across the canvas into a lossless common bus
-    const transmissionTowers = components.filter(
-      (c) => c.type === 'transmission-tower' || c.type === 'transmission_tower'
-    );
-    if (transmissionTowers.length > 1) {
-      const primaryTower = transmissionTowers[0];
-      for (let i = 1; i < transmissionTowers.length; i++) {
-        const peerTower = transmissionTowers[i];
+    // Virtual Transmission Grid: Unify all ACTIVE Transmission Towers / Lab Distribution Panels
+    // (where MCB breaker is ON and not tripped) across the canvas into a lossless common bus.
+    const activeTransmissionTowers = components.filter((c) => isTransmissionNodeActive(c));
+    if (activeTransmissionTowers.length > 1) {
+      const primaryTower = activeTransmissionTowers[0];
+      for (let i = 1; i < activeTransmissionTowers.length; i++) {
+        const peerTower = activeTransmissionTowers[i];
         netUnionFind.union(`${primaryTower.id}:pos`, `${peerTower.id}:pos`);
         netUnionFind.union(`${primaryTower.id}:neg`, `${peerTower.id}:neg`);
       }
@@ -254,6 +310,41 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
       }
     }
 
+    // Determine optional Step-Down DC voltage ceiling from any active Lab Distribution Panel on the grid
+    const gridPositiveNet =
+      activeTransmissionTowers.length > 0
+        ? pinToNetMap.get(`${activeTransmissionTowers[0].id}:pos`)
+        : undefined;
+    const gridNegativeNet =
+      activeTransmissionTowers.length > 0
+        ? pinToNetMap.get(`${activeTransmissionTowers[0].id}:neg`)
+        : undefined;
+
+    const configuredStepDownVoltages = activeTransmissionTowers
+      .map((t) => t.stepDownVoltage)
+      .filter((v): v is number => typeof v === 'number' && v > 0);
+    const gridStepDownCeiling =
+      configuredStepDownVoltages.length > 0
+        ? Math.min(...configuredStepDownVoltages)
+        : null;
+
+    const getRegulatedSourceVoltage = (sourceComp: CircuitElementData): number => {
+      const rawVoltage = getVoltageSourceNominalVoltage(sourceComp);
+      if (
+        gridStepDownCeiling !== null &&
+        isRenewableWithBlockingDiode(sourceComp) &&
+        gridPositiveNet !== undefined &&
+        gridNegativeNet !== undefined
+      ) {
+        const srcPosNet = pinToNetMap.get(`${sourceComp.id}:pos`);
+        const srcNegNet = pinToNetMap.get(`${sourceComp.id}:neg`);
+        if (srcPosNet === gridPositiveNet || srcNegNet === gridNegativeNet) {
+          return Math.min(rawVoltage, gridStepDownCeiling);
+        }
+      }
+      return rawVoltage;
+    };
+
     // Collect all unique electrical net identifiers
     const uniqueNetSet = new Set<string>(pinToNetMap.values());
     const uniqueNets = Array.from(uniqueNetSet);
@@ -264,6 +355,8 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
         branchCurrents: {},
         isShortCircuit: false,
         shortCircuitBranches: [],
+        blockedGeneratorIds: [],
+        reverseBiasedBranches: [],
         totalPowerDrawn: 0,
         timestamp: Date.now(),
       };
@@ -300,128 +393,178 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
 
     const nonGroundNetCount = nonGroundNets.length;
 
-    // 3. Identify Independent Voltage Sources (Batteries and Loaded Battery Holders)
-    const voltageSourceComponents = components.filter((c) => isActiveVoltageSource(c));
-    const voltageSourceCount = voltageSourceComponents.length;
+    // 3. Identify Independent Voltage Sources & Iteratively Enforce Semiconductor Diode Constraints:
+    //    - Blocking Diode (Schottky) on Solar Panels & Wind Turbines (prevents reverse current I > 0)
+    //    - Unidirectional LED Polarity on sockets holding LED bulbs (conducts only when V_p1 >= V_p2)
+    const allVoltageSourceComponents = components.filter((c) => isActiveVoltageSource(c));
+    const blockedGeneratorSet = new Set<string>();
+    const reverseBiasedSocketSet = new Set<string>();
 
-    // Total MNA matrix size = (Non-ground nets) + (Voltage sources)
-    const matrixDimension = nonGroundNetCount + voltageSourceCount;
-
-    if (matrixDimension === 0) {
-      return {
-        nodeVoltages: {},
-        branchCurrents: {},
-        isShortCircuit: false,
-        shortCircuitBranches: [],
-        totalPowerDrawn: 0,
-        timestamp: Date.now(),
-      };
-    }
-
-    // Initialize Coefficient Matrix and RHS Vector
-    const coefficientMatrix: number[][] = Array.from({ length: matrixDimension }, () =>
-      new Array(matrixDimension).fill(0)
-    );
-    const constantVector: number[] = new Array(matrixDimension).fill(0);
-
-    // 4. Populate Conductance Submatrix G (Passive Components Only)
-    for (const component of components) {
-      if (
-        component.type === 'battery' ||
-        component.type === 'battery9v' ||
-        component.type === 'battery-holder' ||
-        component.type === 'solar-panel' ||
-        component.type === 'solar_panel' ||
-        component.type === 'wind-turbine' ||
-        component.type === 'wind_turbine' ||
-        component.type === 'transmission-tower' ||
-        component.type === 'transmission_tower' ||
-        component.type === 'ground' ||
-        component.type === 'waypoint'
-      ) {
-        continue;
-      }
-
-      const pinKeys = getComponentPinIdentifiers(component);
-      if (pinKeys.length < 2) continue;
-
-      const netPositive = pinToNetMap.get(pinKeys[0])!;
-      const netNegative = pinToNetMap.get(pinKeys[1])!;
-
-      // Skip internal stamping if both terminals are already on the same net (shorted terminal)
-      if (netPositive === netNegative) continue;
-
-      const conductanceValue = calculateComponentConductance(component);
-      if (conductanceValue <= 0) continue;
-
-      const positiveIndex = netToIndexMap.get(netPositive);
-      const negativeIndex = netToIndexMap.get(netNegative);
-
-      // Stamp G matrix
-      if (positiveIndex !== undefined) {
-        coefficientMatrix[positiveIndex][positiveIndex] += conductanceValue;
-      }
-      if (negativeIndex !== undefined) {
-        coefficientMatrix[negativeIndex][negativeIndex] += conductanceValue;
-      }
-      if (positiveIndex !== undefined && negativeIndex !== undefined) {
-        coefficientMatrix[positiveIndex][negativeIndex] -= conductanceValue;
-        coefficientMatrix[negativeIndex][positiveIndex] -= conductanceValue;
-      }
-    }
-
-    // 5. Populate B, C, D Matrices and Vector e (Voltage Sources)
-    voltageSourceComponents.forEach((sourceComp, sourceIndex) => {
-      const voltageSourceRowIndex = nonGroundNetCount + sourceIndex;
-      const positiveNet = pinToNetMap.get(`${sourceComp.id}:pos`)!;
-      const negativeNet = pinToNetMap.get(`${sourceComp.id}:neg`)!;
-
-      const positiveNetIndex = netToIndexMap.get(positiveNet);
-      const negativeNetIndex = netToIndexMap.get(negativeNet);
-
-      // B matrix: KCL contribution of source current
-      // C matrix: KVL relationship V_pos - V_neg = V_src
-      if (positiveNetIndex !== undefined) {
-        coefficientMatrix[positiveNetIndex][voltageSourceRowIndex] += 1;
-        coefficientMatrix[voltageSourceRowIndex][positiveNetIndex] += 1;
-      }
-      if (negativeNetIndex !== undefined) {
-        coefficientMatrix[negativeNetIndex][voltageSourceRowIndex] -= 1;
-        coefficientMatrix[voltageSourceRowIndex][negativeNetIndex] -= 1;
-      }
-
-      // D matrix: Series internal resistance (e.g. 2.0Ω for 9V battery, 0.05Ω per AA cell)
-      let seriesInternalResistance = BATTERY_INTERNAL_RESISTANCE;
-      if (sourceComp.type === 'battery9v') {
-        seriesInternalResistance = Math.max(0.01, sourceComp.internalResistance ?? 2.0);
-      } else if (sourceComp.type === 'battery-holder') {
-        const cellCount = sourceComp.batteryCount ?? 2;
-        seriesInternalResistance =
-          sourceComp.internalResistance ?? BATTERY_INTERNAL_RESISTANCE * Math.max(1, cellCount);
-      } else if (sourceComp.type === 'solar-panel' || sourceComp.type === 'solar_panel') {
-        seriesInternalResistance = Math.max(0.01, sourceComp.internalResistance ?? SOLAR_PANEL_INTERNAL_RESISTANCE);
-      } else if (sourceComp.type === 'wind-turbine' || sourceComp.type === 'wind_turbine') {
-        seriesInternalResistance = Math.max(0.01, sourceComp.internalResistance ?? 0.1);
-      } else if (sourceComp.internalResistance !== undefined) {
-        seriesInternalResistance = Math.max(0.01, sourceComp.internalResistance);
-      }
-
-      coefficientMatrix[voltageSourceRowIndex][voltageSourceRowIndex] = -seriesInternalResistance;
-
-      // Vector e: Nominal DC voltage
-      constantVector[voltageSourceRowIndex] = getVoltageSourceNominalVoltage(sourceComp);
-    });
-
-    // 6. Solve the Linear System
-    const solution = solveLinearSystem(coefficientMatrix, constantVector);
-
-    // 7. Map solution to electrical net voltages and branch currents
+    let activeVoltageSources = allVoltageSourceComponents;
+    let solution: number[] = [];
     const nodeVoltageMap: Record<string, number> = {};
-    nodeVoltageMap[selectedGroundNet] = 0.0;
 
-    nonGroundNets.forEach((net, index) => {
-      nodeVoltageMap[net] = solution[index] ?? 0;
-    });
+    for (let pass = 0; pass < 3; pass++) {
+      activeVoltageSources = allVoltageSourceComponents.filter(
+        (c) => !blockedGeneratorSet.has(c.id)
+      );
+      const voltageSourceCount = activeVoltageSources.length;
+      const matrixDimension = nonGroundNetCount + voltageSourceCount;
+
+      if (matrixDimension === 0) {
+        return {
+          nodeVoltages: {},
+          branchCurrents: {},
+          isShortCircuit: false,
+          shortCircuitBranches: [],
+          blockedGeneratorIds: Array.from(blockedGeneratorSet),
+          reverseBiasedBranches: Array.from(reverseBiasedSocketSet),
+          totalPowerDrawn: 0,
+          timestamp: Date.now(),
+        };
+      }
+
+      const coefficientMatrix: number[][] = Array.from({ length: matrixDimension }, () =>
+        new Array(matrixDimension).fill(0)
+      );
+      const constantVector: number[] = new Array(matrixDimension).fill(0);
+
+      // 4. Populate Conductance Submatrix G (Passive Components Only)
+      for (const component of components) {
+        if (
+          component.type === 'battery' ||
+          component.type === 'battery9v' ||
+          component.type === 'battery-holder' ||
+          component.type === 'solar-panel' ||
+          component.type === 'solar_panel' ||
+          component.type === 'wind-turbine' ||
+          component.type === 'wind_turbine' ||
+          component.type === 'transmission-tower' ||
+          component.type === 'transmission_tower' ||
+          component.type === 'ground' ||
+          component.type === 'waypoint'
+        ) {
+          continue;
+        }
+
+        // Reverse-biased LED sockets act as open-circuit diodes (0 conductance)
+        if (reverseBiasedSocketSet.has(component.id)) {
+          continue;
+        }
+
+        const pinKeys = getComponentPinIdentifiers(component);
+        if (pinKeys.length < 2) continue;
+
+        const netPositive = pinToNetMap.get(pinKeys[0])!;
+        const netNegative = pinToNetMap.get(pinKeys[1])!;
+
+        if (netPositive === netNegative) continue;
+
+        const conductanceValue = calculateComponentConductance(component);
+        if (conductanceValue <= 0) continue;
+
+        const positiveIndex = netToIndexMap.get(netPositive);
+        const negativeIndex = netToIndexMap.get(netNegative);
+
+        if (positiveIndex !== undefined) {
+          coefficientMatrix[positiveIndex][positiveIndex] += conductanceValue;
+        }
+        if (negativeIndex !== undefined) {
+          coefficientMatrix[negativeIndex][negativeIndex] += conductanceValue;
+        }
+        if (positiveIndex !== undefined && negativeIndex !== undefined) {
+          coefficientMatrix[positiveIndex][negativeIndex] -= conductanceValue;
+          coefficientMatrix[negativeIndex][positiveIndex] -= conductanceValue;
+        }
+      }
+
+      // 5. Populate B, C, D Matrices and Vector e (Active Voltage Sources)
+      activeVoltageSources.forEach((sourceComp, sourceIndex) => {
+        const voltageSourceRowIndex = nonGroundNetCount + sourceIndex;
+        const positiveNet = pinToNetMap.get(`${sourceComp.id}:pos`)!;
+        const negativeNet = pinToNetMap.get(`${sourceComp.id}:neg`)!;
+
+        const positiveNetIndex = netToIndexMap.get(positiveNet);
+        const negativeNetIndex = netToIndexMap.get(negativeNet);
+
+        if (positiveNetIndex !== undefined) {
+          coefficientMatrix[positiveNetIndex][voltageSourceRowIndex] += 1;
+          coefficientMatrix[voltageSourceRowIndex][positiveNetIndex] += 1;
+        }
+        if (negativeNetIndex !== undefined) {
+          coefficientMatrix[negativeNetIndex][voltageSourceRowIndex] -= 1;
+          coefficientMatrix[voltageSourceRowIndex][negativeNetIndex] -= 1;
+        }
+
+        let seriesInternalResistance = BATTERY_INTERNAL_RESISTANCE;
+        if (sourceComp.type === 'battery9v') {
+          seriesInternalResistance = Math.max(0.01, sourceComp.internalResistance ?? 2.0);
+        } else if (sourceComp.type === 'battery-holder') {
+          const cellCount = sourceComp.batteryCount ?? 2;
+          seriesInternalResistance =
+            sourceComp.internalResistance ?? BATTERY_INTERNAL_RESISTANCE * Math.max(1, cellCount);
+        } else if (sourceComp.type === 'solar-panel' || sourceComp.type === 'solar_panel') {
+          seriesInternalResistance = Math.max(
+            0.01,
+            sourceComp.internalResistance ?? SOLAR_PANEL_INTERNAL_RESISTANCE
+          );
+        } else if (sourceComp.type === 'wind-turbine' || sourceComp.type === 'wind_turbine') {
+          seriesInternalResistance = Math.max(0.01, sourceComp.internalResistance ?? 0.1);
+        } else if (sourceComp.internalResistance !== undefined) {
+          seriesInternalResistance = Math.max(0.01, sourceComp.internalResistance);
+        }
+
+        coefficientMatrix[voltageSourceRowIndex][voltageSourceRowIndex] =
+          -seriesInternalResistance;
+        constantVector[voltageSourceRowIndex] = getRegulatedSourceVoltage(sourceComp);
+      });
+
+      // 6. Solve the Linear System
+      solution = solveLinearSystem(coefficientMatrix, constantVector);
+
+      // 7. Map solution to electrical net voltages
+      nodeVoltageMap[selectedGroundNet] = 0.0;
+      nonGroundNets.forEach((net, index) => {
+        nodeVoltageMap[net] = solution[index] ?? 0;
+      });
+
+      // Check semiconductor diode states (Blocking Diodes on Solar/Wind & LED Polarity)
+      let stateChanged = false;
+
+      activeVoltageSources.forEach((sourceComp, sourceIndex) => {
+        if (!isRenewableWithBlockingDiode(sourceComp)) return;
+        const sourceCurrentIndex = nonGroundNetCount + sourceIndex;
+        const solvedCurrent = solution[sourceCurrentIndex] ?? 0;
+        // In MNA convention, solvedCurrent > 1e-5 means external voltage is forcing reverse current into (+)
+        if (solvedCurrent > 1e-5) {
+          blockedGeneratorSet.add(sourceComp.id);
+          stateChanged = true;
+        }
+      });
+
+      for (const component of components) {
+        if (!isSocketWithUnidirectionalLed(component)) continue;
+        if (reverseBiasedSocketSet.has(component.id)) continue;
+
+        const pinKeys = getComponentPinIdentifiers(component);
+        if (pinKeys.length < 2) continue;
+
+        const netAnode = pinToNetMap.get(pinKeys[0])!;
+        const netCathode = pinToNetMap.get(pinKeys[1])!;
+        const vAnode = nodeVoltageMap[netAnode] ?? 0;
+        const vCathode = nodeVoltageMap[netCathode] ?? 0;
+
+        // If Anode (p1) is at a lower potential than Cathode (p2), the LED diode is reverse-biased
+        if (vAnode - vCathode < -1e-4) {
+          reverseBiasedSocketSet.add(component.id);
+          stateChanged = true;
+        }
+      }
+
+      if (!stateChanged) {
+        break;
+      }
+    }
 
     // 8. Compute individual branch currents and powers
     const branchCurrentMap: Record<string, number> = {};
@@ -429,18 +572,19 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
     let isOverallShortCircuit = false;
     let totalPowerDrawn = 0;
 
-    // Default 0 current for unloaded battery holders and detached bulbs
+    // Default 0 current for unloaded battery holders, detached bulbs, and diode-blocked generators
     for (const component of components) {
       if (
         (component.type === 'battery-holder' && !isActiveVoltageSource(component)) ||
-        component.type === 'bulb'
+        component.type === 'bulb' ||
+        blockedGeneratorSet.has(component.id)
       ) {
         branchCurrentMap[component.id] = 0;
       }
     }
 
-    // Voltage source currents directly from solution vector
-    voltageSourceComponents.forEach((sourceComp, sourceIndex) => {
+    // Active voltage source currents directly from solution vector
+    activeVoltageSources.forEach((sourceComp, sourceIndex) => {
       const sourceCurrentIndex = nonGroundNetCount + sourceIndex;
       const sourceCurrent = solution[sourceCurrentIndex] ?? 0;
       const absoluteCurrent = Math.abs(sourceCurrent);
@@ -452,7 +596,7 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
         shortCircuitBranches.push(sourceComp.id);
       }
 
-      const nominalVoltage = getVoltageSourceNominalVoltage(sourceComp);
+      const nominalVoltage = getRegulatedSourceVoltage(sourceComp);
       totalPowerDrawn += nominalVoltage * absoluteCurrent;
     });
 
@@ -484,7 +628,9 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
       const voltageB = nodeVoltageMap[netNegative] ?? 0;
       const voltageDrop = voltageA - voltageB;
 
-      const resistance = getComponentEffectiveResistance(component);
+      const resistance = reverseBiasedSocketSet.has(component.id)
+        ? 1e9
+        : getComponentEffectiveResistance(component);
       const branchCurrent = resistance > 0 && resistance < 1e8 ? voltageDrop / resistance : 0;
       branchCurrentMap[component.id] = branchCurrent;
 
@@ -510,16 +656,25 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
       }
     }
 
-    // 9. Propagate branch currents through Waypoint nodes so bent wire segments glow seamlessly
+    // 9. Propagate branch currents through Waypoint and active Transmission Tower nodes
+    //    so wires connected to waypoints and transmission towers/panels glow and report live current.
     const componentTypeMap = new Map<string, string>();
     for (const component of components) {
       componentTypeMap.set(component.id, component.type);
     }
 
     for (const component of components) {
-      if (component.type !== 'waypoint') continue;
+      const isWaypoint = component.type === 'waypoint';
+      const isTower =
+        component.type === 'transmission-tower' || component.type === 'transmission_tower';
+      if (!isWaypoint && !isTower) continue;
 
-      // BFS along connected wires to find the non-waypoint endpoint's current
+      if (isTower && (!isTransmissionNodeActive(component) || activeTransmissionTowers.length < 2)) {
+        branchCurrentMap[component.id] = 0;
+        continue;
+      }
+
+      // BFS along connected wires to find the local non-waypoint endpoint's current
       const visitedIds = new Set<string>([component.id]);
       const queue: string[] = [component.id];
       let resolvedCurrent = 0;
@@ -538,7 +693,13 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
           visitedIds.add(neighborId);
 
           const neighborType = componentTypeMap.get(neighborId);
-          if (neighborType && neighborType !== 'waypoint' && neighborType !== 'ground') {
+          if (
+            neighborType &&
+            neighborType !== 'waypoint' &&
+            neighborType !== 'ground' &&
+            neighborType !== 'transmission-tower' &&
+            neighborType !== 'transmission_tower'
+          ) {
             const candidateCurrent = branchCurrentMap[neighborId] ?? 0;
             if (Math.abs(candidateCurrent) > Math.abs(resolvedCurrent)) {
               resolvedCurrent = candidateCurrent;
@@ -557,6 +718,8 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
       branchCurrents: branchCurrentMap,
       isShortCircuit: isOverallShortCircuit,
       shortCircuitBranches,
+      blockedGeneratorIds: Array.from(blockedGeneratorSet),
+      reverseBiasedBranches: Array.from(reverseBiasedSocketSet),
       totalPowerDrawn,
       timestamp: Date.now(),
     };

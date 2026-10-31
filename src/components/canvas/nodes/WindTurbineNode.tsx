@@ -90,6 +90,17 @@ export const WindTurbineNode: React.FC<NodeProps<CircuitElementData>> = memo(
               {speed}%
             </span>
           </div>
+
+          <div className="flex items-center justify-between text-[8px] font-mono text-slate-400 pt-0.5 border-t border-white/10">
+            <span className="text-cyan-300/90">AC→DC Rectifier</span>
+            {data.isBlockingDiodeActive ? (
+              <span className="text-emerald-300 font-bold">
+                {isId ? '🛡️ Anti-Arus Balik' : '🛡️ Diode Active'}
+              </span>
+            ) : (
+              <span>Schottky Diode</span>
+            )}
+          </div>
         </div>
 
         {/* Physical Wind Turbine Assembly: Mast Base Anchored at Bottom-0 */}

@@ -66,6 +66,24 @@ export const ComponentGlyph: React.FC<ComponentGlyphProps> = ({ glyph, className
           </text>
         </svg>
       );
+    case 'distribution-panel':
+      return (
+        <svg {...sharedProps}>
+          {/* Wall Enclosure Box */}
+          <rect x="10" y="8" width="44" height="44" rx="5" stroke="#38bdf8" strokeWidth="2.5" />
+          {/* Digital kWh Display Screen */}
+          <rect x="16" y="14" width="32" height="12" rx="2" fill="rgba(16,185,129,0.18)" stroke="#34d399" strokeWidth="1.8" />
+          <path d="M22 20 L27 20 L29 17 L32 23 L34 20 L42 20" stroke="#34d399" strokeWidth="1.8" />
+          {/* MCB Breaker Toggle & Step-Down Module */}
+          <rect x="16" y="31" width="14" height="14" rx="2" stroke="#f59e0b" strokeWidth="2" />
+          <line x1="23" y1="34" x2="23" y2="41" stroke="#f59e0b" strokeWidth="2.5" />
+          <rect x="34" y="31" width="14" height="14" rx="2" stroke="#94a3b8" strokeWidth="1.8" />
+          <path d="M38 38 L44 38 M41 35 L41 41" stroke="#38bdf8" strokeWidth="1.8" />
+          {/* Bottom Positive (+) & Negative (-) Terminal Leads */}
+          <line x1="22" y1="52" x2="22" y2="60" stroke="#ef4444" strokeWidth="3" />
+          <line x1="42" y1="52" x2="42" y2="60" stroke="#38bdf8" strokeWidth="3" />
+        </svg>
+      );
     default:
       return null;
   }
