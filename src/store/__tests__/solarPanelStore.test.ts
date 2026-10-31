@@ -126,5 +126,22 @@ describe('useCircuitStore - World Mode, Outdoor Sandbox & MNA Integration', () =
       useCircuitStore.getState().simulation.branchCurrents[labResistor.id] ?? 0
     );
     expect(labCurrent).toBeCloseTo(0.1198, 2);
+
+    // Prevent accidental self-loop wire (+ dragged to - on the same Transmission Tower)
+    const edgeCountBefore = useCircuitStore.getState().edges.length;
+    store.onConnect({
+      source: towerLab.id,
+      sourceHandle: 'pos',
+      target: towerLab.id,
+      targetHandle: 'neg',
+    });
+    expect(useCircuitStore.getState().edges.length).toBe(edgeCountBefore);
+
+    // One-tap disconnectNodeWires removes all wires attached to towerLab
+    store.disconnectNodeWires(towerLab.id);
+    const remainingLabTowerEdges = useCircuitStore
+      .getState()
+      .edges.filter((e) => e.source === towerLab.id || e.target === towerLab.id);
+    expect(remainingLabTowerEdges).toHaveLength(0);
   });
 });

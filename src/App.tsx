@@ -19,9 +19,11 @@ type MobileSheetType = TourMobileSheetState;
 export const App: React.FC = () => {
   const loadPreset = useCircuitStore((state) => state.loadPreset);
   const nodes = useCircuitStore((state) => state.nodes);
+  const edges = useCircuitStore((state) => state.edges);
   const selectedNodeId = useCircuitStore((state) => state.selectedNodeId);
   const selectedEdgeId = useCircuitStore((state) => state.selectedEdgeId);
   const removeEdge = useCircuitStore((state) => state.removeEdge);
+  const disconnectNodeWires = useCircuitStore((state) => state.disconnectNodeWires);
   const splitEdgeAtMidpoint = useCircuitStore((state) => state.splitEdgeAtMidpoint);
   const simulation = useCircuitStore((state) => state.simulation);
   const language = useCircuitStore((state) => state.language);
@@ -34,6 +36,14 @@ export const App: React.FC = () => {
   const [isWelcomeOpen, setIsWelcomeOpen] = useState<boolean>(() => !hasSeenTutorial());
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId);
+  const selectedNodeHasWires = Boolean(
+    selectedNode &&
+      edges.some(
+        (e) =>
+          !e.data?.isSnapWire &&
+          (e.source === selectedNode.id || e.target === selectedNode.id)
+      )
+  );
 
   // Start the global 1-second Battery State of Charge (SoC) simulation timer
   useEffect(() => {
@@ -79,18 +89,29 @@ export const App: React.FC = () => {
         >
           {worldMode === 'outside' ? <OutdoorSandbox /> : <CircuitCanvas />}
 
-          {/* Floating Quick-Edit Pill on Mobile when a component is selected */}
+          {/* Floating Quick-Edit & Disconnect Wires Bar on Mobile when a component is selected */}
           {selectedNode && activeMobileSheet === 'none' && (
-            <div className="md:hidden absolute top-3 left-1/2 -translate-x-1/2 z-20">
+            <div className="md:hidden absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 max-w-[94vw]">
               <button
                 onClick={() => setActiveMobileSheet('inspector')}
-                className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-electric-600/95 text-white text-xs font-semibold shadow-glow border border-electric-400/50 active:scale-95 transition-transform"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-electric-600/95 text-white text-xs font-semibold shadow-glow border border-electric-400/50 active:scale-95 transition-transform truncate"
               >
-                <Sliders className="w-3.5 h-3.5" />
-                <span>
+                <Sliders className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">
                   {language === 'id' ? 'Atur' : 'Edit'} {selectedNode.data.label}
                 </span>
               </button>
+
+              {selectedNodeHasWires && (
+                <button
+                  type="button"
+                  onClick={() => disconnectNodeWires(selectedNode.id)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-600/95 hover:bg-red-500 text-white text-xs font-bold shadow-[0_0_16px_rgba(239,68,68,0.65)] border border-red-300/60 active:scale-95 transition-all shrink-0 cursor-pointer"
+                >
+                  <Scissors className="w-3.5 h-3.5 shrink-0" />
+                  <span>{language === 'id' ? 'Putus Kabel' : 'Cut Wires'}</span>
+                </button>
+              )}
             </div>
           )}
 

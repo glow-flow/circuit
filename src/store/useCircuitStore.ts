@@ -147,6 +147,7 @@ interface CircuitState {
   setBulbType: (id: string, bulbType: BulbType) => void;
   removeComponent: (id: string) => void;
   removeEdge: (edgeId: string) => void;
+  disconnectNodeWires: (nodeId: string) => void;
   insertBatteryIntoHolder: (batteryNodeId: string, holderNodeId: string) => void;
   ejectBatteryFromHolder: (holderNodeId: string) => void;
   splitEdgeWithWaypoint: (edgeId: string, position: { x: number; y: number }) => void;
@@ -204,6 +205,7 @@ function recalculateCircuit(
   );
   const validEdges = edges.filter(
     (edge) =>
+      edge.source !== edge.target &&
       !standalonePassiveBulbIds.has(edge.source) &&
       !standalonePassiveBulbIds.has(edge.target)
   );
@@ -777,10 +779,21 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
 
   onConnect: (connection: Connection) => {
     if (!connection.source || !connection.target) return;
+    const isId = get().language === 'id';
+
+    // Prevent accidental self-loop wires (e.g. dragging + directly to - on the same Transmission Tower or component)
+    if (connection.source === connection.target) {
+      get().notify(
+        isId
+          ? 'Kabel dibatalkan: Tidak bisa menghubungkan kutub (+) langsung ke (-) pada komponen yang sama!'
+          : 'Wire cancelled: Cannot connect (+) directly to (-) on the same component!'
+      );
+      return;
+    }
+
     const currentNodes = get().nodes;
     const sourceNode = currentNodes.find((n) => n.id === connection.source);
     const targetNode = currentNodes.find((n) => n.id === connection.target);
-    const isId = get().language === 'id';
 
     // Standalone bulbs CANNOT be wired directly (must be snapped into their respective sockets).
     // Pin-base bulbs ('halogen', 'led_green') must go into ceramic pin sockets; screw-base into E27 sockets.
@@ -1562,6 +1575,38 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       nodes: updatedNodes,
       selectedEdgeId: nextSelectedEdgeId,
     });
+  },
+
+  /**
+   * Disconnects and removes all user wire edges attached to a specific component node.
+   * Useful when a wire is hard to tap on mobile or when clearing a component's connections.
+   * Time Complexity: O(E + N) where E is edge count and N is node count.
+   *
+   * @param nodeId - Target component node ID whose wires should be removed
+   */
+  disconnectNodeWires: (nodeId: string) => {
+    const currentEdges = get().edges;
+    const nextEdges = currentEdges.filter(
+      (edge) =>
+        edge.data?.isSnapWire ||
+        (edge.source !== nodeId && edge.target !== nodeId && edge.source !== edge.target)
+    );
+    if (nextEdges.length === currentEdges.length) return;
+
+    const { simulation, updatedNodes } = recalculateCircuit(get().nodes, nextEdges);
+    const isId = get().language === 'id';
+
+    set({
+      edges: nextEdges,
+      simulation,
+      nodes: updatedNodes,
+      selectedEdgeId: null,
+    });
+    get().notify(
+      isId
+        ? 'Semua kabel pada komponen ini berhasil diputus!'
+        : 'All wires on this component have been disconnected!'
+    );
   },
 
   selectNode: (id: string | null) => {

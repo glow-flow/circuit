@@ -22,6 +22,7 @@ export const Inspector: React.FC<InspectorProps> = ({
   const updateComponentData = useCircuitStore((state) => state.updateComponentData);
   const removeComponent = useCircuitStore((state) => state.removeComponent);
   const removeEdge = useCircuitStore((state) => state.removeEdge);
+  const disconnectNodeWires = useCircuitStore((state) => state.disconnectNodeWires);
   const toggleSwitch = useCircuitStore((state) => state.toggleSwitch);
   const rechargeBattery = useCircuitStore((state) => state.rechargeBattery);
   const simulation = useCircuitStore((state) => state.simulation);
@@ -245,6 +246,25 @@ export const Inspector: React.FC<InspectorProps> = ({
           </div>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
+          {edges.some(
+            (e) =>
+              !e.data?.isSnapWire &&
+              (e.source === selectedNode.id || e.target === selectedNode.id)
+          ) && (
+            <button
+              type="button"
+              onClick={() => disconnectNodeWires(selectedNode.id)}
+              className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-red-950/60 hover:bg-red-900 text-red-300 border border-red-500/40 text-[10px] font-semibold transition-colors active:scale-95 cursor-pointer"
+              title={
+                language === 'id'
+                  ? 'Putus semua kabel pada komponen ini'
+                  : 'Disconnect all wires on this component'
+              }
+            >
+              <Scissors className="w-3.5 h-3.5 text-red-400" />
+              <span>{language === 'id' ? 'Putus Kabel' : 'Cut Wires'}</span>
+            </button>
+          )}
           <button
             onClick={() => {
               removeComponent(selectedNode.id);

@@ -190,9 +190,12 @@ export function loadWorkspaceAutosave(): {
       parsed.nodes.length > 0 &&
       Array.isArray(parsed.edges)
     ) {
+      const cleanEdges = (parsed.edges as Edge[]).filter(
+        (edge) => edge && edge.source !== edge.target
+      );
       return {
-        nodes: migrateWiredBulbsToSockets(parsed.nodes, parsed.edges),
-        edges: parsed.edges,
+        nodes: migrateWiredBulbsToSockets(parsed.nodes, cleanEdges),
+        edges: cleanEdges,
       };
     }
     return null;

@@ -31,13 +31,13 @@ export const TransmissionTowerNode: React.FC<NodeProps<CircuitElementData>> = me
 
     return (
       <div
-        className={`relative flex flex-col items-center select-none transition-all duration-200 group w-[132px] ${
+        className={`relative flex flex-col items-center select-none transition-all duration-200 group w-[132px] pointer-events-none ${
           selected ? 'filter drop-shadow-[0_0_18px_rgba(34,211,238,0.55)]' : ''
         }`}
       >
         {/* Top Floating Status & Telemetry Pill (Above Pylon) */}
         <div
-          className={`mb-1 px-2.5 py-1 rounded-2xl text-[10px] font-mono font-bold tracking-tight shadow-[0_8px_20px_rgba(0,0,0,0.45)] backdrop-blur-md border transition-all duration-300 z-30 ${
+          className={`mb-1 px-2.5 py-1 rounded-2xl text-[10px] font-mono font-bold tracking-tight shadow-[0_8px_20px_rgba(0,0,0,0.45)] backdrop-blur-md border transition-all duration-300 z-30 pointer-events-auto cursor-grab active:cursor-grabbing ${
             isGridConnected
               ? 'bg-emerald-950/90 text-emerald-300 border-emerald-400/50 shadow-[0_0_14px_rgba(16,185,129,0.35)]'
               : 'bg-void-950/90 text-slate-200 border-white/20'
@@ -64,8 +64,15 @@ export const TransmissionTowerNode: React.FC<NodeProps<CircuitElementData>> = me
           </div>
         </div>
 
-        {/* High-Resolution Transparent Transmission Tower Pylon Graphic (288:510 aspect -> 112x198) */}
-        <div className="relative w-[112px] h-[198px] flex items-end justify-center overflow-visible">
+        {/* High-Resolution Transparent Transmission Tower Pylon Graphic (288:510 aspect -> 112x198)
+            pointer-events-none on the wide box so wires under the cross-arms are never blocked! */}
+        <div className="relative w-[112px] h-[198px] flex items-end justify-center overflow-visible pointer-events-none">
+          {/* Narrow Central Steel Spine Drag Hitbox (38px wide) so users can drag the tower while wires on the sides stay clickable */}
+          <div
+            className="absolute inset-y-2 left-1/2 -translate-x-1/2 w-[38px] pointer-events-auto cursor-grab active:cursor-grabbing z-20"
+            title={isId ? 'Geser Menara Transmisi' : 'Drag Transmission Tower'}
+          />
+
           <img
             src="/assets/transmission-tower.png"
             alt={isId ? 'Menara Transmisi' : 'Transmission Tower'}
@@ -110,7 +117,7 @@ export const TransmissionTowerNode: React.FC<NodeProps<CircuitElementData>> = me
               bottom: 'auto',
               transform: 'translate(-50%, -50%)',
             }}
-            className="!w-5 !h-5 !bg-red-500 !border-2 !border-white !rounded-full shadow-[0_0_14px_rgba(239,68,68,0.95)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center"
+            className="!w-5 !h-5 !bg-red-500 !border-2 !border-white !rounded-full shadow-[0_0_14px_rgba(239,68,68,0.95)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center pointer-events-auto"
             title={isId ? 'Isolator Kutub Positif (+)' : 'Positive Insulator Terminal (+)'}
           >
             <span className="text-[10px] font-mono font-black text-white leading-none pointer-events-none">
@@ -128,7 +135,7 @@ export const TransmissionTowerNode: React.FC<NodeProps<CircuitElementData>> = me
               bottom: 'auto',
               transform: 'translate(-50%, -50%)',
             }}
-            className="!w-5 !h-5 !bg-sky-500 !border-2 !border-white !rounded-full shadow-[0_0_14px_rgba(56,189,248,0.95)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center"
+            className="!w-5 !h-5 !bg-sky-500 !border-2 !border-white !rounded-full shadow-[0_0_14px_rgba(56,189,248,0.95)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center pointer-events-auto"
             title={isId ? 'Isolator Kutub Negatif (-)' : 'Negative Insulator Terminal (-)'}
           >
             <span className="text-[11px] font-mono font-black text-white leading-none pointer-events-none">
