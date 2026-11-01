@@ -137,4 +137,118 @@ describe('Mission & Challenge Mode Validation Engine', () => {
     expect(result.isCompleted).toBe(true);
     expect(result.progressPercent).toBe(100);
   });
+
+  it('validates Mission 3 (LED Reverse Polarity) detects reverse bias and accepts forward bias', () => {
+    const mission = MISSION_CATALOG.find((m) => m.id === 'repair-reversed-led')!;
+
+    // Scenario A: Reverse biased LED
+    const reversedContext: MissionContext = {
+      nodes: [
+        {
+          id: 'led_1',
+          type: 'pin-socket',
+          position: { x: 0, y: 0 },
+          data: { id: 'led_1', type: 'pin-socket', label: 'LED S', installedBulb: 'led_standard' },
+        },
+      ],
+      edges: [],
+      simulation: {
+        nodeVoltages: {},
+        branchCurrents: { led_1: 0 },
+        isShortCircuit: false,
+        shortCircuitBranches: [],
+        reverseBiasedBranches: ['led_1'],
+        totalPowerDrawn: 0,
+        timestamp: Date.now(),
+      },
+    };
+    expect(mission.validate(reversedContext).isCompleted).toBe(false);
+
+    // Scenario B: Forward biased lit LED
+    const forwardContext: MissionContext = {
+      nodes: [
+        {
+          id: 'led_1',
+          type: 'pin-socket',
+          position: { x: 0, y: 0 },
+          data: { id: 'led_1', type: 'pin-socket', label: 'LED S', installedBulb: 'led_standard' },
+        },
+      ],
+      edges: [],
+      simulation: {
+        nodeVoltages: {},
+        branchCurrents: { led_1: 0.02 },
+        isShortCircuit: false,
+        shortCircuitBranches: [],
+        reverseBiasedBranches: [],
+        totalPowerDrawn: 0.06,
+        timestamp: Date.now(),
+      },
+    };
+    const forwardRes = mission.validate(forwardContext);
+    expect(forwardRes.isCompleted).toBe(true);
+    expect(forwardRes.progressPercent).toBe(100);
+  });
+
+  it('validates Mission 4 (Solar PV Grid) requires solar generator, active MCB, and flowing current', () => {
+    const mission = MISSION_CATALOG.find((m) => m.id === 'solar-grid-connection')!;
+
+    // Scenario A: MCB tripped
+    const trippedContext: MissionContext = {
+      nodes: [
+        {
+          id: 'solar_1',
+          type: 'solar-panel',
+          position: { x: 0, y: 0 },
+          data: { id: 'solar_1', type: 'solar-panel', label: 'Solar' },
+        },
+        {
+          id: 'mcb_1',
+          type: 'transmission-tower',
+          position: { x: 100, y: 0 },
+          data: { id: 'mcb_1', type: 'transmission-tower', label: 'Tower', isMcbTripped: true },
+        },
+      ],
+      edges: [],
+      simulation: {
+        nodeVoltages: {},
+        branchCurrents: {},
+        isShortCircuit: false,
+        shortCircuitBranches: [],
+        totalPowerDrawn: 0,
+        timestamp: Date.now(),
+      },
+    };
+    expect(mission.validate(trippedContext).isCompleted).toBe(false);
+
+    // Scenario B: Active solar microgrid
+    const activeContext: MissionContext = {
+      nodes: [
+        {
+          id: 'solar_1',
+          type: 'solar-panel',
+          position: { x: 0, y: 0 },
+          data: { id: 'solar_1', type: 'solar-panel', label: 'Solar' },
+        },
+        {
+          id: 'mcb_1',
+          type: 'transmission-tower',
+          position: { x: 100, y: 0 },
+          data: { id: 'mcb_1', type: 'transmission-tower', label: 'Tower', isMcbOn: true, isMcbTripped: false },
+        },
+      ],
+      edges: [],
+      simulation: {
+        nodeVoltages: {},
+        branchCurrents: { solar_1: 0.05 },
+        isShortCircuit: false,
+        shortCircuitBranches: [],
+        totalPowerDrawn: 0.6,
+        timestamp: Date.now(),
+      },
+    };
+    const activeRes = mission.validate(activeContext);
+    expect(activeRes.isCompleted).toBe(true);
+    expect(activeRes.progressPercent).toBe(100);
+  });
 });

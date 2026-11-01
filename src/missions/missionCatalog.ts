@@ -12,44 +12,46 @@ export const MISSION_CATALOG: MissionDefinition[] = [
   // ================= MISSION 1: 3 BULBS IN PARALLEL =================
   {
     id: 'parallel-3-bulbs',
-    titleId: 'Tantangan 3 Lampu Paralel',
-    titleEn: '3 Bulbs in Parallel Challenge',
+    titleId: 'Instalasi Penerangan Rumah Cerdas 3 Ruangan',
+    titleEn: 'Smart Home 3-Room Parallel Lighting',
     difficulty: 'beginner',
     category: 'series_parallel',
     estimatedMinutes: 5,
     descriptionId:
-      'Rancang rangkaian listrik yang menghubungkan 3 fiting lampu secara paralel ke sumber baterai. Pastikan ketiga lampu menyala terang secara simultan dengan tegangan yang sama.',
+      'Sebagai teknisi cilik SMPN 12 Surabaya, rancang instalasi penerangan 3 ruangan (Ruang Tamu, Kamar, Dapur) dari sumber baterai. Terapkan prinsip rangkaian paralel murni agar tiap ruangan memiliki terang cahaya maksimal dan tegangan terminal identik tanpa saling melemahkan!',
     descriptionEn:
-      'Design a DC circuit connecting 3 lamp sockets in parallel to a battery. Ensure all 3 bulbs illuminate simultaneously with identical terminal voltage.',
+      'As a junior technician at SMPN 12 Surabaya, design a 3-room home lighting system (Living Room, Bedroom, Kitchen) powered by a DC source. Implement pure parallel branching so every room receives identical full voltage without dimming!',
     learningObjectivesId: [
-      'Memahami karakteristik percabangan rangkaian paralel',
-      'Membuktikan bahwa tegangan tiap cabang paralel bernilai sama (V = V₁ = V₂ = V₃)',
-      'Mengamati pembagian kuat arus listrik pada titik percabangan (Hukum I Kirchhoff)',
+      'Membuktikan karakteristik tegangan cabang paralel bernilai identik (V = V₁ = V₂ = V₃)',
+      'Mengamati pembagian kuat arus listrik pada titik percabangan (Hukum I Kirchhoff: ΣI_masuk = ΣI_keluar)',
+      'Memahami alasan instalasi kelistrikan rumah tangga wajib menggunakan rangkaian paralel (jika 1 lampu dilepas, lampu lain tetap menyala)',
     ],
     learningObjectivesEn: [
-      'Understand parallel circuit branch characteristics',
-      'Verify that terminal voltage is identical across parallel branches (V = V₁ = V₂ = V₃)',
-      'Observe current division at junctions (Kirchhoff\'s Current Law)',
+      'Verify identical terminal voltage across parallel branches (V = V₁ = V₂ = V₃)',
+      "Observe current division at junctions (Kirchhoff's Current Law: ΣI_in = ΣI_out)",
+      'Understand why domestic building installations require parallel circuits (independent load control)',
     ],
     instructionsId: [
-      '1. Pasang 1 Wadah Baterai 2x AA (3V) atau Baterai 9V.',
-      '2. Letakkan 3 Fiting Lampu di kanvas dan pasang lampu ke dalam fiting.',
-      '3. Hubungkan kutub positif baterai ke kaki pertama dari ketiga fiting.',
-      '4. Hubungkan kutub negatif baterai ke kaki kedua dari ketiga fiting.',
+      '1. Pasang sumber daya Baterai (Baterai AA 1.5V, Wadah 2x AA 3V, atau Baterai Kotak 9V).',
+      '2. Tempatkan 3 Fiting Lampu di kanvas dan pasang bohlam ke dalam masing-masing fiting.',
+      '3. Hubungkan kutub positif baterai ke pin pertama dari ketiga fiting (gunakan Waypoint untuk percabangan kabel yang rapi).',
+      '4. Hubungkan kutub negatif baterai ke pin kedua dari ketiga fiting.',
+      '5. Amati: ketiga lampu harus menyala terang secara simultan dengan tegangan yang seimbang (ΔV ≤ 0.25V).',
     ],
     instructionsEn: [
-      '1. Place 1x 2-Cell AA Battery Holder (3V) or 9V Battery.',
-      '2. Place 3 Lamp Sockets onto canvas and insert bulbs.',
-      '3. Wire the battery positive terminal to the first pin of all 3 sockets.',
-      '4. Wire the battery negative terminal to the second pin of all 3 sockets.',
+      '1. Place a Battery power source (1.5V AA, 2x AA Holder 3V, or 9V Battery).',
+      '2. Place 3 Lamp Sockets on the canvas and insert bulbs into each.',
+      '3. Wire the battery positive terminal to pin 1 of all 3 sockets (use Waypoints for neat orthogonal branching).',
+      '4. Wire the battery negative terminal to pin 2 of all 3 sockets.',
+      '5. Verify: all 3 lamps must illuminate simultaneously with balanced terminal voltages (ΔV ≤ 0.25V).',
     ],
     hintsId: [
-      'Gunakan Waypoint (Sudut Kabel) untuk merapikan percabangan kawat kabel.',
-      'Pastikan tidak ada lampu yang belum terpasang ke dalam fiting.',
+      'Rangkaian paralel membagi arus, bukan membagi tegangan. Jika lampu tampak redup atau tegangannya terbagi, periksa apakah kabel tidak sengaja terpasang secara seri.',
+      'Manfaatkan fitur Waypoint (Sudut Kabel) untuk membuat percabangan instalasi rapi seperti diagram instalasi listrik rumah profesional.',
     ],
     hintsEn: [
-      'Use Waypoint nodes to cleanly branch the wiring conductors.',
-      'Ensure every bulb is firmly seated in a socket holder.',
+      'Parallel circuits divide current, not voltage. If lamps appear dim or voltages drop, check that wires are not accidentally daisy-chained in series.',
+      'Utilize Waypoint nodes to route orthogonal wire branches cleanly like professional architectural wiring plans.',
     ],
     objectives: [
       {
@@ -176,42 +178,42 @@ export const MISSION_CATALOG: MissionDefinition[] = [
   // ================= MISSION 2: RESOLVE SHORT CIRCUIT =================
   {
     id: 'resolve-short-circuit',
-    titleId: 'Detektif Bahaya Korsleting',
-    titleEn: 'Short-Circuit Detective',
+    titleId: 'Operasi Penyelamatan Korsleting & Proteksi MCB Lab',
+    titleEn: 'Lab Short-Circuit Rescue & MCB Safety',
     difficulty: 'beginner',
     category: 'safety',
     estimatedMinutes: 4,
     descriptionId:
-      'Sebuah rangkaian mengalami korsleting akibat jalur kawat kabel tanpa beban yang menghubungkan langsung kutub positif dan negatif. Temukan kawat korslet tersebut dan putus kabelnya agar lampu menyala aman!',
+      'Alarm darurat berbunyi di Laboratorium Fisika! Terjadi lonjakan arus ekstrem akibat kawat bypass tanpa beban yang menghubungkan langsung kutub positif dan negatif. Mini Circuit Breaker (MCB) Panel Distribusi otomatis TRIP (anjlok) memutus daya darurat demi mencegah bahaya kebakaran kabel. Temukan kabel korslet tersebut, potong jalurnya, dan amankan instalasi!',
     descriptionEn:
-      'A circuit has suffered a catastrophic short circuit due to a zero-resistance bypass wire. Identify the fault wire and cut it so the lamp operates safely!',
+      'Emergency alarm triggered in the Physics Lab! An extreme current surge occurred due to a zero-resistance bypass wire connecting positive and negative terminals directly. The MCB breaker tripped. Detect and cut the faulty bypass wire to restore safe laboratory illumination!',
     learningObjectivesId: [
-      'Mengenali bahaya korsleting (short circuit) pada instalasi listrik',
-      'Mempelajari mengapa arus listrik memilih jalur dengan hambatan terendah (I = V / R)',
-      'Memahami fungsi pemutus sirkuit dan cara mengamankan instalasi',
+      'Mengenali bahaya korsleting (short circuit) dan lonjakan arus tak terhingga (I = V / R → ∞)',
+      'Mempelajari fungsi pengaman Mini Circuit Breaker (MCB) dan saklar proteksi beban',
+      'Mendiagnosis titik gangguan kelistrikan pada kawat telanjang dan memulihkan rangkaian',
     ],
     learningObjectivesEn: [
-      'Recognize electrical short circuit hazards',
-      'Understand why electric current routes through the path of least resistance (I = V / R)',
-      'Learn how to isolate faults and restore safe circuit operation',
+      'Recognize extreme short-circuit hazards and explosive surge currents (I = V / R → ∞)',
+      'Understand Mini Circuit Breaker (MCB) trip protection dynamics in distribution panels',
+      'Diagnose wiring bypass faults and restore electrical circuit safety',
     ],
     instructionsId: [
-      '1. Amati jalur kabel yang berwarna merah neon (indikasi korslet).',
-      '2. Ketuk kawat bypass yang korslet untuk memilihnya.',
-      '3. Tekan tombol "Putus Kabel" (ikon Gunting) untuk memotong jalur korslet.',
-      '4. Pastikan lampu pijar kembali menyala terang secara normal.',
+      '1. Klik tombol "Muat Starter Kanvas" untuk membuka sirkuit laboratorium yang sedang mengalami korsleting.',
+      '2. Amati kabel bypass yang berdenyut warna merah neon (indikasi hubungan pendek tanpa beban).',
+      '3. Ketuk kabel korslet tersebut, lalu klik tombol "Putus Kabel" (ikon Gunting) untuk melenyapkan gangguan.',
+      '4. Pastikan lampu penerangan laboratorium kembali menyala terang dengan arus operasional normal.',
     ],
     instructionsEn: [
-      '1. Look for wires highlighted in neon red with hazard pulse.',
-      '2. Click/tap the faulty bypass wire to select it.',
-      '3. Click the "Cut Wire" (Scissors icon) button to remove the fault.',
-      '4. Verify the incandescent lamp glows normally.',
+      '1. Click "Load Starter Circuit" to load the short-circuited laboratory setup.',
+      '2. Identify the neon-red pulsating bypass conductor connecting terminals directly.',
+      '3. Tap the fault wire and click "Cut Wire" (Scissors icon) to sever the bypass fault.',
+      '4. Verify the laboratory load lamp illuminates safely with normal operating current.',
     ],
     hintsId: [
-      'Korsleting terjadi jika ada kawat yang menghubungkan langsung kutub baterai tanpa melewati fiting lampu.',
+      'Arus listrik selalu memilih jalur dengan hambatan terkecil (jalur pintas tanpa fiting lampu). Hilangkan kabel yang menyambungkan kutub baterai secara langsung.',
     ],
     hintsEn: [
-      'A short circuit occurs when a conductor directly connects power terminals bypassing the load.',
+      'Electric current strictly follows the path of minimal resistance (zero-ohm bypass). Cut the wire connecting power terminals directly without passing through a lamp socket.',
     ],
     starterCircuitName: 'short-circuit-demo',
     objectives: [
@@ -269,42 +271,42 @@ export const MISSION_CATALOG: MissionDefinition[] = [
   // ================= MISSION 3: REPAIR REVERSED POLARITY =================
   {
     id: 'repair-reversed-led',
-    titleId: 'Troubleshooting Polaritas Dioda LED',
-    titleEn: 'Troubleshooting LED Diode Polarity',
+    titleId: 'Troubleshooting Dioda LED & Polaritas Semikonduktor',
+    titleEn: 'LED Diode Polarity & Semiconductor Troubleshooting',
     difficulty: 'intermediate',
     category: 'basic',
     estimatedMinutes: 5,
     descriptionId:
-      'Sebuah lampu LED dihubungkan dengan polaritas terbalik (Anoda terhubung ke negatif, Katoda terhubung ke positif). Dioda memblokir arus listrik sehingga lampu padam. Perbaiki polaritas kabel agar LED memancarkan cahaya!',
+      'Dioda LED merupakan komponen semikonduktor modern hemat energi yang sangat sensitif. Arus listrik hanya dapat mengalir satu arah saat Anoda (kaki positif) terhubung ke kutub positif (Forward Biased). Perbaiki rangkaian yang mengalami salah pasang polaritas (Reverse Biased) agar LED kembali memancarkan foton cahaya!',
     descriptionEn:
-      'An LED lamp was wired with reversed polarity (Anode to negative, Cathode to positive). The semiconductor diode blocks current flow. Fix wire polarity so the LED shines!',
+      'LEDs are highly efficient semiconductor diodes that conduct current in only one forward direction (Anode to positive). Repair a reversed polarity circuit (Reverse Biased) so the LED emits bright photons!',
     learningObjectivesId: [
-      'Memahami sifat semikonduktor satu arah pada Dioda Pemancar Cahaya (LED)',
-      'Membedakan kutub Anoda (positif) dan Katoda (negatif)',
-      'Mendiagnosis kerusakan rangkaian akibat polaritas terbalik',
+      'Memahami sifat semikonduktor satu arah (Forward Biased vs Reverse Biased) pada Dioda LED',
+      'Membedakan polaritas pin Anoda (+) dan Katoda (-) pada fiting keramik',
+      'Mendiagnosis kerusakan rangkaian akibat polaritas terbalik tanpa merusak komponen',
     ],
     learningObjectivesEn: [
-      'Understand unidirectional semiconductor behavior in Light Emitting Diodes (LED)',
-      'Differentiate Anode (positive) and Cathode (negative) pins',
-      'Diagnose and repair circuits suffering from reverse-bias conditions',
+      'Understand unidirectional semiconductor behavior (Forward vs Reverse Biased) in LEDs',
+      'Differentiate Anode (+) and Cathode (-) pins on ceramic sockets',
+      'Diagnose and repair circuits suffering from reverse-bias diode conditions',
     ],
     instructionsId: [
-      '1. Periksa fiting keramik yang berisi lampu LED.',
-      '2. Perhatikan peringatan "Polaritas Terbalik (Reverse Biased)".',
-      '3. Putus kabel yang salah arah dan hubungkan Pin 1 (Anoda) ke kutub Positif sumber baterai.',
-      '4. Pastikan saklar tertutup (ON) dan LED memancarkan cahaya.',
+      '1. Periksa fiting keramik yang berisi lampu LED (LED Standar, LED RGB, atau LED Hijau).',
+      '2. Amati peringatan "Polaritas Terbalik (Reverse Biased)" pada indikator fiting.',
+      '3. Putus kabel yang terhubung ke kaki LED, lalu balik sambungannya agar Pin 1 (Anoda) menerima tegangan positif baterai.',
+      '4. Pastikan saklar tertutup (ON) dan LED memancarkan cahaya foton terang.',
     ],
     instructionsEn: [
-      '1. Inspect the socket containing the LED bulb.',
-      '2. Notice the "Reverse Biased Polarity" warning in the inspector.',
-      '3. Re-route wires so Pin 1 (Anode) connects to the Positive terminal.',
-      '4. Close the switch and confirm the LED emits light.',
+      '1. Inspect the ceramic socket holding an LED (Standard LED, RGB, or Green LED).',
+      '2. Observe the "Reverse Biased Polarity" warning indicator.',
+      '3. Sever and reverse the socket wire connections so Pin 1 (Anode) connects to the positive power rail.',
+      '4. Ensure the switch is ON and the LED shines brightly.',
     ],
     hintsId: [
-      'LED hanya bisa menghantarkan listrik saat tegangan Pin 1 lebih tinggi dari Pin 2.',
+      'LED memblokir arus sepenuhnya jika kutubnya terbalik. Pin 1 pada fiting keramik harus tersambung ke kutub positif sumber daya.',
     ],
     hintsEn: [
-      'An LED only conducts electric current when Pin 1 potential is strictly greater than Pin 2.',
+      'An LED diode completely blocks reverse current. Pin 1 must connect to the higher potential terminal.',
     ],
     objectives: [
       {
@@ -366,44 +368,44 @@ export const MISSION_CATALOG: MissionDefinition[] = [
   // ================= MISSION 4: CONNECT SOLAR PANEL TO GRID =================
   {
     id: 'solar-grid-connection',
-    titleId: 'Integrasi PLTS Panel Surya ke MCB',
-    titleEn: 'Solar PV Integration to MCB Panel',
+    titleId: 'Microgrid Mandiri: Pembangkit PLTS Surya ke Lab Fisika',
+    titleEn: 'Renewable Microgrid: Solar PV to Lab Supply',
     difficulty: 'intermediate',
     category: 'renewable',
     estimatedMinutes: 6,
     descriptionId:
-      'Hubungkan modul Panel Surya (PLTS) ke Panel Distribusi Laboratorium (MCB). Pastikan saklar MCB dalam posisi aktif (ON) dan energi bersih tersalurkan ke beban fiting lampu.',
+      'Wujudkan visi sekolah hijau mandiri energi SMPN 12 Surabaya! Hubungkan modul Pembangkit Listrik Tenaga Surya (PLTS) di bukit alam terbuka ke Panel Distribusi Listrik Laboratorium. Pastikan proteksi MCB aktif (ON) dan energi fotovoltaik bersih berhasil disalurkan untuk menyalakan beban fiting lampu laboratorium!',
     descriptionEn:
-      'Connect a Solar PV module to the Lab Distribution Panel (MCB). Ensure the breaker switch is ON and renewable energy flows to the load socket.',
+      "Realize SMPN 12 Surabaya's green school vision! Connect an outdoor Solar Photovoltaic (PV) module to the Lab Distribution Panel. Ensure the MCB breaker is ON and clean renewable electricity powers the laboratory fixtures!",
     learningObjectivesId: [
-      'Mempelajari pemanfaatan energi surya ramah lingkungan (PLTS)',
-      'Memahami fungsi pengaman Mini Circuit Breaker (MCB) pada instalasi listrik',
-      'Mengintegrasikan pembangkit energi terbarukan ke beban laboratorium',
+      'Mempelajari pemanfaatan energi fotovoltaik matahari ramah lingkungan (PLTS)',
+      'Memahami integrasi sistem pembangkit mikro ke panel distribusi listrik (MCB)',
+      'Mengukur penyaluran daya bersih (clean energy transfer) ke beban laboratorium',
     ],
     learningObjectivesEn: [
-      'Learn solar photovoltaic renewable energy harvesting',
-      'Understand MCB circuit breaker protection in distribution panels',
-      'Integrate renewable generators into classroom laboratory loads',
+      'Learn solar photovoltaic renewable energy harvesting dynamics',
+      'Understand microgrid integration and MCB breaker protection',
+      'Measure clean renewable power delivery to classroom laboratory loads',
     ],
     instructionsId: [
-      '1. Pasang 1 Panel Surya dan 1 Panel Distribusi Listrik (MCB).',
-      '2. Hubungkan kutub panel surya ke terminal input MCB.',
-      '3. Hubungkan terminal output MCB ke fiting lampu beban.',
-      '4. Pastikan saklar MCB di panel berada pada posisi ON (tidak trip).',
+      '1. Pasang 1 Panel Surya (12V) dan 1 Panel Distribusi Laboratorium (atau Menara Transmisi).',
+      '2. Hubungkan kutub Panel Surya ke terminal input Panel Distribusi.',
+      '3. Hubungkan terminal output Panel Distribusi ke fiting lampu beban laboratorium.',
+      '4. Pastikan saklar MCB panel berada di posisi ON (tidak trip) dan intensitas radiasi matahari mencukupi.',
+      '5. Amati arus listrik surya mengalir menyalakan lampu secara stabil (I > 10mA).',
     ],
     instructionsEn: [
-      '1. Place 1 Solar Panel and 1 Lab Distribution Panel (MCB).',
-      '2. Wire solar panel terminals to the panel input.',
-      '3. Wire the panel output to a load lamp socket.',
-      '4. Ensure the MCB breaker switch is ON and not tripped.',
+      '1. Place 1 Solar Panel (12V) and 1 Lab Distribution Panel (or Transmission Tower).',
+      '2. Wire solar panel terminals to the panel input rails.',
+      '3. Wire the distribution panel output to a load lamp socket.',
+      '4. Ensure the MCB breaker switch is ON and solar irradiance is active.',
+      '5. Confirm steady solar electric current illuminates the load (I > 10mA).',
     ],
     hintsId: [
-      'Pastikan intensitas cahaya matahari cukup (> 50%).',
-      'Jika MCB trip (jatuh), periksa apakah ada kabel yang terhubung korslet.',
+      'Pastikan intensitas cahaya matahari cukup (> 50%). Jika MCB trip (jatuh), periksa apakah ada kabel yang terhubung korslet antara kutub positif dan negatif.',
     ],
     hintsEn: [
-      'Ensure solar irradiance sunlight is set above 50%.',
-      'If the MCB trips, check for short-circuit faults between positive and negative.',
+      'Ensure solar sunlight irradiance is set above 50%. If the MCB trips, verify that output cables are not shorted together.',
     ],
     objectives: [
       {
@@ -490,42 +492,42 @@ export const MISSION_CATALOG: MissionDefinition[] = [
   // ================= MISSION 5: ENERGY EFFICIENCY OPTIMIZATION =================
   {
     id: 'energy-efficiency-challenge',
-    titleId: 'Tantangan Efisiensi Energi Hijau',
-    titleEn: 'Green Energy Efficiency Challenge',
+    titleId: 'Audit Efisiensi Energi: Pemangkasan Daya Lampu (Max 5W)',
+    titleEn: 'Energy Audit: Room Lighting Under 5 Watts',
     difficulty: 'advanced',
     category: 'efficiency',
     estimatedMinutes: 6,
     descriptionId:
-      'Nyalakan minimal 2 titik lampu ruangan secara bersamaan dengan total konsumsi daya MAKSIMAL 5 Watt. Ganti lampu pijar konvensional yang boros energi dengan lampu LED hemat energi!',
+      'Program Adiwiyata Mandiri SMPN 12 menantangmu memangkas pemborosan energi listrik! Nyalakan minimal 2 titik lampu ruangan secara bersamaan, tetapi total konsumsi daya TIDAK BOLEH MELEBIHI 5.0 Watt. Buktikan keunggulan efisiensi teknologi lampu LED modern dibandingkan lampu pijar konvensional yang boros daya!',
     descriptionEn:
-      'Illuminate at least 2 separate room light fixtures simultaneously consuming NO MORE THAN 5 Watts total. Replace inefficient incandescent lamps with modern LEDs!',
+      "SMPN 12's Eco-School program challenges you to eliminate energy waste! Illuminate at least 2 separate room light fixtures simultaneously while consuming NO MORE THAN 5.0 Watts total. Demonstrate the superior efficiency of modern LEDs over wasteful incandescent bulbs!",
     learningObjectivesId: [
-      'Menganalisis perbandingan konsumsi daya lampu pijar vs LED',
-      'Menghitung daya listrik total (P = V x I)',
-      'Menerapkan prinsip efisiensi energi dan konservasi daya listrik',
+      'Menganalisis perbandingan konsumsi daya lampu pijar konvensional (40W) vs lampu LED modern (1-3W)',
+      'Menghitung daya listrik total sirkuit (P = V x I)',
+      'Menerapkan prinsip efisiensi energi dan konservasi daya listrik untuk memangkas rekening tagihan PLN',
     ],
     learningObjectivesEn: [
-      'Analyze power consumption differences between incandescent and LED lighting',
-      'Calculate total circuit power (P = V x I)',
-      'Apply energy conservation principles in engineering design',
+      'Analyze power consumption differences between incandescent and modern LED lamps',
+      'Calculate total circuit power consumption (P = V x I)',
+      'Apply energy conservation principles in engineering design to minimize PLN electricity costs',
     ],
     instructionsId: [
       '1. Pasang minimal 2 Fiting Lampu yang terhubung ke sumber daya baterai.',
-      '2. Ubah jenis lampu di dalam fiting menjadi LED (LED Standar, LED RGB, atau LED Hijau).',
-      '3. Pastikan kedua lampu menyala terang.',
-      '4. Periksa total daya listrik di layar: total daya TIDAK BOLEH melebihi 5.0 Watt.',
+      '2. Pasang bohlam hemat energi: ubah jenis lampu di dalam fiting menjadi LED (LED Standar, LED RGB, LED Hijau, atau CFL Spiral).',
+      '3. Pastikan kedua lampu menyala terang secara simultan.',
+      '4. Periksa total daya listrik di layar: total daya wajib di bawah 5.0 Watt (P ≤ 5.0W).',
     ],
     instructionsEn: [
-      '1. Wire at least 2 Lamp Sockets to your power source.',
-      '2. Change the inserted bulb type to high-efficiency LEDs (Standard LED, RGB, or Green LED).',
-      '3. Confirm both fixtures are illuminating.',
-      '4. Verify circuit total power: must NOT exceed 5.0 Watts total.',
+      '1. Wire at least 2 Lamp Sockets to your battery power source.',
+      '2. Install high-efficiency bulbs: switch inserted bulb type to LED (Standard, RGB, Green LED, or CFL Spiral).',
+      '3. Confirm both room fixtures illuminate brightly.',
+      '4. Verify circuit total power on display: must NOT exceed 5.0 Watts total (P ≤ 5.0W).',
     ],
     hintsId: [
-      'Lampu pijar mengonsumsi hingga 40W, sedangkan LED hanya membutuhkan ~1W untuk menyala terang.',
+      'Satu bohlam pijar konvensional saja mengonsumsi hingga 40 Watt dan akan langsung mendiskualifikasi misi. Gunakan lampu LED yang hanya membutuhkan ~1 Watt per titik.',
     ],
     hintsEn: [
-      'Incandescent bulbs consume up to 40W each, whereas LEDs consume only ~1W for high luminous output.',
+      'A single incandescent bulb draws up to 40 Watts and will immediately violate the power ceiling. Use LEDs which consume ~1W each.',
     ],
     objectives: [
       {

@@ -9,6 +9,7 @@ import {
   Target,
   Sparkles,
   ChevronRight,
+  ChevronLeft,
   ShieldCheck,
   AlertTriangle,
 } from 'lucide-react';
@@ -59,6 +60,11 @@ export const MissionModal: React.FC<MissionModalProps> = ({ isOpen, onClose }) =
     return (
       MISSION_CATALOG.find((m) => m.id === activeMissionId) ?? MISSION_CATALOG[0]
     );
+  }, [activeMissionId]);
+
+  const activeMissionIndex = useMemo(() => {
+    const idx = MISSION_CATALOG.findIndex((m) => m.id === activeMissionId);
+    return idx >= 0 ? idx : 0;
   }, [activeMissionId]);
 
   // Real-time circuit validation evaluation
@@ -169,48 +175,50 @@ export const MissionModal: React.FC<MissionModalProps> = ({ isOpen, onClose }) =
           </button>
         </div>
 
-        {/* Content Layout (Sidebar Missions List + Main Mission Detail) */}
+        {/* Content Layout (Sidebar Missions List on Desktop / Horizontal Tabs on Mobile) */}
         <div className="flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden">
-          {/* Left: Mission Selector List */}
-          <div className="w-full md:w-72 border-b md:border-b-0 md:border-r border-white/10 bg-void-950/60 p-3 overflow-y-auto space-y-2 shrink-0 select-none">
-            <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-2 py-1">
-              {isId ? 'Daftar Misi' : 'Challenge Missions'}
+          {/* Mission Selector: Compact Horizontal Tab Strip on Mobile (< md), Vertical Sidebar on Desktop (md+) */}
+          <div className="w-full md:w-72 border-b md:border-b-0 md:border-r border-white/10 bg-void-950/75 p-2.5 md:p-3 shrink-0 select-none overflow-x-auto md:overflow-y-auto no-scrollbar">
+            <div className="hidden md:block text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-2 py-1 mb-1.5">
+              {isId ? 'Daftar Misi Praktikum' : 'Challenge Missions'}
             </div>
-            {MISSION_CATALOG.map((mission, idx) => {
-              const isSelected = mission.id === activeMissionId;
-              const isDone = completedMissionIds.includes(mission.id);
-              const title = isId ? mission.titleId : mission.titleEn;
+            <div className="flex md:flex-col gap-2 min-w-max md:min-w-0">
+              {MISSION_CATALOG.map((mission, idx) => {
+                const isSelected = mission.id === activeMissionId;
+                const isDone = completedMissionIds.includes(mission.id);
+                const title = isId ? mission.titleId : mission.titleEn;
 
-              return (
-                <button
-                  key={mission.id}
-                  type="button"
-                  onClick={() => setActiveMissionId(mission.id)}
-                  className={`w-full text-left p-3 rounded-xl border transition-all active:scale-95 cursor-pointer flex items-center justify-between gap-2 ${
-                    isSelected
-                      ? 'bg-electric-500/15 border-electric-500/40 text-electric-300 shadow-md'
-                      : 'bg-void-900 hover:bg-void-850 border-white/5 text-slate-300'
-                  }`}
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-mono mb-1">
-                      <span>Misi #{idx + 1}</span>
-                      <span>•</span>
-                      <span>{mission.estimatedMinutes}m</span>
+                return (
+                  <button
+                    key={mission.id}
+                    type="button"
+                    onClick={() => setActiveMissionId(mission.id)}
+                    className={`text-left rounded-xl border transition-all active:scale-95 cursor-pointer flex items-center justify-between gap-2.5 shrink-0 ${
+                      isSelected
+                        ? 'bg-electric-500/15 border-electric-500/40 text-electric-300 shadow-md ring-1 ring-electric-400/30'
+                        : 'bg-void-900 hover:bg-void-850 border-white/5 text-slate-300'
+                    } px-3 py-2 md:p-3 w-auto md:w-full`}
+                  >
+                    <div className="min-w-0 max-w-[180px] md:max-w-none">
+                      <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-mono mb-0.5">
+                        <span className="font-bold text-amber-400">#{idx + 1}</span>
+                        <span>•</span>
+                        <span>{mission.estimatedMinutes}m</span>
+                      </div>
+                      <div className="text-xs font-bold truncate leading-tight">{title}</div>
                     </div>
-                    <div className="text-xs font-bold truncate leading-tight">{title}</div>
-                  </div>
 
-                  <div className="shrink-0 flex items-center gap-1">
-                    {isDone ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                    ) : (
-                      <ChevronRight className="w-4 h-4 text-slate-500" />
-                    )}
-                  </div>
-                </button>
-              );
-            })}
+                    <div className="shrink-0 flex items-center gap-1">
+                      {isDone ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                      ) : (
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-500 shrink-0 hidden md:block" />
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Right: Active Mission Workspace Panel */}
@@ -390,6 +398,33 @@ export const MissionModal: React.FC<MissionModalProps> = ({ isOpen, onClose }) =
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* Mission Stepper Navigation Footer */}
+            <div className="pt-3 border-t border-white/10 flex items-center justify-between gap-2">
+              <button
+                type="button"
+                disabled={activeMissionIndex <= 0}
+                onClick={() => setActiveMissionId(MISSION_CATALOG[activeMissionIndex - 1].id)}
+                className="min-h-[40px] px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-void-850 hover:bg-void-800 disabled:opacity-35 disabled:cursor-not-allowed border border-white/10 flex items-center gap-1.5 text-slate-200 transition-all active:scale-95 cursor-pointer"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <span>{isId ? 'Misi Sebelumnya' : 'Previous Mission'}</span>
+              </button>
+
+              <div className="text-xs font-mono font-medium text-slate-400">
+                {activeMissionIndex + 1} / {MISSION_CATALOG.length}
+              </div>
+
+              <button
+                type="button"
+                disabled={activeMissionIndex >= MISSION_CATALOG.length - 1}
+                onClick={() => setActiveMissionId(MISSION_CATALOG[activeMissionIndex + 1].id)}
+                className="min-h-[40px] px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-void-850 hover:bg-void-800 disabled:opacity-35 disabled:cursor-not-allowed border border-white/10 flex items-center gap-1.5 text-slate-200 transition-all active:scale-95 cursor-pointer"
+              >
+                <span>{isId ? 'Misi Selanjutnya' : 'Next Mission'}</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </div>
