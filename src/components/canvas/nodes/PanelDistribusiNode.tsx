@@ -347,7 +347,7 @@ export const PanelDistribusiNode: React.FC<NodeProps<CircuitElementData>> = memo
               className="w-full py-1 px-2 rounded-lg bg-red-900/80 hover:bg-red-800 text-red-100 font-mono text-[9px] font-bold border border-red-400/60 flex items-center justify-center gap-1 active:scale-95 transition-all shadow-md cursor-pointer"
             >
               <Scissors className="w-2.5 h-2.5" />
-              <span>{isId ? 'Lepas Kabel & Reset MCB' : 'Cut Wire & Reset MCB'}</span>
+              <span>{isId ? 'Putus Kabel Korslet & Reset MCB' : 'Cut Shorting Wire & Reset MCB'}</span>
             </button>
           </div>
         )}

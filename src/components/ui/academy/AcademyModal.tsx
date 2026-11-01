@@ -266,7 +266,7 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
           <div className="flex flex-1 min-h-0 divide-x-0 md:divide-x divide-white/10">
             {/* Left Column: Level Navigation & Lesson Index (Full-width on mobile when mobileView === 'list') */}
             <aside
-              className={`w-full md:w-72 sm:md:w-80 flex flex-col bg-void-950/40 shrink-0 min-h-0 ${
+              className={`w-full md:w-72 lg:w-80 flex-col bg-void-950/40 shrink-0 min-h-0 ${
                 mobileView === 'detail' ? 'hidden md:flex' : 'flex'
               }`}
             >
@@ -370,7 +370,7 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
 
             {/* Right Column: Detailed Lesson Viewer (Full-width on mobile when mobileView === 'detail') */}
             <main
-              className={`flex-1 flex flex-col min-h-0 bg-void-900 overflow-y-auto p-4 sm:p-6 space-y-6 ${
+              className={`flex-1 flex-col min-h-0 bg-void-900 overflow-y-auto p-4 sm:p-6 space-y-6 ${
                 mobileView === 'list' ? 'hidden md:flex' : 'flex'
               }`}
             >

@@ -414,8 +414,8 @@ export const TROUBLESHOOTING_SCENARIOS: TroubleshootingScenario[] = [
       },
       {
         stage: 3,
-        textId: 'Gunakan tombol "Putus Kabel & Reset" pada panel untuk memotong kawat korslet dan menaikkan kembali tuas MCB.',
-        textEn: 'Use "Cut Wires & Reset" to disconnect the shorting wire and reset the MCB breaker.',
+        textId: 'Klik tombol "Putus Kabel Korslet & Reset MCB" pada panel atau klik langsung garis kabel korslet yang menggantung di bawah terminal lalu potong.',
+        textEn: 'Tap "Cut Shorting Wire & Reset MCB" on the panel or tap the shorting jumper wire loop hanging below the terminals and cut it.',
         scorePenalty: 300,
       },
     ],
@@ -537,25 +537,25 @@ export const TROUBLESHOOTING_SCENARIOS: TroubleshootingScenario[] = [
       'Current drops below 0.5 mA despite a 9V battery source.',
       'Voltage drop across resistor measures 8.98 Volts (absorbing nearly all battery EMF).',
     ],
-    expectedBehaviorId: 'Nilai resistor disesuaikan ke rentang yang tepat (20 Ω - 100 Ω) agar lampu menyala terang.',
-    expectedBehaviorEn: 'Resistor value calibrated to proper range (20 Ω - 100 Ω) for bright lamp illumination.',
+    expectedBehaviorId: 'Ubah nilai hambatan resistor pembatas menjadi antara 10 Ω hingga 100 Ω (misal 50 Ω) melalui Inspektor agar lampu menyala terang (jangan dilepas, resistor diperlukan agar bohlam 2W tidak terbakar oleh baterai 9V).',
+    expectedBehaviorEn: 'Calibrate series resistor value between 10 Ω and 100 Ω (e.g. 50 Ω) via Inspector so the lamp glows brightly (do not remove it, resistor prevents 2W bulb burnout from 9V battery).',
     hints: [
       {
         stage: 1,
-        textId: 'Menurut Hukum Ohm, jika nilai hambatan seri terlalu besar, arus yang tersisa untuk lampu menjadi sangat kecil.',
-        textEn: 'By Ohm\'s Law, excessive series resistance starves the lamp of operating current.',
+        textId: 'Klik pada komponen Resistor Pembatas untuk membuka panel Inspektor di sebelah kanan.',
+        textEn: 'Click on the Series Resistor component to open the Inspector panel on the right.',
         scorePenalty: 100,
       },
       {
         stage: 2,
-        textId: 'Periksa nilai resistor pada Inspektor. Nilai saat ini (10.000 Ω) terlalu tinggi untuk lampu 9V.',
-        textEn: 'Inspect resistor value. Current setting (10,000 Ω) is too high for a 9V lamp.',
+        textId: 'Nilai bawaan saat ini adalah 10.000 Ω (10 kΩ), yang menahan hampir seluruh arus baterai 9V.',
+        textEn: 'Current resistor value (10,000 Ω) is too high and blocks 99% of 9V battery current.',
         scorePenalty: 200,
       },
       {
         stage: 3,
-        textId: 'Buka tab Properti resistor dan ubah nilainya menjadi antara 20 Ω hingga 100 Ω.',
-        textEn: 'Open resistor Properties tab and tune its resistance between 20 Ω and 100 Ω.',
+        textId: 'Ketik atau geser nilai hambatan resistor menjadi antara 10 Ω hingga 100 Ω (misal 50 Ω). Jangan melepas resistor agar bohlam aman.',
+        textEn: 'Type or slide the resistance value between 10 Ω and 100 Ω (e.g. 50 Ω). Do not remove the resistor.',
         scorePenalty: 300,
       },
     ],
@@ -600,31 +600,52 @@ export const TROUBLESHOOTING_SCENARIOS: TroubleshootingScenario[] = [
       const { nodes, simulation } = context;
 
       const resistor = nodes.find((n) => n.id === 'r_fault' || n.data.type === 'resistor');
-      const resistance = resistor?.data.resistance ?? 10000;
+      if (!resistor) {
+        return {
+          isRepaired: false,
+          topologyCorrect: false,
+          simulationConverged: true,
+          measurementsSatisfied: false,
+          feedbackMessageId: 'Resistor pembatas dilepas! Resistor seri (10 Ω - 100 Ω) wajib dipasang agar bohlam tidak putus terbakar oleh tegangan baterai 9V.',
+          feedbackMessageEn: 'Series resistor was removed! A protective resistor (10 Ω - 100 Ω) is mandatory to prevent 9V battery burn-out.',
+        };
+      }
 
-      if (resistance > 150) {
+      const resistance = resistor.data.resistance ?? 10000;
+
+      if (resistance > 100) {
         return {
           isRepaired: false,
           topologyCorrect: true,
           simulationConverged: true,
           measurementsSatisfied: false,
-          feedbackMessageId: `Nilai resistor masih terlalu besar (${resistance} Ω). Turunkan di bawah 150 Ω.`,
-          feedbackMessageEn: `Resistor value is still too high (${resistance} Ω). Reduce below 150 Ω.`,
+          feedbackMessageId: `Nilai resistor masih terlalu besar (${resistance} Ω). Atur nilainya antara 10 Ω hingga 100 Ω di panel Inspektor.`,
+          feedbackMessageEn: `Resistor value is still too high (${resistance} Ω). Set it between 10 Ω and 100 Ω in the Inspector.`,
+        };
+      }
+
+      if (resistance < 10) {
+        return {
+          isRepaired: false,
+          topologyCorrect: true,
+          simulationConverged: true,
+          measurementsSatisfied: false,
+          feedbackMessageId: `Nilai resistor terlalu kecil (${resistance} Ω < 10 Ω). Bohlam berisiko putus karena panas berlebih (overheat).`,
+          feedbackMessageEn: `Resistor value is too small (${resistance} Ω < 10 Ω). Risk of bulb overheat failure.`,
         };
       }
 
       const socket = nodes.find((n) => n.id === 'sock_1' || n.data.type === 'socket');
       const current = Math.abs(simulation.branchCurrents[socket?.id ?? ''] ?? 0);
 
-      // Expected: With R in [20, 100] + 40 bulb + 2 int = [62, 142] -> I in [0.063, 0.145] A
       if (current < 0.05) {
         return {
           isRepaired: false,
           topologyCorrect: false,
           simulationConverged: true,
           measurementsSatisfied: false,
-          feedbackMessageId: 'Arus lampu masih belum optimal (I < 50 mA).',
-          feedbackMessageEn: 'Lamp current is not yet optimal (I < 50 mA).',
+          feedbackMessageId: 'Arus lampu belum mengalir. Pastikan kabel dari baterai, resistor, dan lampu tersambung lengkap.',
+          feedbackMessageEn: 'Lamp current is not flowing. Ensure wires between battery, resistor, and lamp form a closed loop.',
         };
       }
 
@@ -633,8 +654,8 @@ export const TROUBLESHOOTING_SCENARIOS: TroubleshootingScenario[] = [
         topologyCorrect: true,
         simulationConverged: true,
         measurementsSatisfied: true,
-        feedbackMessageId: 'Hambatan berhasil disesuaikan! Lampu menyala terang dengan arus optimal.',
-        feedbackMessageEn: 'Resistance tuned successfully! Lamp illuminates brightly with optimal current.',
+        feedbackMessageId: `Luar biasa! Resistor diset ke ${resistance} Ω. Lampu menyala terang dengan arus optimal ${(current * 1000).toFixed(0)} mA dan aman.`,
+        feedbackMessageEn: `Excellent! Resistor calibrated to ${resistance} Ω. Lamp shines brightly with optimal current ${(current * 1000).toFixed(0)} mA.`,
       };
     },
   },
@@ -679,22 +700,31 @@ export const TROUBLESHOOTING_SCENARIOS: TroubleshootingScenario[] = [
         scorePenalty: 300,
       },
     ],
+    targetWorldMode: 'outside',
     starterCircuit: {
       nodes: [
         {
           id: 'solar_1',
           type: 'solar-panel',
-          position: { x: 80, y: 150 },
-          data: { id: 'solar_1', type: 'solar-panel', label: 'Panel Surya 12V', sunlight: 100, voltage: 12.0 },
+          position: { x: 120, y: 320 },
+          data: {
+            id: 'solar_1',
+            type: 'solar-panel',
+            worldMode: 'outside',
+            label: 'Panel Surya Alam (12V)',
+            sunlight: 100,
+            voltage: 12.0,
+          },
         },
         {
           id: 'sock_1',
           type: 'socket',
-          position: { x: 400, y: 150 },
+          position: { x: 420, y: 320 },
           data: {
             id: 'sock_1',
             type: 'socket',
-            label: 'Lampu Jalan LED',
+            worldMode: 'outside',
+            label: 'Lampu Penerangan Jalan',
             installedBulb: {
               id: 'bulb_led',
               bulbType: 'led_standard',
@@ -706,7 +736,7 @@ export const TROUBLESHOOTING_SCENARIOS: TroubleshootingScenario[] = [
       ],
       // FAULT: Only negative wire is connected, positive wire is missing
       edges: [
-        { id: 'w_neg', source: 'solar_1', sourceHandle: 'neg', target: 'sock_1', targetHandle: 'p2' },
+        { id: 'w_neg', source: 'solar_1', sourceHandle: 'neg', target: 'sock_1', targetHandle: 'p2', type: 'wire' },
       ],
     },
     validateRepair: (context: FaultValidationContext): FaultValidationResult => {

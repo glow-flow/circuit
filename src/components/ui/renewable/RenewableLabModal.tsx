@@ -29,8 +29,6 @@ import {
   BatteryChemistry,
   BessParameters,
 } from '../../../types/renewable';
-import { Node, Edge } from 'reactflow';
-import { CircuitElementData } from '../../../types/circuit';
 import { useModalKeyboardClose } from '../../../hooks/useModalKeyboardClose';
 
 interface RenewableLabModalProps {
@@ -168,173 +166,14 @@ export const RenewableLabModal: React.FC<RenewableLabModalProps> = ({ isOpen, on
 
     notify(
       isId
-        ? `Skenario "${scenario.titleId}" dipilih! Tekan "Pasang di Lab" atau "Pasang di Alam" untuk memuat ke kanvas.`
-        : `Scenario "${scenario.titleEn}" selected! Click "Deploy to Lab" or "Deploy Outdoor" to load onto canvas.`
+        ? `Skenario "${scenario.titleId}" dipilih! Tekan "Pasang di Alam" untuk memuat ke Zona Alam Terbuka.`
+        : `Scenario "${scenario.titleEn}" selected! Click "Deploy Outdoor" to load onto Outdoor Sandbox.`
     );
   };
 
-  /**
-   * Builds educational renewable microgrid schematic with real physics parameters.
-   * Time Complexity: O(1)
-   */
-  const buildMicrogridCircuit = (
-    sunlightPct: number,
-    windSpeed: number,
-    bessSoC: number,
-    targetWatts: number,
-    nominalVoltage: number
-  ) => {
-    const microgridNodes: Node<CircuitElementData>[] = [
-      {
-        id: 'solar_pv_1',
-        type: 'solar-panel',
-        position: { x: 120, y: 150 },
-        data: {
-          id: 'solar_pv_1',
-          type: 'solar-panel',
-          worldMode: 'lab',
-          label: isId ? 'Panel Surya 100W' : 'Solar PV 100W',
-          voltage: 18.0,
-          sunlight: Math.max(0, Math.min(100, sunlightPct)),
-        },
-      },
-      {
-        id: 'wind_gen_1',
-        type: 'wind-turbine',
-        position: { x: 120, y: 320 },
-        data: {
-          id: 'wind_gen_1',
-          type: 'wind-turbine',
-          worldMode: 'lab',
-          label: isId ? 'Turbin Angin 500W' : 'Wind Turbine 500W',
-          speed: Math.round(Math.min(100, (windSpeed / 12) * 100)),
-        },
-      },
-      {
-        id: 'bess_pack_1',
-        type: 'battery',
-        position: { x: 380, y: 220 },
-        data: {
-          id: 'bess_pack_1',
-          type: 'battery',
-          worldMode: 'lab',
-          label: isId ? 'BESS LFP 1kWh' : 'BESS LFP 1kWh',
-          voltage: nominalVoltage,
-          currentCharge: bessSoC,
-        },
-      },
-      {
-        id: 'dc_load_1',
-        type: 'resistor',
-        position: { x: 620, y: 220 },
-        data: {
-          id: 'dc_load_1',
-          type: 'resistor',
-          worldMode: 'lab',
-          label: isId ? 'Beban Komunitas' : 'Community Load',
-          resistance: Math.max(
-            1.0,
-            Number((Math.pow(nominalVoltage, 2) / Math.max(10, targetWatts)).toFixed(1))
-          ),
-        },
-      },
-      {
-        id: 'sys_ground_1',
-        type: 'ground',
-        position: { x: 380, y: 400 },
-        data: {
-          id: 'sys_ground_1',
-          type: 'ground',
-          worldMode: 'lab',
-          label: 'Ground DC',
-        },
-      },
-    ];
 
-    const microgridEdges: Edge[] = [
-      {
-        id: 'wire_solar_bess_pos',
-        source: 'solar_pv_1',
-        sourceHandle: 'pos',
-        target: 'bess_pack_1',
-        targetHandle: 'pos',
-        type: 'wire',
-      },
-      {
-        id: 'wire_solar_bess_neg',
-        source: 'solar_pv_1',
-        sourceHandle: 'neg',
-        target: 'bess_pack_1',
-        targetHandle: 'neg',
-        type: 'wire',
-      },
-      {
-        id: 'wire_wind_bess_pos',
-        source: 'wind_gen_1',
-        sourceHandle: 'pos',
-        target: 'bess_pack_1',
-        targetHandle: 'pos',
-        type: 'wire',
-      },
-      {
-        id: 'wire_wind_bess_neg',
-        source: 'wind_gen_1',
-        sourceHandle: 'neg',
-        target: 'bess_pack_1',
-        targetHandle: 'neg',
-        type: 'wire',
-      },
-      {
-        id: 'wire_bess_load_pos',
-        source: 'bess_pack_1',
-        sourceHandle: 'pos',
-        target: 'dc_load_1',
-        targetHandle: 'p1',
-        type: 'wire',
-      },
-      {
-        id: 'wire_bess_load_neg',
-        source: 'bess_pack_1',
-        sourceHandle: 'neg',
-        target: 'dc_load_1',
-        targetHandle: 'p2',
-        type: 'wire',
-      },
-      {
-        id: 'wire_bess_gnd',
-        source: 'bess_pack_1',
-        sourceHandle: 'neg',
-        target: 'sys_ground_1',
-        targetHandle: 'in',
-        type: 'wire',
-      },
-    ];
 
-    return { microgridNodes, microgridEdges };
-  };
 
-  /**
-   * Deploys the educational microgrid into the Lab canvas environment.
-   */
-  const handleDeployScenarioToLab = (scenario?: RenewableScenario) => {
-    const sc = scenario ?? selectedScenario;
-    const sunlight = Math.round((sc.solarConditions.irradiance / 1000) * 100);
-    const { microgridNodes, microgridEdges } = buildMicrogridCircuit(
-      sunlight,
-      sc.windSpeedMs,
-      sc.bessInitialSoCPercent,
-      sc.targetLoadWatts,
-      bessParams.nominalVoltage
-    );
-
-    useCircuitStore.getState().loadCustomCircuit(microgridNodes, microgridEdges, 'lab');
-    notify(
-      isId
-        ? `Rangkaian "${sc.titleId}" berhasil dipasang di Kanvas Lab!`
-        : `Microgrid circuit "${sc.titleEn}" loaded onto Lab Canvas!`
-    );
-    onClose();
-  };
 
   /**
    * Deploys the renewable power station onto the 2D grassy terrain in Outdoor Sandbox.
@@ -378,9 +217,7 @@ export const RenewableLabModal: React.FC<RenewableLabModalProps> = ({ isOpen, on
     onClose();
   };
 
-  const handleLoadMicrogridToCanvas = () => {
-    handleDeployScenarioToLab(selectedScenario);
-  };
+
 
   if (!isOpen) return null;
 
@@ -415,12 +252,12 @@ export const RenewableLabModal: React.FC<RenewableLabModalProps> = ({ isOpen, on
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={handleLoadMicrogridToCanvas}
-              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-void-950 text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-md shadow-emerald-500/20"
-              title={isId ? 'Pasang Microgrid di Kanvas' : 'Load Microgrid to Canvas'}
+              onClick={() => handleDeployScenarioToOutdoor()}
+              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-void-950 text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-md shadow-emerald-500/20 shrink-0"
+              title={isId ? 'Pasang di Zona Alam Terbuka' : 'Deploy to Outdoor Sandbox'}
             >
-              <Zap className="w-4 h-4 fill-void-950 text-void-950" />
-              <span>{isId ? 'Pasang di Kanvas' : 'Load to Canvas'}</span>
+              <Trees className="w-4 h-4 text-void-950 shrink-0" />
+              <span className="hidden sm:inline">{isId ? 'Pasang di Alam' : 'Deploy Outdoor'}</span>
             </button>
 
             <button
@@ -488,19 +325,11 @@ export const RenewableLabModal: React.FC<RenewableLabModalProps> = ({ isOpen, on
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     type="button"
-                    onClick={() => handleDeployScenarioToLab(selectedScenario)}
-                    className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-void-950 font-bold text-xs shadow-md transition-all active:scale-95 cursor-pointer"
-                  >
-                    <Zap className="w-3.5 h-3.5 fill-void-950 text-void-950" />
-                    <span>{isId ? 'Pasang di Lab' : 'Deploy to Lab'}</span>
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => handleDeployScenarioToOutdoor(selectedScenario)}
-                    className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-void-850 hover:bg-void-800 border border-emerald-500/40 text-emerald-300 font-semibold text-xs transition-all active:scale-95 cursor-pointer"
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-void-950 font-bold text-xs shadow-md shadow-emerald-500/20 transition-all active:scale-95 cursor-pointer"
                   >
-                    <Trees className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>{isId ? 'Pasang di Alam' : 'Deploy Outdoor'}</span>
+                    <Trees className="w-4 h-4 text-void-950" />
+                    <span>{isId ? '🌲 Pasang Pembangkit di Alam Terbuka' : '🌲 Deploy to Outdoor Sandbox'}</span>
                   </button>
                 </div>
               </div>
@@ -509,14 +338,14 @@ export const RenewableLabModal: React.FC<RenewableLabModalProps> = ({ isOpen, on
 
           {/* Section 2: Real-time Animated Microgrid Power Flow Diagram */}
           <div className="rounded-2xl bg-void-900 border border-white/10 p-4 sm:p-5">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-4">
               <div className="flex items-center gap-2">
-                <Activity className="w-4 h-4 text-emerald-400" />
+                <Activity className="w-4 h-4 text-emerald-400 shrink-0" />
                 <h3 className="text-sm font-bold text-white">
                   {isId ? 'Keseimbangan Daya Microgrid (Power Flow Balance)' : 'Microgrid Power Flow Balance'}
                 </h3>
               </div>
-              <div className="flex items-center gap-2 text-xs font-mono">
+              <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
                 <span
                   className={`px-2.5 py-1 rounded-full font-semibold border ${
                     microgridBalance.status === 'self_sufficient_surplus'

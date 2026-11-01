@@ -1829,11 +1829,34 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   disconnectAndResetMcb: (id: string) => {
     const isId = get().language === 'id';
     const currentEdges = get().edges;
-    const nextEdges = currentEdges.filter(
+
+    // Check if there is a direct self-shorting jumper on this panel
+    const selfShortEdges = currentEdges.filter(
       (edge) =>
-        edge.data?.isSnapWire ||
-        (edge.source !== id && edge.target !== id)
+        (edge.source === id && edge.target === id) ||
+        (edge.source === id && edge.sourceHandle === 'pos' && edge.target === id && edge.targetHandle === 'neg') ||
+        (edge.source === id && edge.sourceHandle === 'neg' && edge.target === id && edge.targetHandle === 'pos')
     );
+
+    let nextEdges: Edge[];
+    let notificationText: string;
+
+    if (selfShortEdges.length > 0) {
+      // Intelligently remove ONLY the shorting jumper wire, leaving lamps/loads connected!
+      const selfShortIds = new Set(selfShortEdges.map((e) => e.id));
+      nextEdges = currentEdges.filter((edge) => !selfShortIds.has(edge.id));
+      notificationText = isId
+        ? '✓ Kawat korslet (jumper bypass) berhasil dipotong! MCB kembali ON dan lampu kini menyala.'
+        : '✓ Shorting jumper wire cut! MCB reset to ON and load is now powered.';
+    } else {
+      // Fallback: Disconnect wires connected to panel
+      nextEdges = currentEdges.filter(
+        (edge) => edge.data?.isSnapWire || (edge.source !== id && edge.target !== id)
+      );
+      notificationText = isId
+        ? '✓ Kabel dilepas & MCB Panel Distribusi berhasil di-reset ke posisi ON!'
+        : '✓ Wires disconnected & Lab MCB successfully reset to ON!';
+    }
 
     const candidateNodes = get().nodes.map((node) =>
       node.id === id
@@ -1857,11 +1880,7 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       selectedEdgeId: null,
     });
 
-    get().notify(
-      isId
-        ? '✅ Kabel korslet dilepas & MCB Panel Distribusi berhasil di-reset (ON)!'
-        : '✅ Shorted wires removed & Lab MCB successfully reset (ON)!'
-    );
+    get().notify(notificationText);
   },
 
   selectNode: (id: string | null) => {

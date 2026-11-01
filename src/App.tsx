@@ -84,9 +84,26 @@ export const App: React.FC = () => {
   useEffect(() => {
     const cleanupBattery = useCircuitStore.getState().startBatteryInterval();
     const cleanupPageExit = setupPageExitPersistence();
+
+    // Guard against horizontal layout shifts on mobile viewports
+    const handleScroll = () => {
+      if (typeof window !== 'undefined' && window.scrollX !== 0) {
+        window.scrollTo(0, window.scrollY);
+      }
+      if (typeof document !== 'undefined' && document.documentElement.scrollLeft !== 0) {
+        document.documentElement.scrollLeft = 0;
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('scroll', handleScroll, { passive: true });
+    }
+
     return () => {
       cleanupBattery();
       cleanupPageExit();
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('scroll', handleScroll);
+      }
     };
   }, []);
 

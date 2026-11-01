@@ -360,9 +360,11 @@ export function startTour(): void {
     const resetWindowScroll = () => {
       try {
         if (typeof window !== 'undefined') {
-          window.scrollTo(0, 0);
+          window.scrollTo({ left: 0, top: 0, behavior: 'instant' });
           if (document.documentElement) document.documentElement.scrollLeft = 0;
           if (document.body) document.body.scrollLeft = 0;
+          const rootEl = document.getElementById('root');
+          if (rootEl) rootEl.scrollLeft = 0;
         }
       } catch {
         // Safe fallback in non-browser testing

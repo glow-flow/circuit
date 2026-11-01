@@ -55,6 +55,7 @@ export interface TroubleshootingScenario {
     nodes: Node<CircuitElementData>[];
     edges: Edge[];
   };
+  targetWorldMode?: 'lab' | 'outside';
   validateRepair: (context: FaultValidationContext) => FaultValidationResult;
 }
 

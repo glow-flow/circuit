@@ -202,16 +202,29 @@ export const WireEdge: React.FC<EdgeProps> = ({
           curvature: 0.2,
         });
 
-  // When bridging terminals on the same node (e.g. dead-short fault wire across battery terminals),
-  // curve the wire 65px outward to the left so it remains clearly visible outside the node body
-  // and effortlessly selectable on mobile touch screens.
+  // When bridging terminals on the same node (e.g. dead-short fault wire across battery terminals or panel posts):
+  // 1. Horizontal terminals (e.g. Panel Distribusi +/- at bottom): drop downward 70px as a visible hanging U-loop
+  // 2. Vertical terminals (e.g. Battery top/bottom): curve outward 65px to the left
   const isSelfLoop = source === target;
-  const loopOffset = -65;
-  const edgePath = isSelfLoop
-    ? `M ${sourceX} ${sourceY} C ${sourceX + loopOffset} ${sourceY - 15}, ${targetX + loopOffset} ${targetY + 15}, ${targetX} ${targetY}`
-    : defaultEdgePath;
-  const labelX = isSelfLoop ? (sourceX + targetX) / 2 + loopOffset : defaultLabelX;
-  const labelY = isSelfLoop ? (sourceY + targetY) / 2 : defaultLabelY;
+  const isHorizontalTerminals = isSelfLoop && Math.abs(sourceY - targetY) < 30;
+
+  let edgePath = defaultEdgePath;
+  let labelX = defaultLabelX;
+  let labelY = defaultLabelY;
+
+  if (isSelfLoop) {
+    if (isHorizontalTerminals) {
+      const dropY = 70;
+      edgePath = `M ${sourceX} ${sourceY} C ${sourceX} ${sourceY + dropY}, ${targetX} ${targetY + dropY}, ${targetX} ${targetY}`;
+      labelX = (sourceX + targetX) / 2;
+      labelY = (sourceY + targetY) / 2 + dropY * 0.75;
+    } else {
+      const loopOffset = -65;
+      edgePath = `M ${sourceX} ${sourceY} C ${sourceX + loopOffset} ${sourceY - 15}, ${targetX + loopOffset} ${targetY + 15}, ${targetX} ${targetY}`;
+      labelX = (sourceX + targetX) / 2 + loopOffset;
+      labelY = (sourceY + targetY) / 2;
+    }
+  }
 
   // Calculate visual appearance based on physical electrical state (Solid, realistic physics colors - no neon glow)
   let strokeColor = '#64748B'; // Default neutral conductor
@@ -352,10 +365,12 @@ export const WireEdge: React.FC<EdgeProps> = ({
       >
         <div className="flex flex-col items-center justify-center h-full select-none">
           {/* Main Badge */}
-          {hasCurrent || isWireSelected || isHovered ? (
+          {hasCurrent || isWireSelected || isHovered || isSelfLoop ? (
             <div
               className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border shadow-lg backdrop-blur-md transition-all ${
-                isWireSelected
+                isSelfLoop
+                  ? 'bg-red-950/95 border-red-500 text-red-200 ring-2 ring-red-500/30'
+                  : isWireSelected
                   ? 'bg-void-950 border-amber-400 text-amber-300 ring-2 ring-amber-400/20'
                   : isBranchShortCircuit
                   ? 'bg-red-950 border-red-500 text-red-300 animate-pulse'
@@ -366,7 +381,7 @@ export const WireEdge: React.FC<EdgeProps> = ({
             >
               <div
                 className={`w-1.5 h-1.5 rounded-full ${
-                  isBranchShortCircuit
+                  isSelfLoop || isBranchShortCircuit
                     ? 'bg-red-500 animate-ping'
                     : hasCurrent
                     ? polarity === 'positive'
@@ -376,12 +391,14 @@ export const WireEdge: React.FC<EdgeProps> = ({
                 }`}
               />
               <span className="text-[10px] font-mono font-bold">
-                {hasCurrent
+                {isSelfLoop
+                  ? isIndonesian
+                    ? 'Korslet (Jumper)'
+                    : 'Short (Jumper)'
+                  : hasCurrent
                   ? wireCurrent < 1
                     ? `${(wireCurrent * 1000).toFixed(0)} mA`
                     : `${wireCurrent.toFixed(2)} A`
-                  : isIndonesian
-                  ? '0.0 mA'
                   : '0.0 mA'}
               </span>
             </div>
