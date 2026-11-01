@@ -48,6 +48,7 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
   const fitViewTrigger = useCircuitStore((state) => state.fitViewTrigger);
   const settleBulbAfterDrag = useCircuitStore((state) => state.settleBulbAfterDrag);
   const syncSnappedBulbPosition = useCircuitStore((state) => state.syncSnappedBulbPosition);
+  const theme = useCircuitStore((state) => state.theme);
 
   const labNodes = useMemo(
     () => nodes.filter((n) => (n.data.worldMode ?? 'lab') === 'lab'),
@@ -179,8 +180,8 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
       }
       if (draggedNode.data?.type !== 'battery') return;
 
-      const batteryCenterX = draggedNode.position.x + 64;
-      const batteryCenterY = draggedNode.position.y + 80;
+      const batteryCenterX = draggedNode.position.x + 24;
+      const batteryCenterY = draggedNode.position.y + 68;
 
       const targetHolder = nodes.find((candidate) => {
         if (candidate.id === draggedNode.id || candidate.data.type !== 'battery-holder') {
@@ -190,8 +191,8 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
           candidate.data.batteryCount ?? (candidate.data.hasBattery ? 2 : 0);
         if (currentCells >= 2) return false; // Holder is full
 
-        const holderCenterX = candidate.position.x + 90;
-        const holderCenterY = candidate.position.y + 110;
+        const holderCenterX = candidate.position.x + 70;
+        const holderCenterY = candidate.position.y + 103;
 
         const deltaX = Math.abs(batteryCenterX - holderCenterX);
         const deltaY = Math.abs(batteryCenterY - holderCenterY);
@@ -220,7 +221,9 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
 
   return (
     <div
-      className="w-full h-full absolute inset-0 overflow-hidden bg-void-950 transition-colors duration-500"
+      className={`w-full h-full absolute inset-0 overflow-hidden transition-colors duration-300 ${
+        theme === 'light' ? 'bg-[#F8FAFC]' : 'bg-void-950'
+      }`}
       ref={reactFlowWrapper}
     >
       <ReactFlow
@@ -263,10 +266,10 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
         className="bg-transparent relative z-10"
       >
         <Background
-          variant={BackgroundVariant.Dots}
+          variant={BackgroundVariant.Lines}
           gap={20}
-          size={1.5}
-          color="#27272A"
+          size={1}
+          color={theme === 'light' ? '#CBD5E1' : '#27272A'}
         />
         <Controls
           className="!bg-void-900 !border !border-white/10 !rounded-lg !overflow-hidden [&>button]:!bg-void-900 [&>button]:!border-b [&>button]:!border-white/10 [&>button]:!text-slate-300 hover:[&>button]:!bg-void-800"

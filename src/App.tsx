@@ -41,6 +41,20 @@ export const App: React.FC = () => {
   const language = useCircuitStore((state) => state.language);
   const worldMode = useCircuitStore((state) => state.worldMode);
   const setActiveModal = useCircuitStore((state) => state.setActiveModal);
+  const theme = useCircuitStore((state) => state.theme);
+
+  // Synchronize document theme class for clean light mode / dark mode
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const root = document.documentElement;
+    if (theme === 'light') {
+      root.classList.add('theme-light');
+      root.classList.remove('dark');
+    } else {
+      root.classList.remove('theme-light');
+      root.classList.add('dark');
+    }
+  }, [theme]);
 
   const t = TRANSLATIONS[language].mobileNav;
   const wireT = TRANSLATIONS[language].wire;
@@ -141,9 +155,9 @@ export const App: React.FC = () => {
               <button
                 type="button"
                 onClick={() => openMobileSheet('inspector')}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-electric-600/95 text-white text-xs font-semibold shadow-glow border border-electric-400/50 active:scale-95 transition-transform truncate cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-void-900 border border-white/20 hover:bg-void-800 text-slate-100 text-xs font-medium shadow-md active:scale-95 transition-transform truncate cursor-pointer"
               >
-                <Sliders className="w-3.5 h-3.5 shrink-0" />
+                <Sliders className="w-3.5 h-3.5 text-slate-300 shrink-0" />
                 <span className="truncate">
                   {isId ? 'Atur' : 'Edit'} {getComponentDisplayName(selectedNode.data, language)}
                 </span>
@@ -159,9 +173,9 @@ export const App: React.FC = () => {
                       disconnectNodeWires(selectedNode.id);
                     }
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-600/95 hover:bg-red-500 text-white text-xs font-bold shadow-[0_0_16px_rgba(239,68,68,0.65)] border border-red-300/60 active:scale-95 transition-all shrink-0 cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-void-900 border border-red-500/40 hover:bg-red-950/40 text-red-300 text-xs font-medium shadow-md active:scale-95 transition-all shrink-0 cursor-pointer"
                 >
-                  <Scissors className="w-3.5 h-3.5 shrink-0" />
+                  <Scissors className="w-3.5 h-3.5 text-red-400 shrink-0" />
                   <span>
                     {selectedNode.data.isMcbTripped
                       ? isId

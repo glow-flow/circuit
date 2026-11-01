@@ -6,7 +6,7 @@ export const GroundNode: React.FC<NodeProps<CircuitElementData>> = ({ selected }
   return (
     <div
       className={`relative rounded-xl border bg-void-900 px-3 py-2.5 shadow-2xl transition-all duration-150 min-w-[110px] flex flex-col items-center ${
-        selected ? 'border-electric-500 shadow-glow' : 'border-white/10 hover:border-white/20'
+        selected ? 'border-amber-400 outline outline-1 outline-offset-2 outline-amber-400' : 'border-white/10 hover:border-white/20'
       }`}
     >
       {/* Ground Terminal Handle (Top) */}

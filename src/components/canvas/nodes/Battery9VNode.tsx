@@ -1,19 +1,16 @@
 import React from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
-import { Zap, AlertTriangle, BatteryCharging } from 'lucide-react';
+import { Battery, BatteryCharging, RotateCcw, Zap } from 'lucide-react';
 import { CircuitElementData } from '../../../types/circuit';
 import { useCircuitStore } from '../../../store/useCircuitStore';
 import { computeEffectiveBatteryVoltage } from '../../../physics/batterySoC';
+import { NodeInfoPopover } from './NodeInfoPopover';
 
 /**
  * 9V Alkaline Battery Node (`type: 'battery9v'`).
- *
- * Features:
- * - High-voltage DC source (nominal 9.0V, internal resistance 2.0Ω) ideal for high-wattage bulbs.
- * - Top-mounted Positive (+) and Negative (-) terminals aligned directly with the
- *   round (left) and hexagonal (right) snap connectors on the 9V battery casing.
- * - Dynamic State of Charge (SoC): Coulombic charging/discharging and realistic voltage sag.
- * - Real-time current telemetry (mA / A), battery percentage bar, and status badge.
+ * Clean, direct asset-first presentation (like BulbNode):
+ * - Canvas shows the realistic 9V battery casing directly with top terminals.
+ * - Detailed telemetry, State of Charge (SoC), and controls appear inside NodeInfoPopover on select.
  *
  * Time Complexity: O(1) render.
  */
@@ -24,6 +21,7 @@ export const Battery9VNode: React.FC<NodeProps<CircuitElementData>> = ({
 }) => {
   const simulation = useCircuitStore((state) => state.simulation);
   const language = useCircuitStore((state) => state.language);
+  const updateComponentData = useCircuitStore((state) => state.updateComponentData);
 
   const rawNominalVoltage = data.voltage ?? 9.0;
   const internalResistance = data.internalResistance ?? 2.0;
@@ -40,7 +38,6 @@ export const Battery9VNode: React.FC<NodeProps<CircuitElementData>> = ({
   const isDead = charge <= 0;
   const isSagActive = charge > 0 && charge < 20;
 
-  // Format current cleanly in mA when < 1A, or A when >= 1A
   const formattedCurrent =
     current === 0
       ? '0 mA'
@@ -48,28 +45,38 @@ export const Battery9VNode: React.FC<NodeProps<CircuitElementData>> = ({
       ? `${(current * 1000).toFixed(1)} mA`
       : `${current.toFixed(2)} A`;
 
+  const handleRecharge = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    updateComponentData(id, {
+      currentCharge: 100,
+      chargeState: 'idle',
+      isBlown: false,
+    });
+  };
+
+  const isIndonesian = language === 'id';
+
   return (
     <div
-      className={`relative rounded-xl border bg-void-900 px-3.5 pt-5 pb-3 shadow-2xl transition-all duration-150 w-[172px] select-none ${
-        isShorted
-          ? 'border-danger-500 shadow-glow-danger animate-pulse'
-          : selected
-          ? 'border-electric-500 shadow-glow'
-          : 'border-white/10 hover:border-white/20'
-      }`}
+      className="group relative select-none cursor-grab active:cursor-grabbing flex flex-col items-center"
+      style={{
+        width: 88,
+        height: 124,
+        overflow: 'visible',
+      }}
     >
       {/* Top Positive (+) Handle — Aligned above Left Round Terminal */}
       <div
         className="absolute -top-3 -translate-x-1/2 flex flex-col items-center z-20"
-        style={{ left: '37%' }}
+        style={{ left: '34%' }}
       >
         <Handle
           type="source"
           position={Position.Top}
           id="pos"
-          className="!relative !left-0 !top-0 !transform-none !bg-red-500 !border-2 !border-white !w-3.5 !h-3.5 shadow-[0_0_8px_rgba(239,68,68,0.8)]"
+          className="!relative !left-0 !top-0 !transform-none !bg-red-500 !border-2 !border-white !w-3.5 !h-3.5 shadow-sm"
         />
-        <span className="mt-0.5 px-1 py-0 rounded bg-red-500/20 border border-red-500/40 text-[9px] font-mono font-bold text-red-400 leading-tight pointer-events-none">
+        <span className="mt-0.5 text-[8px] font-mono font-bold text-red-400 pointer-events-none select-none">
           +
         </span>
       </div>
@@ -77,157 +84,168 @@ export const Battery9VNode: React.FC<NodeProps<CircuitElementData>> = ({
       {/* Top Negative (-) Handle — Aligned above Right Hexagonal Terminal */}
       <div
         className="absolute -top-3 -translate-x-1/2 flex flex-col items-center z-20"
-        style={{ left: '63%' }}
+        style={{ left: '66%' }}
       >
         <Handle
           type="source"
           position={Position.Top}
           id="neg"
-          className="!relative !left-0 !top-0 !transform-none !bg-sky-400 !border-2 !border-white !w-3.5 !h-3.5 shadow-[0_0_8px_rgba(56,189,248,0.8)]"
+          className="!relative !left-0 !top-0 !transform-none !bg-slate-700 !border-2 !border-white !w-3.5 !h-3.5 shadow-sm"
         />
-        <span className="mt-0.5 px-1 py-0 rounded bg-sky-500/20 border border-sky-500/40 text-[9px] font-mono font-bold text-sky-300 leading-tight pointer-events-none">
+        <span className="mt-0.5 text-[8px] font-mono font-bold text-slate-400 pointer-events-none select-none">
           -
         </span>
       </div>
 
-      {/* 9V Battery Die-Cut Transparent Image */}
-      <div className="flex flex-col items-center justify-center pt-1 pb-2 relative">
-        <div className="relative w-24 h-32 flex items-center justify-center">
-          <img
-            src="/assets/battery-9v.png"
-            alt={data.label || 'Baterai 9V'}
-            className={`w-full h-full object-contain pointer-events-none select-none drop-shadow-[0_6px_14px_rgba(0,0,0,0.75)] transition-opacity duration-300 ${
-              isDead ? 'opacity-40 grayscale' : ''
-            }`}
-          />
-          {isDead && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="bg-void-950/90 text-red-400 border border-red-500/40 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded shadow">
-                {language === 'id' ? '0V / HABIS' : '0V / DEAD'}
-              </span>
-            </div>
-          )}
-        </div>
+      {/* Main Artwork Frame: Crisp Direct Asset */}
+      <div
+        className={`relative flex h-full w-full items-center justify-center rounded-lg outline outline-1 outline-offset-2 transition-all duration-150 ${
+          isShorted
+            ? 'outline-red-500'
+            : selected
+            ? 'outline-amber-400 shadow-md'
+            : 'outline-transparent group-hover:outline-slate-400/50'
+        }`}
+        style={{ zIndex: 10 }}
+      >
+        <img
+          src="/assets/battery-9v.png"
+          alt={data.label || 'Baterai 9V'}
+          draggable={false}
+          className={`h-full w-full object-contain pointer-events-none select-none drop-shadow-md transition-opacity duration-300 ${
+            isDead ? 'opacity-40 grayscale' : 'opacity-95'
+          }`}
+        />
+
+        {/* Dead Battery Indicator Badge */}
+        {isDead && (
+          <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center justify-center">
+            <span className="bg-void-950/90 text-red-400 border border-red-500/40 text-[8px] font-mono font-bold px-1 py-0.5 rounded shadow">
+              0V / DEAD
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* Header Label & Effective Voltage Badge */}
-      <div className="flex items-center justify-between gap-1.5 mb-2">
-        <div className="flex items-center gap-1 min-w-0">
-          <div
-            className={`p-1 rounded shrink-0 ${
-              isShorted
-                ? 'bg-danger-500/20 text-danger-500'
-                : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
-            }`}
-          >
-            {isShorted ? (
-              <AlertTriangle className="w-3 h-3" />
-            ) : (
-              <Zap className="w-3 h-3" />
+      {/* Detailed Telemetry & Controls: ONLY when selected */}
+      {selected && (
+        <NodeInfoPopover placement="bottom" width={204}>
+          {/* Header */}
+          <div className="mb-2 flex items-center justify-between gap-1.5">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <div className="p-1 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                <Battery className="w-3.5 h-3.5" />
+              </div>
+              <div className="truncate text-xs font-bold text-slate-100">
+                {isIndonesian ? 'Baterai Kotak 9V' : '9V Alkaline Battery'}
+              </div>
+            </div>
+            <Zap
+              className={`w-3.5 h-3.5 shrink-0 ${
+                isShorted
+                  ? 'text-red-500'
+                  : current > 0
+                  ? 'text-amber-400 animate-pulse'
+                  : 'text-slate-500'
+              }`}
+            />
+          </div>
+
+          {/* SoC Progress Bar */}
+          <div className="mb-2 space-y-1" title={`${Math.round((charge * capacity) / 100)} / ${capacity} mAh`}>
+            <div className="flex justify-between items-center text-[10px] font-mono">
+              <span className="text-slate-400 font-sans text-[9px]">
+                {isIndonesian ? 'Daya Tersimpan' : 'Charge'}
+              </span>
+              <div className="flex items-center gap-1">
+                <span
+                  className={`font-bold ${
+                    isDead
+                      ? 'text-red-400'
+                      : isSagActive
+                      ? 'text-amber-400'
+                      : charge < 50
+                      ? 'text-yellow-400'
+                      : 'text-emerald-400'
+                  }`}
+                >
+                  {charge.toFixed(0)}%
+                </span>
+                <span className="text-[8px] text-slate-400 font-mono">
+                  ({Math.round((charge * capacity) / 100)} mAh)
+                </span>
+              </div>
+            </div>
+
+            <div className="w-full h-1.5 rounded-full bg-void-950 border border-white/10 overflow-hidden relative">
+              <div
+                className={`h-full rounded-full transition-all duration-300 ${
+                  isDead
+                    ? 'bg-red-500/40'
+                    : isSagActive
+                    ? 'bg-red-500'
+                    : charge < 50
+                    ? 'bg-amber-500'
+                    : 'bg-emerald-500'
+                }`}
+                style={{ width: `${charge}%` }}
+              />
+            </div>
+
+            {chargeState === 'charging' && (
+              <div className="flex items-center justify-center gap-1 py-0.5 px-1 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[9px] font-mono font-bold">
+                <Zap className="w-2.5 h-2.5" />
+                <span>CHARGING</span>
+              </div>
+            )}
+            {chargeState === 'discharging' && (
+              <div className="flex items-center justify-center gap-1 py-0.5 px-1 rounded bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[9px] font-mono font-bold">
+                <BatteryCharging className="w-2.5 h-2.5" />
+                <span>DISCHARGING</span>
+              </div>
             )}
           </div>
-          <span className="text-[11px] font-bold text-slate-100 tracking-tight truncate">
-            {language === 'id' ? 'Baterai 9V' : '9V Battery'}
-          </span>
-        </div>
-        <span
-          className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border shrink-0 ${
-            isDead
-              ? 'bg-red-500/15 text-red-400 border-red-500/30'
-              : isSagActive
-              ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
-              : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
-          }`}
-        >
-          {effectiveVoltage.toFixed(1)} V
-        </span>
-      </div>
 
-      {/* State of Charge (SoC) Percentage Bar & Status Badge */}
-      <div
-        className="mb-2 space-y-1"
-        title={`${Math.round((charge * capacity) / 100)} / ${capacity} mAh`}
-      >
-        <div className="flex justify-between items-center text-[10px] font-mono">
-          <span className="text-slate-400 font-sans text-[9px]">
-            {language === 'id' ? 'Daya (SoC):' : 'Charge:'}
-          </span>
-          <div className="flex items-center gap-1">
-            <span
-              className={`font-bold ${
-                isDead
-                  ? 'text-red-400'
-                  : isSagActive
-                  ? 'text-amber-400'
-                  : charge < 50
-                  ? 'text-yellow-400'
-                  : 'text-emerald-400'
-              }`}
+          {/* Electrical Readout */}
+          <div className="rounded-lg bg-void-950 p-1.5 border border-white/10 font-mono text-xs space-y-1 mb-2">
+            <div className="flex justify-between items-center">
+              <span className="text-slate-400 text-[10px]">
+                {isIndonesian ? 'Tegangan' : 'Voltage'}
+              </span>
+              <span className={`font-semibold ${isDead ? 'text-red-400' : isSagActive ? 'text-amber-400' : 'text-slate-100'}`}>
+                {effectiveVoltage.toFixed(effectiveVoltage < 1 && effectiveVoltage > 0 ? 2 : 1)} V
+                {isSagActive && <span className="text-[8px] font-sans ml-1 text-red-400 font-normal">(Sag)</span>}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-slate-400 text-[10px]">
+                {isIndonesian ? 'Arus Beban' : 'Current'}
+              </span>
+              <span className={isShorted ? 'text-red-400 font-bold' : 'text-emerald-400 font-semibold'}>
+                {formattedCurrent}
+              </span>
+            </div>
+            <div className="flex justify-between items-center text-[10px]">
+              <span className="text-slate-400 font-sans">
+                {isIndonesian ? 'Hambatan Dalam' : 'Internal R'}
+              </span>
+              <span className="text-slate-300 font-mono">{internalResistance.toFixed(1)} Ω</span>
+            </div>
+          </div>
+
+          {/* Quick Actions */}
+          {isDead && (
+            <button
+              type="button"
+              onClick={handleRecharge}
+              className="w-full flex items-center justify-center gap-1.5 py-1 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-semibold transition-all active:scale-95 cursor-pointer"
             >
-              {charge.toFixed(0)}%
-            </span>
-            <span className="text-[8px] text-slate-400 font-mono">
-              ({Math.round((charge * capacity) / 100)} mAh)
-            </span>
-          </div>
-        </div>
-
-        {/* Progress Bar Track */}
-        <div className="w-full h-1.5 rounded-full bg-void-950 border border-white/10 overflow-hidden relative">
-          <div
-            className={`h-full rounded-full transition-all duration-300 ${
-              isDead
-                ? 'bg-red-500/40'
-                : isSagActive
-                ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]'
-                : charge < 50
-                ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]'
-                : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]'
-            }`}
-            style={{ width: `${charge}%` }}
-          />
-        </div>
-
-        {/* Dynamic Badge */}
-        {chargeState === 'charging' && (
-          <div className="flex items-center justify-center gap-1 py-0.5 px-1.5 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[9px] font-mono font-bold animate-pulse">
-            <Zap className="w-2.5 h-2.5" />
-            <span>⚡ CHARGING</span>
-          </div>
-        )}
-        {chargeState === 'discharging' && (
-          <div className="flex items-center justify-center gap-1 py-0.5 px-1.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[9px] font-mono font-bold">
-            <BatteryCharging className="w-2.5 h-2.5" />
-            <span>🔋 DISCHARGING</span>
-          </div>
-        )}
-      </div>
-
-      {/* Live Telemetry Readout */}
-      <div className="bg-void-950/85 rounded-lg p-2 border border-white/5 space-y-1 text-[10px] font-mono">
-        <div className="flex justify-between items-baseline">
-          <span className="text-slate-400 font-sans">
-            {language === 'id' ? 'Arus:' : 'Current:'}
-          </span>
-          <span
-            className={
-              isShorted
-                ? 'text-danger-500 font-bold'
-                : current > 0
-                ? 'text-electric-400 font-bold'
-                : 'text-slate-400'
-            }
-          >
-            {formattedCurrent}
-          </span>
-        </div>
-        <div className="flex justify-between items-baseline">
-          <span className="text-slate-400 font-sans">
-            {language === 'id' ? 'Hambatan Dlm:' : 'Int. Res:'}
-          </span>
-          <span className="text-slate-300">{internalResistance.toFixed(1)} Ω</span>
-        </div>
-      </div>
+              <RotateCcw className="w-3 h-3" />
+              <span>{isIndonesian ? 'Isi Ulang 100%' : 'Recharge 100%'}</span>
+            </button>
+          )}
+        </NodeInfoPopover>
+      )}
     </div>
   );
 };

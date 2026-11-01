@@ -88,6 +88,9 @@ interface CircuitState {
   fitViewTrigger: number;
   activeModal: 'gallery' | 'missions' | 'oscilloscope' | 'share' | null;
   setActiveModal: (modal: 'gallery' | 'missions' | 'oscilloscope' | 'share' | null) => void;
+  theme: 'dark' | 'light';
+  setTheme: (theme: 'dark' | 'light') => void;
+  toggleTheme: () => void;
 
   // World Mode & CSS Cloud Transition State
   worldMode: WorldMode;
@@ -490,6 +493,28 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   fitViewTrigger: 0,
   activeModal: null,
   setActiveModal: (modal) => set({ activeModal: modal }),
+  theme: (typeof window !== 'undefined' && (localStorage.getItem('circuit_theme') as 'dark' | 'light')) || 'dark',
+  setTheme: (theme: 'dark' | 'light') => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('circuit_theme', theme);
+      } catch {
+        // Ignore localStorage quota errors
+      }
+    }
+    set({ theme });
+  },
+  toggleTheme: () => {
+    const nextTheme: 'dark' | 'light' = get().theme === 'dark' ? 'light' : 'dark';
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('circuit_theme', nextTheme);
+      } catch {
+        // Ignore localStorage quota errors
+      }
+    }
+    set({ theme: nextTheme });
+  },
   notification: null,
 
   // World Mode & CSS Cloud Transition State

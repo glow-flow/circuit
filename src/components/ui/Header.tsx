@@ -16,6 +16,8 @@ import {
   Trophy,
   Activity,
   Share2,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { useCircuitStore } from '../../store/useCircuitStore';
 import { TRANSLATIONS } from '../../i18n/translations';
@@ -41,6 +43,8 @@ export const Header: React.FC = () => {
   const triggerWorldTransition = useCircuitStore((state) => state.triggerWorldTransition);
   const activeModal = useCircuitStore((state) => state.activeModal);
   const setActiveModal = useCircuitStore((state) => state.setActiveModal);
+  const theme = useCircuitStore((state) => state.theme);
+  const toggleTheme = useCircuitStore((state) => state.toggleTheme);
 
   const [isSaveModalOpen, setIsSaveModalOpen] = useState<boolean>(false);
   const [isCreditsModalOpen, setIsCreditsModalOpen] = useState<boolean>(false);
@@ -74,7 +78,7 @@ export const Header: React.FC = () => {
                 ? 'Circuit Sandbox — Karya SMPN 12 Surabaya'
                 : 'Circuit Sandbox — By SMPN 12 Surabaya'
             }
-            className="flex items-center justify-center w-8 h-8 rounded-xl bg-electric-500/15 hover:bg-electric-500/25 border border-electric-500/30 text-electric-400 shadow-glow shrink-0 transition-transform active:scale-95 cursor-pointer"
+            className="flex items-center justify-center w-8 h-8 rounded-xl bg-electric-500/15 hover:bg-electric-500/25 border border-electric-500/30 text-electric-400 shrink-0 transition-transform active:scale-95 cursor-pointer"
           >
             <Zap className="w-4 h-4 fill-electric-400" />
           </button>
@@ -262,6 +266,32 @@ export const Header: React.FC = () => {
 
             <div className="w-px h-4 bg-white/10 shrink-0" />
 
+            {/* Theme Toggle (Dark Mode / Buku Lab Light Mode) */}
+            <button
+              id="tour-btn-theme"
+              type="button"
+              onClick={toggleTheme}
+              title={
+                theme === 'dark'
+                  ? isId
+                    ? 'Mode Buku Lab (Kertas Terang)'
+                    : 'Lab Notebook Mode (Light)'
+                  : isId
+                  ? 'Mode Gelap (Dark Mode)'
+                  : 'Dark Mode'
+              }
+              aria-label="Toggle Theme"
+              className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 text-[10px] sm:text-xs font-mono font-bold transition-all active:scale-95 shrink-0 cursor-pointer"
+            >
+              {theme === 'dark' ? (
+                <Sun className="w-3.5 h-3.5 text-amber-400" />
+              ) : (
+                <Moon className="w-3.5 h-3.5 text-electric-400" />
+              )}
+            </button>
+
+            <div className="w-px h-4 bg-white/10 shrink-0" />
+
             {/* Language Switcher (ID / EN) */}
             <button
               type="button"
@@ -364,7 +394,7 @@ export const Header: React.FC = () => {
                 <button
                   type="submit"
                   disabled={!presetNameInput.trim()}
-                  className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-electric-500 hover:bg-electric-400 text-void-950 disabled:opacity-50 active:scale-95 transition-all cursor-pointer shadow-glow font-bold"
+                  className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-electric-500 hover:bg-electric-400 text-white disabled:opacity-50 active:scale-95 transition-all cursor-pointer font-bold shadow-sm"
                 >
                   {isId ? 'Simpan' : 'Save'}
                 </button>

@@ -202,39 +202,32 @@ export const WireEdge: React.FC<EdgeProps> = ({
           curvature: 0.2,
         });
 
-  // Calculate visual appearance based on physical electrical state
-  let strokeColor = '#64748B'; // Default high-contrast slate-500
+  // Calculate visual appearance based on physical electrical state (Solid, realistic physics colors - no neon glow)
+  let strokeColor = '#64748B'; // Default neutral conductor
   let strokeWidth = 3;
-  let glowFilter: string | undefined = undefined;
   let animationSpeed = '0s';
 
   if (isWireSelected) {
-    strokeColor = '#F59E0B'; // Highlight amber for selected wire
-    strokeWidth = 4.5;
-    glowFilter = 'drop-shadow(0 0 12px rgba(245, 158, 11, 0.9))';
+    strokeColor = '#D97706'; // Solid amber for selected wire
+    strokeWidth = 4;
   } else if (isBranchShortCircuit) {
-    strokeColor = '#EF4444'; // Neon danger red
+    strokeColor = '#DC2626'; // Solid warning red for short circuits
     strokeWidth = 4;
-    glowFilter = 'drop-shadow(0 0 12px rgba(239, 68, 68, 0.95))';
   } else if (isConnectedToSelectedNode) {
-    strokeColor = '#38BDF8'; // Electric cyan highlight ring
-    strokeWidth = 4;
-    glowFilter = 'drop-shadow(0 0 10px rgba(56, 189, 248, 0.85))';
+    strokeColor = '#0284C7'; // Connected component conductor
+    strokeWidth = 3.5;
     const speed = Math.max(0.35, 1.8 / Math.max(1, wireCurrent * 10));
     animationSpeed = `${speed.toFixed(2)}s`;
   } else if (hasCurrent) {
     if (polarity === 'positive') {
-      strokeColor = '#FB923C'; // Warm electric amber for positive path
+      strokeColor = '#B45309'; // Physical copper supply path
       strokeWidth = 3.2;
-      glowFilter = 'drop-shadow(0 0 8px rgba(251, 146, 60, 0.75))';
     } else if (polarity === 'negative') {
-      strokeColor = '#38BDF8'; // Electric sky blue for negative return path
+      strokeColor = '#334155'; // Physical dark insulated return path
       strokeWidth = 3.2;
-      glowFilter = 'drop-shadow(0 0 8px rgba(56, 189, 248, 0.7))';
     } else {
-      strokeColor = '#38BDF8'; // Standard active conductor
+      strokeColor = '#475569'; // Standard active conductor
       strokeWidth = 3;
-      glowFilter = 'drop-shadow(0 0 8px rgba(56, 189, 248, 0.65))';
     }
     const speed = Math.max(0.35, 1.8 / Math.max(1, wireCurrent * 10));
     animationSpeed = `${speed.toFixed(2)}s`;
@@ -272,43 +265,42 @@ export const WireEdge: React.FC<EdgeProps> = ({
           strokeWidth,
           strokeLinecap: 'round',
           strokeLinejoin: 'round',
-          filter: glowFilter,
           opacity: 1,
         }}
       />
 
-      {/* Outer focus halo when wire is actively selected */}
+      {/* Focus outline when wire is actively selected */}
       {isWireSelected && (
         <path
           d={edgePath}
           fill="none"
-          stroke="#FBBF24"
-          strokeWidth={10}
-          strokeOpacity={0.35}
-          className="pointer-events-none animate-pulse"
+          stroke="#D97706"
+          strokeWidth={8}
+          strokeOpacity={0.25}
+          className="pointer-events-none"
         />
       )}
 
-      {/* Current path highlight halo when connected component is selected */}
+      {/* Current path highlight outline when connected component is selected */}
       {isConnectedToSelectedNode && !isWireSelected && (
         <path
           d={edgePath}
           fill="none"
-          stroke="#38BDF8"
-          strokeWidth={8}
-          strokeOpacity={0.3}
-          className="pointer-events-none animate-pulse"
+          stroke="#0284C7"
+          strokeWidth={6}
+          strokeOpacity={0.25}
+          className="pointer-events-none"
         />
       )}
 
-      {/* Animated electron flow pulse ONLY when simulation verifies real current */}
+      {/* Animated physical electron flow dash ONLY when simulation verifies real current */}
       {hasCurrent && !isBranchShortCircuit && (
         <path
           d={edgePath}
           fill="none"
-          stroke={polarity === 'positive' ? '#FEF08A' : '#E0F2FE'}
-          strokeWidth={2.2}
-          strokeDasharray="6 12"
+          stroke={polarity === 'positive' ? '#FDE68A' : '#CBD5E1'}
+          strokeWidth={2}
+          strokeDasharray="6 8"
           className="animate-wire-flow pointer-events-none"
           style={{ animationDuration: animationSpeed }}
         />

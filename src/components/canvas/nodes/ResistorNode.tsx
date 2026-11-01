@@ -4,7 +4,17 @@ import { Activity } from 'lucide-react';
 import { CircuitElementData } from '../../../types/circuit';
 import { useCircuitStore } from '../../../store/useCircuitStore';
 import { TRANSLATIONS } from '../../../i18n/translations';
+import { NodeInfoPopover } from './NodeInfoPopover';
 
+/**
+ * Through-hole Axial Resistor Node (`type: 'resistor'`).
+ * Clean, direct asset-first presentation (like SocketNode/BulbNode):
+ * - Canvas shows the physical axial resistor and color bands directly.
+ * - Left and right wire leads host electrical handles p1 and p2.
+ * - Detailed telemetry (Ohm's Law, power dissipation) appears in NodeInfoPopover on select.
+ *
+ * Time Complexity: O(1) render.
+ */
 export const ResistorNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, selected }) => {
   const simulation = useCircuitStore((state) => state.simulation);
   const language = useCircuitStore((state) => state.language);
@@ -13,74 +23,104 @@ export const ResistorNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data
   const current = Math.abs(simulation.branchCurrents[id] ?? 0);
   const resistance = data.resistance ?? 100;
   const voltageDrop = current * resistance;
+  const powerWatts = current * voltageDrop;
+
+  const isIndonesian = language === 'id';
+  const formattedResistance =
+    resistance >= 1000 ? `${(resistance / 1000).toFixed(1)} kΩ` : `${resistance} Ω`;
 
   return (
     <div
-      className={`relative rounded-xl border bg-void-900 px-4 py-3 shadow-2xl transition-all duration-150 min-w-[172px] ${
-        selected ? 'border-electric-500 shadow-glow' : 'border-white/10 hover:border-white/20'
-      }`}
+      className="group relative select-none cursor-grab active:cursor-grabbing flex items-center justify-center"
+      style={{
+        width: 136,
+        height: 44,
+        overflow: 'visible',
+      }}
     >
-      {/* Terminal 1 Handle (Left) */}
-      <div className="absolute top-1/2 -left-3 -translate-y-1/2 flex items-center z-10">
-        <Handle
-          type="source"
-          position={Position.Left}
-          id="p1"
-          className="!bg-void-800 !border-amber-400 !w-3.5 !h-3.5"
-        />
-      </div>
+      {/* Terminal 1 Handle (Left Lead) */}
+      <Handle
+        type="source"
+        position={Position.Left}
+        id="p1"
+        className="!bg-amber-600 !border-2 !border-white !w-3.5 !h-3.5 !-left-1.5 z-20 shadow-sm"
+      />
 
-      {/* Header */}
-      <div className="flex items-center justify-between gap-2 mb-1">
-        <div className="flex items-center gap-1.5">
-          <div className="p-1 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
-            <Activity className="w-4 h-4" />
-          </div>
-          <span className="text-xs font-semibold text-slate-200 tracking-tight">{t.title}</span>
-        </div>
-        <span className="text-[10px] font-mono font-medium text-amber-400">
-          {resistance >= 1000 ? `${(resistance / 1000).toFixed(1)}kΩ` : `${resistance}Ω`}
+      {/* Main Artwork: Axial Resistor Graphic */}
+      <div
+        className={`relative flex h-full w-full items-center justify-center rounded-lg outline outline-1 outline-offset-2 transition-all duration-150 ${
+          selected
+            ? 'outline-amber-400 shadow-md'
+            : 'outline-transparent group-hover:outline-slate-400/50'
+        }`}
+        style={{ zIndex: 10 }}
+      >
+        <img
+          src="/assets/processed/resistor.png"
+          alt="Axial Resistor"
+          draggable={false}
+          className="w-full h-full object-contain pointer-events-none select-none drop-shadow-sm"
+        />
+
+        {/* Value Label Pill */}
+        <span className="absolute -bottom-2.5 px-1.5 py-0.2 rounded bg-void-950/90 border border-white/10 text-[9px] font-mono font-bold text-amber-300 pointer-events-none select-none">
+          {formattedResistance}
         </span>
       </div>
 
-      {/* Realistic Cropped Resistor Asset (850x216) */}
-      <div className="flex justify-center items-center py-1.5">
-        <div className="relative w-36 h-10 flex items-center justify-center">
-          <img
-            src="/assets/processed/resistor.png"
-            alt="Axial Resistor"
-            className="w-full h-full object-contain pointer-events-none select-none drop-shadow-sm"
-          />
-        </div>
-      </div>
+      {/* Terminal 2 Handle (Right Lead) */}
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="p2"
+        className="!bg-amber-600 !border-2 !border-white !w-3.5 !h-3.5 !-right-1.5 z-20 shadow-sm"
+      />
 
-      {/* Metrics */}
-      <div className="bg-void-950/80 rounded-lg p-2 border border-white/5 space-y-1 mt-1 text-[10px]">
-        <div className="flex justify-between items-baseline font-mono">
-          <span className="text-slate-400 font-sans">{t.resistance}</span>
-          <span className="text-amber-400 font-semibold">{resistance} Ω</span>
-        </div>
-        <div className="flex justify-between items-baseline font-mono">
-          <span className="text-slate-400 font-sans">{t.voltageDrop}</span>
-          <span className="text-slate-200">{voltageDrop.toFixed(2)} V</span>
-        </div>
-        <div className="flex justify-between items-baseline font-mono">
-          <span className="text-slate-400 font-sans">{t.current}</span>
-          <span className="text-electric-400">
-            {current < 1 ? `${(current * 1000).toFixed(0)} mA` : `${current.toFixed(2)} A`}
-          </span>
-        </div>
-      </div>
+      {/* Detailed Telemetry: ONLY when selected */}
+      {selected && (
+        <NodeInfoPopover placement="bottom" width={200}>
+          {/* Header */}
+          <div className="mb-2 flex items-center justify-between gap-1.5">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <div className="p-1 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                <Activity className="w-3.5 h-3.5" />
+              </div>
+              <div className="truncate text-xs font-bold text-slate-100">
+                {t.title}
+              </div>
+            </div>
+            <span className="text-[10px] font-mono font-bold text-amber-300">
+              {formattedResistance}
+            </span>
+          </div>
 
-      {/* Terminal 2 Handle (Right) */}
-      <div className="absolute top-1/2 -right-3 -translate-y-1/2 flex items-center z-10">
-        <Handle
-          type="source"
-          position={Position.Right}
-          id="p2"
-          className="!bg-void-800 !border-amber-400 !w-3.5 !h-3.5"
-        />
-      </div>
+          {/* Electrical Readout */}
+          <div className="rounded-lg bg-void-950 p-1.5 border border-white/10 font-mono text-xs space-y-1">
+            <div className="flex justify-between items-center">
+              <span className="text-slate-400 text-[10px]">{t.resistance}</span>
+              <span className="text-amber-300 font-semibold">{resistance} Ω</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-slate-400 text-[10px]">{t.voltageDrop}</span>
+              <span className="text-slate-100">{voltageDrop.toFixed(2)} V</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-slate-400 text-[10px]">{t.current}</span>
+              <span className="text-emerald-400 font-semibold">
+                {current < 1 ? `${(current * 1000).toFixed(1)} mA` : `${current.toFixed(3)} A`}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-slate-400 text-[10px]">
+                {isIndonesian ? 'Daya Terbuang' : 'Dissipation'}
+              </span>
+              <span className="text-slate-300">
+                {powerWatts < 0.1 ? `${(powerWatts * 1000).toFixed(1)} mW` : `${powerWatts.toFixed(2)} W`}
+              </span>
+            </div>
+          </div>
+        </NodeInfoPopover>
+      )}
     </div>
   );
 };

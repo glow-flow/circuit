@@ -22,7 +22,7 @@ export const WaypointNode: React.FC<NodeProps<CircuitElementData>> = ({ id, sele
         selected
           ? 'bg-electric-500 ring-4 ring-electric-500/30 scale-125 border-2 border-white'
           : hasCurrent
-          ? 'bg-void-900 border-2 border-sky-400 shadow-glow hover:scale-125'
+          ? 'bg-void-900 border-2 border-sky-400 hover:scale-125'
           : 'bg-void-900 border-2 border-slate-400 hover:border-electric-400 hover:scale-125 hover:bg-void-800'
       }`}
       title="Wire Anchor Pin (Drag to bend wire, Double-click or Del to remove)"
