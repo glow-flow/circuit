@@ -296,7 +296,7 @@ export const PanelDistribusiNode: React.FC<NodeProps<CircuitElementData>> = memo
             type="source"
             position={Position.Bottom}
             id="pos"
-            style={{ left: '35%', top: '89%', bottom: 'auto', transform: 'translate(-50%, -50%)' }}
+            style={{ left: '32.4%', top: '89.3%', bottom: 'auto', transform: 'translate(-50%, -50%)' }}
             className="!w-5 !h-5 !bg-red-500 !border-2 !border-white !rounded-full shadow-[0_0_12px_rgba(239,68,68,0.95)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center pointer-events-auto"
             title={isId ? 'Terminal Output Positif (+) DC Lab' : 'Positive (+) Lab DC Output'}
           >
@@ -310,7 +310,7 @@ export const PanelDistribusiNode: React.FC<NodeProps<CircuitElementData>> = memo
             type="source"
             position={Position.Bottom}
             id="neg"
-            style={{ left: '65%', top: '89%', bottom: 'auto', transform: 'translate(-50%, -50%)' }}
+            style={{ left: '67.4%', top: '91.6%', bottom: 'auto', transform: 'translate(-50%, -50%)' }}
             className="!w-5 !h-5 !bg-sky-500 !border-2 !border-white !rounded-full shadow-[0_0_12px_rgba(56,189,248,0.95)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center pointer-events-auto"
             title={isId ? 'Terminal Output Negatif (-) DC Lab' : 'Negative (-) Lab DC Output'}
           >

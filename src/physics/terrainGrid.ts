@@ -398,34 +398,12 @@ export function evaluateGrassGrowth(
             nextExposureMap[edgeKey] = currentTimeMs;
             mapChanged = true;
           } else if (currentTimeMs - firstEdgeExposedAt >= growthDelayMs) {
-            const steepLeftDrop = leftAir && currentGrid[r + 1][c - 1] === 'EMPTY';
-            const steepRightDrop = rightAir && currentGrid[r + 1][c + 1] === 'EMPTY';
-
-            if (steepLeftDrop && nextGrid[r + 1][c - 1] === 'EMPTY') {
-              // Steep left cliff (>= 2 blocks): top corner block tumbles down-left
-              ensureClonedGrid();
-              nextGrid[r + 1][c - 1] = 'DIRT';
-              nextGrid[r][c] = 'EMPTY';
+            // Hill step edge: sharp 90° square corner slumps into a smooth diagonal slope
+            nextExposureMap[edgeKey] = firstEdgeExposedAt;
+            if (exposureMap[slumpKey] === undefined) {
               mapChanged = true;
-            } else if (steepRightDrop && nextGrid[r + 1][c + 1] === 'EMPTY') {
-              // Steep right cliff (>= 2 blocks): top corner block tumbles down-right
-              ensureClonedGrid();
-              nextGrid[r + 1][c + 1] = 'DIRT';
-              nextGrid[r][c] = 'EMPTY';
-              mapChanged = true;
-            } else if (leftAir && rightAir) {
-              // Single 1-column jutting spike on top of a hill: crumbles flat after 3 seconds
-              ensureClonedGrid();
-              nextGrid[r][c] = 'EMPTY';
-              mapChanged = true;
-            } else {
-              // 1-block hill step edge: sharp 90° square corner slumps into a smooth diagonal slope
-              nextExposureMap[edgeKey] = firstEdgeExposedAt;
-              if (exposureMap[slumpKey] === undefined) {
-                mapChanged = true;
-              }
-              nextExposureMap[slumpKey] = 1;
             }
+            nextExposureMap[slumpKey] = 1;
           } else {
             nextExposureMap[edgeKey] = firstEdgeExposedAt;
           }

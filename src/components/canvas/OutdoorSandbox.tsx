@@ -719,9 +719,9 @@ const OutdoorSandboxInner: React.FC = () => {
                 );
                 const dirtClipPath =
                   slopeSide === 'left'
-                    ? 'polygon(0% 100%, 14% 92%, 30% 78%, 50% 50%, 70% 22%, 86% 8%, 100% 0%, 100% 100%)'
+                    ? 'polygon(0% 100%, 100% 0%, 100% 100%)'
                     : slopeSide === 'right'
-                    ? 'polygon(0% 0%, 14% 8%, 30% 22%, 50% 50%, 70% 78%, 86% 92%, 100% 100%, 0% 100%)'
+                    ? 'polygon(0% 0%, 100% 100%, 0% 100%)'
                     : 'polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)';
 
                 return (
@@ -828,21 +828,21 @@ const OutdoorSandboxInner: React.FC = () => {
                         slopeSide === 'left'
                           ? {
                               position: 'absolute',
-                              width: '150%',
-                              height: '110%',
-                              left: '-10%',
-                              bottom: '-6%',
-                              transform: 'rotate(-44deg)',
-                              transformOrigin: '0% 100%',
+                              width: '142%',
+                              height: '100%',
+                              left: '0%',
+                              top: '100%',
+                              transform: 'rotate(-45deg) translateY(-24%)',
+                              transformOrigin: '0% 0%',
                             }
                           : slopeSide === 'right'
                           ? {
                               position: 'absolute',
-                              width: '150%',
-                              height: '110%',
-                              left: '-4%',
-                              top: '-8%',
-                              transform: 'rotate(44deg)',
+                              width: '142%',
+                              height: '100%',
+                              left: '0%',
+                              top: '0%',
+                              transform: 'rotate(45deg) translateY(-24%)',
                               transformOrigin: '0% 0%',
                             }
                           : undefined
