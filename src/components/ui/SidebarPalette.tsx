@@ -169,7 +169,7 @@ export const SidebarPalette: React.FC<SidebarPaletteProps> = ({
   return (
     <aside
       id={desktopPanelId}
-      className="hidden md:flex w-72 bg-void-900 border-r border-white/10 flex-col h-full shrink-0 select-none"
+      className="hidden md:flex w-72 lg:w-80 bg-void-900 border-r border-white/10 flex-col h-full shrink-0 select-none"
     >
       <div className="px-3.5 pt-3.5 pb-2">
         <h2 className="text-sm font-bold text-slate-100 tracking-tight">{t.title}</h2>
