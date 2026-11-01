@@ -16,6 +16,8 @@ export type ComponentType =
   | 'solar_panel'
   | 'transmission-tower'
   | 'transmission_tower'
+  | 'distribution-panel'
+  | 'distribution_panel'
   | 'wind-turbine'
   | 'wind_turbine'
   | 'resistor'

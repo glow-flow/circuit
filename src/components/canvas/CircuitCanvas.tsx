@@ -27,6 +27,7 @@ import { AmmeterNode } from './nodes/AmmeterNode';
 import { WaypointNode } from './nodes/WaypointNode';
 import { SolarPanelNode } from './nodes/SolarPanelNode';
 import { TransmissionTowerNode } from './nodes/TransmissionTowerNode';
+import { PanelDistribusiNode } from './nodes/PanelDistribusiNode';
 import { WindTurbineNode } from './nodes/WindTurbineNode';
 import { WireEdge } from './WireEdge';
 
@@ -90,6 +91,8 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
       'solar_panel': SolarPanelNode,
       'transmission-tower': TransmissionTowerNode,
       'transmission_tower': TransmissionTowerNode,
+      'distribution-panel': PanelDistribusiNode,
+      'distribution_panel': PanelDistribusiNode,
       'wind-turbine': WindTurbineNode,
       'wind_turbine': WindTurbineNode,
     }),

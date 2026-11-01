@@ -64,7 +64,10 @@ export function isRenewableWithBlockingDiode(component: CircuitElementData): boo
  */
 export function isTransmissionNodeActive(component: CircuitElementData): boolean {
   return (
-    (component.type === 'transmission-tower' || component.type === 'transmission_tower') &&
+    (component.type === 'transmission-tower' ||
+      component.type === 'transmission_tower' ||
+      component.type === 'distribution-panel' ||
+      component.type === 'distribution_panel') &&
     component.isMcbOn !== false &&
     !component.isMcbTripped
   );
@@ -441,6 +444,8 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
           component.type === 'wind_turbine' ||
           component.type === 'transmission-tower' ||
           component.type === 'transmission_tower' ||
+          component.type === 'distribution-panel' ||
+          component.type === 'distribution_panel' ||
           component.type === 'ground' ||
           component.type === 'waypoint'
         ) {
@@ -612,6 +617,8 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
         component.type === 'wind_turbine' ||
         component.type === 'transmission-tower' ||
         component.type === 'transmission_tower' ||
+        component.type === 'distribution-panel' ||
+        component.type === 'distribution_panel' ||
         component.type === 'ground' ||
         component.type === 'waypoint'
       ) {
@@ -666,7 +673,10 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
     for (const component of components) {
       const isWaypoint = component.type === 'waypoint';
       const isTower =
-        component.type === 'transmission-tower' || component.type === 'transmission_tower';
+        component.type === 'transmission-tower' ||
+        component.type === 'transmission_tower' ||
+        component.type === 'distribution-panel' ||
+        component.type === 'distribution_panel';
       if (!isWaypoint && !isTower) continue;
 
       if (isTower && (!isTransmissionNodeActive(component) || activeTransmissionTowers.length < 2)) {
@@ -750,6 +760,8 @@ export function getComponentPinIdentifiers(component: CircuitElementData): strin
     case 'solar_panel':
     case 'transmission-tower':
     case 'transmission_tower':
+    case 'distribution-panel':
+    case 'distribution_panel':
     case 'wind-turbine':
     case 'wind_turbine':
       return [`${component.id}:pos`, `${component.id}:neg`];
