@@ -8,6 +8,7 @@ interface PaletteTileProps {
   isSelected: boolean;
   /** Desktop only: HTML5 drag-and-drop does not work reliably with touch. */
   isDraggable: boolean;
+  isMobileDrawer?: boolean;
   onSelect: (entry: PaletteEntry) => void;
   onPlace: (entry: PaletteEntry) => void;
   onDragStart: (event: React.DragEvent, entry: PaletteEntry) => void;
@@ -21,7 +22,8 @@ const BLUEPRINT_DOT_GRID: React.CSSProperties = {
 /**
  * One "specimen plate" in the component box: the real part image (or textbook symbol)
  * on a blueprint-dot stage, a mono spec tag, and the part name.
- * Tap/click selects; double-click or drag places.
+ * On mobile: tap selects, tap again or tap '+' button places directly on canvas.
+ * On desktop: click selects; double-click or drag places.
  *
  * Time Complexity: O(1) render.
  */
@@ -30,11 +32,21 @@ export const PaletteTile: React.FC<PaletteTileProps> = ({
   displayLabel,
   isSelected,
   isDraggable,
+  isMobileDrawer = false,
   onSelect,
   onPlace,
   onDragStart,
 }) => {
   const [hasImageFailed, setHasImageFailed] = useState(false);
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isMobileDrawer && isSelected) {
+      onPlace(entry);
+    } else {
+      onSelect(entry);
+    }
+  };
 
   return (
     <button
@@ -43,16 +55,30 @@ export const PaletteTile: React.FC<PaletteTileProps> = ({
       aria-selected={isSelected}
       draggable={isDraggable}
       onDragStart={(event) => onDragStart(event, entry)}
-      onClick={() => onSelect(entry)}
+      onClick={handleClick}
       onDoubleClick={() => onPlace(entry)}
-      className={`group text-left rounded-xl border p-1.5 transition-all duration-150 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-electric-400 ${
-        isDraggable ? 'cursor-grab active:cursor-grabbing' : ''
+      className={`group relative text-left rounded-xl border p-1.5 transition-all duration-150 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-electric-400 ${
+        isDraggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
       } ${
         isSelected
-          ? 'border-electric-500 bg-electric-500/10 shadow-glow'
+          ? 'border-electric-500 bg-electric-500/10 shadow-md ring-1 ring-electric-500/30'
           : 'border-white/10 bg-void-950/60 hover:border-white/25'
       }`}
     >
+      {/* Quick Add '+' Button for Mobile Touchscreen */}
+      {isMobileDrawer && (
+        <span
+          onClick={(e) => {
+            e.stopPropagation();
+            onPlace(entry);
+          }}
+          title="Pasang ke Kanvas"
+          className="absolute top-2 right-2 z-20 w-6 h-6 rounded-full bg-electric-600 hover:bg-electric-500 text-white flex items-center justify-center text-xs font-bold shadow-md active:scale-90 transition-transform cursor-pointer"
+        >
+          +
+        </span>
+      )}
+
       <div
         className="relative aspect-square rounded-lg bg-void-950 overflow-hidden flex items-center justify-center"
         style={BLUEPRINT_DOT_GRID}

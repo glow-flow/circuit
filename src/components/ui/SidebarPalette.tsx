@@ -1,5 +1,5 @@
 import React from 'react';
-import { Info, X } from 'lucide-react';
+import { Info } from 'lucide-react';
 import { PALETTE_DRAG_MIME, PaletteEntry } from '../../constants/componentCatalog';
 import { useCircuitStore } from '../../store/useCircuitStore';
 import { TRANSLATIONS } from '../../i18n/translations';
@@ -103,6 +103,12 @@ export const SidebarPalette: React.FC<SidebarPaletteProps> = ({
     if (isMobileDrawer && onCloseMobile) {
       onCloseMobile();
     }
+    const notify = useCircuitStore.getState().notify;
+    notify(
+      isIndonesian
+        ? `✓ ${pickLabel(entry)} berhasil ditaruh ke kanvas!`
+        : `✓ ${pickLabel(entry)} placed on canvas!`
+    );
   };
 
   const body = (
@@ -134,6 +140,7 @@ export const SidebarPalette: React.FC<SidebarPaletteProps> = ({
               displayLabel={pickLabel(entry)}
               isSelected={entry.id === selectedEntry?.id}
               isDraggable={!isMobileDrawer}
+              isMobileDrawer={isMobileDrawer}
               onSelect={selectEntry}
               onPlace={handlePlace}
               onDragStart={handleDragStart}
@@ -149,6 +156,7 @@ export const SidebarPalette: React.FC<SidebarPaletteProps> = ({
         placeLabel={t.placeBtn}
         dragHint={isMobileDrawer ? undefined : t.dragHint}
         onPlace={handlePlace}
+        isMobileDrawer={isMobileDrawer}
       />
     </>
   );
@@ -157,24 +165,8 @@ export const SidebarPalette: React.FC<SidebarPaletteProps> = ({
     return (
       <div
         id="tour-panel-komponen"
-        className="flex flex-col h-[min(78dvh,620px)] bg-void-900 border-t border-white/15 rounded-t-2xl shadow-2xl select-none overflow-hidden"
+        className="flex flex-col flex-1 h-full min-h-0 select-none overflow-hidden"
       >
-        <div className="px-4 pt-3 pb-2 flex items-center justify-between">
-          <div className="min-w-0">
-            <h2 className="text-sm font-bold text-slate-100 tracking-tight">{t.title}</h2>
-            <p className="text-[11px] text-slate-400">{t.subtitleMobile}</p>
-          </div>
-          {onCloseMobile && (
-            <button
-              type="button"
-              onClick={onCloseMobile}
-              className="w-10 h-10 flex items-center justify-center rounded-lg bg-void-850 text-slate-400 hover:text-white border border-white/10 active:scale-95"
-              aria-label="Tutup"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
-        </div>
         {body}
       </div>
     );
