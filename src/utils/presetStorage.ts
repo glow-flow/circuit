@@ -8,6 +8,12 @@
 import { Node, Edge } from 'reactflow';
 import { CircuitElementData } from '../types/circuit';
 
+import {
+  saveWorkspaceAutosaveDebounced,
+  saveWorkspaceAutosaveImmediate,
+  loadWorkspaceAutosaveWithValidation,
+} from './workspacePersistence';
+
 export interface CustomCircuitPreset {
   id: string;
   name: string;
@@ -17,7 +23,6 @@ export interface CustomCircuitPreset {
 }
 
 const CUSTOM_PRESETS_STORAGE_KEY = 'circuit_sandbox_custom_presets_v1';
-const AUTOSAVE_WORKSPACE_KEY = 'circuit_sandbox_autosave_v2';
 
 /**
  * Automatically upgrades any legacy wired `bulb` nodes into `socket` nodes with `installedBulb`.
@@ -157,14 +162,10 @@ export function saveWorkspaceAutosave(
   nodes: Node<CircuitElementData>[],
   edges: Edge[]
 ): void {
-  try {
-    if (typeof window === 'undefined' || !window.localStorage) return;
-    window.localStorage.setItem(
-      AUTOSAVE_WORKSPACE_KEY,
-      JSON.stringify({ nodes, edges, updatedAt: Date.now() })
-    );
-  } catch (error) {
-    console.warn('Failed to autosave workspace:', error);
+  if (!nodes || nodes.length === 0) {
+    saveWorkspaceAutosaveImmediate([], edges || []);
+  } else {
+    saveWorkspaceAutosaveDebounced(nodes, edges);
   }
 }
 
@@ -178,31 +179,14 @@ export function loadWorkspaceAutosave(): {
   nodes: Node<CircuitElementData>[];
   edges: Edge[];
 } | null {
-  try {
-    if (typeof window === 'undefined' || !window.localStorage) return null;
-    const rawJson = window.localStorage.getItem(AUTOSAVE_WORKSPACE_KEY);
-    if (!rawJson) return null;
-
-    const parsed = JSON.parse(rawJson);
-    if (
-      parsed &&
-      Array.isArray(parsed.nodes) &&
-      parsed.nodes.length > 0 &&
-      Array.isArray(parsed.edges)
-    ) {
-      const cleanEdges = (parsed.edges as Edge[]).filter(
-        (edge) => edge && edge.source !== edge.target
-      );
-      return {
-        nodes: migrateWiredBulbsToSockets(parsed.nodes, cleanEdges),
-        edges: cleanEdges,
-      };
-    }
-    return null;
-  } catch (error) {
-    console.warn('Failed to load autosaved workspace:', error);
-    return null;
+  const result = loadWorkspaceAutosaveWithValidation();
+  if (result.status === 'restored' || result.status === 'empty_workspace') {
+    return {
+      nodes: result.nodes,
+      edges: result.edges,
+    };
   }
+  return null;
 }
 
 export const TUTORIAL_STORAGE_KEY = 'has_seen_tutorial';

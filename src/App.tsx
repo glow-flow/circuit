@@ -22,6 +22,10 @@ import { MobileBottomSheet, BottomSheetSnapState } from './components/ui/mobile/
 import { useCircuitStore } from './store/useCircuitStore';
 import { TRANSLATIONS } from './i18n/translations';
 import { hasSeenTutorial } from './utils/presetStorage';
+import {
+  loadWorkspaceAutosaveWithValidation,
+  setupPageExitPersistence,
+} from './utils/workspacePersistence';
 import { registerTourMobileSheetController, TourMobileSheetState } from './utils/tour';
 import { decodeShareableUrlHash } from './utils/workspaceManagement';
 import { getComponentDisplayName } from './utils/nodeLocalization';
@@ -75,12 +79,17 @@ export const App: React.FC = () => {
   );
 
   // Start the global 1-second Battery State of Charge (SoC) simulation timer
+  // and register page exit persistence listener to flush pending saves.
   useEffect(() => {
-    const cleanup = useCircuitStore.getState().startBatteryInterval();
-    return cleanup;
+    const cleanupBattery = useCircuitStore.getState().startBatteryInterval();
+    const cleanupPageExit = setupPageExitPersistence();
+    return () => {
+      cleanupBattery();
+      cleanupPageExit();
+    };
   }, []);
 
-  // Initialize with the Simple Lamp & Switch circuit preset or load URL hash on mount
+  // Initialize workspace: URL hash -> Autosaved workspace -> Simple Lamp fallback
   useEffect(() => {
     // 1. Check for shared circuit URL hash (#circuit=...)
     if (typeof window !== 'undefined' && window.location.hash) {
@@ -103,7 +112,32 @@ export const App: React.FC = () => {
       }
     }
 
-    // 2. Fallback to Simple Lamp & Switch default
+    // 2. Load verified autosaved workspace from localStorage
+    const autosaveResult = loadWorkspaceAutosaveWithValidation();
+    if (autosaveResult.status === 'restored') {
+      useCircuitStore.getState().setNodes(autosaveResult.nodes);
+      useCircuitStore.setState({
+        edges: autosaveResult.edges,
+      });
+      useCircuitStore.getState().runSimulation();
+      return;
+    }
+
+    // 3. User intentionally cleared the workspace; keep it empty
+    if (autosaveResult.status === 'empty_workspace') {
+      return;
+    }
+
+    // 4. Corrupted cache notification before fallback
+    if (autosaveResult.status === 'corrupted') {
+      useCircuitStore.getState().notify(
+        isId
+          ? 'Data rangkaian sebelumnya rusak dan dipulihkan ke pengaturan awal.'
+          : 'Previous circuit cache was corrupted and reset to default.'
+      );
+    }
+
+    // 5. First-time visitor or corrupted fallback: load Simple Lamp default
     if (nodes.length === 0) {
       loadPreset('simple-lamp');
     }
