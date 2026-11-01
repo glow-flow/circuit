@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useCircuitStore } from '../../../store/useCircuitStore';
 import { analyzeExplainableCircuit } from '../../../tutor/explainableTutor';
+import { useModalKeyboardClose } from '../../../hooks/useModalKeyboardClose';
 
 interface ExplainableTutorModalProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ interface ExplainableTutorModalProps {
 }
 
 export const ExplainableTutorModal: React.FC<ExplainableTutorModalProps> = ({ isOpen, onClose }) => {
+  useModalKeyboardClose(isOpen, onClose);
   const nodes = useCircuitStore((state) => state.nodes);
   const edges = useCircuitStore((state) => state.edges);
   const simulation = useCircuitStore((state) => state.simulation);

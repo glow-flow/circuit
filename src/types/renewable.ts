@@ -41,6 +41,10 @@ export interface SolarEnvironmentalConditions {
   readonly ambientTempCelsius: number;
   /** Shading factor (0.0 = completely unshaded, 1.0 = completely blocked) */
   readonly shadingFactor: number;
+  /** Optional solar azimuth angle (0° to 360°, North=0°, East=90°, South=180°, West=270°) */
+  readonly sunAzimuthDeg?: number;
+  /** Optional panel azimuth angle (0° to 360°, facing direction, default 180° for South-facing) */
+  readonly panelAzimuthDeg?: number;
 }
 
 export interface SolarOperatingPoint {
@@ -77,6 +81,8 @@ export interface WindTurbineParameters {
   readonly maxPowerCoefficientCp: number;
   /** Air density (kg/m³, standard sea level is ~1.225) */
   readonly airDensityKgM3: number;
+  /** Generator and drivetrain electromechanical conversion efficiency (typically 0.85 - 0.95) */
+  readonly generatorEfficiency?: number;
 }
 
 export interface WindOperatingPoint {
@@ -149,6 +155,8 @@ export interface MicrogridPowerBalance {
   readonly gridExportWatts: number;
   /** Deficit power imported from virtual grid (Watts) */
   readonly gridImportWatts: number;
+  /** Estimated internal inverter / charger conversion dissipation losses (Watts) */
+  readonly conversionLossWatts?: number;
   /** System operating status */
   readonly status: 'self_sufficient_surplus' | 'bess_supporting' | 'grid_importing' | 'blackout';
   /** Estimated hours of battery backup autonomy at current load */

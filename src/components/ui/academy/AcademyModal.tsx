@@ -30,6 +30,7 @@ import {
 import { OhmsLawInteractiveDemo } from './demos/OhmsLawInteractiveDemo';
 import { VoltageDividerInteractiveDemo } from './demos/VoltageDividerInteractiveDemo';
 import { JoulePowerInteractiveDemo } from './demos/JoulePowerInteractiveDemo';
+import { useModalKeyboardClose } from '../../../hooks/useModalKeyboardClose';
 
 interface AcademyModalProps {
   isOpen: boolean;
@@ -37,6 +38,7 @@ interface AcademyModalProps {
 }
 
 export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) => {
+  useModalKeyboardClose(isOpen, onClose);
   const language = useCircuitStore((state) => state.language);
   const loadPreset = useCircuitStore((state) => state.loadPreset);
   const notify = useCircuitStore((state) => state.notify);

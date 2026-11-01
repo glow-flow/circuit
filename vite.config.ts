@@ -10,9 +10,10 @@ export default defineConfig({
         manualChunks(id) {
           if (id.includes('node_modules/@reactflow') || id.includes('node_modules/reactflow')) return 'vendor-reactflow';
           if (id.includes('node_modules/lucide-react')) return 'vendor-icons';
+          if (id.includes('node_modules/driver.js')) return 'vendor-driver';
         },
       },
     },
-    chunkSizeWarningLimit: 700,
+    chunkSizeWarningLimit: 600,
   },
 });

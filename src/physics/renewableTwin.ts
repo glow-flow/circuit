@@ -60,6 +60,33 @@ export const DEFAULT_BESS_PARAMS: BessParameters = {
   maxSafeSoCPercent: 100.0, // 100% full
 };
 
+/** Pre-calibrated baseline parameters across supported battery chemistries */
+export const BESS_CHEMISTRY_DEFAULTS: Record<'lfp' | 'lithium-ion' | 'lead-acid', BessParameters> = {
+  lfp: DEFAULT_BESS_PARAMS,
+  'lithium-ion': {
+    chemistry: 'lithium-ion',
+    nominalCapacityWh: 1000.0,
+    nominalVoltage: 14.8,
+    coulombicEfficiency: 0.96,
+    roundTripEfficiency: 0.90,
+    maxChargeCRate: 0.5,
+    maxDischargeCRate: 1.0,
+    minSafeSoCPercent: 15.0,
+    maxSafeSoCPercent: 95.0,
+  },
+  'lead-acid': {
+    chemistry: 'lead-acid',
+    nominalCapacityWh: 1000.0,
+    nominalVoltage: 12.0,
+    coulombicEfficiency: 0.85,
+    roundTripEfficiency: 0.80,
+    maxChargeCRate: 0.2,
+    maxDischargeCRate: 0.5,
+    minSafeSoCPercent: 40.0, // Prevent irreversible sulfation
+    maxSafeSoCPercent: 100.0,
+  },
+};
+
 /**
  * Calculates real-time electrical operating point for a solar PV module under
  * specific environmental irradiance, sun angle, ambient temperature, and shading.
@@ -89,12 +116,43 @@ export function calculateSolarOperatingPoint(
   const shading = Math.max(0, Math.min(1, Number.isFinite(env.shadingFactor) ? env.shadingFactor : 0));
   const ambientTemp = Number.isFinite(env.ambientTempCelsius) ? env.ambientTempCelsius : 25;
 
-  // Calculate angle of incidence (difference between sun ray and panel normal)
-  const angleOfIncidenceDeg = Math.abs(90 - sunElevation - panelTilt);
-  const cosineFactor = Math.max(0, Math.cos((angleOfIncidenceDeg * Math.PI) / 180));
+  // 3D Plane-of-Array (POA) Geometry:
+  // cos(theta_i) = sin(alpha_s) * cos(beta) + cos(alpha_s) * sin(beta) * cos(gamma_s - gamma_p)
+  // where:
+  // alpha_s = sun elevation angle (0 to 90 deg)
+  // beta = panel tilt angle from horizontal (0 to 90 deg)
+  // gamma_s = sun azimuth (default 180 deg / South if unspecified)
+  // gamma_p = panel azimuth (default 180 deg / South if unspecified)
+  const alphaRad = (sunElevation * Math.PI) / 180;
+  const betaRad = (panelTilt * Math.PI) / 180;
+  const sunAzimuth = env.sunAzimuthDeg ?? 180;
+  const panelAzimuth = env.panelAzimuthDeg ?? 180;
+  const deltaAzimuthRad = ((sunAzimuth - panelAzimuth) * Math.PI) / 180;
+
+  // Compute 3D incidence cosine
+  const cosIncidence =
+    Math.sin(alphaRad) * Math.cos(betaRad) +
+    Math.cos(alphaRad) * Math.sin(betaRad) * Math.cos(deltaAzimuthRad);
+
+  // If panel is facing away from the sun (cosIncidence <= 0) or sun is below horizon, clamp to 0
+  const validCosineFactor = sunElevation > 0 && cosIncidence > 0 ? cosIncidence : 0;
 
   // Compute effective incident solar irradiance
-  const effectiveIrradiance = Number((rawIrradiance * cosineFactor * (1 - shading)).toFixed(2));
+  const effectiveIrradiance = Number((rawIrradiance * validCosineFactor * (1 - shading)).toFixed(2));
+
+  // Nighttime, zero irradiance, or completely shaded/facing away conditions: PV produces 0W
+  if (effectiveIrradiance <= 0 || rawIrradiance <= 0 || sunElevation <= 0) {
+    return {
+      effectiveIrradiance: 0,
+      cellTemperatureCelsius: ambientTemp,
+      openCircuitVoltage: 0,
+      shortCircuitCurrent: 0,
+      vmpp: 0,
+      impp: 0,
+      pmpp: 0,
+      fillFactor: 0,
+    };
+  }
 
   // Nominal Operating Cell Temperature (NOCT typically ~45°C)
   const noctCelsius = 45;
@@ -214,6 +272,15 @@ export function calculateWindOperatingPoint(
     (0.5 * turbine.airDensityKgM3 * sweptAreaM2 * Math.pow(speed, 3)).toFixed(1)
   );
 
+  // Betz Limit: Theoretical maximum power coefficient is 16/27 (~0.5926)
+  const BETZ_LIMIT_CP = 16 / 27;
+  const clampedCp = Math.min(BETZ_LIMIT_CP, Math.max(0.01, turbine.maxPowerCoefficientCp));
+  const genEfficiency = Math.min(1.0, Math.max(0.5, turbine.generatorEfficiency ?? 0.90));
+
+  // Maximum electrical output permitted by aerodynamic Betz limit and drivetrain efficiency:
+  // P_elec_max = 0.5 * rho * A * v^3 * Cp * eta_gen
+  const maxPhysicalElectricalWatts = availableAeroPowerWatts * clampedCp * genEfficiency;
+
   // State determination
   if (speed < turbine.cutInSpeedMs) {
     return {
@@ -233,20 +300,25 @@ export function calculateWindOperatingPoint(
       availableAeroPowerWatts,
       electricalOutputWatts: 0,
       effectiveCp: 0,
-      estimatedRpm: 0, // Safely locked by brake
+      estimatedRpm: 0, // Safely locked by aerodynamic brake / furling
     };
   }
 
   if (speed >= turbine.ratedSpeedMs) {
-    // Pitch/governor control maintains constant rated electrical output
+    // Pitch/governor control maintains constant rated electrical output clamped by physical Betz ceiling
+    const electricalOutputWatts = Number(
+      Math.min(turbine.ratedPowerWatts, maxPhysicalElectricalWatts).toFixed(1)
+    );
+    const effectiveCp = Number(
+      Math.min(clampedCp, electricalOutputWatts / Math.max(1, availableAeroPowerWatts * genEfficiency)).toFixed(3)
+    );
+
     return {
       windSpeedMs: speed,
       state: 'rated_governed',
       availableAeroPowerWatts,
-      electricalOutputWatts: turbine.ratedPowerWatts,
-      effectiveCp: Number(
-        Math.min(turbine.maxPowerCoefficientCp, turbine.ratedPowerWatts / Math.max(1, availableAeroPowerWatts)).toFixed(3)
-      ),
+      electricalOutputWatts,
+      effectiveCp,
       estimatedRpm: 350, // Governor maintains maximum nominal generator RPM
     };
   }
@@ -254,12 +326,15 @@ export function calculateWindOperatingPoint(
   // Intermediate generating regime between cut-in and rated speed: cubic power curve
   const normalizedSpeed =
     (speed - turbine.cutInSpeedMs) / (turbine.ratedSpeedMs - turbine.cutInSpeedMs);
+  const rawCubicOutput = turbine.ratedPowerWatts * Math.pow(normalizedSpeed, 3);
+
+  // Enforce Betz ceiling and rated limit
   const electricalOutputWatts = Number(
-    (turbine.ratedPowerWatts * Math.pow(normalizedSpeed, 3)).toFixed(1)
+    Math.min(rawCubicOutput, turbine.ratedPowerWatts, maxPhysicalElectricalWatts).toFixed(1)
   );
 
   const effectiveCp = availableAeroPowerWatts > 0
-    ? Number(Math.min(turbine.maxPowerCoefficientCp, electricalOutputWatts / availableAeroPowerWatts).toFixed(3))
+    ? Number(Math.min(clampedCp, electricalOutputWatts / Math.max(1, availableAeroPowerWatts * genEfficiency)).toFixed(3))
     : 0;
 
   const estimatedRpm = Number(
@@ -438,7 +513,7 @@ export function computeMicrogridPowerBalance(
     const deficitWatts = Math.abs(netPowerWatts);
     if (bessSoCPercent > bess.minSafeSoCPercent && usableEnergyWh > 0) {
       bessDispatchWatts = -Number(
-        Math.min(deficitWatts, maxBessDischargePower, usableEnergyWh).toFixed(1)
+        Math.min(deficitWatts, maxBessDischargePower).toFixed(1)
       );
     }
 
@@ -452,7 +527,7 @@ export function computeMicrogridPowerBalance(
   }
 
   // Backup autonomy hours calculation
-  let autonomyHours = 0;
+  let autonomyHours = 999.0;
   if (loadDemand > 0) {
     if (netPowerWatts >= 0) {
       autonomyHours = 999.0; // Infinite/fully self-sustaining under continuous surplus
@@ -460,6 +535,20 @@ export function computeMicrogridPowerBalance(
       const netDeficit = Math.abs(netPowerWatts);
       autonomyHours = Number((usableEnergyWh / netDeficit).toFixed(1));
     }
+  }
+
+  // Estimated internal conversion dissipation losses in charger/inverter
+  let conversionLossWatts = 0;
+  if (bessDispatchWatts > 0) {
+    // Charging efficiency losses
+    conversionLossWatts = Number(
+      (bessDispatchWatts * (1 - bess.coulombicEfficiency * bess.roundTripEfficiency)).toFixed(1)
+    );
+  } else if (bessDispatchWatts < 0) {
+    // Discharging inversion losses
+    conversionLossWatts = Number(
+      (Math.abs(bessDispatchWatts) * (1 / bess.roundTripEfficiency - 1)).toFixed(1)
+    );
   }
 
   return {
@@ -471,6 +560,7 @@ export function computeMicrogridPowerBalance(
     bessDispatchWatts,
     gridExportWatts,
     gridImportWatts,
+    conversionLossWatts,
     status,
     autonomyHours,
   };

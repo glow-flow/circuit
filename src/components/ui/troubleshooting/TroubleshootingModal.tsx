@@ -23,6 +23,7 @@ import {
   TroubleshootingProgress,
   TroubleshootingScoreResult,
 } from '../../../types/troubleshooting';
+import { useModalKeyboardClose } from '../../../hooks/useModalKeyboardClose';
 
 interface TroubleshootingModalProps {
   isOpen: boolean;
@@ -30,6 +31,7 @@ interface TroubleshootingModalProps {
 }
 
 export const TroubleshootingModal: React.FC<TroubleshootingModalProps> = ({ isOpen, onClose }) => {
+  useModalKeyboardClose(isOpen, onClose);
   const nodes = useCircuitStore((state) => state.nodes);
   const edges = useCircuitStore((state) => state.edges);
   const simulation = useCircuitStore((state) => state.simulation);

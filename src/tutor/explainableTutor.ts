@@ -179,7 +179,16 @@ export function analyzeExplainableCircuit(
   for (const bulb of bulbs) {
     const isLed = Boolean(bulb.data.bulbType?.startsWith('led'));
     const effectiveR = getComponentEffectiveResistance(bulb.data);
-    const bulbCurrent = totalLoopCurrentAmps;
+    
+    // Read exact branch current from MNA linear solver
+    let bulbCurrent = Math.abs(simulation.branchCurrents[bulb.id] ?? 0);
+    if (bulbCurrent === 0 && bulb.data.bulbId) {
+      bulbCurrent = Math.abs(simulation.branchCurrents[bulb.data.bulbId] ?? 0);
+    }
+    if (bulbCurrent === 0 && topologyType === 'series_loop') {
+      bulbCurrent = totalLoopCurrentAmps;
+    }
+
     const bulbVoltage = Number((bulbCurrent * effectiveR).toFixed(2));
     const bulbPower = Number((bulbVoltage * bulbCurrent).toFixed(2));
 
@@ -302,56 +311,118 @@ export function analyzeExplainableCircuit(
     relevantComponentIds: [...voltageSources.map((s) => s.id), ...activeLoads.map((l) => l.id)],
   });
 
-  // Step 4: Voltage Drop Across Each Load (KVL & Joule Dissipation)
+  // Step 4: Branch Currents, Voltage Drops, and Joule Dissipation
   if (activeLoads.length > 0 && !isShortCircuit) {
-    const drops = activeLoads.map((load) => {
+    const isParallel = topologyType === 'parallel_branches';
+
+    const branchData = activeLoads.map((load) => {
       const r = getComponentEffectiveResistance(load.data);
-      const vDrop = Number((totalLoopCurrentAmps * r).toFixed(2));
-      const pDiss = Number((vDrop * totalLoopCurrentAmps).toFixed(2));
+      // Read exact MNA branch current; fall back to ideal branch calculation if simulation current is 0
+      let branchCurrent = Math.abs(simulation.branchCurrents[load.id] ?? 0);
+      if (branchCurrent === 0 && load.data.bulbId) {
+        branchCurrent = Math.abs(simulation.branchCurrents[load.data.bulbId] ?? 0);
+      }
+      if (branchCurrent === 0) {
+        if (isParallel && r > 0) {
+          branchCurrent = Number((totalSourcesVoltage / r).toFixed(3));
+        } else if (!isParallel) {
+          branchCurrent = totalLoopCurrentAmps;
+        }
+      }
+
+      const vDrop = isParallel
+        ? Number(totalSourcesVoltage.toFixed(2))
+        : Number((branchCurrent * r).toFixed(2));
+      const pDiss = Number((vDrop * branchCurrent).toFixed(2));
+
       return {
         label: load.data.label,
         id: load.id,
         r,
+        branchCurrent,
         vDrop,
         pDiss,
       };
     });
 
-    const dropBreakdown = drops.map((d) => `V_{${d.label}} = ${d.vDrop}V`).join(', ');
+    if (isParallel) {
+      // Parallel Circuit: Step 4 displays individual branch currents via Ohm's Law
+      const currentBreakdown = branchData
+        .map((d) => `I_{${d.label}} = \\frac{${d.vDrop}\\text{V}}{${d.r}\\Omega} = ${d.branchCurrent}\\text{A}`)
+        .join(', ');
 
-    derivationSteps.push({
-      stepNumber: 4,
-      titleId: 'Tegangan Jatuh & Disipasi Daya Komponen',
-      titleEn: 'Component Voltage Drops & Joule Dissipation',
-      lawOrTheorem: 'Hukum Joule & Pembagi Tegangan',
-      formulaLatex: 'V_k = I \\times R_k, \\quad P_k = I^2 \\times R_k',
-      calculationDescriptionId:
-        'Setiap beban menyebabkan penurunan potensial listrik (tegangan jatuh) dan mengubah energi listrik menjadi panas atau cahaya.',
-      calculationDescriptionEn:
-        'Each load causes an electrical potential drop and converts electrical energy into heat or light.',
-      substitutedFormula: dropBreakdown,
-      verifiedResult: `Total Daya Disipasi = ${totalPowerWatts} Watt`,
-      relevantComponentIds: activeLoads.map((l) => l.id),
-    });
+      derivationSteps.push({
+        stepNumber: 4,
+        titleId: 'Pembagian Arus Cabang & Daya Beban (Hukum Ohm Cabang)',
+        titleEn: 'Branch Current Splitting & Load Dissipation (Branch Ohm\'s Law)',
+        lawOrTheorem: 'Kaidah Cabang Paralel Bebas',
+        formulaLatex: 'I_k = \\frac{V_{s}}{R_k}, \\quad P_k = V_{s} \\times I_k',
+        calculationDescriptionId:
+          'Pada rangkaian paralel, setiap cabang menerima beda potensial yang sama (Vs). Kuat arus pada tiap cabang dihitung independen berdasarkan resistansi cabangnya.',
+        calculationDescriptionEn:
+          'In a parallel circuit, every branch experiences the same terminal potential difference (Vs). Current in each branch is calculated independently from its resistance.',
+        substitutedFormula: currentBreakdown,
+        verifiedResult: `Total Daya Beban Paralel = ${totalPowerWatts} Watt`,
+        relevantComponentIds: activeLoads.map((l) => l.id),
+      });
 
-    // Step 5: Verification of Kirchhoff's Voltage Law (KVL)
-    const sumDrops = Number(drops.reduce((acc, d) => acc + d.vDrop, 0).toFixed(2));
-    const kvlDifference = Number((totalSourcesVoltage - sumDrops).toFixed(2));
+      // Step 5: Verify Kirchhoff's Current Law (KCL)
+      const sumBranchCurrents = Number(
+        branchData.reduce((acc, d) => acc + d.branchCurrent, 0).toFixed(3)
+      );
 
-    derivationSteps.push({
-      stepNumber: 5,
-      titleId: 'Verifikasi Hukum Kirchhoff Tegangan (KVL)',
-      titleEn: 'Verification of Kirchhoff\'s Voltage Law (KVL)',
-      lawOrTheorem: 'Hukum II Kirchhoff (KVL)',
-      formulaLatex: '\\sum V_{loop} = V_{s} - \\sum V_{k} = 0',
-      calculationDescriptionId:
-        'Jumlah aljabar beda potensial pada suatu rangkaian tertutup (loop) harus sama dengan nol (Kekekalan Energi).',
-      calculationDescriptionEn:
-        'The algebraic sum of all voltages around any closed circuit loop must equal zero (Conservation of Energy).',
-      substitutedFormula: `${totalSourcesVoltage}V - (${drops.map((d) => `${d.vDrop}V`).join(' + ')}) = ${totalSourcesVoltage}V - ${sumDrops}V = ${kvlDifference}V \\approx 0V`,
-      verifiedResult: 'KVL Terbukti Sesuai Hukum Kekekalan Energi',
-      relevantComponentIds: [...voltageSources.map((s) => s.id), ...activeLoads.map((l) => l.id)],
-    });
+      derivationSteps.push({
+        stepNumber: 5,
+        titleId: 'Verifikasi Hukum I Kirchhoff Arus (KCL)',
+        titleEn: 'Verification of Kirchhoff\'s Current Law (KCL)',
+        lawOrTheorem: 'Hukum I Kirchhoff (KCL)',
+        formulaLatex: 'I_{total} = \\sum I_{k} = I_1 + I_2 + \\dots',
+        calculationDescriptionId:
+          'Jumlah kuat arus listrik yang mengalir masuk ke titik percabangan sama dengan jumlah kuat arus yang keluar melalui seluruh cabang paralel.',
+        calculationDescriptionEn:
+          'The sum of currents entering an electrical node equals the total current leaving through all connected parallel branches.',
+        substitutedFormula: `${branchData.map((d) => `${d.branchCurrent}A`).join(' + ')} = ${sumBranchCurrents} A \\approx ${totalLoopCurrentAmps} A`,
+        verifiedResult: 'KCL Terbukti Sesuai Hukum Kekekalan Muatan',
+        relevantComponentIds: [...voltageSources.map((s) => s.id), ...activeLoads.map((l) => l.id)],
+      });
+    } else {
+      // Series Circuit: Step 4 displays voltage divider drop
+      const dropBreakdown = branchData.map((d) => `V_{${d.label}} = ${d.vDrop}V`).join(', ');
+
+      derivationSteps.push({
+        stepNumber: 4,
+        titleId: 'Tegangan Jatuh & Disipasi Daya Komponen',
+        titleEn: 'Component Voltage Drops & Joule Dissipation',
+        lawOrTheorem: 'Hukum Joule & Pembagi Tegangan',
+        formulaLatex: 'V_k = I \\times R_k, \\quad P_k = I^2 \\times R_k',
+        calculationDescriptionId:
+          'Setiap beban menyebabkan penurunan potensial listrik (tegangan jatuh) dan mengubah energi listrik menjadi panas atau cahaya.',
+        calculationDescriptionEn:
+          'Each load causes an electrical potential drop and converts electrical energy into heat or light.',
+        substitutedFormula: dropBreakdown,
+        verifiedResult: `Total Daya Disipasi = ${totalPowerWatts} Watt`,
+        relevantComponentIds: activeLoads.map((l) => l.id),
+      });
+
+      // Step 5: Verification of Kirchhoff's Voltage Law (KVL)
+      const sumDrops = Number(branchData.reduce((acc, d) => acc + d.vDrop, 0).toFixed(2));
+      const kvlDifference = Number((totalSourcesVoltage - sumDrops).toFixed(2));
+
+      derivationSteps.push({
+        stepNumber: 5,
+        titleId: 'Verifikasi Hukum Kirchhoff Tegangan (KVL)',
+        titleEn: 'Verification of Kirchhoff\'s Voltage Law (KVL)',
+        lawOrTheorem: 'Hukum II Kirchhoff (KVL)',
+        formulaLatex: '\\sum V_{loop} = V_{s} - \\sum V_{k} = 0',
+        calculationDescriptionId:
+          'Jumlah aljabar beda potensial pada suatu rangkaian tertutup (loop) harus sama dengan nol (Kekekalan Energi).',
+        calculationDescriptionEn:
+          'The algebraic sum of all voltages around any closed circuit loop must equal zero (Conservation of Energy).',
+        substitutedFormula: `${totalSourcesVoltage}V - (${branchData.map((d) => `${d.vDrop}V`).join(' + ')}) = ${totalSourcesVoltage}V - ${sumDrops}V = ${kvlDifference}V \\approx 0V`,
+        verifiedResult: 'KVL Terbukti Sesuai Hukum Kekekalan Energi',
+        relevantComponentIds: [...voltageSources.map((s) => s.id), ...activeLoads.map((l) => l.id)],
+      });
+    }
   }
 
   // Interactive What-If Hypotheses

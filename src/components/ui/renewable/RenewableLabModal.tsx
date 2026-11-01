@@ -29,6 +29,7 @@ import {
 } from '../../../types/renewable';
 import { Node, Edge } from 'reactflow';
 import { CircuitElementData } from '../../../types/circuit';
+import { useModalKeyboardClose } from '../../../hooks/useModalKeyboardClose';
 
 interface RenewableLabModalProps {
   isOpen: boolean;
@@ -36,6 +37,7 @@ interface RenewableLabModalProps {
 }
 
 export const RenewableLabModal: React.FC<RenewableLabModalProps> = ({ isOpen, onClose }) => {
+  useModalKeyboardClose(isOpen, onClose);
   const language = useCircuitStore((state) => state.language);
   const notify = useCircuitStore((state) => state.notify);
   const isId = language === 'id';

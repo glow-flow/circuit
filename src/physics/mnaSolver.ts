@@ -465,6 +465,43 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
     const uniqueNets = Array.from(uniqueNetSet);
 
     if (uniqueNets.length <= 1) {
+      // Check if any active voltage source is directly short-circuited across its own terminals
+      const shortedSources = components.filter((c) => {
+        if (!isActiveVoltageSource(c, components)) return false;
+        const posNet = pinToNetMap.get(`${c.id}:pos`);
+        const negNet = pinToNetMap.get(`${c.id}:neg`);
+        return posNet !== undefined && negNet !== undefined && posNet === negNet;
+      });
+
+      if (shortedSources.length > 0) {
+        const shortCircuitBranches = shortedSources.map((s) => s.id);
+        const branchCurrentMap: Record<string, number> = {};
+        let totalPowerDrawn = 0;
+
+        for (const sourceComp of shortedSources) {
+          const nominalVoltage = getRegulatedSourceVoltage(sourceComp);
+          const rInt = Math.max(
+            0.01,
+            sourceComp.internalResistance ?? getSourceDischargeResistance(sourceComp)
+          );
+          const iSc = nominalVoltage / rInt;
+          branchCurrentMap[sourceComp.id] = iSc;
+          totalPowerDrawn += nominalVoltage * iSc;
+        }
+
+        const singleNet = uniqueNets[0] ?? 'net_0';
+        return {
+          nodeVoltages: { [singleNet]: 0 },
+          branchCurrents: branchCurrentMap,
+          isShortCircuit: true,
+          shortCircuitBranches,
+          blockedGeneratorIds: [],
+          reverseBiasedBranches: [],
+          totalPowerDrawn,
+          timestamp: Date.now(),
+        };
+      }
+
       return {
         nodeVoltages: {},
         branchCurrents: {},
@@ -737,7 +774,16 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
       const isBattery = isBatteryComponent(sourceComp);
       const isLegitimateCharging = isBattery && sourceCurrent > CURRENT_FLOW_EPSILON;
 
-      if (!isLegitimateCharging && absoluteCurrent > SHORT_CIRCUIT_CURRENT_THRESHOLD) {
+      // Topological direct terminal short check: (+) and (-) belong to the same electrical net
+      const positiveNet = pinToNetMap.get(`${sourceComp.id}:pos`);
+      const negativeNet = pinToNetMap.get(`${sourceComp.id}:neg`);
+      const isDirectTerminalShort =
+        positiveNet !== undefined && negativeNet !== undefined && positiveNet === negativeNet;
+
+      if (
+        isDirectTerminalShort ||
+        (!isLegitimateCharging && absoluteCurrent > SHORT_CIRCUIT_CURRENT_THRESHOLD)
+      ) {
         isOverallShortCircuit = true;
         shortCircuitBranches.push(sourceComp.id);
       }
