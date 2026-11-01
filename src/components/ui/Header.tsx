@@ -20,6 +20,7 @@ import {
   Moon,
   GraduationCap,
   Wrench,
+  Sparkles,
 } from 'lucide-react';
 import { useCircuitStore } from '../../store/useCircuitStore';
 import { TRANSLATIONS } from '../../i18n/translations';
@@ -30,6 +31,7 @@ import { MissionModal } from './missions/MissionModal';
 import { AcademyModal } from './academy/AcademyModal';
 import { TroubleshootingModal } from './troubleshooting/TroubleshootingModal';
 import { RenewableLabModal } from './renewable/RenewableLabModal';
+import { ExplainableTutorModal } from './tutor/ExplainableTutorModal';
 import { OscilloscopeModal } from './analytics/OscilloscopeModal';
 import { CircuitShareModal } from './workspace/CircuitShareModal';
 
@@ -149,6 +151,16 @@ export const Header: React.FC = () => {
             >
               <Sun className="w-3.5 h-3.5 text-emerald-400" />
               <span>{isId ? 'EBT' : 'Renewable'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveModal('tutor')}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-electric-500/15 hover:bg-electric-500/25 text-electric-300 border border-electric-500/30 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
+              title={isId ? 'Tutor Fisika Rangkaian Terjelaskan' : 'Explainable Circuit Physics Tutor'}
+            >
+              <Sparkles className="w-3.5 h-3.5 text-electric-400" />
+              <span>Tutor</span>
             </button>
 
             <button
@@ -383,6 +395,12 @@ export const Header: React.FC = () => {
       {/* Renewable Energy & Microgrid Digital Twin Modal */}
       <RenewableLabModal
         isOpen={activeModal === 'renewable'}
+        onClose={() => setActiveModal(null)}
+      />
+
+      {/* Explainable Circuit Physics Tutor Modal */}
+      <ExplainableTutorModal
+        isOpen={activeModal === 'tutor'}
         onClose={() => setActiveModal(null)}
       />
 
