@@ -3,6 +3,10 @@ import { Info } from 'lucide-react';
 import { PALETTE_DRAG_MIME, PaletteEntry } from '../../constants/componentCatalog';
 import { useCircuitStore } from '../../store/useCircuitStore';
 import { TRANSLATIONS } from '../../i18n/translations';
+import {
+  computeOutdoorSpawnCandidates,
+  getLabCanvasSpawnPosition,
+} from '../../utils/canvasSpawnPosition';
 import { CategoryTabs } from './palette/CategoryTabs';
 import { PaletteDetailBar } from './palette/PaletteDetailBar';
 import { PaletteTile } from './palette/PaletteTile';
@@ -52,53 +56,38 @@ export const SidebarPalette: React.FC<SidebarPaletteProps> = ({
 
   const handlePlace = (entry: PaletteEntry) => {
     if (worldMode === 'outside') {
-      const worldStageEl = document.getElementById('outdoor-world-stage');
-      const scrollViewportEl = document.getElementById('outdoor-scroll-viewport');
-      const stageRect = worldStageEl?.getBoundingClientRect();
-      const containerWidth = stageRect && stageRect.width > 400 ? stageRect.width : 1360;
-      const containerHeight = stageRect && stageRect.height > 250 ? stageRect.height : 680;
-      const scrollLeft = scrollViewportEl?.scrollLeft ?? 0;
+      const terrainGrid = useCircuitStore.getState().terrainGrid;
+      const { worldContainerWidth, worldContainerHeight, candidatePositions } =
+        computeOutdoorSpawnCandidates(entry.type, terrainGrid);
 
-      // Drop from a safe height just above the terrain surface (~42% down the canvas)
-      const safeDropY = Math.round(containerHeight * 0.42);
-      const baseX = Math.max(24, Math.min(720, Math.round(scrollLeft + 24)));
-      const candidatePositions = [
-        { x: baseX, y: safeDropY },
-        { x: baseX + 185, y: safeDropY },
-        { x: baseX + 370, y: safeDropY },
-        { x: 50, y: safeDropY },
-        { x: 240, y: safeDropY },
-        { x: 430, y: safeDropY },
-      ];
-      let placed = false;
-      for (const candidate of candidatePositions) {
+      let placedSuccessfully = false;
+      for (const candidatePosition of candidatePositions) {
         if (
           placeOutdoorComponent(
             entry.type,
-            candidate,
-            { width: containerWidth, height: containerHeight },
+            candidatePosition,
+            { width: worldContainerWidth, height: worldContainerHeight },
             entry.placement
           )
         ) {
-          placed = true;
+          placedSuccessfully = true;
           break;
         }
       }
-      if (!placed) {
+      if (!placedSuccessfully && candidatePositions.length > 0) {
         placeOutdoorComponent(
           entry.type,
-          {
-            x: 30 + Math.floor(Math.random() * 580),
-            y: safeDropY,
-          },
-          { width: containerWidth, height: containerHeight },
+          candidatePositions[0],
+          { width: worldContainerWidth, height: worldContainerHeight },
           entry.placement
         );
       }
     } else {
-      const offsetX = 200 + Math.floor(Math.random() * 120);
-      const offsetY = 120 + Math.floor(Math.random() * 120);
-      addComponent(entry.type, { x: offsetX, y: offsetY }, entry.placement);
+      const spawnPosition = getLabCanvasSpawnPosition(
+        useCircuitStore.getState().reactFlowInstance,
+        entry.type
+      );
+      addComponent(entry.type, spawnPosition, entry.placement);
     }
     if (isMobileDrawer && onCloseMobile) {
       onCloseMobile();

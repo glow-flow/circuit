@@ -142,15 +142,14 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
         return;
       }
 
-      const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
       const position = reactFlowInstance.screenToFlowPosition({
-        x: event.clientX - reactFlowBounds.left,
-        y: event.clientY - reactFlowBounds.top,
+        x: event.clientX,
+        y: event.clientY,
       });
 
       addComponent(droppedEntry.type, position, droppedEntry.placement);
     },
-    [reactFlowInstance, addComponent, reactFlowWrapper]
+    [reactFlowInstance, addComponent]
   );
 
   /**
@@ -235,7 +234,10 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        onInit={setReactFlowInstance}
+        onInit={(instance) => {
+          setReactFlowInstance(instance);
+          useCircuitStore.getState().setReactFlowInstance(instance);
+        }}
         onDrop={onDrop}
         onDragOver={onDragOver}
         onNodeDrag={onNodeDrag}

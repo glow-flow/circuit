@@ -58,7 +58,7 @@ export type DropPhysicsOutcome =
  * Standard visual footprint dimensions (in px) for outdoor power components.
  * Used for AABB overlap rejection, ground gravity settling, and water hazard collision checks.
  */
-const COMPONENT_DIMENSIONS: Partial<Record<ComponentType, { width: number; height: number }>> = {
+export const COMPONENT_DIMENSIONS: Partial<Record<ComponentType, { width: number; height: number }>> = {
   'solar-panel': { width: 144, height: 156 },
   solar_panel: { width: 144, height: 156 },
   'wind-turbine': { width: 144, height: 260 },
@@ -67,7 +67,7 @@ const COMPONENT_DIMENSIONS: Partial<Record<ComponentType, { width: number; heigh
   transmission_tower: { width: 132, height: 226 },
 };
 
-const DEFAULT_COMPONENT_DIMENSION = { width: 150, height: 170 };
+export const DEFAULT_COMPONENT_DIMENSION = { width: 150, height: 170 };
 
 /**
  * Creates an empty 2D terrain grid of size `rows x cols` filled with 'EMPTY'.

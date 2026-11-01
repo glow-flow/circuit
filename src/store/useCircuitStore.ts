@@ -15,6 +15,7 @@ import {
   applyEdgeChanges,
   NodeChange,
   EdgeChange,
+  ReactFlowInstance,
 } from 'reactflow';
 import {
   CircuitElementData,
@@ -75,6 +76,7 @@ import {
 } from '../utils/presetStorage';
 import { checkPanelDirectShort } from '../utils/circuitShortCircuitUtils';
 import { getComponentDisplayName } from '../utils/nodeLocalization';
+import { getLabCanvasSpawnPosition } from '../utils/canvasSpawnPosition';
 
 interface CircuitState {
   nodes: Node<CircuitElementData>[];
@@ -137,7 +139,10 @@ interface CircuitState {
   detachBulbFromSocket: (bulbId: string) => void;
   syncSnappedBulbPosition: (socketId: string, socketPosition: { x: number; y: number }) => void;
 
-  // React Flow Handlers
+  // React Flow Handlers & Camera Positioning
+  reactFlowInstance: ReactFlowInstance | null;
+  setReactFlowInstance: (instance: ReactFlowInstance | null) => void;
+  getCanvasSpawnPosition: (componentType?: ComponentType) => { x: number; y: number };
   onNodesChange: (changes: NodeChange[]) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
   onConnect: (connection: Connection) => void;
@@ -151,7 +156,7 @@ interface CircuitState {
   setLanguage: (language: AppLanguage) => void;
   addComponent: (
     type: ComponentType,
-    position: { x: number; y: number },
+    position?: { x: number; y: number },
     options?: PlacementOptions
   ) => void;
   updateComponentData: (id: string, partialData: Partial<CircuitElementData>) => void;
@@ -870,6 +875,12 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     set({ language, nodes: updatedNodes });
   },
 
+  // React Flow Camera & Placement
+  reactFlowInstance: null,
+  setReactFlowInstance: (instance) => set({ reactFlowInstance: instance }),
+  getCanvasSpawnPosition: (componentType) =>
+    getLabCanvasSpawnPosition(get().reactFlowInstance, componentType),
+
   onNodesChange: (changes: NodeChange[]) => {
     set({
       nodes: applyNodeChanges(changes, get().nodes),
@@ -959,9 +970,10 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
 
   addComponent: (
     type: ComponentType,
-    position: { x: number; y: number },
+    position?: { x: number; y: number },
     options?: PlacementOptions
   ) => {
+    const finalSpawnPosition = position ?? get().getCanvasSpawnPosition(type);
     const componentId = `${type}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const isId = get().language === 'id';
     const activeWorldMode = get().worldMode;
@@ -1115,7 +1127,7 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     const newNode: Node<CircuitElementData> = {
       id: componentId,
       type,
-      position,
+      position: finalSpawnPosition,
       data: defaultData,
     };
 

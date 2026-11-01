@@ -536,6 +536,7 @@ const OutdoorSandboxInner: React.FC = () => {
       edges: [...nonOutdoorEdges, ...newOutdoorEdges],
     });
     state.setNodes([...nonOutdoorNodes, ...newOutdoorNodes]);
+    scrollViewportRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
     state.notify(
       isId
         ? '⚡ Pembangkit Listrik Alam (Solar + Turbin + Menara Transmisi) siap menyalurkan 12V ke Lab!'
