@@ -14,6 +14,8 @@ import {
   loadWorkspaceAutosaveWithValidation,
 } from './workspacePersistence';
 
+export { saveWorkspaceAutosaveImmediate };
+
 export interface CustomCircuitPreset {
   id: string;
   name: string;

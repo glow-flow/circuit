@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import {
   PlusCircle,
@@ -90,19 +90,23 @@ export const App: React.FC = () => {
     };
   }, []);
 
-  // Initialize workspace: URL hash -> Autosaved workspace -> Simple Lamp fallback
+  // Workspace initialization: runs strictly ONCE on initial application mount
+  const isWorkspaceInitializedRef = useRef(false);
+
   useEffect(() => {
+    if (isWorkspaceInitializedRef.current) return;
+    isWorkspaceInitializedRef.current = true;
+
     // 1. Check for shared circuit URL hash (#circuit=...)
     if (typeof window !== 'undefined' && window.location.hash) {
       const decodedResult = decodeShareableUrlHash(window.location.hash);
       if (decodedResult && decodedResult.isValid) {
         const { payload } = decodedResult;
-        useCircuitStore.getState().setNodes(payload.nodes);
-        useCircuitStore.setState({
-          edges: payload.edges,
-          worldMode: payload.metadata.worldMode,
-        });
-        useCircuitStore.getState().runSimulation();
+        useCircuitStore.getState().loadCustomCircuit(
+          payload.nodes,
+          payload.edges,
+          payload.metadata.worldMode
+        );
         useCircuitStore.getState().notify(
           isId
             ? `Rangkaian "${payload.metadata.circuitTitle}" berhasil dimuat dari tautan!`
@@ -116,11 +120,11 @@ export const App: React.FC = () => {
     // 2. Load verified autosaved workspace from localStorage
     const autosaveResult = loadWorkspaceAutosaveWithValidation();
     if (autosaveResult.status === 'restored') {
-      useCircuitStore.getState().setNodes(autosaveResult.nodes);
-      useCircuitStore.setState({
-        edges: autosaveResult.edges,
-      });
-      useCircuitStore.getState().runSimulation();
+      useCircuitStore.getState().loadCustomCircuit(
+        autosaveResult.nodes,
+        autosaveResult.edges,
+        useCircuitStore.getState().worldMode
+      );
       return;
     }
 
@@ -139,10 +143,10 @@ export const App: React.FC = () => {
     }
 
     // 5. First-time visitor or corrupted fallback: load Simple Lamp default
-    if (nodes.length === 0) {
+    if (useCircuitStore.getState().nodes.length === 0) {
       loadPreset('simple-lamp');
     }
-  }, [loadPreset, nodes.length, isId]);
+  }, [loadPreset, isId]);
 
   // Register mobile bottom-sheet controller so driver.js can open/close drawers during the tour
   useEffect(() => {

@@ -29,13 +29,12 @@ import {
 import { PALETTE_DRAG_MIME, getPaletteEntry } from '../../constants/componentCatalog';
 import {
   evaluateComponentDropPhysics,
-  findTerrainSurfaceY,
-  getComponentBoundingBox,
   getHillEdgeSlopeSide,
   GRID_COLS,
   GRID_ROWS,
   OUTDOOR_WORLD_MIN_WIDTH,
 } from '../../physics/terrainGrid';
+import { createOutdoorPowerStationElements } from '../../utils/outdoorSpawnUtils';
 import { SolarPanelNode } from './nodes/SolarPanelNode';
 import { WindTurbineNode } from './nodes/WindTurbineNode';
 import { TransmissionTowerNode } from './nodes/TransmissionTowerNode';
@@ -431,106 +430,14 @@ const OutdoorSandboxInner: React.FC = () => {
       (e) => !outdoorNodeIds.has(e.source) && !outdoorNodeIds.has(e.target)
     );
 
-    const solarId = `solar_out_${Date.now()}`;
-    const turbineId = `wind_out_${Date.now() + 1}`;
-    const towerId = `tower_out_${Date.now() + 2}`;
-
-    // Spacious placement across the left & center grassy highland (columns 1..22)
-    const solarX = 60;
-    const turbineX = 290;
-    const towerX = 530;
-
-    const computeGroundedY = (
-      x: number,
-      type: 'solar-panel' | 'wind-turbine' | 'transmission-tower'
-    ) => {
-      const box = getComponentBoundingBox({ x, y: 0 }, type);
-      const { surfaceY } = findTerrainSurfaceY(
-        box,
-        state.terrainGrid,
-        canvasWidth,
-        canvasHeight
-      );
-      const offset = type === 'wind-turbine' ? 0 : 6;
-      return Math.max(8, Math.round(surfaceY - box.height + offset));
-    };
-
-    const newOutdoorNodes: Node<CircuitElementData>[] = [
-      {
-        id: solarId,
-        type: 'solar-panel',
-        position: { x: solarX, y: computeGroundedY(solarX, 'solar-panel') },
-        data: {
-          id: solarId,
-          type: 'solar-panel',
-          worldMode: 'outside',
-          sunlight: 100,
-          voltage: 12.0,
-          internalResistance: 0.2,
-          label: isId ? 'Panel Surya Alam' : 'Outdoor Solar Panel',
-        },
-      },
-      {
-        id: turbineId,
-        type: 'wind-turbine',
-        position: { x: turbineX, y: computeGroundedY(turbineX, 'wind-turbine') },
-        data: {
-          id: turbineId,
-          type: 'wind-turbine',
-          worldMode: 'outside',
-          speed: 100,
-          voltage: 12.0,
-          internalResistance: 0.1,
-          label: isId ? 'Turbin Angin Alam' : 'Outdoor Wind Turbine',
-        },
-      },
-      {
-        id: towerId,
-        type: 'transmission-tower',
-        position: { x: towerX, y: computeGroundedY(towerX, 'transmission-tower') },
-        data: {
-          id: towerId,
-          type: 'transmission-tower',
-          worldMode: 'outside',
-          label: isId ? 'Menara Transmisi Luar' : 'Outdoor Transmission Tower',
-        },
-      },
-    ];
-
-    const newOutdoorEdges: Edge[] = [
-      {
-        id: `wire_out_solar_pos_${Date.now()}`,
-        type: 'wire',
-        source: solarId,
-        sourceHandle: 'pos',
-        target: towerId,
-        targetHandle: 'pos',
-      },
-      {
-        id: `wire_out_solar_neg_${Date.now() + 1}`,
-        type: 'wire',
-        source: solarId,
-        sourceHandle: 'neg',
-        target: towerId,
-        targetHandle: 'neg',
-      },
-      {
-        id: `wire_out_wind_pos_${Date.now() + 2}`,
-        type: 'wire',
-        source: turbineId,
-        sourceHandle: 'pos',
-        target: towerId,
-        targetHandle: 'pos',
-      },
-      {
-        id: `wire_out_wind_neg_${Date.now() + 3}`,
-        type: 'wire',
-        source: turbineId,
-        sourceHandle: 'neg',
-        target: towerId,
-        targetHandle: 'neg',
-      },
-    ];
+    const { nodes: newOutdoorNodes, edges: newOutdoorEdges } = createOutdoorPowerStationElements({
+      terrainGrid: state.terrainGrid,
+      canvasWidth,
+      canvasHeight,
+      isId,
+      sunlightPercent: 100,
+      windSpeedPercent: 100,
+    });
 
     useCircuitStore.setState({
       edges: [...nonOutdoorEdges, ...newOutdoorEdges],

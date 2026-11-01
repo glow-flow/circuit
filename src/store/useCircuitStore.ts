@@ -73,6 +73,7 @@ import {
   loadCustomPresetsFromStorage,
   saveCustomPresetsToStorage,
   saveWorkspaceAutosave,
+  saveWorkspaceAutosaveImmediate,
 } from '../utils/presetStorage';
 import { checkPanelDirectShort } from '../utils/circuitShortCircuitUtils';
 import { getComponentDisplayName } from '../utils/nodeLocalization';
@@ -184,6 +185,11 @@ interface CircuitState {
       | 'short-circuit-demo'
       | 'ultimate-power-grid'
   ) => void;
+  loadCustomCircuit: (
+    nodes: Node<CircuitElementData>[],
+    edges: Edge[],
+    targetWorldMode?: WorldMode
+  ) => void;
   saveCustomPreset: (name: string) => void;
   loadCustomPreset: (presetId: string) => void;
   deleteCustomPreset: (presetId: string) => void;
@@ -223,7 +229,9 @@ function recalculateCircuit(
   );
   const validEdges = edges.filter(
     (edge) =>
-      edge.source !== edge.target &&
+      (edge.source !== edge.target ||
+        (Boolean(edge.sourceHandle && edge.targetHandle) &&
+          edge.sourceHandle !== edge.targetHandle)) &&
       !standalonePassiveBulbIds.has(edge.source) &&
       !standalonePassiveBulbIds.has(edge.target)
   );
@@ -1734,7 +1742,7 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     const nextEdges = currentEdges.filter(
       (edge) =>
         edge.data?.isSnapWire ||
-        (edge.source !== nodeId && edge.target !== nodeId && edge.source !== edge.target)
+        (edge.source !== nodeId && edge.target !== nodeId)
     );
     if (nextEdges.length === currentEdges.length) return;
 
@@ -1824,7 +1832,7 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     const nextEdges = currentEdges.filter(
       (edge) =>
         edge.data?.isSnapWire ||
-        (edge.source !== id && edge.target !== id && edge.source !== edge.target)
+        (edge.source !== id && edge.target !== id)
     );
 
     const candidateNodes = get().nodes.map((node) =>
@@ -2437,6 +2445,39 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       nodes: updatedNodes,
       edges: presetEdges,
       simulation,
+      selectedNodeId: null,
+      selectedEdgeId: null,
+      fitViewTrigger: get().fitViewTrigger + 1,
+    });
+  },
+
+  /**
+   * Atomically loads a custom set of circuit nodes and edges, aligns worldMode,
+   * recalculates MNA physics simulation, triggers camera fitView, and persists to autosave.
+   *
+   * Time Complexity: O(N + M^3) where N is node count and M is active MNA matrix dimension.
+   *
+   * @param customNodes - Circuit nodes to be placed on canvas
+   * @param customEdges - Wire connections between nodes
+   * @param targetWorldMode - Destination environment ('lab' or 'outside')
+   */
+  loadCustomCircuit: (customNodes, customEdges, targetWorldMode = 'lab') => {
+    const formattedNodes: Node<CircuitElementData>[] = customNodes.map((node) => ({
+      ...node,
+      data: {
+        ...node.data,
+        worldMode: targetWorldMode,
+      },
+    }));
+
+    const { simulation, updatedNodes } = recalculateCircuit(formattedNodes, customEdges);
+    saveWorkspaceAutosaveImmediate(updatedNodes, customEdges);
+
+    set({
+      nodes: updatedNodes,
+      edges: customEdges,
+      simulation,
+      worldMode: targetWorldMode,
       selectedNodeId: null,
       selectedEdgeId: null,
       fitViewTrigger: get().fitViewTrigger + 1,

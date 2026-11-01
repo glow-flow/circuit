@@ -96,7 +96,9 @@ export function sanitizeEdgesForPersistence(
   return edges.filter(
     (edge) =>
       edge &&
-      edge.source !== edge.target &&
+      (edge.source !== edge.target ||
+        (Boolean(edge.sourceHandle && edge.targetHandle) &&
+          edge.sourceHandle !== edge.targetHandle)) &&
       validNodeIds.has(edge.source) &&
       validNodeIds.has(edge.target)
   );
@@ -122,7 +124,13 @@ export function saveWorkspaceAutosaveImmediate(
   storageOverride?: Storage
 ): boolean {
   try {
-    const storage = storageOverride ?? (typeof window !== 'undefined' ? window.localStorage : null);
+    const storage =
+      storageOverride ??
+      (typeof window !== 'undefined'
+        ? window.localStorage
+        : typeof localStorage !== 'undefined'
+        ? localStorage
+        : null);
     if (!storage) return false;
 
     const cleanNodes = sanitizeNodesForPersistence(nodes);
@@ -214,7 +222,13 @@ export function loadWorkspaceAutosaveWithValidation(
   storageOverride?: Storage
 ): AutosaveLoadResult {
   try {
-    const storage = storageOverride ?? (typeof window !== 'undefined' ? window.localStorage : null);
+    const storage =
+      storageOverride ??
+      (typeof window !== 'undefined'
+        ? window.localStorage
+        : typeof localStorage !== 'undefined'
+        ? localStorage
+        : null);
     if (!storage) {
       return { status: 'first_time', nodes: [], edges: [] };
     }

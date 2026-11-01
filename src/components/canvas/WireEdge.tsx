@@ -181,7 +181,7 @@ export const WireEdge: React.FC<EdgeProps> = ({
     targetPosition
   );
 
-  const [edgePath, labelX, labelY] =
+  const [defaultEdgePath, defaultLabelX, defaultLabelY] =
     edgeType === 'smoothstep'
       ? getSmoothStepPath({
           sourceX,
@@ -201,6 +201,17 @@ export const WireEdge: React.FC<EdgeProps> = ({
           targetPosition: effectiveTargetPos,
           curvature: 0.2,
         });
+
+  // When bridging terminals on the same node (e.g. dead-short fault wire across battery terminals),
+  // curve the wire 65px outward to the left so it remains clearly visible outside the node body
+  // and effortlessly selectable on mobile touch screens.
+  const isSelfLoop = source === target;
+  const loopOffset = -65;
+  const edgePath = isSelfLoop
+    ? `M ${sourceX} ${sourceY} C ${sourceX + loopOffset} ${sourceY - 15}, ${targetX + loopOffset} ${targetY + 15}, ${targetX} ${targetY}`
+    : defaultEdgePath;
+  const labelX = isSelfLoop ? (sourceX + targetX) / 2 + loopOffset : defaultLabelX;
+  const labelY = isSelfLoop ? (sourceY + targetY) / 2 : defaultLabelY;
 
   // Calculate visual appearance based on physical electrical state (Solid, realistic physics colors - no neon glow)
   let strokeColor = '#64748B'; // Default neutral conductor

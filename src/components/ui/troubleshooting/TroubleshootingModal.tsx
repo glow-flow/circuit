@@ -93,11 +93,11 @@ export const TroubleshootingModal: React.FC<TroubleshootingModalProps> = ({ isOp
 
   // Load starter faulty circuit onto the canvas
   const handleLoadFaultCircuit = () => {
-    useCircuitStore.getState().setNodes(activeScenario.starterCircuit.nodes);
-    useCircuitStore.setState({
-      edges: activeScenario.starterCircuit.edges,
-    });
-    useCircuitStore.getState().runSimulation();
+    // Deep clone starter circuit nodes and edges to avoid mutating catalog definitions
+    const starterNodes = JSON.parse(JSON.stringify(activeScenario.starterCircuit.nodes));
+    const starterEdges = JSON.parse(JSON.stringify(activeScenario.starterCircuit.edges));
+
+    useCircuitStore.getState().loadCustomCircuit(starterNodes, starterEdges, 'lab');
 
     setSessionStartTime(Date.now());
     setElapsedSeconds(0);
