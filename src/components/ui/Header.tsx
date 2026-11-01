@@ -19,6 +19,7 @@ import {
   Sun,
   Moon,
   GraduationCap,
+  Wrench,
 } from 'lucide-react';
 import { useCircuitStore } from '../../store/useCircuitStore';
 import { TRANSLATIONS } from '../../i18n/translations';
@@ -27,6 +28,7 @@ import { CreditsModal } from './CreditsModal';
 import { PresetGalleryModal } from './presets/PresetGalleryModal';
 import { MissionModal } from './missions/MissionModal';
 import { AcademyModal } from './academy/AcademyModal';
+import { TroubleshootingModal } from './troubleshooting/TroubleshootingModal';
 import { OscilloscopeModal } from './analytics/OscilloscopeModal';
 import { CircuitShareModal } from './workspace/CircuitShareModal';
 
@@ -126,6 +128,16 @@ export const Header: React.FC = () => {
             >
               <Trophy className="w-3.5 h-3.5 text-amber-400" />
               <span>{isId ? 'Tantangan' : 'Challenges'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveModal('troubleshooting')}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
+              title={isId ? 'Lab Pemecahan Masalah & Diagnostik Gangguan' : 'Troubleshooting & Fault Injection Lab'}
+            >
+              <Wrench className="w-3.5 h-3.5 text-rose-400" />
+              <span>{isId ? 'Troubleshoot' : 'Troubleshoot'}</span>
             </button>
 
             <button
@@ -348,6 +360,12 @@ export const Header: React.FC = () => {
       {/* Circuit Academy Modal */}
       <AcademyModal
         isOpen={activeModal === 'academy'}
+        onClose={() => setActiveModal(null)}
+      />
+
+      {/* Fault Injection & Troubleshooting Lab Modal */}
+      <TroubleshootingModal
+        isOpen={activeModal === 'troubleshooting'}
         onClose={() => setActiveModal(null)}
       />
 
