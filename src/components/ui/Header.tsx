@@ -25,15 +25,35 @@ import {
 import { useCircuitStore } from '../../store/useCircuitStore';
 import { TRANSLATIONS } from '../../i18n/translations';
 import { startTour } from '../../utils/tour';
-import { CreditsModal } from './CreditsModal';
-import { PresetGalleryModal } from './presets/PresetGalleryModal';
-import { MissionModal } from './missions/MissionModal';
-import { AcademyModal } from './academy/AcademyModal';
-import { TroubleshootingModal } from './troubleshooting/TroubleshootingModal';
-import { RenewableLabModal } from './renewable/RenewableLabModal';
-import { ExplainableTutorModal } from './tutor/ExplainableTutorModal';
-import { OscilloscopeModal } from './analytics/OscilloscopeModal';
-import { CircuitShareModal } from './workspace/CircuitShareModal';
+
+// Code-splitting secondary modals to optimize initial bundle size & time-to-interactive
+const CreditsModal = React.lazy(() =>
+  import('./CreditsModal').then((m) => ({ default: m.CreditsModal }))
+);
+const PresetGalleryModal = React.lazy(() =>
+  import('./presets/PresetGalleryModal').then((m) => ({ default: m.PresetGalleryModal }))
+);
+const MissionModal = React.lazy(() =>
+  import('./missions/MissionModal').then((m) => ({ default: m.MissionModal }))
+);
+const AcademyModal = React.lazy(() =>
+  import('./academy/AcademyModal').then((m) => ({ default: m.AcademyModal }))
+);
+const TroubleshootingModal = React.lazy(() =>
+  import('./troubleshooting/TroubleshootingModal').then((m) => ({ default: m.TroubleshootingModal }))
+);
+const RenewableLabModal = React.lazy(() =>
+  import('./renewable/RenewableLabModal').then((m) => ({ default: m.RenewableLabModal }))
+);
+const ExplainableTutorModal = React.lazy(() =>
+  import('./tutor/ExplainableTutorModal').then((m) => ({ default: m.ExplainableTutorModal }))
+);
+const OscilloscopeModal = React.lazy(() =>
+  import('./analytics/OscilloscopeModal').then((m) => ({ default: m.OscilloscopeModal }))
+);
+const CircuitShareModal = React.lazy(() =>
+  import('./workspace/CircuitShareModal').then((m) => ({ default: m.CircuitShareModal }))
+);
 
 export const Header: React.FC = () => {
   const simulation = useCircuitStore((state) => state.simulation);
@@ -198,6 +218,37 @@ export const Header: React.FC = () => {
               <GraduationCap className="w-3.5 h-3.5 text-electric-400 shrink-0" />
               <span>{isId ? 'Akademi' : 'Academy'}</span>
             </button>
+
+            {/* Mobile-Visible Module Shortcuts (Troubleshoot, EBT, Tutor) */}
+            <div className="flex lg:hidden items-center gap-0.5 border-l border-white/10 pl-0.5 ml-0.5">
+              <button
+                type="button"
+                onClick={() => setActiveModal('troubleshooting')}
+                title={isId ? 'Troubleshoot' : 'Troubleshoot'}
+                className="p-1.5 rounded-lg text-rose-400 hover:bg-white/5 active:scale-95 cursor-pointer transition-transform"
+                aria-label="Troubleshooting Lab"
+              >
+                <Wrench className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveModal('renewable')}
+                title={isId ? 'EBT / Renewable' : 'Renewable'}
+                className="p-1.5 rounded-lg text-emerald-400 hover:bg-white/5 active:scale-95 cursor-pointer transition-transform"
+                aria-label="Renewable Lab"
+              >
+                <Sun className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveModal('tutor')}
+                title={isId ? 'Tutor Fisika' : 'Physics Tutor'}
+                className="p-1.5 rounded-lg text-electric-400 hover:bg-white/5 active:scale-95 cursor-pointer transition-transform"
+                aria-label="Physics Tutor"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+              </button>
+            </div>
 
             <div className="w-px h-4 bg-white/10 shrink-0 mx-0.5" />
 
@@ -380,53 +431,71 @@ export const Header: React.FC = () => {
         </div>
       </header>
 
-      {/* Circuit Academy Modal */}
-      <AcademyModal
-        isOpen={activeModal === 'academy'}
-        onClose={() => setActiveModal(null)}
-      />
+      {/* Code-split Secondary Modals with Suspense */}
+      <React.Suspense fallback={null}>
+        {activeModal === 'academy' && (
+          <AcademyModal
+            isOpen={true}
+            onClose={() => setActiveModal(null)}
+          />
+        )}
 
-      {/* Fault Injection & Troubleshooting Lab Modal */}
-      <TroubleshootingModal
-        isOpen={activeModal === 'troubleshooting'}
-        onClose={() => setActiveModal(null)}
-      />
+        {activeModal === 'troubleshooting' && (
+          <TroubleshootingModal
+            isOpen={true}
+            onClose={() => setActiveModal(null)}
+          />
+        )}
 
-      {/* Renewable Energy & Microgrid Digital Twin Modal */}
-      <RenewableLabModal
-        isOpen={activeModal === 'renewable'}
-        onClose={() => setActiveModal(null)}
-      />
+        {activeModal === 'renewable' && (
+          <RenewableLabModal
+            isOpen={true}
+            onClose={() => setActiveModal(null)}
+          />
+        )}
 
-      {/* Explainable Circuit Physics Tutor Modal */}
-      <ExplainableTutorModal
-        isOpen={activeModal === 'tutor'}
-        onClose={() => setActiveModal(null)}
-      />
+        {activeModal === 'tutor' && (
+          <ExplainableTutorModal
+            isOpen={true}
+            onClose={() => setActiveModal(null)}
+          />
+        )}
 
-      {/* Preset Gallery Modal */}
-      <PresetGalleryModal
-        isOpen={activeModal === 'gallery'}
-        onClose={() => setActiveModal(null)}
-      />
+        {activeModal === 'gallery' && (
+          <PresetGalleryModal
+            isOpen={true}
+            onClose={() => setActiveModal(null)}
+          />
+        )}
 
-      {/* Mission & Challenge Mode Modal */}
-      <MissionModal
-        isOpen={activeModal === 'missions'}
-        onClose={() => setActiveModal(null)}
-      />
+        {activeModal === 'missions' && (
+          <MissionModal
+            isOpen={true}
+            onClose={() => setActiveModal(null)}
+          />
+        )}
 
-      {/* Live Oscilloscope & Electrical Analytics Modal */}
-      <OscilloscopeModal
-        isOpen={activeModal === 'oscilloscope'}
-        onClose={() => setActiveModal(null)}
-      />
+        {activeModal === 'oscilloscope' && (
+          <OscilloscopeModal
+            isOpen={true}
+            onClose={() => setActiveModal(null)}
+          />
+        )}
 
-      {/* Workspace Persistence, QR Code & Share Modal */}
-      <CircuitShareModal
-        isOpen={activeModal === 'share'}
-        onClose={() => setActiveModal(null)}
-      />
+        {activeModal === 'share' && (
+          <CircuitShareModal
+            isOpen={true}
+            onClose={() => setActiveModal(null)}
+          />
+        )}
+
+        {isCreditsModalOpen && (
+          <CreditsModal
+            isOpen={true}
+            onClose={() => setIsCreditsModalOpen(false)}
+          />
+        )}
+      </React.Suspense>
 
       {/* Modal: Save Custom Preset */}
       {isSaveModalOpen && (
@@ -514,12 +583,6 @@ export const Header: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* Credits Modal */}
-      <CreditsModal
-        isOpen={isCreditsModalOpen}
-        onClose={() => setIsCreditsModalOpen(false)}
-      />
     </>
   );
 };
