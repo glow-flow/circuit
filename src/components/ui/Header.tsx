@@ -29,6 +29,7 @@ import { PresetGalleryModal } from './presets/PresetGalleryModal';
 import { MissionModal } from './missions/MissionModal';
 import { AcademyModal } from './academy/AcademyModal';
 import { TroubleshootingModal } from './troubleshooting/TroubleshootingModal';
+import { RenewableLabModal } from './renewable/RenewableLabModal';
 import { OscilloscopeModal } from './analytics/OscilloscopeModal';
 import { CircuitShareModal } from './workspace/CircuitShareModal';
 
@@ -138,6 +139,16 @@ export const Header: React.FC = () => {
             >
               <Wrench className="w-3.5 h-3.5 text-rose-400" />
               <span>{isId ? 'Troubleshoot' : 'Troubleshoot'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveModal('renewable')}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
+              title={isId ? 'Digital Twin Energi Terbarukan & Microgrid' : 'Renewable Energy & Microgrid Digital Twin'}
+            >
+              <Sun className="w-3.5 h-3.5 text-emerald-400" />
+              <span>{isId ? 'EBT' : 'Renewable'}</span>
             </button>
 
             <button
@@ -366,6 +377,12 @@ export const Header: React.FC = () => {
       {/* Fault Injection & Troubleshooting Lab Modal */}
       <TroubleshootingModal
         isOpen={activeModal === 'troubleshooting'}
+        onClose={() => setActiveModal(null)}
+      />
+
+      {/* Renewable Energy & Microgrid Digital Twin Modal */}
+      <RenewableLabModal
+        isOpen={activeModal === 'renewable'}
         onClose={() => setActiveModal(null)}
       />
 
