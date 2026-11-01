@@ -274,8 +274,8 @@ def build_report():
     )
     add_bullet_point(
         doc,
-        "• Bukti Singkat Lapangan (Observasi Kualitatif di Laboratorium Sekolah): ",
-        "Berdasarkan pengamatan langsung tim saat kegiatan praktikum IPA di laboratorium SMP Negeri 12 Surabaya, praktikum listrik sering terhenti karena bohlam pijar putus dan stok baterai praktikum cepat habis akibat kesalahan pasang kutub kabel. Selain itu, dalam diskusi kelas, sebagian besar siswa mengaku ragu saat menyambungkan rangkaian karena khawatir alat rusak atau timbul percikan api, serta belum memahami hubungan antara besaran Watt pada lampu kamar dengan biaya tagihan listrik PLN."
+        "• Bukti Singkat Lapangan (Hipotesis Awal): ",
+        "Berdasarkan identifikasi awal terhadap kebutuhan pembelajaran IPA, siswa berpotensi mengalami kesulitan memahami rangkaian listrik dan penerapan konsep energi dalam kehidupan sehari-hari. Keterbatasan alat praktikum serta risiko kesalahan pemasangan komponen juga menjadi dugaan kendala yang perlu diteliti lebih lanjut melalui observasi dan uji coba pembelajaran."
     )
 
     # =========================================================================
