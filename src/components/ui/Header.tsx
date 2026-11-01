@@ -94,7 +94,7 @@ export const Header: React.FC = () => {
 
   return (
     <>
-      <header className="h-12 sm:h-14 border-b border-white/10 bg-void-900/95 backdrop-blur-md px-2 sm:px-4 flex items-center justify-between gap-1.5 sm:gap-3 z-20 shrink-0 select-none max-w-full overflow-hidden">
+      <header id="app-header" className="h-12 sm:h-14 border-b border-white/10 bg-void-900/95 backdrop-blur-md px-2 sm:px-4 flex items-center justify-between gap-1 sm:gap-2.5 z-20 shrink-0 select-none w-full max-w-full overflow-hidden overflow-x-clip">
         {/* Left: Brand Identity & Feature Launchers */}
         <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 shrink-0">
           <button
@@ -109,9 +109,10 @@ export const Header: React.FC = () => {
           >
             <Zap className="w-4 h-4 fill-electric-400" />
           </button>
-          <div className="hidden sm:block min-w-0">
+          <div className="min-w-0">
             <h1 className="text-xs sm:text-sm font-bold text-slate-100 tracking-tight flex items-center gap-1.5 whitespace-nowrap leading-[1.1]">
-              <span>Circuit Sandbox</span>
+              <span className="hidden sm:inline">Circuit Sandbox</span>
+              <span className="sm:hidden font-mono font-bold text-electric-400">Circuit</span>
               <span className="hidden lg:inline-block text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-electric-500/10 text-electric-400 border border-electric-500/20 font-medium whitespace-nowrap">
                 IPA Kelas 9
               </span>
@@ -231,7 +232,7 @@ export const Header: React.FC = () => {
               className="flex items-center gap-1.5 px-2 py-1.5 sm:px-3 sm:py-1.5 rounded-lg hover:bg-white/10 text-slate-200 hover:text-white transition-all active:scale-95 cursor-pointer text-[11px] sm:text-xs font-semibold"
             >
               <BookOpen className="w-3.5 h-3.5 text-electric-400 shrink-0" />
-              <span className="hidden md:inline">{isId ? 'Galeri Rangkaian' : 'Circuit Gallery'}</span>
+              <span className="hidden sm:inline">{isId ? 'Galeri' : 'Gallery'}</span>
               <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-electric-500/20 text-electric-300 font-bold border border-electric-500/30">
                 5
               </span>
@@ -249,7 +250,7 @@ export const Header: React.FC = () => {
               className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg bg-electric-500/15 hover:bg-electric-500/25 text-electric-400 text-[11px] sm:text-xs font-semibold transition-all active:scale-95 shrink-0 cursor-pointer"
             >
               <BookmarkPlus className="w-3.5 h-3.5 shrink-0" />
-              <span className="hidden md:inline">{t.savePresetBtn}</span>
+              <span className="hidden sm:inline">{t.savePresetBtn}</span>
             </button>
 
             <button

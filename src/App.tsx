@@ -6,6 +6,7 @@ import {
   Activity,
   Scissors,
   Pin,
+  LayoutGrid,
   Trophy,
   Sparkles,
 } from 'lucide-react';
@@ -86,16 +87,21 @@ export const App: React.FC = () => {
     const cleanupPageExit = setupPageExitPersistence();
 
     // Guard against horizontal layout shifts on mobile viewports
-    const handleScroll = () => {
+    const handleScroll = (e: Event) => {
+      const target = e.target as HTMLElement | Document;
+      if (target && 'scrollLeft' in target && (target as HTMLElement).scrollLeft !== 0) {
+        (target as HTMLElement).scrollLeft = 0;
+      }
       if (typeof window !== 'undefined' && window.scrollX !== 0) {
         window.scrollTo(0, window.scrollY);
       }
-      if (typeof document !== 'undefined' && document.documentElement.scrollLeft !== 0) {
-        document.documentElement.scrollLeft = 0;
+      if (typeof document !== 'undefined') {
+        if (document.documentElement.scrollLeft !== 0) document.documentElement.scrollLeft = 0;
+        if (document.body.scrollLeft !== 0) document.body.scrollLeft = 0;
       }
     };
     if (typeof window !== 'undefined') {
-      window.addEventListener('scroll', handleScroll, { passive: true });
+      window.addEventListener('scroll', handleScroll, { capture: true, passive: true });
     }
 
     return () => {
@@ -189,7 +195,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-[100dvh] min-h-[100dvh] w-screen bg-void-950 text-slate-100 overflow-hidden font-sans">
+    <div className="flex flex-col h-[100dvh] min-h-[100dvh] w-full max-w-full bg-void-950 text-slate-100 overflow-hidden font-sans">
       {/* Top Utility Header */}
       <Header />
 
@@ -319,13 +325,13 @@ export const App: React.FC = () => {
       </div>
 
       {/* Mobile Bottom Navigation Bar (WCAG AA compliant with 44px minimum tap targets) */}
-      <nav className="tour-mobile-nav md:hidden min-h-[52px] bg-void-900 border-t border-white/10 px-2 py-1 flex items-center justify-between gap-1 z-30 shrink-0 select-none">
+      <nav className="tour-mobile-nav md:hidden min-h-[52px] bg-void-900 border-t border-white/10 px-1.5 py-1 flex items-center justify-between gap-0.5 z-30 shrink-0 select-none">
         {/* 1. Add Part Button */}
         <button
           id="tour-btn-tambah"
           type="button"
           onClick={() => openMobileSheet('palette')}
-          className={`flex-1 min-h-[44px] flex flex-col items-center justify-center rounded-xl text-[10px] font-semibold transition-all active:scale-95 cursor-pointer ${
+          className={`flex-1 min-h-[44px] flex flex-col items-center justify-center rounded-xl text-[9px] font-semibold transition-all active:scale-95 cursor-pointer ${
             activeMobileSheet === 'palette'
               ? 'bg-electric-500/20 text-electric-300 font-bold border border-electric-500/40'
               : 'text-slate-300 hover:bg-white/5'
@@ -335,32 +341,43 @@ export const App: React.FC = () => {
           <span className="truncate">{t.addPart}</span>
         </button>
 
-        {/* 2. Challenge Missions Button */}
+        {/* 2. Preset Gallery Button */}
+        <button
+          id="tour-btn-galeri"
+          type="button"
+          onClick={() => setActiveModal('gallery')}
+          className="flex-1 min-h-[44px] flex flex-col items-center justify-center rounded-xl text-[9px] font-semibold text-slate-300 hover:bg-white/5 transition-all active:scale-95 cursor-pointer"
+        >
+          <LayoutGrid className="w-4 h-4 text-electric-400" />
+          <span className="truncate">{isId ? 'Galeri' : 'Gallery'}</span>
+        </button>
+
+        {/* 3. Challenge Missions Button */}
         <button
           type="button"
           onClick={() => setActiveModal('missions')}
-          className="flex-1 min-h-[44px] flex flex-col items-center justify-center rounded-xl text-[10px] font-semibold text-amber-300 hover:bg-amber-500/10 transition-all active:scale-95 cursor-pointer"
+          className="flex-1 min-h-[44px] flex flex-col items-center justify-center rounded-xl text-[9px] font-semibold text-amber-300 hover:bg-amber-500/10 transition-all active:scale-95 cursor-pointer"
         >
           <Trophy className="w-4 h-4 text-amber-400" />
           <span className="truncate">{isId ? 'Misi' : 'Missions'}</span>
         </button>
 
-        {/* 3. Live Oscilloscope Button */}
+        {/* 4. Live Oscilloscope Button */}
         <button
           type="button"
           onClick={() => setActiveModal('oscilloscope')}
-          className="flex-1 min-h-[44px] flex flex-col items-center justify-center rounded-xl text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/10 transition-all active:scale-95 cursor-pointer"
+          className="flex-1 min-h-[44px] flex flex-col items-center justify-center rounded-xl text-[9px] font-semibold text-emerald-300 hover:bg-emerald-500/10 transition-all active:scale-95 cursor-pointer"
         >
           <Activity className="w-4 h-4 text-emerald-400" />
           <span className="truncate">Scope</span>
         </button>
 
-        {/* 4. Inspector & Formulas Button */}
+        {/* 5. Inspector & Formulas Button */}
         <button
           id="tour-btn-info"
           type="button"
           onClick={() => openMobileSheet('inspector')}
-          className={`flex-1 min-h-[44px] flex flex-col items-center justify-center rounded-xl text-[10px] font-semibold transition-all active:scale-95 cursor-pointer ${
+          className={`flex-1 min-h-[44px] flex flex-col items-center justify-center rounded-xl text-[9px] font-semibold transition-all active:scale-95 cursor-pointer ${
             activeMobileSheet === 'inspector' || selectedNode
               ? 'bg-electric-500/20 text-electric-300 font-bold border border-electric-500/40'
               : 'text-slate-300 hover:bg-white/5'
@@ -370,11 +387,11 @@ export const App: React.FC = () => {
           <span className="truncate">{t.inspector}</span>
         </button>
 
-        {/* 5. Circuit 4.0 Hub Menu Button */}
+        {/* 6. Circuit 4.0 Hub Menu Button */}
         <button
           type="button"
           onClick={() => setIsMobileHubOpen(true)}
-          className={`flex-1 min-h-[44px] flex flex-col items-center justify-center rounded-xl text-[10px] font-semibold transition-all active:scale-95 cursor-pointer ${
+          className={`flex-1 min-h-[44px] flex flex-col items-center justify-center rounded-xl text-[9px] font-semibold transition-all active:scale-95 cursor-pointer ${
             isMobileHubOpen
               ? 'bg-purple-500/20 text-purple-300 font-bold border border-purple-500/40'
               : 'text-slate-300 hover:bg-white/5'

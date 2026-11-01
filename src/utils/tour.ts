@@ -365,6 +365,10 @@ export function startTour(): void {
           if (document.body) document.body.scrollLeft = 0;
           const rootEl = document.getElementById('root');
           if (rootEl) rootEl.scrollLeft = 0;
+          const headerEl = document.querySelector('header');
+          if (headerEl) headerEl.scrollLeft = 0;
+          const appDiv = document.querySelector('.flex.flex-col');
+          if (appDiv) (appDiv as HTMLElement).scrollLeft = 0;
         }
       } catch {
         // Safe fallback in non-browser testing

@@ -19,10 +19,17 @@ html, body, #root {
   background-color: #09090b;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   overflow: hidden !important;
-  overflow-x: hidden !important;
+  overflow-x: clip !important;
   position: fixed;
   inset: 0;
   touch-action: manipulation;
+}
+
+header, #app-header {
+  overflow: clip !important;
+  overflow-x: clip !important;
+  max-width: 100% !important;
+  width: 100% !important;
 }
 
 /* React Flow customizations */
