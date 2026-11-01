@@ -413,10 +413,25 @@ function recalculateCircuit(
       };
     }
 
-    if (node.data.type === 'transmission-tower' || node.data.type === 'transmission_tower') {
+    if (
+      node.data.type === 'transmission-tower' ||
+      node.data.type === 'transmission_tower' ||
+      node.data.type === 'distribution-panel' ||
+      node.data.type === 'distribution_panel'
+    ) {
       const isActive = isTransmissionNodeActive(node.data);
       const effectiveConnectedCount = isActive ? activeTowersCount : 1;
-      const busVoltage = isActive && activeTowersCount > 1 ? maxGridVoltage : 0;
+      const isStandaloneLab =
+        (node.data.type === 'distribution-panel' || node.data.type === 'distribution_panel') &&
+        node.data.worldMode !== 'outside';
+
+      const busVoltage = isActive
+        ? activeTowersCount > 1
+          ? maxGridVoltage
+          : isStandaloneLab
+          ? (node.data.stepDownVoltage ?? 12.0)
+          : 0
+        : 0;
 
       return {
         ...node,
@@ -1007,9 +1022,11 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       }
       case 'transmission-tower':
       case 'transmission_tower':
+      case 'distribution-panel':
+      case 'distribution_panel':
         defaultData = {
           ...defaultData,
-          type: 'transmission-tower',
+          type,
           isMcbOn: true,
           isMcbTripped: false,
           stepDownVoltage: null,

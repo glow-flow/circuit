@@ -201,8 +201,8 @@ export const PanelDistribusiNode: React.FC<NodeProps<CircuitElementData>> = memo
                     ? `GRID AKTIF (${connectedCount})`
                     : `GRID LINK (${connectedCount})`
                   : isId
-                  ? 'STANDBY (ALAM)'
-                  : 'STANDBY'}
+                  ? 'CATU DAYA LAB'
+                  : 'LAB DC SUPPLY'}
               </span>
               <span className="text-cyan-400 text-[8px] font-black">DC</span>
             </div>
@@ -214,7 +214,7 @@ export const PanelDistribusiNode: React.FC<NodeProps<CircuitElementData>> = memo
                   className={`text-sm font-black tracking-tight ${
                     isMcbTripped
                       ? 'text-red-400'
-                      : isGridConnected
+                      : isMcbOn
                       ? 'text-cyan-300 drop-shadow-[0_0_8px_rgba(34,211,238,0.7)]'
                       : 'text-slate-400'
                   }`}

@@ -27,11 +27,17 @@
 import { CircuitElementData, WireConnection, SimulationResult } from '../types/circuit';
 import { canBulbFitSocket, canBulbFitPinSocket, getBulbSpec } from '../constants/bulbCatalog';
 import { UnionFind } from './unionFind';
-import { computeEffectiveBatteryVoltage } from './batterySoC';
+import { computeEffectiveBatteryVoltage, CURRENT_FLOW_EPSILON } from './batterySoC';
 import { getSolarPanelVoltage, SOLAR_PANEL_INTERNAL_RESISTANCE } from './solarPanel';
 
 export const SHORT_CIRCUIT_CURRENT_THRESHOLD = 10.0; // Amperes threshold for short-circuit trip
-const BATTERY_INTERNAL_RESISTANCE = 0.05; // 50mΩ internal resistance per cell to prevent singularity
+export const BATTERY_INTERNAL_RESISTANCE = 0.05; // 50mΩ internal resistance per cell to prevent singularity
+export const BATTERY_9V_INTERNAL_RESISTANCE = 2.0; // 2.0Ω discharge internal resistance
+export const BATTERY_CHARGING_RESISTANCE_BASE = 1.5; // 1.5Ω base charging resistance for AA cell
+export const BATTERY_9V_CHARGING_RESISTANCE_BASE = 2.0; // 2.0Ω base charging resistance for 9V battery
+export const BATTERY_MAX_CHARGING_CURRENT = 1.5; // 1.5A CC limit for AA cell
+export const BATTERY_9V_MAX_CHARGING_CURRENT = 1.5; // 1.5A CC limit for 9V battery
+const MAX_SOLVER_PASSES = 5;
 const SWITCH_CLOSED_RESISTANCE = 0.001; // 1mΩ closed switch resistance
 const SWITCH_OPEN_RESISTANCE = 1e9; // 1GΩ open switch resistance
 const AMMETER_INTERNAL_RESISTANCE = 0.001; // 1mΩ ammeter resistance
@@ -104,13 +110,100 @@ export function isSocketWithUnidirectionalLed(component: CircuitElementData): bo
 }
 
 /**
+ * Checks whether a circuit element is an electrochemical battery.
+ * Time Complexity: O(1).
+ * 
+ * @param component - Electrical component data
+ * @returns True if component is battery, battery9v, or battery-holder
+ */
+export function isBatteryComponent(component: CircuitElementData): boolean {
+  return (
+    component.type === 'battery' ||
+    component.type === 'battery9v' ||
+    component.type === 'battery-holder'
+  );
+}
+
+/**
+ * Resolves the nominal internal discharge resistance of a voltage source.
+ * Time Complexity: O(1).
+ * 
+ * @param sourceComp - Active voltage source component
+ * @returns Internal discharge resistance in Ohms
+ */
+export function getSourceDischargeResistance(sourceComp: CircuitElementData): number {
+  if (sourceComp.type === 'battery') {
+    return Math.max(0.01, sourceComp.internalResistance ?? BATTERY_INTERNAL_RESISTANCE);
+  }
+  if (sourceComp.type === 'battery9v') {
+    return Math.max(0.01, sourceComp.internalResistance ?? BATTERY_9V_INTERNAL_RESISTANCE);
+  }
+  if (sourceComp.type === 'battery-holder') {
+    const cellCount = Math.max(1, sourceComp.batteryCount ?? (sourceComp.hasBattery ? 2 : 1));
+    return Math.max(
+      0.01,
+      sourceComp.internalResistance ?? BATTERY_INTERNAL_RESISTANCE * cellCount
+    );
+  }
+  if (sourceComp.type === 'solar-panel' || sourceComp.type === 'solar_panel') {
+    return Math.max(0.01, sourceComp.internalResistance ?? SOLAR_PANEL_INTERNAL_RESISTANCE);
+  }
+  if (sourceComp.type === 'wind-turbine' || sourceComp.type === 'wind_turbine') {
+    return Math.max(0.01, sourceComp.internalResistance ?? 0.1);
+  }
+  if (sourceComp.type === 'distribution-panel' || sourceComp.type === 'distribution_panel') {
+    return Math.max(0.01, sourceComp.internalResistance ?? 0.2);
+  }
+  if (sourceComp.internalResistance !== undefined) {
+    return Math.max(0.01, sourceComp.internalResistance);
+  }
+  return BATTERY_INTERNAL_RESISTANCE;
+}
+
+/**
+ * Resolves the electrochemical charging parameters (base resistance and CC maximum current)
+ * for an electrochemical battery component.
+ * Time Complexity: O(1).
+ * 
+ * @param component - Battery component data
+ * @returns Object with baseResistance (Ohms) and maxCurrent (Amperes)
+ */
+export function getBatteryChargingParameters(component: CircuitElementData): {
+  baseResistance: number;
+  maxCurrent: number;
+} {
+  if (component.type === 'battery9v') {
+    return {
+      baseResistance: component.internalResistance ?? BATTERY_9V_CHARGING_RESISTANCE_BASE,
+      maxCurrent: BATTERY_9V_MAX_CHARGING_CURRENT,
+    };
+  }
+  if (component.type === 'battery-holder') {
+    const cellCount = Math.max(1, component.batteryCount ?? 2);
+    return {
+      baseResistance: BATTERY_CHARGING_RESISTANCE_BASE * cellCount,
+      maxCurrent: BATTERY_MAX_CHARGING_CURRENT,
+    };
+  }
+  return {
+    baseResistance: BATTERY_CHARGING_RESISTANCE_BASE,
+    maxCurrent: BATTERY_MAX_CHARGING_CURRENT,
+  };
+}
+
+/**
  * Determines whether a component currently acts as an active independent DC voltage source.
- * Supports both individual AA batteries (1.5V) and loaded Battery Holders (1.5V / 3.0V).
+ * Supports individual AA batteries (1.5V), loaded Battery Holders (1.5V / 3.0V),
+ * 9V batteries, solar panels, wind turbines, and standalone Lab Distribution Panels.
  * 
  * @param component - Circuit component data
+ * @param allComponents - Optional full list of circuit components for grid context
  * @returns True if component supplies active EMF voltage
  */
-export function isActiveVoltageSource(component: CircuitElementData): boolean {
+export function isActiveVoltageSource(
+  component: CircuitElementData,
+  allComponents?: CircuitElementData[]
+): boolean {
   if (component.type === 'battery') {
     return (component.voltage ?? 1.5) >= 0;
   }
@@ -127,6 +220,22 @@ export function isActiveVoltageSource(component: CircuitElementData): boolean {
   if (component.type === 'wind-turbine' || component.type === 'wind_turbine') {
     return true;
   }
+  if (component.type === 'distribution-panel' || component.type === 'distribution_panel') {
+    if (!isTransmissionNodeActive(component)) return false;
+    // If there is an active renewable generator supplying the grid, the generator is the source
+    if (allComponents) {
+      const hasGridGenerator = allComponents.some(
+        (c) =>
+          (c.type === 'solar-panel' ||
+            c.type === 'solar_panel' ||
+            c.type === 'wind-turbine' ||
+            c.type === 'wind_turbine') &&
+          c.worldMode === 'outside'
+      );
+      if (hasGridGenerator) return false;
+    }
+    return true;
+  }
   return false;
 }
 
@@ -136,6 +245,7 @@ export function isActiveVoltageSource(component: CircuitElementData): boolean {
  * - Single AA Battery ('battery'): defaults to 1.5V nominal
  * - 9V Alkaline Battery ('battery9v'): defaults to 9.0V nominal
  * - Dual AA Battery Holder ('battery-holder'): 1.5V per series cell (2 cells = 3.0V nominal)
+ * - Standalone Distribution Panel: selected stepDownVoltage (or 12.0V nominal)
  * 
  * Voltage Sag Curve:
  * - currentCharge >= 20%: 100% nominal EMF
@@ -160,6 +270,8 @@ export function getVoltageSourceNominalVoltage(component: CircuitElementData): n
   } else if (component.type === 'wind-turbine' || component.type === 'wind_turbine') {
     const turbineSpeed = component.speed ?? 50;
     return component.voltage ?? (turbineSpeed / 100) * 12.0;
+  } else if (component.type === 'distribution-panel' || component.type === 'distribution_panel') {
+    return component.stepDownVoltage ?? 12.0;
   } else {
     return 0;
   }
@@ -399,15 +511,21 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
     // 3. Identify Independent Voltage Sources & Iteratively Enforce Semiconductor Diode Constraints:
     //    - Blocking Diode (Schottky) on Solar Panels & Wind Turbines (prevents reverse current I > 0)
     //    - Unidirectional LED Polarity on sockets holding LED bulbs (conducts only when V_p1 >= V_p2)
-    const allVoltageSourceComponents = components.filter((c) => isActiveVoltageSource(c));
+    //    - Dynamic Adaptive CC-CV Resistance on electrochemical batteries during charging
+    const allVoltageSourceComponents = components.filter((c) => isActiveVoltageSource(c, components));
     const blockedGeneratorSet = new Set<string>();
     const reverseBiasedSocketSet = new Set<string>();
+
+    const sourceResistanceMap = new Map<string, number>();
+    for (const sourceComp of allVoltageSourceComponents) {
+      sourceResistanceMap.set(sourceComp.id, getSourceDischargeResistance(sourceComp));
+    }
 
     let activeVoltageSources = allVoltageSourceComponents;
     let solution: number[] = [];
     const nodeVoltageMap: Record<string, number> = {};
 
-    for (let pass = 0; pass < 3; pass++) {
+    for (let pass = 0; pass < MAX_SOLVER_PASSES; pass++) {
       activeVoltageSources = allVoltageSourceComponents.filter(
         (c) => !blockedGeneratorSet.has(c.id)
       );
@@ -501,23 +619,8 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
           coefficientMatrix[voltageSourceRowIndex][negativeNetIndex] -= 1;
         }
 
-        let seriesInternalResistance = BATTERY_INTERNAL_RESISTANCE;
-        if (sourceComp.type === 'battery9v') {
-          seriesInternalResistance = Math.max(0.01, sourceComp.internalResistance ?? 2.0);
-        } else if (sourceComp.type === 'battery-holder') {
-          const cellCount = sourceComp.batteryCount ?? 2;
-          seriesInternalResistance =
-            sourceComp.internalResistance ?? BATTERY_INTERNAL_RESISTANCE * Math.max(1, cellCount);
-        } else if (sourceComp.type === 'solar-panel' || sourceComp.type === 'solar_panel') {
-          seriesInternalResistance = Math.max(
-            0.01,
-            sourceComp.internalResistance ?? SOLAR_PANEL_INTERNAL_RESISTANCE
-          );
-        } else if (sourceComp.type === 'wind-turbine' || sourceComp.type === 'wind_turbine') {
-          seriesInternalResistance = Math.max(0.01, sourceComp.internalResistance ?? 0.1);
-        } else if (sourceComp.internalResistance !== undefined) {
-          seriesInternalResistance = Math.max(0.01, sourceComp.internalResistance);
-        }
+        const seriesInternalResistance =
+          sourceResistanceMap.get(sourceComp.id) ?? getSourceDischargeResistance(sourceComp);
 
         coefficientMatrix[voltageSourceRowIndex][voltageSourceRowIndex] =
           -seriesInternalResistance;
@@ -566,6 +669,41 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
         }
       }
 
+      // Adaptive Battery Charging Resistance (CC Limiter / Constant Current Regulation):
+      activeVoltageSources.forEach((sourceComp, sourceIndex) => {
+        if (!isBatteryComponent(sourceComp)) return;
+
+        const sourceCurrentIndex = nonGroundNetCount + sourceIndex;
+        const solvedCurrent = solution[sourceCurrentIndex] ?? 0;
+
+        const posNet = pinToNetMap.get(`${sourceComp.id}:pos`);
+        const negNet = pinToNetMap.get(`${sourceComp.id}:neg`);
+        if (!posNet || !negNet) return;
+
+        const vPos = nodeVoltageMap[posNet] ?? 0;
+        const vNeg = nodeVoltageMap[negNet] ?? 0;
+        const vTerm = vPos - vNeg;
+        const nominalVoltage = getRegulatedSourceVoltage(sourceComp);
+
+        const currentResistance =
+          sourceResistanceMap.get(sourceComp.id) ?? getSourceDischargeResistance(sourceComp);
+
+        let targetResistance = getSourceDischargeResistance(sourceComp);
+
+        // Charging occurs when current flows into (+) (solvedCurrent > 1e-5) or external terminal voltage exceeds EMF
+        if (solvedCurrent > 1e-5 || vTerm > nominalVoltage + 1e-5) {
+          const { baseResistance, maxCurrent } = getBatteryChargingParameters(sourceComp);
+          const deltaV = Math.max(0, vTerm - nominalVoltage);
+          // Adaptive CC Limiter: dynamic resistance bounds charging current to maxCurrent
+          targetResistance = Math.max(baseResistance, deltaV / maxCurrent);
+        }
+
+        if (Math.abs(currentResistance - targetResistance) > 0.02) {
+          sourceResistanceMap.set(sourceComp.id, targetResistance);
+          stateChanged = true;
+        }
+      });
+
       if (!stateChanged) {
         break;
       }
@@ -596,7 +734,10 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
 
       branchCurrentMap[sourceComp.id] = sourceCurrent;
 
-      if (absoluteCurrent > SHORT_CIRCUIT_CURRENT_THRESHOLD) {
+      const isBattery = isBatteryComponent(sourceComp);
+      const isLegitimateCharging = isBattery && sourceCurrent > CURRENT_FLOW_EPSILON;
+
+      if (!isLegitimateCharging && absoluteCurrent > SHORT_CIRCUIT_CURRENT_THRESHOLD) {
         isOverallShortCircuit = true;
         shortCircuitBranches.push(sourceComp.id);
       }
@@ -679,8 +820,17 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
         component.type === 'distribution_panel';
       if (!isWaypoint && !isTower) continue;
 
-      if (isTower && (!isTransmissionNodeActive(component) || activeTransmissionTowers.length < 2)) {
+      if (
+        isTower &&
+        (!isTransmissionNodeActive(component) ||
+          (activeTransmissionTowers.length < 2 &&
+            !activeVoltageSources.some((s) => s.id === component.id)))
+      ) {
         branchCurrentMap[component.id] = 0;
+        continue;
+      }
+
+      if (isTower && activeVoltageSources.some((s) => s.id === component.id)) {
         continue;
       }
 

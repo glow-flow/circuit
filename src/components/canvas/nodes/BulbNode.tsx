@@ -1,5 +1,5 @@
 import React from 'react';
-import { NodeProps } from 'reactflow';
+import { NodeProps, Handle, Position } from 'reactflow';
 import { RotateCcw, Info } from 'lucide-react';
 import { CircuitElementData } from '../../../types/circuit';
 import { useCircuitStore } from '../../../store/useCircuitStore';
@@ -81,13 +81,28 @@ export const BulbNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, se
         {isBlown && (
           <span className="absolute right-1 top-1 z-20 h-2.5 w-2.5 animate-pulse rounded-full bg-red-500 shadow-glow-danger" />
         )}
+
+        {/* Anti-confusion helper badge: indicates bulb needs socket */}
+        <div className="absolute -bottom-2.5 inset-x-0 flex justify-center pointer-events-none z-30">
+          <span className="bg-slate-950/95 border border-amber-500/70 text-amber-300 text-[8px] font-mono font-bold px-1.5 py-0.5 rounded-full shadow-md flex items-center gap-1 backdrop-blur-sm whitespace-nowrap">
+            ⚠️ {isPinBase ? (isIndonesian ? 'Butuh Fiting Pin' : 'Needs Pin Socket') : (isIndonesian ? 'Butuh Fiting' : 'Needs Socket')}
+          </span>
+        </div>
       </div>
 
       {/* 
-        ELECTRICAL HANDLES:
-        - Standalone bulbs have ZERO handles (passive inventory items).
-        - Must be snapped into a SocketNode or PinSocketNode to receive electrical terminals.
+        ELECTRICAL DROP INTERCEPTOR HANDLE:
+        - Invisible full-area target handle that intercepts wire drops.
+        - Triggers onConnect in useCircuitStore so user receives instant educational feedback
+          instead of silent connection rejection.
       */}
+      <Handle
+        type="target"
+        position={Position.Top}
+        id="bulb-wire-target"
+        className="!w-full !h-full !inset-0 !opacity-0 !cursor-not-allowed !pointer-events-auto !rounded-lg !border-0"
+        title={isIndonesian ? 'Bohlam butuh fiting lampu' : 'Bulb requires lamp socket'}
+      />
 
       {/* Popover Details: ONLY when selected */}
       {selected && (

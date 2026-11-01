@@ -6,6 +6,8 @@ import {
   stepBatteryCharge,
   getDefaultBatteryCapacity,
 } from '../batterySoC';
+import { solveCircuitMNA } from '../mnaSolver';
+import { CircuitElementData, WireConnection } from '../../types/circuit';
 
 describe('Battery State of Charge (SoC) & Voltage Sag Physics', () => {
   describe('computeEffectiveBatteryVoltage', () => {
@@ -103,6 +105,80 @@ describe('Battery State of Charge (SoC) & Voltage Sag Physics', () => {
       expect(getDefaultBatteryCapacity('battery9v')).toBe(500);
       expect(getDefaultBatteryCapacity('battery-holder', 2)).toBe(2000);
       expect(getDefaultBatteryCapacity('battery-holder', 1)).toBe(1000);
+    });
+  });
+
+  describe('Battery Charging via MNA Solver', () => {
+    it('safely charges an empty (0V / 0% SoC) AA battery without tripping short circuit', () => {
+      const solar12v: CircuitElementData = {
+        id: 'solar_chg',
+        type: 'solar-panel',
+        voltage: 12.0,
+        internalResistance: 0.2,
+        label: '12V Solar Panel',
+      };
+
+      const deadBattery: CircuitElementData = {
+        id: 'bat_empty',
+        type: 'battery',
+        voltage: 1.5,
+        currentCharge: 0, // 0V effective EMF
+        label: 'Empty AA Battery',
+      };
+
+      const chargingWires: WireConnection[] = [
+        { id: 'cw1', source: 'solar_chg', sourceHandle: 'pos', target: 'bat_empty', targetHandle: 'pos' },
+        { id: 'cw2', source: 'solar_chg', sourceHandle: 'neg', target: 'bat_empty', targetHandle: 'neg' },
+      ];
+
+      const result = solveCircuitMNA({
+        components: [solar12v, deadBattery],
+        wires: chargingWires,
+      });
+
+      // Must not flag short circuit
+      expect(result.isShortCircuit).toBe(false);
+      expect(result.shortCircuitBranches).not.toContain('bat_empty');
+
+      // Current should be positive (charging) and bounded by CC limit (<= 1.55A)
+      const chargeCurrent = result.branchCurrents['bat_empty'];
+      expect(chargeCurrent).toBeGreaterThan(0.5);
+      expect(chargeCurrent).toBeLessThanOrEqual(1.55);
+    });
+
+    it('charges an empty AA battery using standalone Lab Distribution Panel (6V) without tripping MCB', () => {
+      const labPanel: CircuitElementData = {
+        id: 'lab_pnl',
+        type: 'distribution-panel',
+        worldMode: 'lab',
+        isMcbOn: true,
+        isMcbTripped: false,
+        stepDownVoltage: 6,
+        label: 'Panel Distribusi Lab (6V)',
+      };
+
+      const emptyBattery: CircuitElementData = {
+        id: 'bat_empty_lab',
+        type: 'battery',
+        voltage: 1.5,
+        currentCharge: 0,
+        label: 'Baterai Kosong',
+      };
+
+      const wires: WireConnection[] = [
+        { id: 'w1', source: 'lab_pnl', sourceHandle: 'pos', target: 'bat_empty_lab', targetHandle: 'pos' },
+        { id: 'w2', source: 'lab_pnl', sourceHandle: 'neg', target: 'bat_empty_lab', targetHandle: 'neg' },
+      ];
+
+      const result = solveCircuitMNA({
+        components: [labPanel, emptyBattery],
+        wires,
+      });
+
+      expect(result.isShortCircuit).toBe(false);
+      expect(result.branchCurrents['bat_empty_lab']).toBeGreaterThan(0.5);
+      expect(result.branchCurrents['bat_empty_lab']).toBeLessThanOrEqual(1.55);
+      expect(Math.abs(result.branchCurrents['lab_pnl'])).toBeGreaterThan(0.5);
     });
   });
 });

@@ -91,6 +91,15 @@ export const BatteryNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data,
             </span>
           </div>
         )}
+
+        {/* Active Charging Indicator Badge on Canvas */}
+        {chargeState === 'charging' && (
+          <div className="absolute -top-1 -right-3 z-30 pointer-events-none">
+            <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-emerald-950/95 border border-emerald-500/70 text-emerald-300 text-[8px] font-mono font-bold shadow-md shadow-emerald-950/60 animate-pulse whitespace-nowrap">
+              ⚡ +{charge.toFixed(0)}%
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Negative Terminal Handle (-) at Bottom */}

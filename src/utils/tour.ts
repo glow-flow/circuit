@@ -71,7 +71,7 @@ export const TOUR_STEPS: DriveStep[] = [
     popover: {
       title: 'Pilih Alat',
       description:
-        "Pilih komponen, lalu tekan 'Taruh di kanvas'. Di desktop, kamu bisa drag langsung ke kanvas.",
+        "Pilih komponen lalu tekan 'Taruh di kanvas' (atau seret langsung). 💡 PENTING: Bola lampu harus dipasang ke dudukan 'Fiting Lampu (Socket)' terlebih dahulu sebelum bisa disambungkan kabel!",
       side: 'top',
       align: 'center',
     },
@@ -81,7 +81,7 @@ export const TOUR_STEPS: DriveStep[] = [
     popover: {
       title: 'Ubah Properti Komponen',
       description:
-        'Klik komponen di kanvas (di HP, ketuk tombol "Atur" yang muncul di atas), lalu ubah Jenis Lampu (7 tipe), Hambatan (Ω), atau Tegangan Baterai (V) di panel ini.',
+        'Klik komponen di kanvas (di HP, ketuk tombol "Atur" yang muncul di atas), lalu ubah Jenis Lampu (7 tipe), Hambatan (Ω), atau Tegangan Baterai (V). Kamu juga bisa mengecas baterai kosong lewat Panel Distribusi Lab!',
       side: 'top',
       align: 'center',
     },
@@ -101,7 +101,7 @@ export const TOUR_STEPS: DriveStep[] = [
     popover: {
       title: 'Klik Salah Satu Kabel',
       description:
-        'Coba klik/ketuk salah satu garis kabel di kanvas (kabel yang dipilih akan menyala kuning-oranye). Saat kabel diklik, tombol aksi kabel akan muncul di bagian atas kanvas.',
+        'Tarik kabel dari kutub merah (+) baterai/panel ke terminal fiting lampu (p1), lalu dari p2 kembali ke kutub (-). Klik salah satu garis kabel di kanvas untuk memunculkan tombol aksi kabel di atas.',
       side: 'bottom',
       align: 'center',
     },
@@ -111,7 +111,7 @@ export const TOUR_STEPS: DriveStep[] = [
     popover: {
       title: 'Pin Kabel & Putus Kabel',
       description:
-        "Setelah kabel diklik, tekan 'Tambah Tekukan' (atau ketuk 2x pada kabel) untuk membuat pin titik belokan (Anchor Point) agar jalur kabel rapi, atau tekan 'Potong Kabel' untuk memutus sambungan.",
+        "Setelah kabel diklik, tekan 'Tambah Tekukan' (atau ketuk 2x pada kabel) untuk membuat pin belokan rapi, atau 'Potong Kabel' untuk memutus. Jika MCB Panel Trip, tekan tombol merah TRIP untuk me-reset kabel.",
       side: 'bottom',
       align: 'center',
     },
