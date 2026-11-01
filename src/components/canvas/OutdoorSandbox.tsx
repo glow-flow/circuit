@@ -748,6 +748,7 @@ const OutdoorSandboxInner: React.FC = () => {
             <ReactFlow
               nodes={outdoorNodes}
               edges={outdoorEdges}
+              proOptions={{ hideAttribution: true }}
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}

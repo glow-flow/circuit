@@ -269,6 +269,7 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
         snapToGrid
         snapGrid={[15, 15]}
         deleteKeyCode={['Backspace', 'Delete']}
+        proOptions={{ hideAttribution: true }}
         className="bg-transparent relative z-10"
       >
         <Background
@@ -278,7 +279,8 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
           color={theme === 'light' ? '#CBD5E1' : '#27272A'}
         />
         <Controls
-          className="!bg-void-900 !border !border-white/10 !rounded-lg !overflow-hidden [&>button]:!bg-void-900 [&>button]:!border-b [&>button]:!border-white/10 [&>button]:!text-slate-300 hover:[&>button]:!bg-void-800"
+          position="bottom-left"
+          className="!mb-14 sm:!mb-0 !bg-void-900 !border !border-white/10 !rounded-lg !overflow-hidden [&>button]:!bg-void-900 [&>button]:!border-b [&>button]:!border-white/10 [&>button]:!text-slate-300 hover:[&>button]:!bg-void-800"
           showInteractive={false}
         />
       </ReactFlow>

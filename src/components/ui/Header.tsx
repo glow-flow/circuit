@@ -213,42 +213,11 @@ export const Header: React.FC = () => {
               type="button"
               onClick={() => setActiveModal('academy')}
               title={isId ? 'Buka Akademi Kelistrikan' : 'Open Circuit Academy'}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-electric-500/15 hover:bg-electric-500/25 text-electric-300 transition-all active:scale-95 cursor-pointer text-[11px] sm:text-xs font-semibold"
+              className="flex items-center gap-1.5 px-2 py-1.5 sm:px-2.5 sm:py-1.5 rounded-lg bg-electric-500/15 hover:bg-electric-500/25 text-electric-300 transition-all active:scale-95 cursor-pointer text-[11px] sm:text-xs font-semibold"
             >
               <GraduationCap className="w-3.5 h-3.5 text-electric-400 shrink-0" />
-              <span>{isId ? 'Akademi' : 'Academy'}</span>
+              <span className="hidden sm:inline">{isId ? 'Akademi' : 'Academy'}</span>
             </button>
-
-            {/* Mobile-Visible Module Shortcuts (Troubleshoot, EBT, Tutor) */}
-            <div className="flex lg:hidden items-center gap-0.5 border-l border-white/10 pl-0.5 ml-0.5">
-              <button
-                type="button"
-                onClick={() => setActiveModal('troubleshooting')}
-                title={isId ? 'Troubleshoot' : 'Troubleshoot'}
-                className="p-1.5 rounded-lg text-rose-400 hover:bg-white/5 active:scale-95 cursor-pointer transition-transform"
-                aria-label="Troubleshooting Lab"
-              >
-                <Wrench className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveModal('renewable')}
-                title={isId ? 'EBT / Renewable' : 'Renewable'}
-                className="p-1.5 rounded-lg text-emerald-400 hover:bg-white/5 active:scale-95 cursor-pointer transition-transform"
-                aria-label="Renewable Lab"
-              >
-                <Sun className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveModal('tutor')}
-                title={isId ? 'Tutor Fisika' : 'Physics Tutor'}
-                className="p-1.5 rounded-lg text-electric-400 hover:bg-white/5 active:scale-95 cursor-pointer transition-transform"
-                aria-label="Physics Tutor"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-              </button>
-            </div>
 
             <div className="w-px h-4 bg-white/10 shrink-0 mx-0.5" />
 
@@ -259,10 +228,10 @@ export const Header: React.FC = () => {
               onClick={() => setActiveModal('gallery')}
               title={isId ? 'Buka Galeri Rangkaian Interaktif' : 'Open Interactive Circuit Gallery'}
               aria-label="Open Circuit Gallery"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-lg hover:bg-white/10 text-slate-200 hover:text-white transition-all active:scale-95 cursor-pointer text-[11px] sm:text-xs font-semibold"
+              className="flex items-center gap-1.5 px-2 py-1.5 sm:px-3 sm:py-1.5 rounded-lg hover:bg-white/10 text-slate-200 hover:text-white transition-all active:scale-95 cursor-pointer text-[11px] sm:text-xs font-semibold"
             >
               <BookOpen className="w-3.5 h-3.5 text-electric-400 shrink-0" />
-              <span>{isId ? 'Galeri Rangkaian' : 'Circuit Gallery'}</span>
+              <span className="hidden md:inline">{isId ? 'Galeri Rangkaian' : 'Circuit Gallery'}</span>
               <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-electric-500/20 text-electric-300 font-bold border border-electric-500/30">
                 5
               </span>
@@ -284,7 +253,6 @@ export const Header: React.FC = () => {
             </button>
 
             <button
-              id="tour-btn-reset"
               type="button"
               onClick={() => loadPreset('simple-lamp')}
               className="hidden lg:flex p-1.5 ml-0.5 rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all active:scale-95 shrink-0 cursor-pointer"
@@ -369,7 +337,7 @@ export const Header: React.FC = () => {
               onClick={() => startTour()}
               title={isId ? 'Mulai Panduan Interaktif' : 'Start Interactive Tour'}
               aria-label={isId ? 'Mulai Panduan Interaktif' : 'Start Interactive Tour'}
-              className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 text-[11px] font-medium transition-all active:scale-95 shrink-0 cursor-pointer"
+              className="flex items-center gap-1 px-1.5 sm:px-2 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 text-[11px] font-medium transition-all active:scale-95 shrink-0 cursor-pointer"
             >
               <HelpCircle className="w-3.5 h-3.5 text-electric-400" />
               <span className="hidden lg:inline">{isId ? 'Panduan' : 'Guide'}</span>
@@ -392,7 +360,7 @@ export const Header: React.FC = () => {
                   : 'Dark Mode'
               }
               aria-label="Toggle Theme"
-              className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 text-[10px] sm:text-xs font-mono font-bold transition-all active:scale-95 shrink-0 cursor-pointer"
+              className="flex items-center gap-1 px-1.5 sm:px-2 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 text-[10px] sm:text-xs font-mono font-bold transition-all active:scale-95 shrink-0 cursor-pointer"
             >
               {theme === 'dark' ? (
                 <Sun className="w-3.5 h-3.5 text-amber-400" />
@@ -408,7 +376,7 @@ export const Header: React.FC = () => {
               type="button"
               onClick={toggleLanguage}
               title={t.langToggleTitle}
-              className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 text-[10px] sm:text-xs font-mono font-bold transition-all active:scale-95 shrink-0 cursor-pointer"
+              className="flex items-center gap-1 px-1.5 sm:px-2 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 text-[10px] sm:text-xs font-mono font-bold transition-all active:scale-95 shrink-0 cursor-pointer"
             >
               <Globe className="w-3.5 h-3.5 text-slate-400 hidden sm:inline" />
               <span>{language === 'id' ? 'ID' : 'EN'}</span>
@@ -421,7 +389,7 @@ export const Header: React.FC = () => {
               id="tour-btn-reset"
               type="button"
               onClick={clearCanvas}
-              className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-950/40 text-xs font-medium transition-all active:scale-95 shrink-0 cursor-pointer"
+              className="flex items-center gap-1 px-1.5 sm:px-2 py-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-950/40 text-xs font-medium transition-all active:scale-95 shrink-0 cursor-pointer"
               title={t.clearTitle}
             >
               <Trash2 className="w-3.5 h-3.5" />

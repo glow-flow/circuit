@@ -9,6 +9,7 @@ import {
   HelpCircle,
   Play,
   ShieldAlert,
+  ArrowLeft,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useCircuitStore } from '../../../store/useCircuitStore';
@@ -53,6 +54,15 @@ export const TroubleshootingModal: React.FC<TroubleshootingModalProps> = ({ isOp
     success: boolean;
     message: string;
   } | null>(null);
+  const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
+
+  // Reset view state when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setMobileView('list');
+      setValidationFeedback(null);
+    }
+  }, [isOpen]);
 
   // Timer interval loop
   useEffect(() => {
@@ -151,8 +161,8 @@ export const TroubleshootingModal: React.FC<TroubleshootingModalProps> = ({ isOp
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-void-950/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="flex flex-col w-full max-w-5xl h-[92dvh] max-h-[850px] bg-void-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden font-sans">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-void-950/80 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="flex flex-col w-full max-w-5xl h-[100dvh] sm:h-[92dvh] sm:max-h-[850px] bg-void-900 border-0 sm:border sm:border-white/10 rounded-none sm:rounded-2xl shadow-2xl overflow-hidden font-sans">
         {/* Header Dock */}
         <header className="px-4 py-3 sm:px-6 sm:py-4 border-b border-white/10 bg-void-950 flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3">
@@ -196,9 +206,13 @@ export const TroubleshootingModal: React.FC<TroubleshootingModalProps> = ({ isOp
         </header>
 
         {/* Main Content Two-Column Layout */}
-        <div className="flex flex-1 min-h-0 divide-x divide-white/10">
-          {/* Left Column: Scenario Selector */}
-          <aside className="w-72 sm:w-80 flex flex-col bg-void-950/40 shrink-0 min-h-0">
+        <div className="flex flex-1 min-h-0 divide-x-0 md:divide-x divide-white/10">
+          {/* Left Column: Scenario Selector (Full width on mobile when mobileView === 'list') */}
+          <aside
+            className={`w-full md:w-72 sm:md:w-80 flex flex-col bg-void-950/40 shrink-0 min-h-0 ${
+              mobileView === 'detail' ? 'hidden md:flex' : 'flex'
+            }`}
+          >
             <div className="p-3 border-b border-white/10 text-[10px] font-mono uppercase tracking-wider text-slate-400">
               {isId ? 'Daftar Kasus Gangguan Listrik' : 'Fault Case Studies'}
             </div>
@@ -216,6 +230,7 @@ export const TroubleshootingModal: React.FC<TroubleshootingModalProps> = ({ isOp
                       setHintsRevealed(0);
                       setValidationFeedback(null);
                       setLastScoreResult(null);
+                      setMobileView('detail');
                     }}
                     className={`w-full text-left p-3 rounded-xl border transition-all active:scale-95 cursor-pointer space-y-1.5 ${
                       isSelected
@@ -242,8 +257,26 @@ export const TroubleshootingModal: React.FC<TroubleshootingModalProps> = ({ isOp
             </div>
           </aside>
 
-          {/* Right Column: Scenario Details, Symptoms, Hints & Verifier */}
-          <main className="flex-1 flex flex-col min-h-0 bg-void-900 overflow-y-auto p-4 sm:p-6 space-y-6">
+          {/* Right Column: Scenario Details, Symptoms, Hints & Verifier (Full width on mobile when mobileView === 'detail') */}
+          <main
+            className={`flex-1 flex flex-col min-h-0 bg-void-900 overflow-y-auto p-4 sm:p-6 space-y-6 ${
+              mobileView === 'list' ? 'hidden md:flex' : 'flex'
+            }`}
+          >
+            {/* Mobile Back Button */}
+            <div className="md:hidden flex items-center justify-between pb-3 border-b border-white/10">
+              <button
+                type="button"
+                onClick={() => setMobileView('list')}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-void-950 border border-white/10 text-xs font-semibold text-amber-400 hover:text-white transition-all active:scale-95 cursor-pointer"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>{isId ? '← Kasus Lain' : '← All Cases'}</span>
+              </button>
+              <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase">
+                {activeScenario.difficulty}
+              </span>
+            </div>
             {/* Title & Metadata */}
             <div className="space-y-2 border-b border-white/10 pb-4">
               <div className="flex items-center gap-2">

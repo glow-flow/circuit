@@ -6,9 +6,8 @@ import {
   Activity,
   Scissors,
   Pin,
-  LayoutGrid,
   Trophy,
-  Share2,
+  Sparkles,
 } from 'lucide-react';
 import { Header } from './components/ui/Header';
 import { SidebarPalette } from './components/ui/SidebarPalette';
@@ -19,6 +18,7 @@ import { Inspector } from './components/ui/Inspector';
 import { WelcomeModal } from './components/ui/WelcomeModal';
 import { Toast } from './components/ui/Toast';
 import { MobileBottomSheet, BottomSheetSnapState } from './components/ui/mobile/MobileBottomSheet';
+import { MobileHubModal } from './components/ui/mobile/MobileHubModal';
 import { useCircuitStore } from './store/useCircuitStore';
 import { TRANSLATIONS } from './i18n/translations';
 import { hasSeenTutorial } from './utils/presetStorage';
@@ -67,6 +67,7 @@ export const App: React.FC = () => {
   const [activeMobileSheet, setActiveMobileSheet] = useState<MobileSheetType>('none');
   const [bottomSheetSnap, setBottomSheetSnap] = useState<BottomSheetSnapState>('closed');
   const [isWelcomeOpen, setIsWelcomeOpen] = useState<boolean>(() => !hasSeenTutorial());
+  const [isMobileHubOpen, setIsMobileHubOpen] = useState<boolean>(false);
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId);
   const selectedNodeHasWires = Boolean(
@@ -313,17 +314,7 @@ export const App: React.FC = () => {
           <span className="truncate">{t.addPart}</span>
         </button>
 
-        {/* 2. Preset Gallery Button */}
-        <button
-          type="button"
-          onClick={() => setActiveModal('gallery')}
-          className="flex-1 min-h-[44px] flex flex-col items-center justify-center rounded-xl text-[10px] font-semibold text-slate-300 hover:bg-white/5 transition-all active:scale-95 cursor-pointer"
-        >
-          <LayoutGrid className="w-4 h-4 text-electric-400" />
-          <span className="truncate">{isId ? 'Galeri' : 'Gallery'}</span>
-        </button>
-
-        {/* 3. Challenge Missions Button */}
+        {/* 2. Challenge Missions Button */}
         <button
           type="button"
           onClick={() => setActiveModal('missions')}
@@ -333,7 +324,7 @@ export const App: React.FC = () => {
           <span className="truncate">{isId ? 'Misi' : 'Missions'}</span>
         </button>
 
-        {/* 4. Live Oscilloscope Button */}
+        {/* 3. Live Oscilloscope Button */}
         <button
           type="button"
           onClick={() => setActiveModal('oscilloscope')}
@@ -343,7 +334,7 @@ export const App: React.FC = () => {
           <span className="truncate">Scope</span>
         </button>
 
-        {/* 5. Inspector Button */}
+        {/* 4. Inspector & Formulas Button */}
         <button
           id="tour-btn-info"
           type="button"
@@ -358,16 +349,26 @@ export const App: React.FC = () => {
           <span className="truncate">{t.inspector}</span>
         </button>
 
-        {/* 6. Share & Persist Button */}
+        {/* 5. Circuit 4.0 Hub Menu Button */}
         <button
           type="button"
-          onClick={() => setActiveModal('share')}
-          className="flex-1 min-h-[44px] flex flex-col items-center justify-center rounded-xl text-[10px] font-semibold text-slate-300 hover:bg-white/5 transition-all active:scale-95 cursor-pointer"
+          onClick={() => setIsMobileHubOpen(true)}
+          className={`flex-1 min-h-[44px] flex flex-col items-center justify-center rounded-xl text-[10px] font-semibold transition-all active:scale-95 cursor-pointer ${
+            isMobileHubOpen
+              ? 'bg-purple-500/20 text-purple-300 font-bold border border-purple-500/40'
+              : 'text-slate-300 hover:bg-white/5'
+          }`}
         >
-          <Share2 className="w-4 h-4 text-electric-400" />
-          <span className="truncate">{isId ? 'Bagikan' : 'Share'}</span>
+          <Sparkles className="w-4 h-4 text-purple-400" />
+          <span className="truncate">{isId ? 'Menu 4.0' : 'Menu 4.0'}</span>
         </button>
       </nav>
+
+      {/* Mobile Hub Navigation Drawer */}
+      <MobileHubModal
+        isOpen={isMobileHubOpen}
+        onClose={() => setIsMobileHubOpen(false)}
+      />
 
       {/* First-Visit Welcome Modal to Launch or Skip Spotlight Tour */}
       <WelcomeModal

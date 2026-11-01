@@ -11,6 +11,7 @@ import {
   FlaskConical,
   Play,
   Lock,
+  ArrowLeft,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useCircuitStore } from '../../../store/useCircuitStore';
@@ -50,6 +51,7 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
   const [selectedQuizAnswers, setSelectedQuizAnswers] = useState<Record<string, string>>({});
   const [isQuizSubmitted, setIsQuizSubmitted] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'lessons' | 'achievements'>('lessons');
+  const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
 
   // Reload progress when modal opens
   useEffect(() => {
@@ -57,6 +59,7 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
       setProgress(loadAcademyProgress());
       setIsQuizSubmitted(false);
       setSelectedQuizAnswers({});
+      setMobileView('list');
     }
   }, [isOpen]);
 
@@ -133,8 +136,8 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-void-950/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="flex flex-col w-full max-w-5xl h-[92dvh] max-h-[850px] bg-void-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden font-sans">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-void-950/80 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="flex flex-col w-full max-w-5xl h-[100dvh] sm:h-[92dvh] sm:max-h-[850px] bg-void-900 border-0 sm:border sm:border-white/10 rounded-none sm:rounded-2xl shadow-2xl overflow-hidden font-sans">
         {/* Top Header Dock */}
         <header className="px-4 py-3 sm:px-6 sm:py-4 border-b border-white/10 bg-void-950 flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3">
@@ -260,9 +263,13 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
 
         {/* Main Content Area */}
         {activeTab === 'lessons' ? (
-          <div className="flex flex-1 min-h-0 divide-x divide-white/10">
-            {/* Left Column: Level Navigation & Lesson Index */}
-            <aside className="w-72 sm:w-80 flex flex-col bg-void-950/40 shrink-0 min-h-0">
+          <div className="flex flex-1 min-h-0 divide-x-0 md:divide-x divide-white/10">
+            {/* Left Column: Level Navigation & Lesson Index (Full-width on mobile when mobileView === 'list') */}
+            <aside
+              className={`w-full md:w-72 sm:md:w-80 flex flex-col bg-void-950/40 shrink-0 min-h-0 ${
+                mobileView === 'detail' ? 'hidden md:flex' : 'flex'
+              }`}
+            >
               {/* Level Selector Tabs */}
               <div className="p-3 border-b border-white/10 space-y-1">
                 <label className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block px-1">
@@ -307,8 +314,9 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
                       setActiveLessonId(recommendedNextLesson.id);
                       setIsQuizSubmitted(false);
                       setSelectedQuizAnswers({});
+                      setMobileView('detail');
                     }}
-                    className="w-full text-left p-2 rounded-lg bg-electric-500/15 border border-electric-500/30 text-xs font-semibold text-slate-100 hover:bg-electric-500/25 transition-all active:scale-95 cursor-pointer line-clamp-1"
+                    className="w-full text-left p-2.5 rounded-lg bg-electric-500/15 border border-electric-500/30 text-xs font-semibold text-slate-100 hover:bg-electric-500/25 transition-all active:scale-95 cursor-pointer line-clamp-1"
                   >
                     {isId ? recommendedNextLesson.titleId : recommendedNextLesson.titleEn}
                   </button>
@@ -329,6 +337,7 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
                         setActiveLessonId(lesson.id);
                         setIsQuizSubmitted(false);
                         setSelectedQuizAnswers({});
+                        setMobileView('detail');
                       }}
                       className={`w-full text-left p-3 rounded-xl border transition-all active:scale-95 cursor-pointer space-y-1.5 ${
                         isSelected
@@ -359,8 +368,26 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
               </div>
             </aside>
 
-            {/* Right Column: Detailed Lesson Viewer */}
-            <main className="flex-1 flex flex-col min-h-0 bg-void-900 overflow-y-auto p-4 sm:p-6 space-y-6">
+            {/* Right Column: Detailed Lesson Viewer (Full-width on mobile when mobileView === 'detail') */}
+            <main
+              className={`flex-1 flex flex-col min-h-0 bg-void-900 overflow-y-auto p-4 sm:p-6 space-y-6 ${
+                mobileView === 'list' ? 'hidden md:flex' : 'flex'
+              }`}
+            >
+              {/* Mobile Back Button */}
+              <div className="md:hidden flex items-center justify-between pb-3 border-b border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setMobileView('list')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-void-950 border border-white/10 text-xs font-semibold text-electric-400 hover:text-white transition-all active:scale-95 cursor-pointer"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>{isId ? 'Daftar Materi' : 'All Lessons'}</span>
+                </button>
+                <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-electric-500/20 text-electric-300 border border-electric-500/30">
+                  Level {activeLesson.level}
+                </span>
+              </div>
               {/* Lesson Title & Header */}
               <div className="space-y-2 border-b border-white/10 pb-4">
                 <div className="flex items-center gap-2">

@@ -357,10 +357,24 @@ export function startTour(): void {
 
     prepareStepFn(0);
 
+    const resetWindowScroll = () => {
+      try {
+        if (typeof window !== 'undefined') {
+          window.scrollTo(0, 0);
+          if (document.documentElement) document.documentElement.scrollLeft = 0;
+          if (document.body) document.body.scrollLeft = 0;
+        }
+      } catch {
+        // Safe fallback in non-browser testing
+      }
+    };
+
+    resetWindowScroll();
+
     const driverObj = driver({
       showProgress: true,
       allowClose: true,
-      smoothScroll: true,
+      smoothScroll: false,
       stagePadding: 6,
       stageRadius: 12,
       waitForElement: 350,
@@ -371,15 +385,18 @@ export function startTour(): void {
       doneBtnText: 'Selesai',
       steps: activeSteps,
       onHighlightStarted: (_element, _step, opts) => {
+        resetWindowScroll();
         const idx = opts.state.activeIndex ?? 0;
         prepareStepFn(idx);
         window.requestAnimationFrame(() => {
+          resetWindowScroll();
           if (driverObj.isActive()) {
             driverObj.refresh();
           }
         });
       },
       onNextClick: () => {
+        resetWindowScroll();
         const currentIndex = driverObj.getActiveIndex() ?? 0;
         if (driverObj.isLastStep()) {
           // Final Step ("Selesai"): persist 'has_seen_tutorial' = 'true' and close
@@ -390,12 +407,14 @@ export function startTour(): void {
           }
           registeredMobileSheetController?.('none');
           driverObj.destroy();
+          resetWindowScroll();
           return;
         }
         prepareStepFn(currentIndex + 1);
         driverObj.moveNext();
       },
       onPrevClick: () => {
+        resetWindowScroll();
         const currentIndex = driverObj.getActiveIndex() ?? 0;
         if (currentIndex > 0) {
           prepareStepFn(currentIndex - 1);
@@ -403,6 +422,7 @@ export function startTour(): void {
         driverObj.movePrevious();
       },
       onDestroyed: () => {
+        resetWindowScroll();
         markTutorialAsSeen();
         registeredMobileSheetController?.('none');
         const st = useCircuitStore.getState();
