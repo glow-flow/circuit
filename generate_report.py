@@ -13,7 +13,9 @@ IMG_PLN_CALC = r"c:\Users\ASUS\Desktop\circuit\img_pln_calculator.png"
 IMG_OUTDOOR_SOLAR = r"C:\Users\ASUS\.gemini\antigravity\brain\7f9848bd-9d6e-419c-ad70-65ed76076cc7\.user_uploaded\media_1793402835912_a61b2af3.jpg"
 IMG_OUTDOOR_TOWER = r"C:\Users\ASUS\.gemini\antigravity\brain\7f9848bd-9d6e-419c-ad70-65ed76076cc7\.user_uploaded\media_1793405003649_795a1b85.jpg"
 
-OUTPUT_DOCX_PRIMARY = r"c:\Users\ASUS\Desktop\circuit\Laporan_Inovasi_Circuit_Sandbox_SMPN12_Surabaya_Final.docx"
+OUTPUT_DOCX_PRIMARY = r"c:\Users\ASUS\Desktop\circuit\Laporan_Inovasi_Circuit_Sandbox_BRIDA_Surabaya.docx"
+OUTPUT_DOCX_ALT = r"c:\Users\ASUS\Desktop\circuit\Laporan_Inovasi_Circuit_Sandbox_BRIDA_SMPN12_Surabaya.docx"
+OUTPUT_DOCX_LEGACY = r"c:\Users\ASUS\Desktop\circuit\Laporan_Inovasi_Circuit_Sandbox_SMPN12_Surabaya_Final.docx"
 
 
 def set_cell_background(cell, fill_hex: str):
@@ -121,7 +123,8 @@ def build_report():
     p_badge.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p_badge.paragraph_format.space_after = Pt(3)
     r_badge = p_badge.add_run(
-        "DOKUMEN LAPORAN INOVASI  •  INOVBOYO 2.0 BRIDA KOTA SURABAYA"
+        "DOKUMEN LAPORAN INOVASI  •  INOVBOYO 2.0 BRIDA KOTA SURABAYA\n"
+        "JALUR RESMI: 01 INOVBOYO SHOWCASE (KARYA TERAPLIKASI & SIAP DEMO)"
     )
     r_badge.bold = True
     r_badge.font.size = Pt(9)
@@ -155,13 +158,10 @@ def build_report():
     # =========================================================================
     # TABEL IDENTITAS INOVASI & TIM PENGEMBANG SMPN 12 SURABAYA (SLIDE 1)
     # =========================================================================
-    meta_table = doc.add_table(rows=8, cols=2)
-    meta_table.alignment = WD_TABLE_ALIGNMENT.CENTER
-    meta_table.style = 'Table Grid'
-
     meta_rows = [
-        ("Nama Inovasi", "Circuit Sandbox — Laboratorium Fisika Virtual & Simulasi Energi Terbarukan"),
-        ("Kategori Showcase Resmi", "Inovboyo Young Heroes (Khusus Pelajar SMP/MTs) — Sub-Kategori: Technology, Web, and Digital Innovation serta Green & Renewable Energy"),
+        ("Nama Inovasi", "Circuit Sandbox — Laboratorium Fisika Virtual, Pembangkit Energi Terbarukan & Kalkulator Listrik PLN"),
+        ("Jalur & Kategori Showcase", "Jalur 01: Inovboyo Showcase (Karya Fungsional Siap Pamer & Demo)\nKategori 04: Inovboyo Young Heroes (Inovasi Pelajar SMP/MTs se-Kota Surabaya)\nSub-Bidang: Technology, Web & Digital Innovation serta Green & Renewable Energy"),
+        ("Nama Tim Inovasi", "Tim Circuit Sandbox SMPN 12 Surabaya (\"Inovator Muda Spenbel\")"),
         ("Ketua Tim / Kreator", "KENZIE RAKA ROMERO  (NISN: 0128794397 / Kelas IX SMPN 12 Surabaya)"),
         ("Asal Sekolah", "SMP Negeri 12 Surabaya (Jl. Ngagel Jaya Selatan No. 39, Surabaya)"),
         ("Guru Pembimbing", "Ibu Uki  (NIP. ........................................ / Guru Pembimbing IPA SMPN 12 Surabaya)"),
@@ -179,6 +179,10 @@ def build_report():
             "https://circuit-gamma-one.vercel.app  (Dapat langsung dibuka di HP maupun laptop tanpa perlu instalasi)"
         ),
     ]
+
+    meta_table = doc.add_table(rows=len(meta_rows), cols=2)
+    meta_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+    meta_table.style = 'Table Grid' 
 
     for idx, (label, val) in enumerate(meta_rows):
         row = meta_table.rows[idx]
@@ -355,12 +359,13 @@ def build_report():
     p_stat.paragraph_format.space_before = Pt(3)
     p_stat.paragraph_format.space_after = Pt(2)
     p_stat.paragraph_format.line_spacing = 1.15
-    r_stat_b = p_stat.add_run("Status Pengembangan & Kebaruan Dibanding Simulator Lama (Sesuai Arahan Panitia): ")
+    r_stat_b = p_stat.add_run("Status Karya Inovboyo Showcase & Kebaruan (Sesuai Petunjuk Teknis BRIDA): ")
     r_stat_b.bold = True
     p_stat.add_run(
-        "Status karya Circuit Sandbox saat ini adalah Prototipe Fungsional Siap Pakai (Working Interactive Prototype) yang telah selesai "
-        "dibangun secara utuh, telah melalui serangkaian uji coba fungsional oleh tim siswa pengembang pada peramban web HP Android dan laptop, "
-        "serta sudah tayang daring secara publik (https://circuit-gamma-one.vercel.app). "
+        "Status karya Circuit Sandbox saat ini adalah Karya Inovasi Fungsional Siap Pamer & Demo (Showcase & Live Demo Ready) yang telah selesai "
+        "dibangun secara utuh, telah melalui serangkaian uji coba fungsional intensif oleh tim siswa pengembang pada peramban web HP Android dan laptop, "
+        "serta sudah tayang daring secara publik (https://circuit-gamma-one.vercel.app). Karya ini siap didemonstrasikan langsung di hadapan Dewan Juri "
+        "pada tahapan Kurasi, Audisi Presentasi, hingga Pameran Puncak (Awarding & Exhibition) INOVBOYO 2.0 BRIDA Kota Surabaya. "
         "Dibandingkan simulator konvensional, Circuit Sandbox menghadirkan tiga pembaruan spesifik: "
         "(1) Penggabungan Meja Lab dengan Zona Alam Terbuka beranimasi, (2) Transmisi energi hijau dengan menara SUTET dan saklar "
         "pengaman MCB auto-trip yang realistis, serta (3) Kalkulator Tagihan Listrik PLN dalam mata uang Rupiah asli."
@@ -684,14 +689,28 @@ def build_report():
     p_mat = doc.add_paragraph()
     p_mat.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p_mat.paragraph_format.space_before = Pt(4)
-    p_mat.paragraph_format.space_after = Pt(0)
+    p_mat.paragraph_format.space_after = Pt(2)
     r_mat = p_mat.add_run("[ Dokumen Resmi Ditandatangani di atas Materai Rp 10.000 & Disahkan Stempel Resmi SMP Negeri 12 Surabaya ]")
     r_mat.italic = True
     r_mat.font.size = Pt(8.5)
     r_mat.font.color.rgb = RGBColor(0x64, 0x74, 0x8B)
 
-    doc.save(OUTPUT_DOCX_PRIMARY)
-    print(f"Successfully generated clean honest document: {OUTPUT_DOCX_PRIMARY}")
+    p_note = doc.add_paragraph()
+    p_note.paragraph_format.space_before = Pt(3)
+    p_note.paragraph_format.space_after = Pt(2)
+    p_note.paragraph_format.line_spacing = 1.12
+    r_note = p_note.add_run(
+        "Catatan Prosedural Berkas (Sesuai Arahan Guru Pembimbing Ibu Uki): Dokumen laporan softcopy Word (.docx) ini diserahkan "
+        "untuk pendataan resmi tim peserta Jalur Inovboyo Showcase. Lembar Pernyataan Orisinalitas fisik bermaterai Rp 10.000 "
+        "dengan tanda tangan basah dan stempel resmi sekolah akan diterbitkan dan disahkan oleh Guru Pembimbing Ibu Uki setelah pendataan tim selesai."
+    )
+    r_note.italic = True
+    r_note.font.size = Pt(8.5)
+    r_note.font.color.rgb = RGBColor(0x47, 0x55, 0x69)
+
+    for out_path in [OUTPUT_DOCX_PRIMARY, OUTPUT_DOCX_ALT, OUTPUT_DOCX_LEGACY]:
+        doc.save(out_path)
+        print(f"Successfully generated document: {out_path}")
 
 
 if __name__ == "__main__":
