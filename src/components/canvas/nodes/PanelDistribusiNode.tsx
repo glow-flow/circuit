@@ -1,5 +1,5 @@
-import React, { memo, useCallback, useMemo, useState } from 'react';
-import { Handle, Position, NodeProps } from 'reactflow';
+import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { Handle, Position, NodeProps, useUpdateNodeInternals } from 'reactflow';
 import { CircuitElementData } from '../../../types/circuit';
 import { AlertTriangle, Scissors } from 'lucide-react';
 import { useCircuitStore } from '../../../store/useCircuitStore';
@@ -38,6 +38,11 @@ export const PanelDistribusiNode: React.FC<NodeProps<CircuitElementData>> = memo
     const disconnectAndResetMcb = useCircuitStore((state) => state.disconnectAndResetMcb);
     const notify = useCircuitStore((state) => state.notify);
     const isId = language === 'id';
+
+    const updateNodeInternals = useUpdateNodeInternals();
+    useEffect(() => {
+      updateNodeInternals(id);
+    }, [id, updateNodeInternals]);
 
     const [isShaking, setIsShaking] = useState(false);
 
@@ -146,19 +151,21 @@ export const PanelDistribusiNode: React.FC<NodeProps<CircuitElementData>> = memo
 
         {/* Photorealistic Panel Image Container (Clean, no CSS borders or dark box background) */}
         <div
-          className={`relative w-full overflow-visible transition-all duration-200 ${
+          className={`relative w-[230px] h-[309px] overflow-visible transition-all duration-200 ${
             selected
               ? 'filter drop-shadow-[0_0_14px_rgba(34,211,238,0.55)]'
               : isMcbTripped
               ? 'filter drop-shadow-[0_0_14px_rgba(239,68,68,0.55)]'
               : 'filter drop-shadow-[0_8px_16px_rgba(0,0,0,0.45)]'
           }`}
+          style={{ width: 230, height: 309 }}
         >
           <img
             src="/assets/distribution-panel.png"
             alt={isId ? 'Panel Distribusi Lab' : 'Lab Distribution Panel'}
-            className="w-full h-auto object-contain pointer-events-none select-none block"
+            className="w-full h-full object-contain pointer-events-none select-none block"
             draggable={false}
+            onLoad={() => updateNodeInternals(id)}
           />
 
           {/* Layar Display (Tegangan & Arus Overlay di atas layar hitam) */}
@@ -296,8 +303,8 @@ export const PanelDistribusiNode: React.FC<NodeProps<CircuitElementData>> = memo
             type="source"
             position={Position.Bottom}
             id="pos"
-            style={{ left: '32.4%', top: '89.3%', bottom: 'auto', transform: 'translate(-50%, -50%)' }}
-            className="!w-5 !h-5 !bg-red-500 !border-2 !border-white !rounded-full shadow-[0_0_12px_rgba(239,68,68,0.95)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center pointer-events-auto"
+            style={{ left: '32.5%', top: '90.7%', bottom: 'auto', transform: 'translate(-50%, -50%)' }}
+            className="!w-5 !h-5 !bg-red-500 !border-2 !border-white !rounded-full shadow-[0_0_12px_rgba(239,68,68,0.95)] hover:!scale-125 transition-transform cursor-crosshair z-50 flex items-center justify-center pointer-events-auto before:absolute before:-inset-3.5 before:content-[''] before:rounded-full before:z-50"
             title={isId ? 'Terminal Output Positif (+) DC Lab' : 'Positive (+) Lab DC Output'}
           >
             <span className="text-[10px] font-mono font-black text-white leading-none pointer-events-none">
@@ -310,8 +317,8 @@ export const PanelDistribusiNode: React.FC<NodeProps<CircuitElementData>> = memo
             type="source"
             position={Position.Bottom}
             id="neg"
-            style={{ left: '67.4%', top: '91.6%', bottom: 'auto', transform: 'translate(-50%, -50%)' }}
-            className="!w-5 !h-5 !bg-sky-500 !border-2 !border-white !rounded-full shadow-[0_0_12px_rgba(56,189,248,0.95)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center pointer-events-auto"
+            style={{ left: '67.2%', top: '89.1%', bottom: 'auto', transform: 'translate(-50%, -50%)' }}
+            className="!w-5 !h-5 !bg-sky-500 !border-2 !border-white !rounded-full shadow-[0_0_12px_rgba(56,189,248,0.95)] hover:!scale-125 transition-transform cursor-crosshair z-50 flex items-center justify-center pointer-events-auto before:absolute before:-inset-3.5 before:content-[''] before:rounded-full before:z-50"
             title={isId ? 'Terminal Output Negatif (-) DC Lab' : 'Negative (-) Lab DC Output'}
           >
             <span className="text-[11px] font-mono font-black text-white leading-none pointer-events-none">

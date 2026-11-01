@@ -246,6 +246,7 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
         defaultEdgeOptions={defaultEdgeOptions}
         connectionLineType={ConnectionLineType.Bezier}
         connectionMode={ConnectionMode.Loose}
+        connectionRadius={40}
         connectionLineStyle={connectionLineStyle}
         onNodeClick={(_, node) => {
           selectEdge(null);
