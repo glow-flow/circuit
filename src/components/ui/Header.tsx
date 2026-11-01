@@ -35,7 +35,6 @@ export const Header: React.FC = () => {
   const setLanguage = useCircuitStore((state) => state.setLanguage);
   const customPresets = useCircuitStore((state) => state.customPresets);
   const saveCustomPreset = useCircuitStore((state) => state.saveCustomPreset);
-  const loadCustomPreset = useCircuitStore((state) => state.loadCustomPreset);
   const deleteCustomPreset = useCircuitStore((state) => state.deleteCustomPreset);
   const worldMode = useCircuitStore((state) => state.worldMode);
   const isTransitioningWorld = useCircuitStore((state) => state.isTransitioningWorld);
@@ -52,23 +51,6 @@ export const Header: React.FC = () => {
 
   const toggleLanguage = () => {
     setLanguage(language === 'id' ? 'en' : 'id');
-  };
-
-  const handlePresetSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const val = e.target.value;
-    if (!val) return;
-
-    if (val === 'action:gallery') {
-      setActiveModal('gallery');
-    } else if (val === 'action:save') {
-      setIsSaveModalOpen(true);
-    } else if (val.startsWith('custom:')) {
-      const customId = val.replace('custom:', '');
-      loadCustomPreset(customId);
-    } else {
-      loadPreset(val as any);
-    }
-    e.target.value = '';
   };
 
   const handleSavePresetSubmit = (e: React.FormEvent) => {
@@ -152,50 +134,24 @@ export const Header: React.FC = () => {
           </div>
         </div>
 
-        {/* Center: Unified Preset & Save Capsule (Lab Mode) or Nature Badge (Outdoor Mode) */}
+        {/* Center: Unified Gallery & Save Capsule (Lab Mode) or Nature Badge (Outdoor Mode) */}
         {worldMode === 'lab' ? (
-          <div className="flex-1 min-w-0 max-w-[210px] xs:max-w-[240px] sm:max-w-xs md:max-w-md flex items-center bg-void-950/95 border border-white/10 rounded-xl p-0.5 shadow-inner">
+          <div className="flex items-center bg-void-950/95 border border-white/10 rounded-xl p-0.5 shadow-inner shrink-0">
+            {/* Direct Visual Gallery Trigger Pill */}
             <button
+              id="tour-dropdown-contoh"
               type="button"
               onClick={() => setActiveModal('gallery')}
-              title={isId ? 'Buka Galeri Rangkaian' : 'Open Preset Gallery'}
-              className="hidden md:flex items-center pl-2.5 pr-1 text-slate-400 hover:text-white transition-colors cursor-pointer shrink-0"
+              title={isId ? 'Buka Galeri Rangkaian Interaktif' : 'Open Interactive Circuit Gallery'}
+              aria-label="Open Circuit Gallery"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-lg hover:bg-white/10 text-slate-200 hover:text-white transition-all active:scale-95 cursor-pointer text-[11px] sm:text-xs font-semibold"
             >
-              <BookOpen className="w-3.5 h-3.5 text-electric-400" />
+              <BookOpen className="w-3.5 h-3.5 text-electric-400 shrink-0" />
+              <span>{isId ? 'Galeri Rangkaian' : 'Circuit Gallery'}</span>
+              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-electric-500/20 text-electric-300 font-bold border border-electric-500/30">
+                5
+              </span>
             </button>
-            <select
-              id="tour-dropdown-contoh"
-              onChange={handlePresetSelectChange}
-              defaultValue=""
-              aria-label="Circuit Presets"
-              className="flex-1 min-w-0 w-full text-[11px] sm:text-xs bg-transparent text-slate-200 rounded-lg px-2 py-1.5 truncate focus:outline-none cursor-pointer"
-            >
-              <option value="" disabled className="bg-void-950 text-slate-400">
-                {t.selectPreset}
-              </option>
-              <option value="action:gallery" className="bg-void-950 text-electric-400 font-bold">
-                ❖ {isId ? 'Buka Galeri Visual...' : 'Open Visual Gallery...'}
-              </option>
-              <optgroup label={t.builtinGroup} className="bg-void-950 text-slate-200">
-                <option value="simple-lamp">{t.presetSimpleLamp}</option>
-                <option value="voltage-divider">{t.presetSeriesDivider}</option>
-                <option value="parallel-bulbs">{t.presetParallelBulbs}</option>
-                <option value="short-circuit-demo">{t.presetShortCircuit}</option>
-                <option value="ultimate-power-grid">{t.presetUltimatePowerGrid}</option>
-              </optgroup>
-              {customPresets.length > 0 && (
-                <optgroup label={t.customGroup} className="bg-void-950 text-slate-200">
-                  {customPresets.map((preset) => (
-                    <option key={preset.id} value={`custom:${preset.id}`}>
-                      ★ {preset.name}
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-              <option value="action:save" className="bg-void-950 text-electric-400 font-semibold">
-                + {t.savePresetBtn}...
-              </option>
-            </select>
 
             <div className="w-px h-4 bg-white/10 shrink-0 mx-0.5" />
 
@@ -206,13 +162,14 @@ export const Header: React.FC = () => {
               onClick={() => setIsSaveModalOpen(true)}
               title={t.savePresetModalTitle}
               aria-label={t.savePresetModalTitle}
-              className="flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg bg-electric-500/15 hover:bg-electric-500/25 text-electric-400 text-[11px] sm:text-xs font-semibold transition-all active:scale-95 shrink-0 cursor-pointer"
+              className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg bg-electric-500/15 hover:bg-electric-500/25 text-electric-400 text-[11px] sm:text-xs font-semibold transition-all active:scale-95 shrink-0 cursor-pointer"
             >
               <BookmarkPlus className="w-3.5 h-3.5 shrink-0" />
               <span className="hidden md:inline">{t.savePresetBtn}</span>
             </button>
 
             <button
+              id="tour-btn-reset"
               type="button"
               onClick={() => loadPreset('simple-lamp')}
               className="hidden lg:flex p-1.5 ml-0.5 rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all active:scale-95 shrink-0 cursor-pointer"
