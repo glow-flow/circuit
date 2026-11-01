@@ -220,7 +220,7 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
 
   return (
     <div
-      className="w-full h-full relative overflow-hidden bg-void-950 transition-colors duration-500"
+      className="w-full h-full absolute inset-0 overflow-hidden bg-void-950 transition-colors duration-500"
       ref={reactFlowWrapper}
     >
       <ReactFlow

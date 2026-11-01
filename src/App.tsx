@@ -119,7 +119,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-[100dvh] w-screen bg-void-950 text-slate-100 overflow-hidden font-sans">
+    <div className="flex flex-col h-[100dvh] min-h-[100dvh] w-screen bg-void-950 text-slate-100 overflow-hidden font-sans">
       {/* Top Utility Header */}
       <Header />
 
@@ -131,7 +131,7 @@ export const App: React.FC = () => {
         {/* Central Canvas: Lab Mode (CircuitCanvas) or Outdoor Sandbox (OutdoorSandbox) */}
         <main
           id="tour-canvas-area"
-          className="flex-1 relative h-full w-full min-w-0"
+          className="flex-1 relative h-full w-full min-w-0 min-h-0"
         >
           {worldMode === 'outside' ? <OutdoorSandbox /> : <CircuitCanvas />}
 

@@ -576,7 +576,7 @@ const OutdoorSandboxInner: React.FC = () => {
   ];
 
   return (
-    <div className="w-full h-full relative overflow-hidden select-none">
+    <div className="w-full h-full absolute inset-0 overflow-hidden select-none">
       {/* ====================================================================
           PANORAMIC SCROLLABLE WORLD VIEWPORT (1360px Minimum Width)
           Allows panning across the entire 40-column landscape on mobile & desktop!
