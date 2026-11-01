@@ -88,8 +88,8 @@ interface CircuitState {
   language: AppLanguage;
   customPresets: CustomCircuitPreset[];
   fitViewTrigger: number;
-  activeModal: 'gallery' | 'missions' | 'oscilloscope' | 'share' | null;
-  setActiveModal: (modal: 'gallery' | 'missions' | 'oscilloscope' | 'share' | null) => void;
+  activeModal: 'gallery' | 'missions' | 'oscilloscope' | 'share' | 'academy' | null;
+  setActiveModal: (modal: 'gallery' | 'missions' | 'oscilloscope' | 'share' | 'academy' | null) => void;
   theme: 'dark' | 'light';
   setTheme: (theme: 'dark' | 'light') => void;
   toggleTheme: () => void;

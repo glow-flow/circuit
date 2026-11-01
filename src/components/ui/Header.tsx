@@ -18,6 +18,7 @@ import {
   Share2,
   Sun,
   Moon,
+  GraduationCap,
 } from 'lucide-react';
 import { useCircuitStore } from '../../store/useCircuitStore';
 import { TRANSLATIONS } from '../../i18n/translations';
@@ -25,6 +26,7 @@ import { startTour } from '../../utils/tour';
 import { CreditsModal } from './CreditsModal';
 import { PresetGalleryModal } from './presets/PresetGalleryModal';
 import { MissionModal } from './missions/MissionModal';
+import { AcademyModal } from './academy/AcademyModal';
 import { OscilloscopeModal } from './analytics/OscilloscopeModal';
 import { CircuitShareModal } from './workspace/CircuitShareModal';
 
@@ -94,8 +96,18 @@ export const Header: React.FC = () => {
             </p>
           </div>
 
-          {/* Quick-Access Top Pills: Preset Gallery, Missions, Oscilloscope */}
+          {/* Quick-Access Top Pills: Academy, Preset Gallery, Missions, Oscilloscope */}
           <div className="hidden lg:flex items-center gap-1 pl-1">
+            <button
+              type="button"
+              onClick={() => setActiveModal('academy')}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-electric-500/15 hover:bg-electric-500/25 text-electric-300 border border-electric-500/30 text-xs font-semibold transition-all active:scale-95 cursor-pointer shadow-sm"
+              title={isId ? 'Akademi Kelistrikan & Kurikulum' : 'Electrical Academy & Curriculum'}
+            >
+              <GraduationCap className="w-3.5 h-3.5 text-electric-400" />
+              <span>{isId ? 'Akademi' : 'Academy'}</span>
+            </button>
+
             <button
               type="button"
               onClick={() => setActiveModal('gallery')}
@@ -141,6 +153,19 @@ export const Header: React.FC = () => {
         {/* Center: Unified Gallery & Save Capsule (Lab Mode) or Nature Badge (Outdoor Mode) */}
         {worldMode === 'lab' ? (
           <div className="flex items-center bg-void-950/95 border border-white/10 rounded-xl p-0.5 shadow-inner shrink-0">
+            {/* Direct Academy Trigger Pill */}
+            <button
+              type="button"
+              onClick={() => setActiveModal('academy')}
+              title={isId ? 'Buka Akademi Kelistrikan' : 'Open Circuit Academy'}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-electric-500/15 hover:bg-electric-500/25 text-electric-300 transition-all active:scale-95 cursor-pointer text-[11px] sm:text-xs font-semibold"
+            >
+              <GraduationCap className="w-3.5 h-3.5 text-electric-400 shrink-0" />
+              <span>{isId ? 'Akademi' : 'Academy'}</span>
+            </button>
+
+            <div className="w-px h-4 bg-white/10 shrink-0 mx-0.5" />
+
             {/* Direct Visual Gallery Trigger Pill */}
             <button
               id="tour-dropdown-contoh"
@@ -319,6 +344,12 @@ export const Header: React.FC = () => {
           </div>
         </div>
       </header>
+
+      {/* Circuit Academy Modal */}
+      <AcademyModal
+        isOpen={activeModal === 'academy'}
+        onClose={() => setActiveModal(null)}
+      />
 
       {/* Preset Gallery Modal */}
       <PresetGalleryModal
