@@ -74,7 +74,7 @@ def optimize_all_assets():
                     best_bytes = buf_direct.getvalue()
                     
                     # Try candidate 2: Quantized 256 colors for RGBA / RGB
-                    if not is_bg and (proc_img.mode in ('RGBA', 'RGB')):
+                    if proc_img.mode in ('RGBA', 'RGB'):
                         buf_quant = io.BytesIO()
                         try:
                             quant = proc_img.quantize(

@@ -32,8 +32,12 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
   const isId = language === 'id';
   const isOutdoor = data.worldMode === 'outside' || worldMode === 'outside';
 
-  const sunlight = data.sunlight ?? 100;
-  const nominalVoltage = data.voltage ?? getSolarPanelVoltage(sunlight);
+  const baseSunlight = data.baseSunlight ?? data.sunlight ?? 100;
+  const sunlight = baseSunlight;
+  const isShaded = Boolean(data.isShaded);
+  const effectiveSunlight =
+    data.effectiveSunlight ?? (isOutdoor && isShaded ? Math.round(baseSunlight * 0.15 * 10) / 10 : baseSunlight);
+  const nominalVoltage = data.voltage ?? getSolarPanelVoltage(effectiveSunlight);
   const current = Math.abs(simulation.branchCurrents[id] ?? 0);
   const isShorted = simulation.shortCircuitBranches.includes(id);
 
@@ -53,29 +57,38 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
   const handleSunlightChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const nextSunlight = parseInt(e.target.value, 10);
+      const isShadedNow = isOutdoor && Boolean(data.isShaded);
+      const nextEffective = isShadedNow ? Math.round(nextSunlight * 0.15 * 10) / 10 : nextSunlight;
       updateComponentData(id, {
         sunlight: nextSunlight,
-        voltage: getSolarPanelVoltage(nextSunlight),
+        baseSunlight: nextSunlight,
+        effectiveSunlight: nextEffective,
+        voltage: getSolarPanelVoltage(nextEffective),
       });
     },
-    [id, updateComponentData]
+    [id, isOutdoor, data.isShaded, updateComponentData]
   );
 
   const applyWeatherPreset = useCallback(
     (targetVoltage: number, targetSunlight: number) => {
+      const isShadedNow = isOutdoor && Boolean(data.isShaded);
+      const nextEffective = isShadedNow ? Math.round(targetSunlight * 0.15 * 10) / 10 : targetSunlight;
       updateComponentData(id, {
         sunlight: targetSunlight,
-        voltage: targetVoltage,
+        baseSunlight: targetSunlight,
+        effectiveSunlight: nextEffective,
+        voltage: isShadedNow ? getSolarPanelVoltage(nextEffective) : targetVoltage,
       });
     },
-    [id, updateComponentData]
+    [id, isOutdoor, data.isShaded, updateComponentData]
   );
 
   return (
     <div
-      className={`relative flex flex-col items-center select-none transition-all duration-200 w-[144px] group ${
+      className={`relative flex flex-col items-center justify-end select-none transition-all duration-200 w-[144px] group overflow-visible ${
         selected ? 'filter drop-shadow-[0_0_18px_rgba(245,158,11,0.55)]' : ''
       }`}
+      style={{ height: '200px' }}
     >
       {/* Top Floating Control & Weather Pill */}
       <div
@@ -157,7 +170,7 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
           min="0"
           max="100"
           step="1"
-          value={sunlight}
+          value={baseSunlight}
           onChange={handleSunlightChange}
           onPointerDown={(e) => e.stopPropagation()}
           className="w-full h-1.5 bg-void-900 rounded-lg appearance-none cursor-pointer accent-amber-400 focus:outline-none"
@@ -247,11 +260,11 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
           type="source"
           position={Position.Bottom}
           id="pos"
-          style={{ left: '38%', bottom: '12px', transform: 'translateX(-50%)' }}
-          className="!w-5 !h-5 !bg-red-500 !border-2 !border-white !rounded-full shadow-[0_0_12px_rgba(239,68,68,0.95)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center"
+          style={{ left: '38%', bottom: '16px', transform: 'translateX(-50%)' }}
+          className="!w-6 !h-6 !bg-red-500 !border-2 !border-white !rounded-full shadow-[0_0_12px_rgba(239,68,68,0.95)] hover:!scale-125 active:!scale-90 transition-transform cursor-crosshair z-40 flex items-center justify-center"
           title={isId ? 'Kutub Positif (+)' : 'Positive Terminal (+)'}
         >
-          <span className="text-[10px] font-mono font-black text-white leading-none pointer-events-none">
+          <span className="text-[11px] font-mono font-black text-white leading-none pointer-events-none">
             +
           </span>
         </Handle>
@@ -259,11 +272,11 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
           type="source"
           position={Position.Bottom}
           id="neg"
-          style={{ left: '62%', bottom: '12px', transform: 'translateX(-50%)' }}
-          className="!w-5 !h-5 !bg-sky-500 !border-2 !border-white !rounded-full shadow-[0_0_12px_rgba(56,189,248,0.95)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center"
+          style={{ left: '62%', bottom: '16px', transform: 'translateX(-50%)' }}
+          className="!w-6 !h-6 !bg-sky-500 !border-2 !border-white !rounded-full shadow-[0_0_12px_rgba(56,189,248,0.95)] hover:!scale-125 active:!scale-90 transition-transform cursor-crosshair z-40 flex items-center justify-center"
           title={`${formattedCurrent} (-)`}
         >
-          <span className="text-[11px] font-mono font-black text-white leading-none pointer-events-none">
+          <span className="text-[12px] font-mono font-black text-white leading-none pointer-events-none">
             -
           </span>
         </Handle>

@@ -120,6 +120,7 @@ export interface CircuitElementData {
   // World & sunlight state for outdoor/lab components
   worldMode?: WorldMode;
   sunlight?: number;           // Solar irradiance percentage (0 - 100, default 100 -> 12V)
+  baseSunlight?: number;       // Base unshaded solar irradiance setting (preserves user slider setting)
   isShaded?: boolean;          // True when 1D ray-casting detects a terrain hill obstructing sunlight
   effectiveSunlight?: number;  // Effective solar irradiance after shading (e.g. 15% diffuse when shaded)
 

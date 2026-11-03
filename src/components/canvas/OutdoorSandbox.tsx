@@ -13,6 +13,8 @@ import {
   Compass,
   Droplets,
   Eraser,
+  Eye,
+  EyeOff,
   Flame,
   Hand,
   Layers,
@@ -176,7 +178,7 @@ const OutdoorSandboxInner: React.FC = () => {
       case 'noon':
         return {
           leftPercent: 50,
-          topPx: 52,
+          topPx: 64,
           elevationDeg: 75,
           azimuthText: isId ? 'Zenith (Tepat di Atas)' : 'Zenith (High Overhead)',
           label: isId ? '☀️ Siang (75° Zenith)' : '☀️ Noon (75° Zenith)',
@@ -230,6 +232,8 @@ const OutdoorSandboxInner: React.FC = () => {
   const [isPaintingTerrain, setIsPaintingTerrain] = useState(false);
   const [cameraScrollX, setCameraScrollX] = useState(0);
   const [maxCameraScrollX, setMaxCameraScrollX] = useState(800);
+  const [viewportWidth, setViewportWidth] = useState(1360);
+  const [isToolbarCollapsed, setIsToolbarCollapsed] = useState(false);
 
   // Track sky/terrain drag-to-pan state when terrainBrush === 'cursor'
   const panDragStateRef = useRef<{
@@ -273,6 +277,7 @@ const OutdoorSandboxInner: React.FC = () => {
     const maxScroll = Math.max(0, vp.scrollWidth - vp.clientWidth);
     setMaxCameraScrollX(maxScroll);
     setCameraScrollX(Math.round(vp.scrollLeft));
+    setViewportWidth(vp.clientWidth || 1360);
   }, []);
 
   useEffect(() => {
@@ -568,34 +573,46 @@ const OutdoorSandboxInner: React.FC = () => {
   const brushButtons: Array<{
     id: TerrainBrushTool;
     label: string;
+    fullLabel: string;
     icon: React.ReactNode;
     activeClass: string;
   }> = [
     {
       id: 'cursor',
-      label: isId ? 'Geser & Kabel' : 'Move & Wire',
+      label: isId ? 'Geser' : 'Move',
+      fullLabel: isId ? 'Geser & Kabel' : 'Move & Wire',
       icon: <Hand className="w-3.5 h-3.5" />,
-      activeClass: 'bg-cyan-500/25 border-cyan-400 text-cyan-200 shadow-[0_0_12px_rgba(34,211,238,0.3)]',
+      activeClass: 'bg-cyan-500/25 border-cyan-400 text-cyan-200 shadow-[0_0_12px_rgba(34,211,238,0.35)]',
     },
     {
       id: 'DIRT',
-      label: isId ? '+ Tanah (Gravity)' : '+ Dirt (Gravity)',
+      label: isId ? 'Tanah' : 'Dirt',
+      fullLabel: isId ? '+ Tanah (Gravity)' : '+ Dirt (Gravity)',
       icon: <Layers className="w-3.5 h-3.5 text-amber-400" />,
-      activeClass: 'bg-amber-600/30 border-amber-400 text-amber-200 shadow-[0_0_12px_rgba(245,158,11,0.3)]',
+      activeClass: 'bg-amber-600/30 border-amber-400 text-amber-200 shadow-[0_0_12px_rgba(245,158,11,0.35)]',
     },
     {
       id: 'WATER',
-      label: isId ? '+ Air (Bahaya!)' : '+ Water (Hazard!)',
+      label: isId ? 'Air' : 'Water',
+      fullLabel: isId ? '+ Air (Bahaya!)' : '+ Water (Hazard!)',
       icon: <Droplets className="w-3.5 h-3.5 text-sky-400" />,
       activeClass: 'bg-sky-500/30 border-sky-400 text-sky-100 shadow-[0_0_12px_rgba(56,189,248,0.35)]',
     },
     {
       id: 'EMPTY',
-      label: isId ? 'Gali / Hapus' : 'Dig / Erase',
+      label: isId ? 'Gali' : 'Dig',
+      fullLabel: isId ? 'Gali / Hapus' : 'Dig / Erase',
       icon: <Eraser className="w-3.5 h-3.5 text-rose-400" />,
-      activeClass: 'bg-rose-500/25 border-rose-400 text-rose-200',
+      activeClass: 'bg-rose-500/25 border-rose-400 text-rose-200 shadow-[0_0_12px_rgba(244,63,94,0.3)]',
     },
   ];
+
+  const effectiveViewportWidth = viewportWidth > 0 ? viewportWidth : 1360;
+  // Position celestial Sun Orb proportionally within the user's current visible viewport
+  // so it remains gloriously visible on mobile screens (360-430px) as well as desktop!
+  const sunLeftPx = Math.round(
+    cameraScrollX + (effectiveViewportWidth * sunConfig.leftPercent) / 100
+  );
 
   return (
     <div className="w-full h-full absolute inset-0 overflow-hidden select-none">
@@ -715,9 +732,15 @@ const OutdoorSandboxInner: React.FC = () => {
              ==================================================================== */}
           {/* Morning Dawn: warm amber-orange sunrise tint and eastern horizon flare */}
           <div
-            className={`absolute inset-0 pointer-events-none z-[2] transition-opacity duration-700 ease-in-out ${
+            className={`absolute pointer-events-none z-[2] transition-opacity duration-700 ease-in-out ${
               sunTimeOfDay === 'morning' ? 'opacity-100' : 'opacity-0'
             }`}
+            style={{
+              left: `${cameraScrollX}px`,
+              width: `${effectiveViewportWidth}px`,
+              top: 0,
+              bottom: 0,
+            }}
           >
             <div className="absolute inset-0 bg-gradient-to-b from-amber-950/30 via-orange-500/15 to-transparent" />
             <div
@@ -731,9 +754,15 @@ const OutdoorSandboxInner: React.FC = () => {
 
           {/* Noon Zenith: high-contrast clear daylight and dazzling overhead solar glare */}
           <div
-            className={`absolute inset-0 pointer-events-none z-[2] transition-opacity duration-700 ease-in-out ${
+            className={`absolute pointer-events-none z-[2] transition-opacity duration-700 ease-in-out ${
               sunTimeOfDay === 'noon' ? 'opacity-100' : 'opacity-0'
             }`}
+            style={{
+              left: `${cameraScrollX}px`,
+              width: `${effectiveViewportWidth}px`,
+              top: 0,
+              bottom: 0,
+            }}
           >
             <div className="absolute inset-0 bg-gradient-to-b from-sky-400/20 via-white/10 to-transparent" />
             <div
@@ -747,9 +776,15 @@ const OutdoorSandboxInner: React.FC = () => {
 
           {/* Afternoon Sunset: rich amber-purple sunset twilight and western horizon glow */}
           <div
-            className={`absolute inset-0 pointer-events-none z-[2] transition-opacity duration-700 ease-in-out ${
+            className={`absolute pointer-events-none z-[2] transition-opacity duration-700 ease-in-out ${
               sunTimeOfDay === 'afternoon' ? 'opacity-100' : 'opacity-0'
             }`}
+            style={{
+              left: `${cameraScrollX}px`,
+              width: `${effectiveViewportWidth}px`,
+              top: 0,
+              bottom: 0,
+            }}
           >
             <div className="absolute inset-0 bg-gradient-to-b from-purple-950/40 via-orange-900/25 to-amber-500/15" />
             <div
@@ -775,7 +810,7 @@ const OutdoorSandboxInner: React.FC = () => {
             }
             className="absolute z-[5] pointer-events-auto cursor-pointer group select-none flex flex-col items-center justify-center transition-all duration-700 ease-out"
             style={{
-              left: `${sunConfig.leftPercent}%`,
+              left: `${sunLeftPx}px`,
               top: `${sunConfig.topPx}px`,
               transform: 'translate(-50%, -50%)',
             }}
@@ -1024,7 +1059,7 @@ const OutdoorSandboxInner: React.FC = () => {
              ==================================================================== */}
           {shadowPolygons.length > 0 && (
             <svg
-              className="absolute inset-0 w-full h-full pointer-events-none z-35 mix-blend-multiply transition-opacity duration-500"
+              className="absolute inset-0 w-full h-full pointer-events-none z-[35] mix-blend-multiply transition-opacity duration-500"
               viewBox={`0 0 ${OUTDOOR_WORLD_MIN_WIDTH} 680`}
               preserveAspectRatio="none"
               aria-hidden="true"
@@ -1057,119 +1092,161 @@ const OutdoorSandboxInner: React.FC = () => {
       </div>
 
       {/* ====================================================================
-          TOP FLOATING SANDBOX TOOLBAR (Fixed to Screen Viewport)
+          TOP FLOATING SANDBOX TOOLBAR (Ultra-Compact Island Dock)
+          Ultra-sleek single-row translucent glass capsule that preserves the
+          panoramic sky and landscape view on mobile & desktop!
          ==================================================================== */}
+      {/* Mini Collapsed Floating Capsule (When user taps Hide/Scenic View) */}
+      {isToolbarCollapsed && (
+        <div
+          onPointerDown={(e) => e.stopPropagation()}
+          className="absolute top-2.5 right-3 z-40 pointer-events-auto animate-fade-in"
+        >
+          <button
+            type="button"
+            onClick={() => setIsToolbarCollapsed(false)}
+            title={isId ? 'Tampilkan Menu Alat Alam' : 'Show Outdoor Toolbar'}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-void-950/90 backdrop-blur-xl border border-emerald-400/50 text-emerald-300 text-xs font-semibold shadow-[0_8px_24px_rgba(0,0,0,0.6)] active:scale-95 hover:border-emerald-300 hover:text-emerald-200 transition-all cursor-pointer"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+            <span>{isId ? '🌿 Alat Alam' : '🌿 Outdoor Tools'}</span>
+            <Eye className="w-3 h-3 text-emerald-400/80 ml-0.5" />
+          </button>
+        </div>
+      )}
+
+      {/* Main Single-Row Floating Glass Capsule Toolbar */}
       <div
         onPointerDown={(e) => e.stopPropagation()}
-        className="absolute top-3 left-3 right-3 z-40 flex flex-wrap items-center justify-between gap-2 pointer-events-none"
+        className={`absolute top-2.5 left-2 right-2 sm:left-1/2 sm:-translate-x-1/2 sm:w-auto z-40 flex items-center justify-center pointer-events-none transition-all duration-300 ${
+          isToolbarCollapsed
+            ? 'opacity-0 -translate-y-4 pointer-events-none scale-95'
+            : 'opacity-100 pointer-events-auto translate-y-0 scale-100'
+        }`}
       >
-        {/* Left: Terrain Brush Selector */}
-        <div
-          id="tour-outdoor-brushes"
-          className="flex flex-wrap items-center gap-1.5 px-2.5 py-1.5 rounded-2xl bg-void-950/90 backdrop-blur-md border border-white/15 shadow-[0_10px_30px_rgba(0,0,0,0.65)] pointer-events-auto"
-        >
-          <span className="hidden xl:flex items-center gap-1 text-[10px] font-mono uppercase tracking-wider text-emerald-400 px-1.5 font-bold">
-            <Sprout className="w-3.5 h-3.5" />
-            {isId ? 'Medan 40×20:' : '40×20 Terrain:'}
-          </span>
-
-          {brushButtons.map((btn) => {
-            const isActive = terrainBrush === btn.id;
-            return (
-              <button
-                key={btn.id}
-                type="button"
-                onClick={() => setTerrainBrush(btn.id)}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-semibold border transition-all active:scale-95 cursor-pointer ${
-                  isActive
-                    ? btn.activeClass
-                    : 'bg-void-900/90 hover:bg-void-800 border-white/10 text-slate-300 hover:text-white'
-                }`}
-              >
-                {btn.icon}
-                <span>{btn.label}</span>
-              </button>
-            );
-          })}
-
-          <button
-            type="button"
-            onClick={resetOutdoorTerrain}
-            title={isId ? 'Reset Medan Alam' : 'Reset Terrain'}
-            className="flex items-center gap-1 px-2 py-1 rounded-xl text-[11px] font-medium bg-void-900/90 hover:bg-void-800 border border-white/10 text-slate-300 hover:text-white active:scale-95 transition-all cursor-pointer"
+        <div className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-2xl bg-void-950/90 backdrop-blur-xl border border-white/15 shadow-[0_12px_36px_rgba(0,0,0,0.65)] max-w-full overflow-x-auto no-scrollbar">
+          {/* Section 1: Terrain Brush Selector */}
+          <div
+            id="tour-outdoor-brushes"
+            className="flex items-center gap-1 shrink-0"
           >
-            <RotateCcw className="w-3 h-3" />
-            <span className="hidden sm:inline">{isId ? 'Reset Medan' : 'Reset'}</span>
-          </button>
-        </div>
+            <span className="hidden xl:flex items-center gap-1 text-[10px] font-mono uppercase tracking-wider text-emerald-400 px-1 font-bold">
+              <Sprout className="w-3.5 h-3.5" />
+              {isId ? 'Medan:' : 'Terrain:'}
+            </span>
 
-        {/* Center: Sun Position / Time of Day (Mikroklimat Bayangan Matahari) */}
-        <div
-          id="tour-outdoor-sun-time"
-          className="flex items-center gap-1 px-2 py-1.5 rounded-2xl bg-void-950/90 backdrop-blur-md border border-white/15 shadow-[0_10px_30px_rgba(0,0,0,0.65)] pointer-events-auto"
-        >
-          <span className="hidden md:flex items-center gap-1 text-[10px] font-mono uppercase tracking-wider text-amber-400 px-1 font-bold">
-            <Sun className="w-3.5 h-3.5 text-amber-400" />
-            {isId ? 'Matahari:' : 'Sun:'}
-          </span>
+            {brushButtons.map((btn) => {
+              const isActive = terrainBrush === btn.id;
+              return (
+                <button
+                  key={btn.id}
+                  type="button"
+                  onClick={() => setTerrainBrush(btn.id)}
+                  title={btn.fullLabel}
+                  className={`flex items-center gap-1 px-2 py-1 rounded-xl text-[11px] font-semibold border transition-all active:scale-95 cursor-pointer shrink-0 ${
+                    isActive
+                      ? btn.activeClass
+                      : 'bg-void-900/80 hover:bg-void-800 border-white/10 text-slate-300 hover:text-white'
+                  }`}
+                >
+                  {btn.icon}
+                  <span className="hidden md:inline">{btn.label}</span>
+                </button>
+              );
+            })}
 
-          <button
-            type="button"
-            onClick={() => setSunTimeOfDay('morning')}
-            title={isId ? 'Matahari Pagi (Bayangan ke Barat)' : 'Morning Sun (Shadows Westward)'}
-            className={`flex items-center gap-1 px-2 py-1 rounded-xl text-[11px] font-semibold border transition-all active:scale-95 cursor-pointer ${
-              sunTimeOfDay === 'morning'
-                ? 'bg-amber-500/25 border-amber-400 text-amber-200 shadow-[0_0_12px_rgba(245,158,11,0.3)]'
-                : 'bg-void-900/90 hover:bg-void-800 border-white/10 text-slate-300 hover:text-white'
-            }`}
+            <button
+              type="button"
+              onClick={resetOutdoorTerrain}
+              title={isId ? 'Reset Medan Alam' : 'Reset Terrain'}
+              className="flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-xl text-[11px] font-medium bg-void-900/80 hover:bg-void-800 border border-white/10 text-slate-400 hover:text-white active:scale-95 transition-all cursor-pointer shrink-0"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span className="hidden lg:inline">{isId ? 'Reset' : 'Reset'}</span>
+            </button>
+          </div>
+
+          {/* Translucent Divider */}
+          <div className="w-px h-4 bg-white/15 shrink-0 mx-0.5 sm:mx-1" />
+
+          {/* Section 2: Sun Position / Time of Day */}
+          <div
+            id="tour-outdoor-sun-time"
+            className="flex items-center gap-1 shrink-0"
           >
-            <span>🌅</span>
-            <span>{isId ? 'Pagi (35°)' : 'Morning (35°)'}</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setSunTimeOfDay('morning')}
+              title={isId ? 'Matahari Pagi (Bayangan ke Barat)' : 'Morning Sun (Shadows Westward)'}
+              className={`flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-xl text-[11px] font-semibold border transition-all active:scale-95 cursor-pointer shrink-0 ${
+                sunTimeOfDay === 'morning'
+                  ? 'bg-amber-500/25 border-amber-400 text-amber-200 shadow-[0_0_12px_rgba(245,158,11,0.35)]'
+                  : 'bg-void-900/80 hover:bg-void-800 border-white/10 text-slate-400 hover:text-white'
+              }`}
+            >
+              <span>🌅</span>
+              <span className="hidden md:inline">{isId ? 'Pagi (35°)' : 'Morning (35°)'}</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setSunTimeOfDay('noon')}
-            title={isId ? 'Matahari Siang (Tinggi di Atas)' : 'Noon Sun (High Overhead)'}
-            className={`flex items-center gap-1 px-2 py-1 rounded-xl text-[11px] font-semibold border transition-all active:scale-95 cursor-pointer ${
-              sunTimeOfDay === 'noon'
-                ? 'bg-yellow-500/25 border-yellow-400 text-yellow-200 shadow-[0_0_12px_rgba(234,179,8,0.3)]'
-                : 'bg-void-900/90 hover:bg-void-800 border-white/10 text-slate-300 hover:text-white'
-            }`}
-          >
-            <span>☀️</span>
-            <span>{isId ? 'Siang (75°)' : 'Noon (75°)'}</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setSunTimeOfDay('noon')}
+              title={isId ? 'Matahari Siang (Tinggi di Atas)' : 'Noon Sun (High Overhead)'}
+              className={`flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-xl text-[11px] font-semibold border transition-all active:scale-95 cursor-pointer shrink-0 ${
+                sunTimeOfDay === 'noon'
+                  ? 'bg-yellow-500/25 border-yellow-400 text-yellow-200 shadow-[0_0_12px_rgba(234,179,8,0.35)]'
+                  : 'bg-void-900/80 hover:bg-void-800 border-white/10 text-slate-400 hover:text-white'
+              }`}
+            >
+              <span>☀️</span>
+              <span className="hidden md:inline">{isId ? 'Siang (75°)' : 'Noon (75°)'}</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setSunTimeOfDay('afternoon')}
-            title={isId ? 'Matahari Sore (Bayangan ke Timur)' : 'Afternoon Sun (Shadows Eastward)'}
-            className={`flex items-center gap-1 px-2 py-1 rounded-xl text-[11px] font-semibold border transition-all active:scale-95 cursor-pointer ${
-              sunTimeOfDay === 'afternoon'
-                ? 'bg-orange-500/25 border-orange-400 text-orange-200 shadow-[0_0_12px_rgba(249,115,22,0.3)]'
-                : 'bg-void-900/90 hover:bg-void-800 border-white/10 text-slate-300 hover:text-white'
-            }`}
-          >
-            <span>🌇</span>
-            <span>{isId ? 'Sore (35°)' : 'Afternoon (35°)'}</span>
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={() => setSunTimeOfDay('afternoon')}
+              title={isId ? 'Matahari Sore (Bayangan ke Timur)' : 'Afternoon Sun (Shadows Eastward)'}
+              className={`flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-xl text-[11px] font-semibold border transition-all active:scale-95 cursor-pointer shrink-0 ${
+                sunTimeOfDay === 'afternoon'
+                  ? 'bg-orange-500/25 border-orange-400 text-orange-200 shadow-[0_0_12px_rgba(249,115,22,0.35)]'
+                  : 'bg-void-900/80 hover:bg-void-800 border-white/10 text-slate-400 hover:text-white'
+              }`}
+            >
+              <span>🌇</span>
+              <span className="hidden md:inline">{isId ? 'Sore (35°)' : 'Afternoon (35°)'}</span>
+            </button>
+          </div>
 
-        {/* Right: Quick Demo Generator */}
-        <div className="flex items-center gap-2 pointer-events-auto">
+          {/* Translucent Divider */}
+          <div className="w-px h-4 bg-white/15 shrink-0 mx-0.5 sm:mx-1" />
+
+          {/* Section 3: Quick Demo Generator */}
           <button
             id="tour-outdoor-spawn"
             type="button"
             onClick={handleSpawnOutdoorPowerStation}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/50 text-emerald-200 text-[11px] font-bold shadow-[0_8px_24px_rgba(16,185,129,0.25)] backdrop-blur-md active:scale-95 transition-all cursor-pointer"
+            title={
+              isId
+                ? '⚡ Pasang Pembangkit Alam (Panel Surya 12V + Turbin Angin + Menara Transmisi)'
+                : '⚡ Spawn Outdoor Station (Solar Panel 12V + Wind Turbine + Transmission Tower)'
+            }
+            className="flex items-center gap-1 px-2 sm:px-3 py-1 rounded-xl bg-emerald-500/25 hover:bg-emerald-500/35 border border-emerald-400/60 text-emerald-200 text-[11px] font-bold shadow-[0_0_14px_rgba(16,185,129,0.3)] backdrop-blur-md active:scale-95 transition-all cursor-pointer shrink-0"
           >
             <Sparkles className="w-3.5 h-3.5 text-emerald-300" />
-            <span>
-              {isId
-                ? '⚡ Pasang Pembangkit Alam (12V)'
-                : '⚡ Spawn Outdoor Station (12V)'}
+            <span className="hidden sm:inline">
+              {isId ? '⚡ Pembangkit (12V)' : '⚡ Station (12V)'}
             </span>
+            <span className="sm:hidden font-mono">12V</span>
+          </button>
+
+          {/* Section 4: Minimize / Scenic Mode Toggle Button */}
+          <button
+            type="button"
+            onClick={() => setIsToolbarCollapsed(true)}
+            title={isId ? 'Mode Pemandangan Penuh (Sembunyikan Menu)' : 'Scenic View (Hide Toolbar)'}
+            className="p-1 rounded-xl bg-void-900/80 hover:bg-void-800 border border-white/10 text-slate-400 hover:text-white active:scale-95 transition-all cursor-pointer shrink-0 ml-0.5"
+          >
+            <EyeOff className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>

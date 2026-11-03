@@ -415,8 +415,10 @@ function recalculateCircuit(
     }
 
     if (node.data.type === 'solar-panel' || node.data.type === 'solar_panel') {
-      const sunlight = node.data.sunlight ?? 100;
-      const effectiveSunlight = node.data.effectiveSunlight ?? sunlight;
+      const baseSunlight = node.data.baseSunlight ?? node.data.sunlight ?? 100;
+      const isShaded = node.data.isShaded ?? false;
+      const effectiveSunlight =
+        node.data.effectiveSunlight ?? (isShaded ? Math.round(baseSunlight * 0.15 * 10) / 10 : baseSunlight);
       const outputVoltage = node.data.voltage ?? getSolarPanelVoltage(effectiveSunlight);
       const outputPower = Math.abs(branchCurrent * outputVoltage);
       const isBlockingDiodeActive = blockedGeneratorSet.has(node.id);
@@ -426,7 +428,9 @@ function recalculateCircuit(
         data: {
           ...node.data,
           worldMode: 'outside' as const,
-          sunlight,
+          baseSunlight,
+          sunlight: baseSunlight,
+          isShaded,
           effectiveSunlight,
           voltage: outputVoltage,
           calculatedCurrent: branchCurrent,

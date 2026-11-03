@@ -460,8 +460,10 @@ export function computeTerrainShadowPolygons(
         currentShadowStart = c;
         shadowPoints = [];
       }
-      shadowPoints.push({ x: c * cellWidth, y: surfaceY });
-      shadowPoints.push({ x: (c + 1) * cellWidth, y: surfaceY });
+      // Top of shadow polygon includes 12px clearance to encompass low-profile grass blades
+      const shadowTopY = Math.max(0, surfaceY - 12);
+      shadowPoints.push({ x: c * cellWidth, y: shadowTopY });
+      shadowPoints.push({ x: (c + 1) * cellWidth, y: shadowTopY });
     } else {
       if (currentShadowStart !== null && shadowPoints.length > 0) {
         // Close polygon to bottom
@@ -569,10 +571,14 @@ export function applyTerrainMicroclimateToNodes(
         height
       );
 
-      const nominalSunlight = Math.max(0, Math.min(100, node.data.sunlight ?? 100));
+      // Preserve user slider setting (base sunlight) so shading never permanently degrades it
+      const baseSunlight = Math.max(
+        0,
+        Math.min(100, node.data.baseSunlight ?? node.data.sunlight ?? 100)
+      );
       const effectiveSunlight = shadowResult.isShaded
-        ? Math.round(nominalSunlight * DIFFUSE_SHADING_RATIO * 10) / 10
-        : nominalSunlight;
+        ? Math.round(baseSunlight * DIFFUSE_SHADING_RATIO * 10) / 10
+        : baseSunlight;
 
       const effectiveVoltage = getSolarPanelVoltage(effectiveSunlight);
 
@@ -580,6 +586,8 @@ export function applyTerrainMicroclimateToNodes(
         ...node,
         data: {
           ...node.data,
+          baseSunlight,
+          sunlight: baseSunlight,
           isShaded: shadowResult.isShaded,
           effectiveSunlight,
           voltage: effectiveVoltage,

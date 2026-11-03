@@ -545,5 +545,72 @@ describe('Terrain-Coupled Microclimate Engine (Nature Mode Phase 2)', () => {
       store.setSunTimeOfDay('noon');
       expect(useCircuitStore.getState().notification?.message).toContain('Noon Sun (75° Zenith)');
     });
+
+    it('generates valid terrain shadow polygons and clears at high noon', () => {
+      const grid = createDefaultOutdoorTerrain(GRID_ROWS, GRID_COLS);
+      // Tall hill at columns 4..8
+      for (let r = 8; r < GRID_ROWS; r++) {
+        for (let c = 4; c <= 8; c++) {
+          grid[r][c] = 'DIRT';
+        }
+      }
+
+      // Morning shadow should project to the right
+      const morningPolygons = computeTerrainShadowPolygons(grid, 1360, 680, 'morning');
+      expect(morningPolygons.length).toBeGreaterThan(0);
+      expect(morningPolygons[0].pathData).toContain('M ');
+      expect(morningPolygons[0].pathData).toContain(' Z');
+
+      // Noon overhead (75° or 90°) has no long hill shadows
+      const noonPolygons = computeTerrainShadowPolygons(grid, 1360, 680, { elevationDeg: 86, azimuthDeg: 180 });
+      expect(noonPolygons.length).toBe(0);
+
+      // Afternoon shadow should project
+      const afternoonPolygons = computeTerrainShadowPolygons(grid, 1360, 680, 'afternoon');
+      expect(afternoonPolygons.length).toBeGreaterThan(0);
+    });
+
+    it('prevents exponential irradiance decay and reliably restores 12V across repeated Pagi/Siang/Sore cycles', () => {
+      const store = useCircuitStore.getState();
+      store.clearCanvas();
+      store.setWorldMode('outside');
+      store.resetOutdoorTerrain();
+
+      // Place solar panel at column 12 (x=408)
+      store.addComponent('solar-panel', { x: 408, y: 350 });
+
+      // Place tall hill to the left at column 8 (shaded in morning)
+      for (let r = 6; r < GRID_ROWS; r++) {
+        store.paintTerrainCell(r, 8, 'DIRT');
+      }
+
+      // 1. Morning: Panel is shaded by hill at column 8
+      store.setSunTimeOfDay('morning');
+      let panel = useCircuitStore.getState().nodes.find((n) => n.data.type === 'solar-panel')!;
+      expect(panel.data.isShaded).toBe(true);
+      expect(panel.data.effectiveSunlight).toBe(15);
+      expect(panel.data.voltage).toBe(1.8);
+      expect(panel.data.baseSunlight).toBe(100);
+
+      // 2. Noon: Overhead sun clears hill, restoring full 12.0V
+      store.setSunTimeOfDay('noon');
+      panel = useCircuitStore.getState().nodes.find((n) => n.data.type === 'solar-panel')!;
+      expect(panel.data.isShaded).toBe(false);
+      expect(panel.data.effectiveSunlight).toBe(100);
+      expect(panel.data.voltage).toBe(12.0);
+      expect(panel.data.baseSunlight).toBe(100);
+
+      // 3. Cycle 5 times to stress-test against exponential decay
+      for (let i = 0; i < 5; i++) {
+        store.setSunTimeOfDay('morning');
+        store.setSunTimeOfDay('noon');
+      }
+
+      panel = useCircuitStore.getState().nodes.find((n) => n.data.type === 'solar-panel')!;
+      expect(panel.data.isShaded).toBe(false);
+      expect(panel.data.effectiveSunlight).toBe(100);
+      expect(panel.data.voltage).toBe(12.0);
+      expect(panel.data.baseSunlight).toBe(100);
+    });
   });
 });
