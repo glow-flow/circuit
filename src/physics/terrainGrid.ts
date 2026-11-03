@@ -65,6 +65,10 @@ export const COMPONENT_DIMENSIONS: Partial<Record<ComponentType, { width: number
   wind_turbine: { width: 144, height: 260 },
   'transmission-tower': { width: 132, height: 226 },
   transmission_tower: { width: 132, height: 226 },
+  'bess-substation': { width: 156, height: 116 },
+  bess_substation: { width: 156, height: 116 },
+  'hydro-turbine': { width: 144, height: 144 },
+  hydro_turbine: { width: 144, height: 144 },
 };
 
 export const DEFAULT_COMPONENT_DIMENSION = { width: 150, height: 170 };
@@ -174,7 +178,22 @@ export function stepTerrainGravity(currentGrid: TerrainCellType[][]): {
       const cell = nextGrid[r][c];
       if (cell === 'EMPTY') continue;
 
-      // 1a. Straight vertical gravity (DIRT, GRASS, WATER)
+      // 1a. Stationary natural mountain spring (WATER_SPRING): emits cascading fresh water
+      if (cell === 'WATER_SPRING') {
+        if (r + 1 < rows && nextGrid[r + 1][c] === 'EMPTY') {
+          nextGrid[r + 1][c] = 'WATER';
+          moved = true;
+        } else if (c + 1 < cols && nextGrid[r][c + 1] === 'EMPTY') {
+          nextGrid[r][c + 1] = 'WATER';
+          moved = true;
+        } else if (c - 1 >= 0 && nextGrid[r][c - 1] === 'EMPTY') {
+          nextGrid[r][c - 1] = 'WATER';
+          moved = true;
+        }
+        continue;
+      }
+
+      // 1b. Straight vertical gravity (DIRT, GRASS, WATER)
       if (nextGrid[r + 1][c] === 'EMPTY') {
         nextGrid[r + 1][c] = cell;
         nextGrid[r][c] = 'EMPTY';
@@ -697,19 +716,22 @@ export function evaluateComponentDropPhysics(
   }
 
   // 2. Check Water Short-Circuit Hazard (either at release point or grounded landing surface)
+  // Hydro-turbines are purpose-built for waterfalls and rivers, so they are immune to water hazards!
+  const isWaterImmune = type === 'hydro-turbine' || type === 'hydro_turbine';
   if (
-    doesComponentTouchWater(
+    !isWaterImmune &&
+    (doesComponentTouchWater(
       rawBox,
       terrainGrid,
       containerSize.width,
       containerSize.height
     ) ||
-    doesComponentTouchWater(
-      settledBox,
-      terrainGrid,
-      containerSize.width,
-      containerSize.height
-    )
+      doesComponentTouchWater(
+        settledBox,
+        terrainGrid,
+        containerSize.width,
+        containerSize.height
+      ))
   ) {
     return {
       status: 'explode-water',

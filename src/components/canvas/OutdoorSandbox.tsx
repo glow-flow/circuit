@@ -55,6 +55,9 @@ import { GroundNode } from './nodes/GroundNode';
 import { VoltmeterNode } from './nodes/VoltmeterNode';
 import { AmmeterNode } from './nodes/AmmeterNode';
 import { TransmissionWireEdge } from './TransmissionWireEdge';
+import { BessSubstationNode } from './nodes/BessSubstationNode';
+import { HydroTurbineNode } from './nodes/HydroTurbineNode';
+
 
 /**
  * Radial particle vectors for the Water Short-Circuit Explosion animation.
@@ -308,6 +311,10 @@ const OutdoorSandboxInner: React.FC = () => {
       transmission_tower: TransmissionTowerNode,
       'wind-turbine': WindTurbineNode,
       wind_turbine: WindTurbineNode,
+      'bess-substation': BessSubstationNode,
+      bess_substation: BessSubstationNode,
+      'hydro-turbine': HydroTurbineNode,
+      hydro_turbine: HydroTurbineNode,
     }),
     []
   );

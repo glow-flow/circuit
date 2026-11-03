@@ -7,13 +7,15 @@
  */
 
 import { Node, Edge } from 'reactflow';
-import { CircuitElementData, WorldMode } from '../types/circuit';
+import { CircuitElementData, WorldMode, isOutdoorOnlyComponent } from '../types/circuit';
 import {
   CircuitExportPayload,
   CURRENT_CIRCUIT_SCHEMA_VERSION,
   WorkspaceValidationResult,
 } from '../types/workspace';
 import { migrateWiredBulbsToSockets } from './presetStorage';
+import { encodeTerrainGrid } from './terrainCompression';
+import { TerrainCellType } from '../types/circuit';
 
 /**
  * Sanitizes a circuit title to create a clean, filesystem-safe filename.
@@ -165,11 +167,7 @@ export function validateAndParseCircuitPayload(
           author: metadata.author,
         },
         nodes: migratedNodes.map((n) => {
-          const isOutdoorOnly =
-            n.data?.type === 'solar-panel' ||
-            n.data?.type === 'solar_panel' ||
-            n.data?.type === 'wind-turbine' ||
-            n.data?.type === 'wind_turbine';
+          const isOutdoorOnly = isOutdoorOnlyComponent(n.data?.type);
           if (isOutdoorOnly && n.data?.worldMode !== 'outside') {
             return { ...n, data: { ...n.data, worldMode: 'outside' as WorldMode } };
           }
@@ -204,7 +202,8 @@ export function generateShareableUrl(
   circuitTitle: string,
   nodes: Node<CircuitElementData>[],
   edges: Edge[],
-  worldMode: WorldMode = 'lab'
+  worldMode: WorldMode = 'lab',
+  terrainGrid?: TerrainCellType[][]
 ): string {
   // Compress nodes to minimal essential electrical data
   const compactNodes = nodes.map((n) => ({
@@ -240,6 +239,7 @@ export function generateShareableUrl(
     v: CURRENT_CIRCUIT_SCHEMA_VERSION,
     n: compactNodes,
     e: compactEdges,
+    tr: terrainGrid ? encodeTerrainGrid(terrainGrid) : undefined,
   };
 
   const jsonString = JSON.stringify(payload);
@@ -323,11 +323,7 @@ export function decodeShareableUrlHash(
           worldMode: parsed.mode === 'outside' ? 'outside' : 'lab',
         },
         nodes: migratedNodes.map((n) => {
-          const isOutdoorOnly =
-            n.data?.type === 'solar-panel' ||
-            n.data?.type === 'solar_panel' ||
-            n.data?.type === 'wind-turbine' ||
-            n.data?.type === 'wind_turbine';
+          const isOutdoorOnly = isOutdoorOnlyComponent(n.data?.type);
           if (isOutdoorOnly && n.data?.worldMode !== 'outside') {
             return { ...n, data: { ...n.data, worldMode: 'outside' as WorldMode } };
           }

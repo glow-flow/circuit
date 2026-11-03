@@ -29,6 +29,8 @@ export interface CircuitExportPayload {
   metadata: CircuitFileMetadata;
   nodes: Node<CircuitElementData>[];
   edges: Edge[];
+  /** Optional Run-Length Encoded 40x20 terrain grid for Outdoor Sandbox */
+  terrainRle?: string;
 }
 
 export interface WorkspaceValidationSuccess {

@@ -20,6 +20,10 @@ export type ComponentType =
   | 'distribution_panel'
   | 'wind-turbine'
   | 'wind_turbine'
+  | 'bess-substation'
+  | 'bess_substation'
+  | 'hydro-turbine'
+  | 'hydro_turbine'
   | 'resistor'
   | 'bulb'
   | 'switch'
@@ -35,9 +39,32 @@ export type BatteryChargeState = 'idle' | 'charging' | 'discharging';
 
 export type WorldMode = 'lab' | 'outside';
 
-export type TerrainCellType = 'EMPTY' | 'DIRT' | 'WATER' | 'GRASS';
+/**
+ * Checks whether a component type is strictly quarantined to Outdoor Sandbox mode.
+ * Renewable generators (Solar Panels, Wind Turbines, BESS Substation, Hydro Turbines)
+ * must NEVER exist or be operated inside the indoor Lab environment.
+ *
+ * Time Complexity: O(1).
+ *
+ * @param type - Component type string
+ * @returns True if component is outdoor-exclusive
+ */
+export function isOutdoorOnlyComponent(type: string | undefined): boolean {
+  return (
+    type === 'solar-panel' ||
+    type === 'solar_panel' ||
+    type === 'wind-turbine' ||
+    type === 'wind_turbine' ||
+    type === 'bess-substation' ||
+    type === 'bess_substation' ||
+    type === 'hydro-turbine' ||
+    type === 'hydro_turbine'
+  );
+}
 
-export type TerrainBrushTool = 'cursor' | 'DIRT' | 'WATER' | 'EMPTY';
+export type TerrainCellType = 'EMPTY' | 'DIRT' | 'WATER' | 'GRASS' | 'WATER_SPRING';
+
+export type TerrainBrushTool = 'cursor' | 'DIRT' | 'WATER' | 'WATER_SPRING' | 'EMPTY';
 
 export interface ExplosionEvent {
   id: string;
@@ -101,6 +128,18 @@ export interface CircuitElementData {
   effectiveSpeed?: number;     // Effective wind turbine rotational speed after Hellmann orographic wind shear
   windShearMultiplier?: number;// Wind shear multiplication factor based on terrain elevation
   elevationBonusPercent?: number; // Visual bonus percentage (e.g. +45% on hilltops, -28% in valleys)
+
+  // BESS Substation (Outdoor Battery Energy Storage System) properties
+  socPercent?: number;             // Battery State of Charge percentage (0 - 100%)
+  storedEnergyWh?: number;         // Stored electrical energy in Watt-hours (e.g. 1000 Wh)
+  nominalCapacityWh?: number;      // Rated energy capacity in Watt-hours (default 1000 Wh)
+  bessMode?: 'idle' | 'charging' | 'discharging' | 'fully_charged' | 'depleted';
+
+  // Waterfall Micro-Hydro Turbine properties
+  waterFlowRate?: number;          // Volumetric flow rate percentage (0 - 100%)
+  hydraulicHeadMeters?: number;    // Effective hydraulic head drop (meters)
+  rpm?: number;                    // Pelton runner rotational speed (RPM)
+  hasWaterContact?: boolean;       // Whether waterfall/river is currently contacting runner
 
   // Transmission Tower & Lab Distribution Panel (MCB + Step-Down) properties
   towerConnectedCount?: number; // Total number of active transmission nodes sharing this virtual grid bus

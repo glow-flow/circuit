@@ -29,7 +29,9 @@ import {
 } from './utils/workspacePersistence';
 import { registerTourMobileSheetController, TourMobileSheetState } from './utils/tour';
 import { decodeShareableUrlHash } from './utils/workspaceManagement';
+import { decodeTerrainGrid } from './utils/terrainCompression';
 import { getComponentDisplayName } from './utils/nodeLocalization';
+import { OutdoorGenerationMiniHud } from './components/ui/telemetry/OutdoorGenerationMiniHud';
 
 type MobileSheetType = TourMobileSheetState;
 
@@ -135,7 +137,8 @@ export const App: React.FC = () => {
         useCircuitStore.getState().loadCustomCircuit(
           payload.nodes,
           payload.edges,
-          payload.metadata.worldMode
+          payload.metadata.worldMode,
+          payload.terrainRle ? decodeTerrainGrid(payload.terrainRle) : undefined
         );
         useCircuitStore.getState().notify(
           isId
@@ -219,6 +222,7 @@ export const App: React.FC = () => {
           className="flex-1 relative h-full w-full min-w-0 min-h-0"
         >
           {worldMode === 'outside' ? <OutdoorSandbox /> : <CircuitCanvas />}
+          <OutdoorGenerationMiniHud />
 
           {/* Floating Quick-Edit & Disconnect Wires Bar on Mobile when a component is selected */}
           {selectedNode && activeMobileSheet === 'none' && (

@@ -35,6 +35,7 @@ export const CircuitShareModal: React.FC<CircuitShareModalProps> = ({ isOpen, on
   const nodes = useCircuitStore((state) => state.nodes);
   const edges = useCircuitStore((state) => state.edges);
   const worldMode = useCircuitStore((state) => state.worldMode);
+  const terrainGrid = useCircuitStore((state) => state.terrainGrid);
   const language = useCircuitStore((state) => state.language);
   const saveCustomPreset = useCircuitStore((state) => state.saveCustomPreset);
   const setNodes = useCircuitStore((state) => state.setNodes);
@@ -62,7 +63,7 @@ export const CircuitShareModal: React.FC<CircuitShareModalProps> = ({ isOpen, on
   useEffect(() => {
     if (!isOpen) return;
 
-    const url = generateShareableUrl(circuitTitle, nodes, edges, worldMode);
+    const url = generateShareableUrl(circuitTitle, nodes, edges, worldMode, terrainGrid);
     setShareUrl(url);
 
     // Generate crisp QR code SVG/PNG Data URL with dark styling
@@ -85,7 +86,7 @@ export const CircuitShareModal: React.FC<CircuitShareModalProps> = ({ isOpen, on
         }
       }
     );
-  }, [isOpen, circuitTitle, nodes, edges, worldMode]);
+  }, [isOpen, circuitTitle, nodes, edges, worldMode, terrainGrid]);
 
   if (!isOpen) return null;
 

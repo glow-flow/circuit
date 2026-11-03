@@ -32,6 +32,7 @@ import {
   GRID_ROWS,
 } from './terrainGrid';
 import { getSolarPanelVoltage } from './solarPanel';
+import { detectTurbineWaterFlow, calculateHydroOperatingPoint } from './hydroPhysics';
 
 /** Baseline terrain surface row (row 15 out of 20 = rows - 5 in default landscape) */
 export const TERRAIN_BASELINE_ROW = 15;
@@ -602,6 +603,34 @@ export function applyTerrainMicroclimateToNodes(
           windShearMultiplier: Number(windShear.shearFactor.toFixed(3)),
           elevationBonusPercent: windShear.elevationBonusPercent,
           voltage: windShear.effectiveVoltage,
+        },
+      };
+    }
+
+
+    // --- 3. Waterfall Micro-Hydro Turbine ---
+    if (node.data.type === 'hydro-turbine' || node.data.type === 'hydro_turbine') {
+      const box = getComponentBoundingBox(node.position, node.data.type);
+      const waterFlow = detectTurbineWaterFlow(box, terrainGrid, width, height);
+
+      const effectiveFlow = waterFlow.hasWaterContact
+        ? waterFlow.flowPercentage
+        : (node.data.waterFlowRate ?? 0);
+      const effectiveHead = waterFlow.hasWaterContact
+        ? waterFlow.headMeters
+        : (node.data.hydraulicHeadMeters ?? 2.0);
+
+      const hydroPoint = calculateHydroOperatingPoint(effectiveFlow, effectiveHead);
+
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          waterFlowRate: effectiveFlow,
+          hydraulicHeadMeters: effectiveHead,
+          voltage: hydroPoint.voltage,
+          rpm: hydroPoint.rpm,
+          hasWaterContact: waterFlow.hasWaterContact,
         },
       };
     }

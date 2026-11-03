@@ -179,6 +179,8 @@ export type PrimaryComponentCitationKey =
   | 'solar-panel'
   | 'wind-turbine'
   | 'transmission-tower'
+  | 'bess-substation'
+  | 'hydro-turbine'
   | 'socket'
   | 'pin-socket'
   | 'resistor'
@@ -300,6 +302,42 @@ export const COMPONENT_DATASHEET_CITATIONS: Readonly<
     sourceCitationEn:
       'SNI 0225:2011 / PUIL 2011 (Indonesian National Electrical Installation Code), SNI IEC 60898-1 (MCB Circuit Breakers), & IEC 61140 (SELV Safe Low Voltage ≤ 24V DC).',
     standardBadge: 'PUIL 2011 (SNI 0225) • SNI IEC 60898-1 MCB',
+  },
+  'bess-substation': {
+    id: 'bess-substation',
+    titleId: 'Gardu Baterai BESS Lapangan (1.0 kWh, 12.8V LiFePO4)',
+    titleEn: 'Outdoor BESS Substation (1.0 kWh, 12.8V LiFePO4)',
+    parameterSummaryId:
+      'Kapasitas = 1000 Wh (83 Ah) • V_nominal = 12,8 V DC • Efisiensi Coulombic = 98% • Kimia Sel = LiFePO4',
+    parameterSummaryEn:
+      'Capacity = 1000 Wh (83 Ah) • V_nominal = 12.8 V DC • Coulombic Efficiency = 98% • Cell Chemistry = LiFePO4',
+    formulaDerivationId:
+      'Baterai Lithium Iron Phosphate (LiFePO4) dengan 4 sel seri (4S) 3.2V nominal (12.8V total). Menggunakan integrasi Coulomb counting dQ = I * dt dan kurva voltage sag realistis.',
+    formulaDerivationEn:
+      'Lithium Iron Phosphate (LiFePO4) 4-series cell (4S) pack with 3.2V nominal per cell (12.8V total). Uses Coulomb counting integration dQ = I * dt with realistic voltage sag curve.',
+    sourceCitationId:
+      'IEC 62619:2022 (Secondary Cells and Batteries for Industrial Applications) & Standar Keselamatan Sistem Penyimpanan Energi BESS.',
+    sourceCitationEn:
+      'IEC 62619:2022 (Secondary Cells and Batteries for Industrial Applications) & Industrial BESS Safety Standards.',
+    standardBadge: 'IEC 62619 • LiFePO4 1kWh',
+  },
+  'hydro-turbine': {
+    id: 'hydro-turbine',
+    titleId: 'Pembangkit Listrik Turbin Mikrohidro (Runner Pelton 12V)',
+    titleEn: 'Micro-Hydro Turbine Generator (12V Pelton Runner)',
+    parameterSummaryId:
+      'P_hydro = η · ρ · g · Q · H • V_out = 0 – 12,0 V DC • Efisiensi Turbin η = 82%',
+    parameterSummaryEn:
+      'P_hydro = η · ρ · g · Q · H • V_out = 0 – 12.0 V DC • Runner Efficiency η = 82%',
+    formulaDerivationId:
+      'Mengonversi energi potensial gravitasi air terjun/sungai menjadi energi mekanik sudu Pelton dan listrik DC via generator magnet permanen: P = 0.82 * 1000 * 9.81 * Q * H.',
+    formulaDerivationEn:
+      'Converts gravitational potential energy of falling water into mechanical Pelton runner rotation and DC electricity: P = 0.82 * 1000 * 9.81 * Q * H.',
+    sourceCitationId:
+      'IEC 61116:1992 (Electromechanical Equipment Guide for Small Hydroelectric Installations) & Prinsip Turbin Impuls Pelton.',
+    sourceCitationEn:
+      'IEC 61116:1992 (Electromechanical Equipment Guide for Small Hydroelectric Installations) & Pelton Impulse Turbine Physics.',
+    standardBadge: 'IEC 61116 • Turbin Pelton',
   },
   socket: {
     id: 'socket',

@@ -16,7 +16,7 @@
  */
 
 import { Node, Edge } from 'reactflow';
-import { CircuitElementData, WorldMode } from '../types/circuit';
+import { CircuitElementData, WorldMode, isOutdoorOnlyComponent } from '../types/circuit';
 import { migrateWiredBulbsToSockets } from './presetStorage';
 
 export const STORAGE_KEYS = {
@@ -346,11 +346,7 @@ export function loadWorkspaceAutosaveWithValidation(
 
     // Strict Rule: Solar Panels and Wind Turbines are NEVER allowed in 'lab'.
     const sanitizedNodes = migratedNodes.map((node) => {
-      const isOutdoorOnly =
-        node.data?.type === 'solar-panel' ||
-        node.data?.type === 'solar_panel' ||
-        node.data?.type === 'wind-turbine' ||
-        node.data?.type === 'wind_turbine';
+      const isOutdoorOnly = isOutdoorOnlyComponent(node.data?.type);
 
       if (isOutdoorOnly && node.data?.worldMode !== 'outside') {
         return {

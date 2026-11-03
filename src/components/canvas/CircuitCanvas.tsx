@@ -151,8 +151,8 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
         const isIndonesian = useCircuitStore.getState().language === 'id';
         useCircuitStore.getState().notify(
           isIndonesian
-            ? '⚠️ Turbin Angin dan Panel Surya hanya boleh ada di Alam Terbuka!'
-            : '⚠️ Wind Turbines and Solar Panels are strictly prohibited in the Lab!'
+            ? '⚠️ Pembangkit EBT luar ruangan (Panel Surya, Turbin Angin, BESS, Mikrohidro) hanya boleh ada di Alam Terbuka!'
+            : '⚠️ Outdoor renewable generators (Solar, Wind, BESS, Hydro) are strictly prohibited in the Lab!'
         );
         return;
       }

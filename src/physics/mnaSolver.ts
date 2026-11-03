@@ -60,7 +60,9 @@ export function isRenewableWithBlockingDiode(component: CircuitElementData): boo
     component.type === 'solar-panel' ||
     component.type === 'solar_panel' ||
     component.type === 'wind-turbine' ||
-    component.type === 'wind_turbine'
+    component.type === 'wind_turbine' ||
+    component.type === 'hydro-turbine' ||
+    component.type === 'hydro_turbine'
   );
 }
 
@@ -121,7 +123,9 @@ export function isBatteryComponent(component: CircuitElementData): boolean {
   return (
     component.type === 'battery' ||
     component.type === 'battery9v' ||
-    component.type === 'battery-holder'
+    component.type === 'battery-holder' ||
+    component.type === 'bess-substation' ||
+    component.type === 'bess_substation'
   );
 }
 
@@ -145,6 +149,12 @@ export function getSourceDischargeResistance(sourceComp: CircuitElementData): nu
       0.01,
       sourceComp.internalResistance ?? BATTERY_INTERNAL_RESISTANCE * cellCount
     );
+  }
+  if (sourceComp.type === 'bess-substation' || sourceComp.type === 'bess_substation') {
+    return Math.max(0.01, sourceComp.internalResistance ?? 0.04);
+  }
+  if (sourceComp.type === 'hydro-turbine' || sourceComp.type === 'hydro_turbine') {
+    return Math.max(0.01, sourceComp.internalResistance ?? 0.15);
   }
   if (sourceComp.type === 'solar-panel' || sourceComp.type === 'solar_panel') {
     return Math.max(0.01, sourceComp.internalResistance ?? SOLAR_PANEL_INTERNAL_RESISTANCE);
@@ -173,6 +183,12 @@ export function getBatteryChargingParameters(component: CircuitElementData): {
   baseResistance: number;
   maxCurrent: number;
 } {
+  if (component.type === 'bess-substation' || component.type === 'bess_substation') {
+    return {
+      baseResistance: component.internalResistance ?? 0.04,
+      maxCurrent: 40.0,
+    };
+  }
   if (component.type === 'battery9v') {
     return {
       baseResistance: component.internalResistance ?? BATTERY_9V_CHARGING_RESISTANCE_BASE,
@@ -214,6 +230,12 @@ export function isActiveVoltageSource(
   if (component.type === 'battery-holder') {
     const cellCount = component.batteryCount ?? (component.hasBattery ? 2 : 0);
     return Boolean(component.hasBattery && cellCount > 0);
+  }
+  if (component.type === 'bess-substation' || component.type === 'bess_substation') {
+    return (component.voltage ?? 12.8) > 0;
+  }
+  if (component.type === 'hydro-turbine' || component.type === 'hydro_turbine') {
+    return (component.voltage ?? 0) > 0;
   }
   if (component.type === 'solar-panel' || component.type === 'solar_panel') {
     return true;
@@ -271,6 +293,11 @@ export function getVoltageSourceNominalVoltage(component: CircuitElementData): n
   } else if (component.type === 'wind-turbine' || component.type === 'wind_turbine') {
     const turbineSpeed = component.speed ?? 50;
     return component.voltage ?? (turbineSpeed / 100) * 12.0;
+  } else if (component.type === 'bess-substation' || component.type === 'bess_substation') {
+    const nominalV = component.voltage ?? 12.8;
+    return computeEffectiveBatteryVoltage(nominalV, component.socPercent ?? component.currentCharge ?? 80);
+  } else if (component.type === 'hydro-turbine' || component.type === 'hydro_turbine') {
+    return component.voltage ?? 0;
   } else if (component.type === 'distribution-panel' || component.type === 'distribution_panel') {
     return component.stepDownVoltage ?? 12.0;
   } else {
@@ -835,6 +862,10 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
         component.type === 'solar_panel' ||
         component.type === 'wind-turbine' ||
         component.type === 'wind_turbine' ||
+        component.type === 'bess-substation' ||
+        component.type === 'bess_substation' ||
+        component.type === 'hydro-turbine' ||
+        component.type === 'hydro_turbine' ||
         component.type === 'transmission-tower' ||
         component.type === 'transmission_tower' ||
         component.type === 'distribution-panel' ||
@@ -993,6 +1024,10 @@ export function getComponentPinIdentifiers(component: CircuitElementData): strin
     case 'distribution_panel':
     case 'wind-turbine':
     case 'wind_turbine':
+    case 'bess-substation':
+    case 'bess_substation':
+    case 'hydro-turbine':
+    case 'hydro_turbine':
       return [`${component.id}:pos`, `${component.id}:neg`];
     case 'resistor':
     case 'switch':

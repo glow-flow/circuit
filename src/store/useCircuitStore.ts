@@ -18,6 +18,7 @@ import {
   ReactFlowInstance,
 } from 'reactflow';
 import {
+  BatteryChargeState,
   CircuitElementData,
   ComponentType,
   ExplosionEvent,
@@ -27,7 +28,9 @@ import {
   TerrainCellType,
   WireConnection,
   WorldMode,
+  isOutdoorOnlyComponent,
 } from '../types/circuit';
+import { calculateHydroOperatingPoint } from '../physics/hydroPhysics';
 import {
   getSolarPanelVoltage,
   SOLAR_PANEL_INTERNAL_RESISTANCE,
@@ -195,7 +198,8 @@ interface CircuitState {
   loadCustomCircuit: (
     nodes: Node<CircuitElementData>[],
     edges: Edge[],
-    targetWorldMode?: WorldMode
+    targetWorldMode?: WorldMode,
+    customTerrainGrid?: TerrainCellType[][]
   ) => void;
   saveCustomPreset: (name: string) => void;
   loadCustomPreset: (presetId: string) => void;
@@ -454,6 +458,57 @@ function recalculateCircuit(
           calculatedPower: outputPower,
           isShortCircuit,
           isBlockingDiodeActive,
+        },
+      };
+    }
+
+    if (node.data.type === 'bess-substation' || node.data.type === 'bess_substation') {
+      const soc = Math.max(0, Math.min(100, node.data.socPercent ?? node.data.currentCharge ?? 80));
+      const nominalV = node.data.voltage ?? 12.8;
+      const effectiveV = computeEffectiveBatteryVoltage(nominalV, soc);
+      const isCharging = branchCurrent > 0.05;
+      const isDischarging = branchCurrent < -0.05;
+      const bessMode: 'idle' | 'charging' | 'discharging' = isCharging ? 'charging' : isDischarging ? 'discharging' : 'idle';
+      const outputPower = Math.abs(branchCurrent * effectiveV);
+
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          worldMode: 'outside' as const,
+          socPercent: soc,
+          currentCharge: soc,
+          voltage: effectiveV,
+          bessMode,
+          chargeState: bessMode as BatteryChargeState,
+          calculatedCurrent: branchCurrent,
+          calculatedVoltage: effectiveV,
+          calculatedPower: outputPower,
+          isShortCircuit,
+        },
+      };
+    }
+
+    if (node.data.type === 'hydro-turbine' || node.data.type === 'hydro_turbine') {
+      const flow = node.data.waterFlowRate ?? 0;
+      const head = node.data.hydraulicHeadMeters ?? 2.0;
+      const hydroPoint = calculateHydroOperatingPoint(flow, head);
+      const outVoltage = node.data.voltage ?? hydroPoint.voltage;
+      const outputPower = Math.abs(branchCurrent * outVoltage);
+
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          worldMode: 'outside' as const,
+          waterFlowRate: flow,
+          hydraulicHeadMeters: head,
+          voltage: outVoltage,
+          rpm: hydroPoint.rpm,
+          calculatedCurrent: branchCurrent,
+          calculatedVoltage: outVoltage,
+          calculatedPower: outputPower,
+          isShortCircuit,
         },
       };
     }
@@ -1118,11 +1173,7 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     const isId = get().language === 'id';
     const activeWorldMode = get().worldMode;
 
-    const isOutdoorOnly =
-      type === 'solar-panel' ||
-      type === 'solar_panel' ||
-      type === 'wind-turbine' ||
-      type === 'wind_turbine';
+    const isOutdoorOnly = isOutdoorOnlyComponent(type);
 
     if (activeWorldMode === 'lab' && isOutdoorOnly) {
       get().notify(
@@ -1208,6 +1259,39 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
               : 'Lab Distribution Panel',
         };
         break;
+      case 'bess-substation':
+      case 'bess_substation': {
+        const nominalCapacityWh = 1000;
+        const defaultSoc = 80;
+        defaultData = {
+          ...defaultData,
+          type: 'bess-substation',
+          voltage: 12.8,
+          socPercent: defaultSoc,
+          currentCharge: defaultSoc,
+          nominalCapacityWh,
+          storedEnergyWh: (defaultSoc / 100) * nominalCapacityWh,
+          internalResistance: 0.04,
+          bessMode: 'idle',
+          label: isId ? 'Gardu Baterai BESS' : 'BESS Substation',
+        };
+        break;
+      }
+      case 'hydro-turbine':
+      case 'hydro_turbine': {
+        defaultData = {
+          ...defaultData,
+          type: 'hydro-turbine',
+          waterFlowRate: 0,
+          hydraulicHeadMeters: 2.0,
+          voltage: 0,
+          rpm: 0,
+          internalResistance: 0.15,
+          hasWaterContact: false,
+          label: isId ? 'Turbin Mikrohidro' : 'Micro-Hydro Turbine',
+        };
+        break;
+      }
       case 'wind-turbine':
       case 'wind_turbine': {
         const defaultSpeed = 50;
@@ -2628,7 +2712,10 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
    * @param customEdges - Wire connections between nodes
    * @param targetWorldMode - Destination environment ('lab' or 'outside')
    */
-  loadCustomCircuit: (customNodes, customEdges, targetWorldMode = 'lab') => {
+  loadCustomCircuit: (customNodes: Node<CircuitElementData>[], customEdges: Edge[], targetWorldMode: WorldMode = 'lab', customTerrainGrid?: TerrainCellType[][]) => {
+    if (customTerrainGrid && customTerrainGrid.length > 0) {
+      set({ terrainGrid: customTerrainGrid });
+    }
     const formattedNodes: Node<CircuitElementData>[] = customNodes.map((node) => {
       const isOutdoorOnly =
         node.data.type === 'solar-panel' ||

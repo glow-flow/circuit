@@ -43,6 +43,8 @@ describe('Component palette catalog', () => {
       'solar-panel',
       'transmission-tower',
       'wind-turbine',
+      'bess-substation',
+      'hydro-turbine',
     ]);
   });
 
@@ -160,6 +162,8 @@ describe('Component palette catalog', () => {
       'solar-panel',
       'wind-turbine',
       'transmission-tower',
+      'bess-substation',
+      'hydro-turbine',
       'socket',
       'pin-socket',
       'resistor',
