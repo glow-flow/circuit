@@ -25,9 +25,12 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
   const simulation = useCircuitStore((state) => state.simulation);
   const language = useCircuitStore((state) => state.language);
   const updateComponentData = useCircuitStore((state) => state.updateComponentData);
+  const sunTimeOfDay = useCircuitStore((state) => state.sunTimeOfDay);
+  const worldMode = useCircuitStore((state) => state.worldMode);
 
   const t = TRANSLATIONS[language].nodes.solarPanel;
   const isId = language === 'id';
+  const isOutdoor = data.worldMode === 'outside' || worldMode === 'outside';
 
   const sunlight = data.sunlight ?? 100;
   const nominalVoltage = data.voltage ?? getSolarPanelVoltage(sunlight);
@@ -160,6 +163,27 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
           className="w-full h-1.5 bg-void-900 rounded-lg appearance-none cursor-pointer accent-amber-400 focus:outline-none"
           aria-label="Solar Irradiance"
         />
+
+        {isOutdoor && (
+          <div className="flex items-center justify-between px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-400/25 text-[8.5px] font-mono text-amber-300">
+            <span className="font-bold">
+              {sunTimeOfDay === 'morning'
+                ? '🌅 Pagi (35°)'
+                : sunTimeOfDay === 'noon'
+                ? '☀️ Siang (75°)'
+                : '🌇 Sore (35°)'}
+            </span>
+            <span className="opacity-80">
+              {data.isShaded
+                ? isId
+                  ? 'Bayangan 15%'
+                  : 'Shaded 15%'
+                : isId
+                ? 'Terik Penuh'
+                : 'Full Sun'}
+            </span>
+          </div>
+        )}
 
         {data.isBlockingDiodeActive && (
           <div className="px-1.5 py-0.5 rounded bg-emerald-950/90 border border-emerald-400/50 text-[8px] font-mono font-bold text-emerald-300 text-center">

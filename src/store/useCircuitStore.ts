@@ -682,11 +682,26 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       get().terrainGrid,
       timeOfDay
     );
+    const isId = get().language === 'id';
+    const message =
+      timeOfDay === 'morning'
+        ? isId
+          ? '🌅 Matahari Pagi (35° Timur): Bayangan tebing terproyeksi ke arah barat'
+          : '🌅 Morning Sun (35° East): Cliff shadows project westward'
+        : timeOfDay === 'noon'
+        ? isId
+          ? '☀️ Matahari Siang (75° Zenith): Sinar tegak lurus, pembangkit surya menerima radiasi puncak!'
+          : '☀️ Noon Sun (75° Zenith): Overhead sunlight, solar generation at peak irradiance!'
+        : isId
+        ? '🌇 Matahari Sore (35° Barat): Bayangan tebing terproyeksi ke arah timur'
+        : '🌇 Afternoon Sun (35° West): Cliff shadows project eastward';
+
     set({
       sunTimeOfDay: timeOfDay,
       nodes: updatedNodes,
       simulation,
     });
+    get().notify(message);
   },
 
   setWorldMode: (worldMode: WorldMode) => {

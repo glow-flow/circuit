@@ -169,6 +169,61 @@ const OutdoorSandboxInner: React.FC = () => {
   }, [terrainGrid, sunTimeOfDay]);
 
   const isId = language === 'id';
+
+  // Dynamic Sun Orb celestial trajectory and visual parameters
+  const sunConfig = useMemo(() => {
+    switch (sunTimeOfDay) {
+      case 'noon':
+        return {
+          leftPercent: 50,
+          topPx: 52,
+          elevationDeg: 75,
+          azimuthText: isId ? 'Zenith (Tepat di Atas)' : 'Zenith (High Overhead)',
+          label: isId ? '☀️ Siang (75° Zenith)' : '☀️ Noon (75° Zenith)',
+          sublabel: isId ? 'Radiasi surya maksimal 100%' : 'Peak 100% solar irradiance',
+          coreClass:
+            'w-16 h-16 bg-gradient-to-tr from-yellow-300 via-amber-200 to-white shadow-[0_0_50px_rgba(253,224,71,0.95)]',
+          glowClass: 'w-40 h-40 bg-yellow-400/25 blur-2xl',
+          rayGradient: 'from-amber-200/40 via-yellow-300/10 to-transparent',
+          badgeClass:
+            'bg-yellow-950/80 border-yellow-400/50 text-yellow-200 shadow-[0_0_15px_rgba(234,179,8,0.4)]',
+          nextTime: 'afternoon' as const,
+        };
+      case 'afternoon':
+        return {
+          leftPercent: 82,
+          topPx: 120,
+          elevationDeg: 35,
+          azimuthText: isId ? 'Barat (Senja)' : 'West (Sunset)',
+          label: isId ? '🌇 Sore (35° Barat)' : '🌇 Afternoon (35° West)',
+          sublabel: isId ? 'Bayangan tebing jatuh ke timur' : 'Cliff shadows cast eastward',
+          coreClass:
+            'w-14 h-14 bg-gradient-to-tr from-orange-500 via-amber-400 to-yellow-200 shadow-[0_0_45px_rgba(249,115,22,0.9)]',
+          glowClass: 'w-36 h-36 bg-orange-500/30 blur-2xl',
+          rayGradient: 'from-orange-400/35 via-amber-500/10 to-transparent',
+          badgeClass:
+            'bg-orange-950/80 border-orange-400/50 text-orange-200 shadow-[0_0_15px_rgba(249,115,22,0.4)]',
+          nextTime: 'morning' as const,
+        };
+      case 'morning':
+      default:
+        return {
+          leftPercent: 18,
+          topPx: 120,
+          elevationDeg: 35,
+          azimuthText: isId ? 'Timur (Fajar)' : 'East (Sunrise)',
+          label: isId ? '🌅 Pagi (35° Timur)' : '🌅 Morning (35° East)',
+          sublabel: isId ? 'Bayangan tebing jatuh ke barat' : 'Cliff shadows cast westward',
+          coreClass:
+            'w-14 h-14 bg-gradient-to-tr from-amber-400 via-yellow-300 to-orange-100 shadow-[0_0_45px_rgba(245,158,11,0.9)]',
+          glowClass: 'w-36 h-36 bg-amber-400/30 blur-2xl',
+          rayGradient: 'from-amber-300/35 via-yellow-400/10 to-transparent',
+          badgeClass:
+            'bg-amber-950/80 border-amber-400/50 text-amber-200 shadow-[0_0_15px_rgba(245,158,11,0.4)]',
+          nextTime: 'noon' as const,
+        };
+    }
+  }, [sunTimeOfDay, isId]);
   const scrollViewportRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
@@ -643,7 +698,7 @@ const OutdoorSandboxInner: React.FC = () => {
           }`}
         >
           {/* ====================================================================
-              LAYER 0 (z-0): Blue Sky Nature Background (`nature-sunny.png`)
+              LAYER 0 (z-0): Nature Sky Background (`nature-sunny.png`)
              ==================================================================== */}
           <div
             className="absolute inset-0 bg-cover bg-center pointer-events-none z-0"
@@ -651,8 +706,115 @@ const OutdoorSandboxInner: React.FC = () => {
               backgroundImage: "url('/assets/nature-sunny.png')",
             }}
           >
-            {/* Subtle atmospheric sky gradient for crisp UI contrast */}
-            <div className="absolute inset-0 bg-gradient-to-b from-sky-950/25 via-transparent to-black/25" />
+            {/* Subtle base atmospheric sky gradient for contrast */}
+            <div className="absolute inset-0 bg-gradient-to-b from-sky-950/20 via-transparent to-black/20" />
+          </div>
+
+          {/* ====================================================================
+              LAYER 0.2 (z-[2]): Dynamic Atmospheric Sky Lighting based on time of day
+             ==================================================================== */}
+          {/* Morning Dawn: warm amber-orange sunrise tint and eastern horizon flare */}
+          <div
+            className={`absolute inset-0 pointer-events-none z-[2] transition-opacity duration-700 ease-in-out ${
+              sunTimeOfDay === 'morning' ? 'opacity-100' : 'opacity-0'
+            }`}
+          >
+            <div className="absolute inset-0 bg-gradient-to-b from-amber-950/30 via-orange-500/15 to-transparent" />
+            <div
+              className="absolute inset-0"
+              style={{
+                background:
+                  'radial-gradient(circle at 18% 25%, rgba(251, 191, 36, 0.4) 0%, rgba(245, 158, 11, 0.15) 35%, transparent 70%)',
+              }}
+            />
+          </div>
+
+          {/* Noon Zenith: high-contrast clear daylight and dazzling overhead solar glare */}
+          <div
+            className={`absolute inset-0 pointer-events-none z-[2] transition-opacity duration-700 ease-in-out ${
+              sunTimeOfDay === 'noon' ? 'opacity-100' : 'opacity-0'
+            }`}
+          >
+            <div className="absolute inset-0 bg-gradient-to-b from-sky-400/20 via-white/10 to-transparent" />
+            <div
+              className="absolute inset-0"
+              style={{
+                background:
+                  'radial-gradient(circle at 50% 10%, rgba(255, 255, 255, 0.4) 0%, rgba(254, 240, 138, 0.2) 30%, transparent 65%)',
+              }}
+            />
+          </div>
+
+          {/* Afternoon Sunset: rich amber-purple sunset twilight and western horizon glow */}
+          <div
+            className={`absolute inset-0 pointer-events-none z-[2] transition-opacity duration-700 ease-in-out ${
+              sunTimeOfDay === 'afternoon' ? 'opacity-100' : 'opacity-0'
+            }`}
+          >
+            <div className="absolute inset-0 bg-gradient-to-b from-purple-950/40 via-orange-900/25 to-amber-500/15" />
+            <div
+              className="absolute inset-0"
+              style={{
+                background:
+                  'radial-gradient(circle at 82% 25%, rgba(249, 115, 22, 0.45) 0%, rgba(220, 38, 38, 0.2) 35%, transparent 70%)',
+              }}
+            />
+          </div>
+
+          {/* ====================================================================
+              LAYER 0.5 (z-[5]): Dynamic Celestial Sun Orb & Solar Radiance
+              Renders visible sun with smooth celestial arc motion across the sky dome!
+             ==================================================================== */}
+          <div
+            id="outdoor-sun-orb"
+            onClick={() => setSunTimeOfDay(sunConfig.nextTime)}
+            title={
+              isId
+                ? `${sunConfig.label} - ${sunConfig.sublabel} (Klik untuk ubah waktu)`
+                : `${sunConfig.label} - ${sunConfig.sublabel} (Click to toggle)`
+            }
+            className="absolute z-[5] pointer-events-auto cursor-pointer group select-none flex flex-col items-center justify-center transition-all duration-700 ease-out"
+            style={{
+              left: `${sunConfig.leftPercent}%`,
+              top: `${sunConfig.topPx}px`,
+              transform: 'translate(-50%, -50%)',
+            }}
+          >
+            {/* Outer Pulsing Corona / Halo */}
+            <div
+              className={`absolute rounded-full pointer-events-none animate-pulse ${sunConfig.glowClass}`}
+            />
+
+            {/* Sun Rays Beam (Projecting towards the landscape) */}
+            <div
+              className={`absolute top-1/2 left-1/2 -translate-x-1/2 w-48 h-80 pointer-events-none bg-gradient-to-b ${sunConfig.rayGradient} blur-lg transform transition-transform duration-700`}
+              style={{
+                transformOrigin: 'top center',
+                transform:
+                  sunTimeOfDay === 'morning'
+                    ? 'rotate(-25deg) scaleY(1.2)'
+                    : sunTimeOfDay === 'afternoon'
+                    ? 'rotate(25deg) scaleY(1.2)'
+                    : 'rotate(0deg) scaleY(1.4)',
+              }}
+            />
+
+            {/* Radiant Sun Core Orb */}
+            <div
+              className={`relative rounded-full flex items-center justify-center active:scale-95 group-hover:scale-110 transition-transform duration-200 ${sunConfig.coreClass}`}
+            >
+              <Sun className="w-6 h-6 text-amber-900/40 animate-[spin_24s_linear_infinite]" />
+            </div>
+
+            {/* Interactive Floating Pill Badge underneath Sun */}
+            <div
+              className={`mt-2 px-2.5 py-1 rounded-xl backdrop-blur-md border text-[10px] font-mono font-bold flex items-center gap-1.5 active:scale-95 transition-all group-hover:shadow-lg ${sunConfig.badgeClass}`}
+            >
+              <span>{sunConfig.label}</span>
+              <span className="hidden sm:inline opacity-75 font-normal text-[9px]">
+                · {sunConfig.azimuthText}
+              </span>
+            </div>
           </div>
 
           {/* ====================================================================
@@ -733,33 +895,6 @@ const OutdoorSandboxInner: React.FC = () => {
               })
             )}
           </div>
-
-          {/* ====================================================================
-              LAYER 1.5 (z-15): Smooth 1D Topographic Terrain Shadow Projections
-              Renders realistic shadows cast by dirt hills across plains and valleys.
-             ==================================================================== */}
-          {shadowPolygons.length > 0 && (
-            <svg
-              className="absolute inset-0 w-full h-full pointer-events-none z-15 mix-blend-multiply"
-              viewBox={`0 0 ${OUTDOOR_WORLD_MIN_WIDTH} 680`}
-              preserveAspectRatio="none"
-              aria-hidden="true"
-            >
-              <defs>
-                <linearGradient id="terrain-hill-shadow" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stopColor="#090d16" stopOpacity="0.45" />
-                  <stop offset="100%" stopColor="#090d16" stopOpacity="0.30" />
-                </linearGradient>
-              </defs>
-              {shadowPolygons.map((poly, idx) => (
-                <path
-                  key={`shadow-${poly.startCol}-${poly.endCol}-${idx}`}
-                  d={poly.pathData}
-                  fill="url(#terrain-hill-shadow)"
-                />
-              ))}
-            </svg>
-          )}
 
           {/* ====================================================================
               LAYER 2 (z-20): Free-Position Power Source Components & Wires
@@ -884,6 +1019,33 @@ const OutdoorSandboxInner: React.FC = () => {
           </div>
 
           {/* ====================================================================
+              LAYER 3.5 (z-35): Smooth 1D Topographic Terrain Shadow Projections
+              Renders realistic shadows cast by dirt hills across grass, plains, and valleys!
+             ==================================================================== */}
+          {shadowPolygons.length > 0 && (
+            <svg
+              className="absolute inset-0 w-full h-full pointer-events-none z-35 mix-blend-multiply transition-opacity duration-500"
+              viewBox={`0 0 ${OUTDOOR_WORLD_MIN_WIDTH} 680`}
+              preserveAspectRatio="none"
+              aria-hidden="true"
+            >
+              <defs>
+                <linearGradient id="terrain-hill-shadow" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#090d16" stopOpacity="0.55" />
+                  <stop offset="100%" stopColor="#090d16" stopOpacity="0.35" />
+                </linearGradient>
+              </defs>
+              {shadowPolygons.map((poly, idx) => (
+                <path
+                  key={`shadow-${poly.startCol}-${poly.endCol}-${idx}`}
+                  d={poly.pathData}
+                  fill="url(#terrain-hill-shadow)"
+                />
+              ))}
+            </svg>
+          )}
+
+          {/* ====================================================================
               LAYER 4 (z-40): Water / Height Explosion Particle Overlay
              ==================================================================== */}
           <div className="absolute inset-0 pointer-events-none z-40 overflow-hidden">
@@ -954,7 +1116,7 @@ const OutdoorSandboxInner: React.FC = () => {
           <button
             type="button"
             onClick={() => setSunTimeOfDay('morning')}
-            title={isId ? 'Matahari Pagi (Bayangan ke Timur)' : 'Morning Sun (Shadows East-to-West)'}
+            title={isId ? 'Matahari Pagi (Bayangan ke Barat)' : 'Morning Sun (Shadows Westward)'}
             className={`flex items-center gap-1 px-2 py-1 rounded-xl text-[11px] font-semibold border transition-all active:scale-95 cursor-pointer ${
               sunTimeOfDay === 'morning'
                 ? 'bg-amber-500/25 border-amber-400 text-amber-200 shadow-[0_0_12px_rgba(245,158,11,0.3)]'
@@ -982,7 +1144,7 @@ const OutdoorSandboxInner: React.FC = () => {
           <button
             type="button"
             onClick={() => setSunTimeOfDay('afternoon')}
-            title={isId ? 'Matahari Sore (Bayangan ke Barat)' : 'Afternoon Sun (Shadows West-to-East)'}
+            title={isId ? 'Matahari Sore (Bayangan ke Timur)' : 'Afternoon Sun (Shadows Eastward)'}
             className={`flex items-center gap-1 px-2 py-1 rounded-xl text-[11px] font-semibold border transition-all active:scale-95 cursor-pointer ${
               sunTimeOfDay === 'afternoon'
                 ? 'bg-orange-500/25 border-orange-400 text-orange-200 shadow-[0_0_12px_rgba(249,115,22,0.3)]'

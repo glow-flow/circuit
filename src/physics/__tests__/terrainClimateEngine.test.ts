@@ -523,5 +523,27 @@ describe('Terrain-Coupled Microclimate Engine (Nature Mode Phase 2)', () => {
       expect(turbine.data.effectiveSpeed).toBeGreaterThan(50);
       expect(turbine.data.voltage).toBeGreaterThan(6.0);
     });
+
+    it('updates sunTimeOfDay and emits localized microclimate notifications on Pagi, Siang, and Sore', () => {
+      const store = useCircuitStore.getState();
+      store.setLanguage('id');
+
+      store.setSunTimeOfDay('morning');
+      expect(useCircuitStore.getState().sunTimeOfDay).toBe('morning');
+      expect(useCircuitStore.getState().notification?.message).toContain('Matahari Pagi (35° Timur)');
+
+      store.setSunTimeOfDay('noon');
+      expect(useCircuitStore.getState().sunTimeOfDay).toBe('noon');
+      expect(useCircuitStore.getState().notification?.message).toContain('Matahari Siang (75° Zenith)');
+
+      store.setSunTimeOfDay('afternoon');
+      expect(useCircuitStore.getState().sunTimeOfDay).toBe('afternoon');
+      expect(useCircuitStore.getState().notification?.message).toContain('Matahari Sore (35° Barat)');
+
+      // English localization check
+      store.setLanguage('en');
+      store.setSunTimeOfDay('noon');
+      expect(useCircuitStore.getState().notification?.message).toContain('Noon Sun (75° Zenith)');
+    });
   });
 });
