@@ -19,25 +19,28 @@ import { useCircuitStore } from '../../../store/useCircuitStore';
 export const WindTurbineNode: React.FC<NodeProps<CircuitElementData>> = memo(
   ({ id, data, selected }) => {
     const updateComponentData = useCircuitStore((state) => state.updateComponentData);
+    const simulation = useCircuitStore((state) => state.simulation);
     const language = useCircuitStore((state) => state.language);
     const isId = language === 'id';
 
-    const speed = data.speed ?? 50;
-    const outputVoltage = (speed / 100) * 12.0;
+    const baseSpeed = data.speed ?? 50;
+    const effectiveSpeed = data.effectiveSpeed ?? baseSpeed;
+    const outputVoltage = data.voltage ?? (effectiveSpeed / 100) * 12.0;
+    const elevationBonus = data.elevationBonusPercent ?? 0;
 
-    const currentAmperes = Math.abs(data.calculatedCurrent ?? 0);
+    const currentAmperes = Math.abs(simulation.branchCurrents[id] ?? data.calculatedCurrent ?? 0);
     const powerWatts = outputVoltage * currentAmperes;
 
-    // Rotational duration in seconds: Faster as speed increases
+    // Rotational duration in seconds: Faster on hilltops (+RPM bonus) and slower in valleys
     // 100% -> 0.45s, 50% -> 0.9s, 10% -> 3.5s, 0% -> Paused
     const animationDurationSec =
-      speed > 0 ? (45 / Math.max(8, speed * 1.1)).toFixed(2) : '0';
+      effectiveSpeed > 0 ? (45 / Math.max(8, effectiveSpeed * 1.1)).toFixed(2) : '0';
 
-    // Smear Frame calculations (starts appearing above 25% speed)
+    // Smear Frame calculations (starts appearing above 25% effective speed)
     const smearOpacity =
-      speed >= 25 ? Math.min(0.85, (speed - 20) / 75) : 0;
+      effectiveSpeed >= 25 ? Math.min(0.85, (effectiveSpeed - 20) / 75) : 0;
     const bladeBlurPx =
-      speed >= 40 ? (((speed - 40) / 60) * 1.8).toFixed(1) : '0';
+      effectiveSpeed >= 40 ? (((effectiveSpeed - 40) / 60) * 1.8).toFixed(1) : '0';
 
     const handleSpeedChange = useCallback(
       (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -62,7 +65,7 @@ export const WindTurbineNode: React.FC<NodeProps<CircuitElementData>> = memo(
             <span className="flex items-center gap-1 font-bold text-cyan-300 truncate">
               <Wind
                 className={`w-3 h-3 text-cyan-400 shrink-0 ${
-                  speed > 0 ? 'animate-pulse' : ''
+                  effectiveSpeed > 0 ? 'animate-pulse' : ''
                 }`}
               />
               <span>{isId ? 'Turbin' : 'Turbine'}</span>
@@ -80,16 +83,44 @@ export const WindTurbineNode: React.FC<NodeProps<CircuitElementData>> = memo(
               min="0"
               max="100"
               step="1"
-              value={speed}
+              value={baseSpeed}
               onChange={handleSpeedChange}
               onPointerDown={(e) => e.stopPropagation()}
               className="w-full h-1.5 bg-void-900 rounded-lg appearance-none cursor-pointer accent-cyan-400 focus:outline-none"
               aria-label="Wind Turbine Speed"
             />
             <span className="text-[9px] font-mono font-bold text-cyan-200 w-7 text-right shrink-0">
-              {speed}%
+              {baseSpeed}%
             </span>
           </div>
+
+          {/* Orographic Wind Shear Elevation Badge */}
+          {elevationBonus > 0 && (
+            <div
+              id="turbine-elevation-bonus"
+              className="px-1.5 py-0.5 rounded bg-cyan-950/90 border border-cyan-400/50 text-[8px] font-mono font-bold text-cyan-300 text-center flex items-center justify-center gap-1 shadow-sm"
+            >
+              <span>🏔️</span>
+              <span className="truncate">
+                {isId
+                  ? `Puncak Bukit +${elevationBonus}% RPM & Daya`
+                  : `Hilltop +${elevationBonus}% RPM & Power`}
+              </span>
+            </div>
+          )}
+          {elevationBonus < 0 && (
+            <div
+              id="turbine-elevation-penalty"
+              className="px-1.5 py-0.5 rounded bg-slate-900/90 border border-amber-500/40 text-[8px] font-mono font-bold text-amber-300 text-center flex items-center justify-center gap-1 shadow-sm"
+            >
+              <span>📉</span>
+              <span className="truncate">
+                {isId
+                  ? `Lembah ${elevationBonus}% RPM & Daya`
+                  : `Valley ${elevationBonus}% RPM & Power`}
+              </span>
+            </div>
+          )}
 
           <div className="flex items-center justify-between text-[8px] font-mono text-slate-400 pt-0.5 border-t border-white/10">
             <span className="text-cyan-300/90">AC→DC Rectifier</span>
@@ -123,21 +154,21 @@ export const WindTurbineNode: React.FC<NodeProps<CircuitElementData>> = memo(
             }}
           >
             {/* Dynamic Motion-Blur Smear Frame Disc */}
-            {speed >= 25 && (
+            {effectiveSpeed >= 25 && (
               <div
                 className="absolute inset-2 rounded-full pointer-events-none transition-opacity duration-300"
                 style={{
                   opacity: smearOpacity,
                   background:
                     'radial-gradient(circle, rgba(255,255,255,0.38) 0%, rgba(186,230,253,0.22) 45%, rgba(255,255,255,0.06) 66%, transparent 72%)',
-                  filter: `blur(${Math.max(1, speed * 0.035)}px)`,
+                  filter: `blur(${Math.max(1, effectiveSpeed * 0.035)}px)`,
                 }}
                 aria-hidden="true"
               />
             )}
 
             {/* High-Speed Radial Streak Smear Layer */}
-            {speed >= 50 && (
+            {effectiveSpeed >= 50 && (
               <div
                 className="absolute inset-3 rounded-full pointer-events-none animate-spin-turbine transition-opacity duration-300"
                 style={{
@@ -156,11 +187,11 @@ export const WindTurbineNode: React.FC<NodeProps<CircuitElementData>> = memo(
               src="/assets/wind-turbine-rotor.png"
               alt="Turbine Rotor"
               className={`w-full h-full object-contain pointer-events-none select-none ${
-                speed > 0 ? 'animate-spin-turbine' : ''
+                effectiveSpeed > 0 ? 'animate-spin-turbine' : ''
               }`}
               style={{
                 animationDuration: `${animationDurationSec}s`,
-                animationPlayState: speed === 0 ? 'paused' : 'running',
+                animationPlayState: effectiveSpeed === 0 ? 'paused' : 'running',
                 filter: `blur(${bladeBlurPx}px) drop-shadow(0 4px 6px rgba(0,0,0,0.3))`,
               }}
               draggable={false}

@@ -6,7 +6,7 @@
  */
 
 import { Node, Edge } from 'reactflow';
-import { CircuitElementData } from '../types/circuit';
+import { CircuitElementData, WorldMode } from '../types/circuit';
 
 import {
   saveWorkspaceAutosaveDebounced,
@@ -162,12 +162,13 @@ export function saveCustomPresetsToStorage(presets: CustomCircuitPreset[]): bool
  */
 export function saveWorkspaceAutosave(
   nodes: Node<CircuitElementData>[],
-  edges: Edge[]
+  edges: Edge[],
+  worldMode?: WorldMode
 ): void {
   if (!nodes || nodes.length === 0) {
-    saveWorkspaceAutosaveImmediate([], edges || []);
+    saveWorkspaceAutosaveImmediate([], edges || [], undefined, worldMode);
   } else {
-    saveWorkspaceAutosaveDebounced(nodes, edges);
+    saveWorkspaceAutosaveDebounced(nodes, edges, 1500, undefined, worldMode);
   }
 }
 

@@ -86,18 +86,25 @@ export const App: React.FC = () => {
     const cleanupBattery = useCircuitStore.getState().startBatteryInterval();
     const cleanupPageExit = setupPageExitPersistence();
 
-    // Guard against horizontal layout shifts on mobile viewports
+    // Guard against unintended horizontal layout shifts on the root document / body / window only.
+    // Child scroll containers (such as the Outdoor Sandbox panoramic viewport) MUST NOT be blocked.
     const handleScroll = (e: Event) => {
-      const target = e.target as HTMLElement | Document;
-      if (target && 'scrollLeft' in target && (target as HTMLElement).scrollLeft !== 0) {
-        (target as HTMLElement).scrollLeft = 0;
-      }
-      if (typeof window !== 'undefined' && window.scrollX !== 0) {
-        window.scrollTo(0, window.scrollY);
-      }
-      if (typeof document !== 'undefined') {
-        if (document.documentElement.scrollLeft !== 0) document.documentElement.scrollLeft = 0;
-        if (document.body.scrollLeft !== 0) document.body.scrollLeft = 0;
+      const target = e.target;
+      const isRootElement =
+        !target ||
+        (typeof document !== 'undefined' && target === document) ||
+        (typeof window !== 'undefined' && target === window) ||
+        (typeof document !== 'undefined' &&
+          (target === document.documentElement || target === document.body));
+
+      if (isRootElement) {
+        if (typeof window !== 'undefined' && window.scrollX !== 0) {
+          window.scrollTo(0, window.scrollY);
+        }
+        if (typeof document !== 'undefined') {
+          if (document.documentElement.scrollLeft !== 0) document.documentElement.scrollLeft = 0;
+          if (document.body.scrollLeft !== 0) document.body.scrollLeft = 0;
+        }
       }
     };
     if (typeof window !== 'undefined') {
@@ -143,11 +150,13 @@ export const App: React.FC = () => {
     // 2. Load verified autosaved workspace from localStorage
     const autosaveResult = loadWorkspaceAutosaveWithValidation();
     if (autosaveResult.status === 'restored') {
+      const targetMode = autosaveResult.worldMode ?? useCircuitStore.getState().worldMode ?? 'lab';
       useCircuitStore.getState().loadCustomCircuit(
         autosaveResult.nodes,
         autosaveResult.edges,
-        useCircuitStore.getState().worldMode
+        targetMode
       );
+      useCircuitStore.setState({ worldMode: targetMode });
       return;
     }
 

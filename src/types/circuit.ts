@@ -93,15 +93,30 @@ export interface CircuitElementData {
   // World & sunlight state for outdoor/lab components
   worldMode?: WorldMode;
   sunlight?: number;           // Solar irradiance percentage (0 - 100, default 100 -> 12V)
+  isShaded?: boolean;          // True when 1D ray-casting detects a terrain hill obstructing sunlight
+  effectiveSunlight?: number;  // Effective solar irradiance after shading (e.g. 15% diffuse when shaded)
 
-  // Wind Turbine properties
+  // Wind Turbine & Orographic Microclimate properties
   speed?: number;              // Wind turbine rotational speed (0 - 100, default 50)
+  effectiveSpeed?: number;     // Effective wind turbine rotational speed after Hellmann orographic wind shear
+  windShearMultiplier?: number;// Wind shear multiplication factor based on terrain elevation
+  elevationBonusPercent?: number; // Visual bonus percentage (e.g. +45% on hilltops, -28% in valleys)
 
   // Transmission Tower & Lab Distribution Panel (MCB + Step-Down) properties
   towerConnectedCount?: number; // Total number of active transmission nodes sharing this virtual grid bus
   isMcbOn?: boolean;            // For Lab Distribution Panel: whether the MCB breaker switch is ON (default true)
   isMcbTripped?: boolean;       // For Lab Distribution Panel: whether the MCB tripped automatically due to short circuit
   stepDownVoltage?: number | null; // Regulated DC output ceiling in Volts (null = Auto/Direct, or 3, 6, 9, 12 V)
+
+  // Gardu Trafo Cantol SUTET & High-Voltage Transmission properties
+  hasTransformer?: boolean;            // Whether snap-on gardu trafo is attached to tower
+  stepUpVoltage?: number | null;       // Transmission voltage setting: 12 (Direct) or 240 (Step-Up HV), or null
+  transmissionVoltageMode?: 'direct' | 'step_up'; // 'direct' (12V) vs 'step_up' (240V)
+  lineResistance?: number;             // Line resistance in Ohms (default 4.0Ω)
+  transmissionCurrent?: number;        // Live current flowing through transmission line (A)
+  jouleLoss?: number;                  // P_loss = I^2 * R (W)
+  transmissionEfficiency?: number;     // Transmission efficiency percentage (0 - 100%)
+  isLineOverheated?: boolean;          // Whether line current at 12V causes thermal stress
 
   // Real-world semiconductor protection & polarity states
   isBlockingDiodeActive?: boolean; // True when a Solar Panel or Wind Turbine's internal Schottky diode blocks reverse current

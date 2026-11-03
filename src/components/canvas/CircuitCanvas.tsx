@@ -25,10 +25,8 @@ import { GroundNode } from './nodes/GroundNode';
 import { VoltmeterNode } from './nodes/VoltmeterNode';
 import { AmmeterNode } from './nodes/AmmeterNode';
 import { WaypointNode } from './nodes/WaypointNode';
-import { SolarPanelNode } from './nodes/SolarPanelNode';
 import { TransmissionTowerNode } from './nodes/TransmissionTowerNode';
 import { PanelDistribusiNode } from './nodes/PanelDistribusiNode';
-import { WindTurbineNode } from './nodes/WindTurbineNode';
 import { WireEdge } from './WireEdge';
 
 interface CircuitCanvasInnerProps {
@@ -52,7 +50,15 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
   const theme = useCircuitStore((state) => state.theme);
 
   const labNodes = useMemo(
-    () => nodes.filter((n) => (n.data.worldMode ?? 'lab') === 'lab'),
+    () =>
+      nodes.filter(
+        (n) =>
+          (n.data.worldMode ?? 'lab') === 'lab' &&
+          n.data.type !== 'solar-panel' &&
+          n.data.type !== 'solar_panel' &&
+          n.data.type !== 'wind-turbine' &&
+          n.data.type !== 'wind_turbine'
+      ),
     [nodes]
   );
 
@@ -87,14 +93,10 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
       voltmeter: VoltmeterNode,
       ammeter: AmmeterNode,
       waypoint: WaypointNode,
-      'solar-panel': SolarPanelNode,
-      'solar_panel': SolarPanelNode,
       'transmission-tower': TransmissionTowerNode,
       'transmission_tower': TransmissionTowerNode,
       'distribution-panel': PanelDistribusiNode,
       'distribution_panel': PanelDistribusiNode,
-      'wind-turbine': WindTurbineNode,
-      'wind_turbine': WindTurbineNode,
     }),
     []
   );
@@ -139,6 +141,19 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
       );
 
       if (!droppedEntry || !reactFlowInstance || !reactFlowWrapper.current) {
+        return;
+      }
+      const isOutdoorOnly =
+        droppedEntry.type === 'solar-panel' ||
+        droppedEntry.type === 'wind-turbine';
+
+      if (isOutdoorOnly) {
+        const isIndonesian = useCircuitStore.getState().language === 'id';
+        useCircuitStore.getState().notify(
+          isIndonesian
+            ? '⚠️ Turbin Angin dan Panel Surya hanya boleh ada di Alam Terbuka!'
+            : '⚠️ Wind Turbines and Solar Panels are strictly prohibited in the Lab!'
+        );
         return;
       }
 

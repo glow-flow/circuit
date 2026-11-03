@@ -19,6 +19,7 @@ import {
   RotateCcw,
   Sparkles,
   Sprout,
+  Sun,
 } from 'lucide-react';
 import { useCircuitStore } from '../../store/useCircuitStore';
 import {
@@ -34,6 +35,9 @@ import {
   GRID_ROWS,
   OUTDOOR_WORLD_MIN_WIDTH,
 } from '../../physics/terrainGrid';
+import {
+  computeTerrainShadowPolygons,
+} from '../../physics/terrainClimateEngine';
 import { createOutdoorPowerStationElements } from '../../utils/outdoorSpawnUtils';
 import { SolarPanelNode } from './nodes/SolarPanelNode';
 import { WindTurbineNode } from './nodes/WindTurbineNode';
@@ -50,7 +54,7 @@ import { PinSocketNode } from './nodes/PinSocketNode';
 import { GroundNode } from './nodes/GroundNode';
 import { VoltmeterNode } from './nodes/VoltmeterNode';
 import { AmmeterNode } from './nodes/AmmeterNode';
-import { WireEdge } from './WireEdge';
+import { TransmissionWireEdge } from './TransmissionWireEdge';
 
 /**
  * Radial particle vectors for the Water Short-Circuit Explosion animation.
@@ -149,6 +153,17 @@ const OutdoorSandboxInner: React.FC = () => {
     (state) => state.settleOutdoorNodeAfterDrag
   );
   const explosions = useCircuitStore((state) => state.explosions);
+  const sunTimeOfDay = useCircuitStore((state) => state.sunTimeOfDay);
+  const setSunTimeOfDay = useCircuitStore((state) => state.setSunTimeOfDay);
+
+  const shadowPolygons = useMemo(() => {
+    return computeTerrainShadowPolygons(
+      terrainGrid,
+      OUTDOOR_WORLD_MIN_WIDTH,
+      680,
+      sunTimeOfDay
+    );
+  }, [terrainGrid, sunTimeOfDay]);
 
   const isId = language === 'id';
   const scrollViewportRef = useRef<HTMLDivElement | null>(null);
@@ -176,7 +191,15 @@ const OutdoorSandboxInner: React.FC = () => {
 
   // Filter nodes & edges belonging to the 'outside' world
   const outdoorNodes = useMemo(
-    () => nodes.filter((n) => n.data.worldMode === 'outside'),
+    () =>
+      nodes.filter(
+        (n) =>
+          n.data.worldMode === 'outside' ||
+          n.data.type === 'solar-panel' ||
+          n.data.type === 'solar_panel' ||
+          n.data.type === 'wind-turbine' ||
+          n.data.type === 'wind_turbine'
+      ),
     [nodes]
   );
 
@@ -196,8 +219,19 @@ const OutdoorSandboxInner: React.FC = () => {
 
   useEffect(() => {
     syncCameraScrollMetrics();
+    const vp = scrollViewportRef.current;
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined' && vp) {
+      resizeObserver = new ResizeObserver(() => {
+        syncCameraScrollMetrics();
+      });
+      resizeObserver.observe(vp);
+    }
     window.addEventListener('resize', syncCameraScrollMetrics);
-    return () => window.removeEventListener('resize', syncCameraScrollMetrics);
+    return () => {
+      resizeObserver?.disconnect();
+      window.removeEventListener('resize', syncCameraScrollMetrics);
+    };
   }, [syncCameraScrollMetrics]);
 
   const scrollWorldBy = useCallback((deltaX: number) => {
@@ -280,9 +314,10 @@ const OutdoorSandboxInner: React.FC = () => {
 
   const edgeTypes = useMemo(
     () => ({
-      wire: WireEdge,
-      smoothstep: WireEdge,
-      default: WireEdge,
+      wire: TransmissionWireEdge,
+      smoothstep: TransmissionWireEdge,
+      default: TransmissionWireEdge,
+      transmission: TransmissionWireEdge,
     }),
     []
   );
@@ -421,10 +456,26 @@ const OutdoorSandboxInner: React.FC = () => {
         : OUTDOOR_WORLD_MIN_WIDTH;
     const canvasHeight = bounds && bounds.height > 250 ? bounds.height : 680;
 
-    // Clear existing outdoor nodes first to avoid overlap
-    const nonOutdoorNodes = state.nodes.filter((n) => n.data.worldMode !== 'outside');
+    // Clear existing outdoor nodes first to avoid overlap, and purge any rogue solar/wind nodes from nonOutdoor
+    const nonOutdoorNodes = state.nodes.filter(
+      (n) =>
+        n.data.worldMode !== 'outside' &&
+        n.data.type !== 'solar-panel' &&
+        n.data.type !== 'solar_panel' &&
+        n.data.type !== 'wind-turbine' &&
+        n.data.type !== 'wind_turbine'
+    );
     const outdoorNodeIds = new Set(
-      state.nodes.filter((n) => n.data.worldMode === 'outside').map((n) => n.id)
+      state.nodes
+        .filter(
+          (n) =>
+            n.data.worldMode === 'outside' ||
+            n.data.type === 'solar-panel' ||
+            n.data.type === 'solar_panel' ||
+            n.data.type === 'wind-turbine' ||
+            n.data.type === 'wind_turbine'
+        )
+        .map((n) => n.id)
     );
     const nonOutdoorEdges = state.edges.filter(
       (e) => !outdoorNodeIds.has(e.source) && !outdoorNodeIds.has(e.target)
@@ -441,6 +492,7 @@ const OutdoorSandboxInner: React.FC = () => {
 
     useCircuitStore.setState({
       edges: [...nonOutdoorEdges, ...newOutdoorEdges],
+      worldMode: 'outside',
     });
     state.setNodes([...nonOutdoorNodes, ...newOutdoorNodes]);
     scrollViewportRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
@@ -493,7 +545,7 @@ const OutdoorSandboxInner: React.FC = () => {
         id="outdoor-scroll-viewport"
         ref={scrollViewportRef}
         onScroll={syncCameraScrollMetrics}
-        className="w-full h-full overflow-x-auto overflow-y-hidden scroll-smooth"
+        className="w-full h-full overflow-x-auto overflow-y-hidden overscroll-x-contain touch-pan-x select-none"
       >
         <div
           id="outdoor-world-stage"
@@ -514,13 +566,21 @@ const OutdoorSandboxInner: React.FC = () => {
             if (terrainBrush !== 'cursor') {
               setIsPaintingTerrain(true);
               handleTerrainPointerAction(e.clientX, e.clientY);
-            } else if (scrollViewportRef.current) {
-              // In 'Geser & Kabel' mode, dragging empty sky/terrain smoothly pans the camera horizontally!
+            } else if (scrollViewportRef.current && e.pointerType !== 'touch') {
+              // In 'Geser & Kabel' mode, mouse dragging empty sky/terrain smoothly pans the camera horizontally!
+              // For touch screens (mobile phones), native touch-pan-x handles momentum scrolling smoothly.
               panDragStateRef.current = {
                 isPanning: true,
                 startClientX: e.clientX,
                 startScrollLeft: scrollViewportRef.current.scrollLeft,
               };
+              if (e.pointerType === 'mouse') {
+                try {
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                } catch {
+                  // Ignore pointer capture errors in testing/virtual DOM environments
+                }
+              }
             }
           }}
           onPointerMove={(e) => {
@@ -534,20 +594,40 @@ const OutdoorSandboxInner: React.FC = () => {
               panDragStateRef.current.isPanning &&
               terrainBrush === 'cursor' &&
               !activeDraggedNodeIdRef.current &&
-              scrollViewportRef.current
+              scrollViewportRef.current &&
+              e.pointerType !== 'touch'
             ) {
               const deltaX = e.clientX - panDragStateRef.current.startClientX;
               scrollViewportRef.current.scrollLeft =
                 panDragStateRef.current.startScrollLeft - deltaX;
             }
           }}
-          onPointerUp={() => {
+          onPointerUp={(e) => {
             setIsPaintingTerrain(false);
             panDragStateRef.current.isPanning = false;
+            try {
+              if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+                e.currentTarget.releasePointerCapture(e.pointerId);
+              }
+            } catch {
+              // Ignore
+            }
+          }}
+          onPointerCancel={(e) => {
+            setIsPaintingTerrain(false);
+            panDragStateRef.current.isPanning = false;
+            try {
+              if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+                e.currentTarget.releasePointerCapture(e.pointerId);
+              }
+            } catch {
+              // Ignore
+            }
           }}
           onPointerLeave={() => {
-            setIsPaintingTerrain(false);
-            panDragStateRef.current.isPanning = false;
+            if (!panDragStateRef.current.isPanning) {
+              setIsPaintingTerrain(false);
+            }
           }}
           className={`w-full h-full relative overflow-hidden select-none ${
             terrainBrush !== 'cursor'
@@ -648,10 +728,37 @@ const OutdoorSandboxInner: React.FC = () => {
           </div>
 
           {/* ====================================================================
+              LAYER 1.5 (z-15): Smooth 1D Topographic Terrain Shadow Projections
+              Renders realistic shadows cast by dirt hills across plains and valleys.
+             ==================================================================== */}
+          {shadowPolygons.length > 0 && (
+            <svg
+              className="absolute inset-0 w-full h-full pointer-events-none z-15 mix-blend-multiply"
+              viewBox={`0 0 ${OUTDOOR_WORLD_MIN_WIDTH} 680`}
+              preserveAspectRatio="none"
+              aria-hidden="true"
+            >
+              <defs>
+                <linearGradient id="terrain-hill-shadow" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#090d16" stopOpacity="0.45" />
+                  <stop offset="100%" stopColor="#090d16" stopOpacity="0.30" />
+                </linearGradient>
+              </defs>
+              {shadowPolygons.map((poly, idx) => (
+                <path
+                  key={`shadow-${poly.startCol}-${poly.endCol}-${idx}`}
+                  d={poly.pathData}
+                  fill="url(#terrain-hill-shadow)"
+                />
+              ))}
+            </svg>
+          )}
+
+          {/* ====================================================================
               LAYER 2 (z-20): Free-Position Power Source Components & Wires
               (Always pointer-events-auto on nodes so dragging NEVER gets stuck!)
              ==================================================================== */}
-          <div className="absolute inset-0 z-20 pointer-events-auto">
+          <div className={`absolute inset-0 z-20 pointer-events-auto ${terrainBrush === 'cursor' ? '[&_.react-flow__pane]:touch-pan-x' : '[&_.react-flow__pane]:touch-none'}`}>
             <ReactFlow
               nodes={outdoorNodes}
               edges={outdoorEdges}
@@ -695,7 +802,7 @@ const OutdoorSandboxInner: React.FC = () => {
               preventScrolling={false}
               snapToGrid={false}
               deleteKeyCode={['Backspace', 'Delete']}
-              className="bg-transparent w-full h-full"
+              className={`bg-transparent w-full h-full ${terrainBrush === 'cursor' ? 'touch-pan-x' : 'touch-none'}`}
             />
           </div>
 
@@ -827,6 +934,59 @@ const OutdoorSandboxInner: React.FC = () => {
           </button>
         </div>
 
+        {/* Center: Sun Position / Time of Day (Mikroklimat Bayangan Matahari) */}
+        <div
+          id="tour-outdoor-sun-time"
+          className="flex items-center gap-1 px-2 py-1.5 rounded-2xl bg-void-950/90 backdrop-blur-md border border-white/15 shadow-[0_10px_30px_rgba(0,0,0,0.65)] pointer-events-auto"
+        >
+          <span className="hidden md:flex items-center gap-1 text-[10px] font-mono uppercase tracking-wider text-amber-400 px-1 font-bold">
+            <Sun className="w-3.5 h-3.5 text-amber-400" />
+            {isId ? 'Matahari:' : 'Sun:'}
+          </span>
+
+          <button
+            type="button"
+            onClick={() => setSunTimeOfDay('morning')}
+            title={isId ? 'Matahari Pagi (Bayangan ke Timur)' : 'Morning Sun (Shadows East-to-West)'}
+            className={`flex items-center gap-1 px-2 py-1 rounded-xl text-[11px] font-semibold border transition-all active:scale-95 cursor-pointer ${
+              sunTimeOfDay === 'morning'
+                ? 'bg-amber-500/25 border-amber-400 text-amber-200 shadow-[0_0_12px_rgba(245,158,11,0.3)]'
+                : 'bg-void-900/90 hover:bg-void-800 border-white/10 text-slate-300 hover:text-white'
+            }`}
+          >
+            <span>🌅</span>
+            <span>{isId ? 'Pagi (35°)' : 'Morning (35°)'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSunTimeOfDay('noon')}
+            title={isId ? 'Matahari Siang (Tinggi di Atas)' : 'Noon Sun (High Overhead)'}
+            className={`flex items-center gap-1 px-2 py-1 rounded-xl text-[11px] font-semibold border transition-all active:scale-95 cursor-pointer ${
+              sunTimeOfDay === 'noon'
+                ? 'bg-yellow-500/25 border-yellow-400 text-yellow-200 shadow-[0_0_12px_rgba(234,179,8,0.3)]'
+                : 'bg-void-900/90 hover:bg-void-800 border-white/10 text-slate-300 hover:text-white'
+            }`}
+          >
+            <span>☀️</span>
+            <span>{isId ? 'Siang (75°)' : 'Noon (75°)'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSunTimeOfDay('afternoon')}
+            title={isId ? 'Matahari Sore (Bayangan ke Barat)' : 'Afternoon Sun (Shadows West-to-East)'}
+            className={`flex items-center gap-1 px-2 py-1 rounded-xl text-[11px] font-semibold border transition-all active:scale-95 cursor-pointer ${
+              sunTimeOfDay === 'afternoon'
+                ? 'bg-orange-500/25 border-orange-400 text-orange-200 shadow-[0_0_12px_rgba(249,115,22,0.3)]'
+                : 'bg-void-900/90 hover:bg-void-800 border-white/10 text-slate-300 hover:text-white'
+            }`}
+          >
+            <span>🌇</span>
+            <span>{isId ? 'Sore (35°)' : 'Afternoon (35°)'}</span>
+          </button>
+        </div>
+
         {/* Right: Quick Demo Generator */}
         <div className="flex items-center gap-2 pointer-events-auto">
           <button
@@ -877,7 +1037,7 @@ const OutdoorSandboxInner: React.FC = () => {
                   scrollViewportRef.current.scrollLeft = nextX;
                 }
               }}
-              className="w-full h-1.5 bg-void-800 rounded-lg appearance-none cursor-pointer accent-emerald-400"
+              className="w-full h-1.5 bg-void-800 rounded-lg appearance-none cursor-pointer accent-emerald-400 touch-none"
               aria-label={isId ? 'Geser Kamera Dunia Alam' : 'Pan Outdoor World Camera'}
             />
           </div>

@@ -181,7 +181,14 @@ export const RenewableLabModal: React.FC<RenewableLabModalProps> = ({ isOpen, on
   const handleDeployScenarioToOutdoor = (scenario?: RenewableScenario) => {
     const sc = scenario ?? selectedScenario;
     const state = useCircuitStore.getState();
-    const nonOutdoorNodes = state.nodes.filter((n) => n.data.worldMode !== 'outside');
+    const nonOutdoorNodes = state.nodes.filter(
+      (n) =>
+        n.data.worldMode !== 'outside' &&
+        n.data.type !== 'solar-panel' &&
+        n.data.type !== 'solar_panel' &&
+        n.data.type !== 'wind-turbine' &&
+        n.data.type !== 'wind_turbine'
+    );
     const outdoorNodeIds = new Set(
       state.nodes.filter((n) => n.data.worldMode === 'outside').map((n) => n.id)
     );

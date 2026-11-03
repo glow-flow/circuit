@@ -42,6 +42,11 @@ import {
   stepTerrainGravity,
 } from '../physics/terrainGrid';
 import {
+  applyTerrainMicroclimateToNodes,
+  SunPosition,
+  SunTimeOfDay,
+} from '../physics/terrainClimateEngine';
+import {
   isTransmissionNodeActive,
   SHORT_CIRCUIT_CURRENT_THRESHOLD,
   solveCircuitMNA,
@@ -107,6 +112,8 @@ interface CircuitState {
   dirtExposureMap: Record<string, number>;
   terrainBrush: TerrainBrushTool;
   explosions: ExplosionEvent[];
+  sunTimeOfDay: SunTimeOfDay;
+  setSunTimeOfDay: (timeOfDay: SunTimeOfDay) => void;
   setTerrainBrush: (brush: TerrainBrushTool) => void;
   paintTerrainCell: (
     row: number,
@@ -218,7 +225,9 @@ const DEFAULT_SIMULATION: SimulationResult = {
  */
 function recalculateCircuit(
   nodes: Node<CircuitElementData>[],
-  edges: Edge[]
+  edges: Edge[],
+  terrainGrid?: TerrainCellType[][],
+  sunSetting?: SunTimeOfDay | SunPosition
 ): { simulation: SimulationResult; updatedNodes: Node<CircuitElementData>[] } {
   // Detached bulbs (screw-base, halogen, and led_green) cannot connect wires directly.
   // All standalone bulbs are passive inventory items awaiting placement into sockets.
@@ -236,7 +245,24 @@ function recalculateCircuit(
       !standalonePassiveBulbIds.has(edge.target)
   );
 
-  let workingNodes = nodes;
+  const activeTerrainGrid =
+    terrainGrid ??
+    (typeof useCircuitStore !== 'undefined' && useCircuitStore.getState
+      ? useCircuitStore.getState().terrainGrid
+      : undefined);
+
+  const activeSunSetting =
+    sunSetting ??
+    (typeof useCircuitStore !== 'undefined' && useCircuitStore.getState
+      ? useCircuitStore.getState().sunTimeOfDay
+      : 'morning');
+
+  // Microclimate coupling: evaluate orographic wind shear and 1D topographic sun ray shadows
+  let workingNodes =
+    activeTerrainGrid && activeTerrainGrid.length > 0
+      ? applyTerrainMicroclimateToNodes(nodes, activeTerrainGrid, { sunPosition: activeSunSetting })
+      : nodes;
+
   let components: CircuitElementData[] = workingNodes.map((node) => node.data);
   const wires: WireConnection[] = validEdges.map((edge) => ({
     id: edge.id,
@@ -386,7 +412,8 @@ function recalculateCircuit(
 
     if (node.data.type === 'solar-panel' || node.data.type === 'solar_panel') {
       const sunlight = node.data.sunlight ?? 100;
-      const outputVoltage = node.data.voltage ?? getSolarPanelVoltage(sunlight);
+      const effectiveSunlight = node.data.effectiveSunlight ?? sunlight;
+      const outputVoltage = node.data.voltage ?? getSolarPanelVoltage(effectiveSunlight);
       const outputPower = Math.abs(branchCurrent * outputVoltage);
       const isBlockingDiodeActive = blockedGeneratorSet.has(node.id);
 
@@ -394,7 +421,9 @@ function recalculateCircuit(
         ...node,
         data: {
           ...node.data,
+          worldMode: 'outside' as const,
           sunlight,
+          effectiveSunlight,
           voltage: outputVoltage,
           calculatedCurrent: branchCurrent,
           calculatedVoltage: outputVoltage,
@@ -407,7 +436,8 @@ function recalculateCircuit(
 
     if (node.data.type === 'wind-turbine' || node.data.type === 'wind_turbine') {
       const speed = node.data.speed ?? 50;
-      const outputVoltage = (speed / 100) * 12.0;
+      const effectiveSpeed = node.data.effectiveSpeed ?? speed;
+      const outputVoltage = node.data.voltage ?? ((effectiveSpeed / 100) * 12.0);
       const outputPower = Math.abs(branchCurrent * outputVoltage);
       const isBlockingDiodeActive = blockedGeneratorSet.has(node.id);
 
@@ -415,7 +445,9 @@ function recalculateCircuit(
         ...node,
         data: {
           ...node.data,
+          worldMode: 'outside' as const,
           speed,
+          effectiveSpeed,
           voltage: outputVoltage,
           calculatedCurrent: branchCurrent,
           calculatedVoltage: outputVoltage,
@@ -446,6 +478,26 @@ function recalculateCircuit(
           : 0
         : 0;
 
+      // Transmission physics & Gardu Trafo telemetry
+      const isOutdoorTower = node.data.worldMode === 'outside';
+      const hasTransformer = node.data.hasTransformer ?? (isOutdoorTower ? true : false);
+      const stepUpVoltage =
+        node.data.stepUpVoltage ??
+        (node.data.transmissionVoltageMode === 'step_up' ? 240 : 12);
+      const lineResistance = node.data.lineResistance ?? 4.0;
+      const turnsRatio = stepUpVoltage > 12 ? stepUpVoltage / 12 : 1;
+
+      const loadCurrent = Math.abs(branchCurrent);
+      const transmissionLineCurrent = turnsRatio > 1 ? loadCurrent / turnsRatio : loadCurrent;
+      const jouleLoss = transmissionLineCurrent * transmissionLineCurrent * lineResistance;
+      const deliveredPower = busVoltage * loadCurrent;
+      const totalPower = deliveredPower + jouleLoss;
+      const efficiency =
+        totalPower > 0
+          ? Math.max(0, Math.min(100, Math.round((deliveredPower / totalPower) * 1000) / 10))
+          : 100.0;
+      const isOverheated = transmissionLineCurrent >= 0.4 && stepUpVoltage <= 12;
+
       return {
         ...node,
         data: {
@@ -453,10 +505,18 @@ function recalculateCircuit(
           isMcbOn: node.data.isMcbOn ?? true,
           isMcbTripped: node.data.isMcbTripped ?? false,
           stepDownVoltage: node.data.stepDownVoltage ?? null,
+          hasTransformer,
+          stepUpVoltage,
+          transmissionVoltageMode: (stepUpVoltage === 240 ? 'step_up' : 'direct') as 'step_up' | 'direct',
+          lineResistance,
+          transmissionCurrent: transmissionLineCurrent,
+          jouleLoss,
+          transmissionEfficiency: efficiency,
+          isLineOverheated: isOverheated,
           towerConnectedCount: effectiveConnectedCount,
           calculatedCurrent: branchCurrent,
           calculatedVoltage: busVoltage,
-          calculatedPower: busVoltage * Math.abs(branchCurrent),
+          calculatedPower: deliveredPower,
           isShortCircuit,
         },
       };
@@ -546,7 +606,10 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   notification: null,
 
   // World Mode & CSS Cloud Transition State
-  worldMode: 'lab',
+  worldMode:
+    (typeof window !== 'undefined' &&
+      (localStorage.getItem('circuit_world_mode') as WorldMode)) ||
+    'lab',
   isTransitioningWorld: false,
   transitionTargetMode: null,
 
@@ -555,13 +618,36 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   dirtExposureMap: {},
   terrainBrush: 'cursor',
   explosions: [],
+  sunTimeOfDay: 'morning' as const,
+
+  setSunTimeOfDay: (timeOfDay: SunTimeOfDay) => {
+    const { simulation, updatedNodes } = recalculateCircuit(
+      get().nodes,
+      get().edges,
+      get().terrainGrid,
+      timeOfDay
+    );
+    set({
+      sunTimeOfDay: timeOfDay,
+      nodes: updatedNodes,
+      simulation,
+    });
+  },
 
   setWorldMode: (worldMode: WorldMode) => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('circuit_world_mode', worldMode);
+      } catch {
+        // Ignore localStorage quota errors
+      }
+    }
     set({
       worldMode,
       selectedNodeId: null,
       selectedEdgeId: null,
     });
+    saveWorkspaceAutosave(get().nodes, get().edges, worldMode);
   },
 
   triggerWorldTransition: (targetMode?: WorldMode) => {
@@ -586,7 +672,13 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
 
     // 0.5s - 1.5s: Cloud fully covers screen -> switch worldMode at 1.0s midpoint
     window.setTimeout(() => {
+      try {
+        localStorage.setItem('circuit_world_mode', nextMode);
+      } catch {
+        // Ignore localStorage quota errors
+      }
       set({ worldMode: nextMode });
+      saveWorkspaceAutosave(get().nodes, get().edges, nextMode);
     }, 1000);
 
     // 1.5s - 2.0s: Cloud fades out -> complete transition at 2.0s
@@ -636,9 +728,18 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     const nextExposureMap = { ...get().dirtExposureMap };
     delete nextExposureMap[`${row},${col}`];
 
+    const { simulation, updatedNodes } = recalculateCircuit(
+      get().nodes,
+      get().edges,
+      finalGrid,
+      get().sunTimeOfDay
+    );
+
     set({
       terrainGrid: finalGrid,
       dirtExposureMap: nextExposureMap,
+      nodes: updatedNodes,
+      simulation,
     });
   },
 
@@ -652,22 +753,49 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     } = evaluateGrassGrowth(afterGravityGrid, get().dirtExposureMap, nowMs);
 
     if (moved || grassChanged) {
+      const { simulation, updatedNodes } = recalculateCircuit(
+        get().nodes,
+        get().edges,
+        afterGrassGrid,
+        get().sunTimeOfDay
+      );
       set({
         terrainGrid: afterGrassGrid,
         dirtExposureMap: nextExposureMap,
+        nodes: updatedNodes,
+        simulation,
       });
     }
   },
 
   settleAllTerrainGravity: () => {
     const settled = settleTerrainGravityImmediate(get().terrainGrid);
-    set({ terrainGrid: settled });
+    const { simulation, updatedNodes } = recalculateCircuit(
+      get().nodes,
+      get().edges,
+      settled,
+      get().sunTimeOfDay
+    );
+    set({
+      terrainGrid: settled,
+      nodes: updatedNodes,
+      simulation,
+    });
   },
 
   resetOutdoorTerrain: () => {
+    const defaultGrid = createDefaultOutdoorTerrain(GRID_ROWS, GRID_COLS);
+    const { simulation, updatedNodes } = recalculateCircuit(
+      get().nodes,
+      get().edges,
+      defaultGrid,
+      get().sunTimeOfDay
+    );
     set({
-      terrainGrid: createDefaultOutdoorTerrain(GRID_ROWS, GRID_COLS),
+      terrainGrid: defaultGrid,
       dirtExposureMap: {},
+      nodes: updatedNodes,
+      simulation,
     });
   },
 
@@ -843,17 +971,21 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       return;
     }
 
-    // 4. Gravity Settlement: Snap component's Y onto the terrain surface so it never floats in mid-air
-    if (
-      draggedNode.position.x !== outcome.settledPosition.x ||
-      draggedNode.position.y !== outcome.settledPosition.y
-    ) {
-      set({
-        nodes: currentNodes.map((n) =>
-          n.id === nodeId ? { ...n, position: { ...outcome.settledPosition } } : n
-        ),
-      });
-    }
+    // 4. Gravity Settlement: Snap component's Y onto the terrain surface so it never floats in mid-air,
+    // and dynamically recalculate circuit simulation & microclimate physics for the settled node
+    const nextNodes = currentNodes.map((n) =>
+      n.id === nodeId ? { ...n, position: { ...outcome.settledPosition } } : n
+    );
+    const { simulation, updatedNodes } = recalculateCircuit(
+      nextNodes,
+      get().edges,
+      get().terrainGrid,
+      get().sunTimeOfDay
+    );
+    set({
+      nodes: updatedNodes,
+      simulation,
+    });
   },
 
   notify: (message: string) => {
@@ -985,10 +1117,26 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     const componentId = `${type}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const isId = get().language === 'id';
     const activeWorldMode = get().worldMode;
+
+    const isOutdoorOnly =
+      type === 'solar-panel' ||
+      type === 'solar_panel' ||
+      type === 'wind-turbine' ||
+      type === 'wind_turbine';
+
+    if (activeWorldMode === 'lab' && isOutdoorOnly) {
+      get().notify(
+        isId
+          ? '⚠️ Turbin Angin dan Panel Surya hanya boleh ada di Alam Terbuka!'
+          : '⚠️ Wind Turbines and Solar Panels are strictly prohibited in the Lab!'
+      );
+      return;
+    }
+
     let defaultData: CircuitElementData = {
       id: componentId,
       type,
-      worldMode: activeWorldMode,
+      worldMode: isOutdoorOnly ? 'outside' : activeWorldMode,
       label: type.charAt(0).toUpperCase() + type.slice(1),
     };
 
@@ -2481,16 +2629,36 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
    * @param targetWorldMode - Destination environment ('lab' or 'outside')
    */
   loadCustomCircuit: (customNodes, customEdges, targetWorldMode = 'lab') => {
-    const formattedNodes: Node<CircuitElementData>[] = customNodes.map((node) => ({
-      ...node,
-      data: {
-        ...node.data,
-        worldMode: targetWorldMode,
-      },
-    }));
+    const formattedNodes: Node<CircuitElementData>[] = customNodes.map((node) => {
+      const isOutdoorOnly =
+        node.data.type === 'solar-panel' ||
+        node.data.type === 'solar_panel' ||
+        node.data.type === 'wind-turbine' ||
+        node.data.type === 'wind_turbine';
+
+      const resolvedMode: WorldMode = isOutdoorOnly
+        ? 'outside'
+        : (node.data.worldMode ?? targetWorldMode ?? 'lab');
+
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          worldMode: resolvedMode,
+        },
+      };
+    });
 
     const { simulation, updatedNodes } = recalculateCircuit(formattedNodes, customEdges);
-    saveWorkspaceAutosaveImmediate(updatedNodes, customEdges);
+    saveWorkspaceAutosaveImmediate(updatedNodes, customEdges, undefined, targetWorldMode);
+
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('circuit_world_mode', targetWorldMode);
+      } catch {
+        // Ignore localStorage quota errors
+      }
+    }
 
     set({
       nodes: updatedNodes,

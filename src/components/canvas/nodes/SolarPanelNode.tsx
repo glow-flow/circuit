@@ -116,7 +116,7 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
             onPointerDown={(e) => e.stopPropagation()}
             onClick={() => applyWeatherPreset(12.0, 100)}
             className={`px-1 py-0.5 rounded text-[9px] font-mono font-bold border transition-all active:scale-95 cursor-pointer ${
-              Math.abs(nominalVoltage - 12.0) < 0.3
+              sunlight >= 90
                 ? 'bg-amber-500/25 text-amber-300 border-amber-400/50'
                 : 'bg-void-900/90 text-slate-400 border-white/10 hover:text-white'
             }`}
@@ -128,7 +128,7 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
             onPointerDown={(e) => e.stopPropagation()}
             onClick={() => applyWeatherPreset(5.0, 42)}
             className={`px-1 py-0.5 rounded text-[9px] font-mono font-bold border transition-all active:scale-95 cursor-pointer ${
-              Math.abs(nominalVoltage - 5.0) < 0.3
+              sunlight >= 30 && sunlight < 90
                 ? 'bg-sky-500/25 text-sky-300 border-sky-400/50'
                 : 'bg-void-900/90 text-slate-400 border-white/10 hover:text-white'
             }`}
@@ -140,7 +140,7 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
             onPointerDown={(e) => e.stopPropagation()}
             onClick={() => applyWeatherPreset(0.0, 0)}
             className={`px-1 py-0.5 rounded text-[9px] font-mono font-bold border transition-all active:scale-95 cursor-pointer ${
-              nominalVoltage === 0
+              sunlight < 30
                 ? 'bg-slate-700/60 text-slate-200 border-slate-400/40'
                 : 'bg-void-900/90 text-slate-400 border-white/10 hover:text-white'
             }`}
@@ -166,10 +166,31 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
             {isId ? '🛡️ Dioda Penahan Arus Balik' : '🛡️ Blocking Diode Active'}
           </div>
         )}
+
+        {data.isShaded && (
+          <div
+            id="solar-shadow-warning"
+            className="px-1.5 py-0.5 rounded bg-amber-950/90 border border-amber-500/70 text-[8px] font-mono font-bold text-amber-300 text-center flex items-center justify-center gap-1 shadow-sm"
+          >
+            <AlertTriangle className="w-2.5 h-2.5 text-amber-400 shrink-0" />
+            <span className="truncate">
+              {isId
+                ? 'Terhalang Bayangan Tebing - Daya 15%'
+                : 'Cliff Shadow - Power 15%'}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Physical Photovoltaic Panel + Ground Support Stand (Elevates Terminals Above Grass!) */}
       <div className="relative w-[136px] h-[98px] flex flex-col items-center justify-end pb-3.5 overflow-visible">
+        {data.isShaded && (
+          <div className="absolute inset-x-2 top-3 bottom-5 bg-slate-950/45 rounded pointer-events-none z-20 border border-indigo-400/30 flex items-center justify-center">
+            <span className="text-[8px] font-mono font-bold text-amber-200/95 bg-black/70 px-1 py-0.5 rounded shadow">
+              {isId ? 'Bayangan Bukit' : 'Hill Shadow'}
+            </span>
+          </div>
+        )}
         <img
           src="/assets/solar-panel.png"
           alt={t.title}

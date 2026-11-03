@@ -16,7 +16,7 @@
  */
 
 import { Node, Edge } from 'reactflow';
-import { CircuitElementData } from '../types/circuit';
+import { CircuitElementData, WorldMode } from '../types/circuit';
 import { migrateWiredBulbsToSockets } from './presetStorage';
 
 export const STORAGE_KEYS = {
@@ -27,6 +27,7 @@ export const STORAGE_KEYS = {
   ACADEMY_PROGRESS: 'circuit_sandbox_academy_progress_v1',
   TROUBLESHOOTING_RUNS: 'circuit_sandbox_troubleshooting_v1',
   THEME: 'circuit_theme',
+  WORLD_MODE: 'circuit_world_mode',
 } as const;
 
 export type AutosaveStatus =
@@ -39,6 +40,7 @@ export interface AutosaveLoadResult {
   status: AutosaveStatus;
   nodes: Node<CircuitElementData>[];
   edges: Edge[];
+  worldMode?: WorldMode;
   updatedAt?: number;
   errorMessage?: string;
 }
@@ -46,6 +48,7 @@ export interface AutosaveLoadResult {
 export interface SerializedWorkspacePayload {
   version: string;
   updatedAt: number;
+  worldMode?: WorldMode;
   nodes: Node<CircuitElementData>[];
   edges: Edge[];
 }
@@ -77,9 +80,23 @@ export function sanitizeNodesForPersistence(
       ...structuralData
     } = node.data;
 
+    // Strict Rule: Solar Panels and Wind Turbines are NEVER allowed in 'lab'.
+    const isOutdoorOnly =
+      structuralData.type === 'solar-panel' ||
+      structuralData.type === 'solar_panel' ||
+      structuralData.type === 'wind-turbine' ||
+      structuralData.type === 'wind_turbine';
+
+    const safeWorldMode: WorldMode = isOutdoorOnly
+      ? 'outside'
+      : (structuralData.worldMode ?? 'lab');
+
     return {
       ...node,
-      data: structuralData,
+      data: {
+        ...structuralData,
+        worldMode: safeWorldMode,
+      },
     };
   });
 }
@@ -108,6 +125,7 @@ export function sanitizeEdgesForPersistence(
 let pendingSaveTimer: ReturnType<typeof setTimeout> | null = null;
 let pendingNodesToSave: Node<CircuitElementData>[] | null = null;
 let pendingEdgesToSave: Edge[] | null = null;
+let pendingWorldModeToSave: WorldMode | undefined = undefined;
 
 /**
  * Immediately writes the active canvas workspace state to browser localStorage.
@@ -116,12 +134,14 @@ let pendingEdgesToSave: Edge[] | null = null;
  * @param nodes - Active canvas nodes
  * @param edges - Active canvas edges
  * @param storageOverride - Optional storage interface (useful for unit testing)
+ * @param worldMode - Active environment mode ('lab' or 'outside')
  * @returns boolean indicating success
  */
 export function saveWorkspaceAutosaveImmediate(
   nodes: Node<CircuitElementData>[],
   edges: Edge[],
-  storageOverride?: Storage
+  storageOverride?: Storage,
+  worldMode?: WorldMode
 ): boolean {
   try {
     const storage =
@@ -136,18 +156,26 @@ export function saveWorkspaceAutosaveImmediate(
     const cleanNodes = sanitizeNodesForPersistence(nodes);
     const cleanEdges = sanitizeEdgesForPersistence(edges, cleanNodes);
 
+    const resolvedWorldMode: WorldMode =
+      worldMode ??
+      (storage.getItem(STORAGE_KEYS.WORLD_MODE) as WorldMode | null) ??
+      'lab';
+
     const payload: SerializedWorkspacePayload = {
       version: '2.0.0',
       updatedAt: Date.now(),
+      worldMode: resolvedWorldMode,
       nodes: cleanNodes,
       edges: cleanEdges,
     };
 
     storage.setItem(STORAGE_KEYS.AUTOSAVE, JSON.stringify(payload));
+    storage.setItem(STORAGE_KEYS.WORLD_MODE, resolvedWorldMode);
 
     // Clear any pending in-memory buffer
     pendingNodesToSave = null;
     pendingEdgesToSave = null;
+    pendingWorldModeToSave = undefined;
     if (pendingSaveTimer !== null) {
       clearTimeout(pendingSaveTimer);
       pendingSaveTimer = null;
@@ -169,15 +197,20 @@ export function saveWorkspaceAutosaveImmediate(
  * @param edges - Current canvas edges
  * @param delayMs - Debounce window in milliseconds (default: 1500ms)
  * @param storageOverride - Optional storage interface for testing
+ * @param worldMode - Active environment mode ('lab' or 'outside')
  */
 export function saveWorkspaceAutosaveDebounced(
   nodes: Node<CircuitElementData>[],
   edges: Edge[],
   delayMs = 1500,
-  storageOverride?: Storage
+  storageOverride?: Storage,
+  worldMode?: WorldMode
 ): void {
   pendingNodesToSave = nodes;
   pendingEdgesToSave = edges;
+  if (worldMode !== undefined) {
+    pendingWorldModeToSave = worldMode;
+  }
 
   if (pendingSaveTimer !== null) {
     clearTimeout(pendingSaveTimer);
@@ -185,7 +218,12 @@ export function saveWorkspaceAutosaveDebounced(
 
   pendingSaveTimer = setTimeout(() => {
     if (pendingNodesToSave !== null && pendingEdgesToSave !== null) {
-      saveWorkspaceAutosaveImmediate(pendingNodesToSave, pendingEdgesToSave, storageOverride);
+      saveWorkspaceAutosaveImmediate(
+        pendingNodesToSave,
+        pendingEdgesToSave,
+        storageOverride,
+        pendingWorldModeToSave
+      );
     }
   }, delayMs);
 }
@@ -199,7 +237,12 @@ export function saveWorkspaceAutosaveDebounced(
  */
 export function flushPendingWorkspaceAutosave(storageOverride?: Storage): boolean {
   if (pendingNodesToSave !== null && pendingEdgesToSave !== null) {
-    saveWorkspaceAutosaveImmediate(pendingNodesToSave, pendingEdgesToSave, storageOverride);
+    saveWorkspaceAutosaveImmediate(
+      pendingNodesToSave,
+      pendingEdgesToSave,
+      storageOverride,
+      pendingWorldModeToSave
+    );
     return true;
   }
   return false;
@@ -277,12 +320,17 @@ export function loadWorkspaceAutosaveWithValidation(
       };
     }
 
+    // Extract restored world mode
+    const rawWorldMode = parsed.worldMode ?? storage.getItem(STORAGE_KEYS.WORLD_MODE);
+    const restoredWorldMode: WorldMode = rawWorldMode === 'outside' ? 'outside' : 'lab';
+
     // Check for intentional empty workspace
     if (parsed.nodes.length === 0 && parsed.edges.length === 0) {
       return {
         status: 'empty_workspace',
         nodes: [],
         edges: [],
+        worldMode: restoredWorldMode,
         updatedAt: typeof parsed.updatedAt === 'number' ? parsed.updatedAt : Date.now(),
       };
     }
@@ -296,10 +344,31 @@ export function loadWorkspaceAutosaveWithValidation(
     const migratedNodes = migrateWiredBulbsToSockets(parsed.nodes, validEdges);
     const fullyCleanEdges = sanitizeEdgesForPersistence(validEdges, migratedNodes);
 
+    // Strict Rule: Solar Panels and Wind Turbines are NEVER allowed in 'lab'.
+    const sanitizedNodes = migratedNodes.map((node) => {
+      const isOutdoorOnly =
+        node.data?.type === 'solar-panel' ||
+        node.data?.type === 'solar_panel' ||
+        node.data?.type === 'wind-turbine' ||
+        node.data?.type === 'wind_turbine';
+
+      if (isOutdoorOnly && node.data?.worldMode !== 'outside') {
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            worldMode: 'outside' as WorldMode,
+          },
+        };
+      }
+      return node;
+    });
+
     return {
       status: 'restored',
-      nodes: migratedNodes,
+      nodes: sanitizedNodes,
       edges: fullyCleanEdges,
+      worldMode: restoredWorldMode,
       updatedAt: typeof parsed.updatedAt === 'number' ? parsed.updatedAt : Date.now(),
     };
   } catch (error: any) {

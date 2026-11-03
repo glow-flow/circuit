@@ -164,7 +164,17 @@ export function validateAndParseCircuitPayload(
           worldMode: metadata.worldMode === 'outside' ? 'outside' : 'lab',
           author: metadata.author,
         },
-        nodes: migratedNodes,
+        nodes: migratedNodes.map((n) => {
+          const isOutdoorOnly =
+            n.data?.type === 'solar-panel' ||
+            n.data?.type === 'solar_panel' ||
+            n.data?.type === 'wind-turbine' ||
+            n.data?.type === 'wind_turbine';
+          if (isOutdoorOnly && n.data?.worldMode !== 'outside') {
+            return { ...n, data: { ...n.data, worldMode: 'outside' as WorldMode } };
+          }
+          return n;
+        }),
         edges: cleanEdges,
       },
     };
@@ -312,7 +322,17 @@ export function decodeShareableUrlHash(
           circuitTitle: parsed.title || 'Rangkaian Bersama',
           worldMode: parsed.mode === 'outside' ? 'outside' : 'lab',
         },
-        nodes: migratedNodes,
+        nodes: migratedNodes.map((n) => {
+          const isOutdoorOnly =
+            n.data?.type === 'solar-panel' ||
+            n.data?.type === 'solar_panel' ||
+            n.data?.type === 'wind-turbine' ||
+            n.data?.type === 'wind_turbine';
+          if (isOutdoorOnly && n.data?.worldMode !== 'outside') {
+            return { ...n, data: { ...n.data, worldMode: 'outside' as WorldMode } };
+          }
+          return n;
+        }),
         edges: cleanEdges,
       },
     };

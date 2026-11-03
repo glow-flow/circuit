@@ -29,6 +29,7 @@ import { canBulbFitSocket, canBulbFitPinSocket, getBulbSpec } from '../constants
 import { UnionFind } from './unionFind';
 import { computeEffectiveBatteryVoltage, CURRENT_FLOW_EPSILON } from './batterySoC';
 import { getSolarPanelVoltage, SOLAR_PANEL_INTERNAL_RESISTANCE } from './solarPanel';
+import { calculateReferredLineResistance, DEFAULT_LINE_RESISTANCE_OHMS } from './transmissionPhysics';
 
 export const SHORT_CIRCUIT_CURRENT_THRESHOLD = 10.0; // Amperes threshold for short-circuit trip
 export const BATTERY_INTERNAL_RESISTANCE = 0.05; // 50mΩ internal resistance per cell to prevent singularity
@@ -549,13 +550,45 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
     //    - Blocking Diode (Schottky) on Solar Panels & Wind Turbines (prevents reverse current I > 0)
     //    - Unidirectional LED Polarity on sockets holding LED bulbs (conducts only when V_p1 >= V_p2)
     //    - Dynamic Adaptive CC-CV Resistance on electrochemical batteries during charging
+    //    - High-Voltage Step-Up / Direct Line Resistance on the Virtual Transmission Grid
     const allVoltageSourceComponents = components.filter((c) => isActiveVoltageSource(c, components));
     const blockedGeneratorSet = new Set<string>();
     const reverseBiasedSocketSet = new Set<string>();
 
+    // Calculate referred transmission line resistance across active grid towers
+    let gridReferredResistance = 0;
+    if (activeTransmissionTowers.length > 1) {
+      const towerWithTransformer = activeTransmissionTowers.find(
+        (t) =>
+          t.hasTransformer ||
+          (t.stepUpVoltage !== undefined && t.stepUpVoltage !== null) ||
+          (t.lineResistance !== undefined && t.lineResistance > 0)
+      );
+      if (towerWithTransformer) {
+        const actualLineResistance = towerWithTransformer.lineResistance ?? DEFAULT_LINE_RESISTANCE_OHMS;
+        const stepUpVoltage =
+          towerWithTransformer.stepUpVoltage ??
+          (towerWithTransformer.transmissionVoltageMode === 'step_up' ? 240 : 12);
+        gridReferredResistance = calculateReferredLineResistance(
+          actualLineResistance,
+          12.0,
+          stepUpVoltage
+        );
+      }
+    }
+
     const sourceResistanceMap = new Map<string, number>();
     for (const sourceComp of allVoltageSourceComponents) {
-      sourceResistanceMap.set(sourceComp.id, getSourceDischargeResistance(sourceComp));
+      let baseResistance = getSourceDischargeResistance(sourceComp);
+      if (
+        gridReferredResistance > 0 &&
+        (isRenewableWithBlockingDiode(sourceComp) ||
+          sourceComp.type === 'distribution-panel' ||
+          sourceComp.type === 'distribution_panel')
+      ) {
+        baseResistance += gridReferredResistance;
+      }
+      sourceResistanceMap.set(sourceComp.id, baseResistance);
     }
 
     let activeVoltageSources = allVoltageSourceComponents;
