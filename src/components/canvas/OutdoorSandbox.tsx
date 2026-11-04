@@ -46,6 +46,7 @@ import {
 } from '../../physics/terrainGrid';
 import {
   computeTerrainShadowPolygons,
+  getAnchoredSunPosition,
 } from '../../physics/terrainClimateEngine';
 import { createOutdoorPowerStationElements } from '../../utils/outdoorSpawnUtils';
 import { SolarPanelNode } from './nodes/SolarPanelNode';
@@ -173,7 +174,7 @@ const OutdoorSandboxInner: React.FC = () => {
       terrainGrid,
       OUTDOOR_WORLD_MIN_WIDTH,
       680,
-      sunTimeOfDay
+      getAnchoredSunPosition(sunTimeOfDay)
     );
   }, [terrainGrid, sunTimeOfDay]);
 
@@ -670,10 +671,11 @@ const OutdoorSandboxInner: React.FC = () => {
   ];
 
   const effectiveViewportWidth = viewportWidth > 0 ? viewportWidth : 1360;
-  // Position celestial Sun Orb proportionally within the user's current visible viewport
-  // so it remains gloriously visible on mobile screens (360-430px) as well as desktop!
+  // The sun lives in world space (same anchor the shadow math uses), so panning the camera
+  // moves it across the screen instead of dragging it along with the viewport.
+  const worldStageWidth = Math.max(OUTDOOR_WORLD_MIN_WIDTH, effectiveViewportWidth);
   const sunLeftPx = Math.round(
-    cameraScrollX + (effectiveViewportWidth * sunConfig.leftPercent) / 100
+    (getAnchoredSunPosition(sunTimeOfDay).worldXRatio ?? 0.5) * worldStageWidth
   );
 
   return (
@@ -794,37 +796,25 @@ const OutdoorSandboxInner: React.FC = () => {
              ==================================================================== */}
           {/* Morning Dawn: warm amber-orange sunrise tint and eastern horizon flare */}
           <div
-            className={`absolute pointer-events-none z-[2] transition-opacity duration-700 ease-in-out ${
+            className={`absolute inset-0 pointer-events-none z-[2] transition-opacity duration-700 ease-in-out ${
               sunTimeOfDay === 'morning' ? 'opacity-100' : 'opacity-0'
             }`}
-            style={{
-              left: `${cameraScrollX}px`,
-              width: `${effectiveViewportWidth}px`,
-              top: 0,
-              bottom: 0,
-            }}
           >
             <div className="absolute inset-0 bg-gradient-to-b from-amber-950/30 via-orange-500/15 to-transparent" />
             <div
               className="absolute inset-0"
               style={{
                 background:
-                  'radial-gradient(circle at 18% 25%, rgba(251, 191, 36, 0.4) 0%, rgba(245, 158, 11, 0.15) 35%, transparent 70%)',
+                  'radial-gradient(circle at 7% 18%, rgba(251, 191, 36, 0.4) 0%, rgba(245, 158, 11, 0.15) 35%, transparent 70%)',
               }}
             />
           </div>
 
           {/* Noon Zenith: high-contrast clear daylight and dazzling overhead solar glare */}
           <div
-            className={`absolute pointer-events-none z-[2] transition-opacity duration-700 ease-in-out ${
+            className={`absolute inset-0 pointer-events-none z-[2] transition-opacity duration-700 ease-in-out ${
               sunTimeOfDay === 'noon' ? 'opacity-100' : 'opacity-0'
             }`}
-            style={{
-              left: `${cameraScrollX}px`,
-              width: `${effectiveViewportWidth}px`,
-              top: 0,
-              bottom: 0,
-            }}
           >
             <div className="absolute inset-0 bg-gradient-to-b from-sky-400/20 via-white/10 to-transparent" />
             <div
@@ -838,22 +828,16 @@ const OutdoorSandboxInner: React.FC = () => {
 
           {/* Afternoon Sunset: rich amber-purple sunset twilight and western horizon glow */}
           <div
-            className={`absolute pointer-events-none z-[2] transition-opacity duration-700 ease-in-out ${
+            className={`absolute inset-0 pointer-events-none z-[2] transition-opacity duration-700 ease-in-out ${
               sunTimeOfDay === 'afternoon' ? 'opacity-100' : 'opacity-0'
             }`}
-            style={{
-              left: `${cameraScrollX}px`,
-              width: `${effectiveViewportWidth}px`,
-              top: 0,
-              bottom: 0,
-            }}
           >
             <div className="absolute inset-0 bg-gradient-to-b from-purple-950/40 via-orange-900/25 to-amber-500/15" />
             <div
               className="absolute inset-0"
               style={{
                 background:
-                  'radial-gradient(circle at 82% 25%, rgba(249, 115, 22, 0.45) 0%, rgba(220, 38, 38, 0.2) 35%, transparent 70%)',
+                  'radial-gradient(circle at 93% 18%, rgba(249, 115, 22, 0.45) 0%, rgba(220, 38, 38, 0.2) 35%, transparent 70%)',
               }}
             />
           </div>
@@ -1138,24 +1122,29 @@ const OutdoorSandboxInner: React.FC = () => {
              ==================================================================== */}
           {shadowPolygons.length > 0 && (
             <svg
-              className="absolute inset-0 w-full h-full pointer-events-none z-[35] mix-blend-multiply transition-opacity duration-500"
+              className="absolute inset-0 w-full h-full pointer-events-none z-[35] transition-opacity duration-500"
               viewBox={`0 0 ${OUTDOOR_WORLD_MIN_WIDTH} 680`}
               preserveAspectRatio="none"
               aria-hidden="true"
             >
               <defs>
                 <linearGradient id="terrain-hill-shadow" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stopColor="#090d16" stopOpacity="0.55" />
-                  <stop offset="100%" stopColor="#090d16" stopOpacity="0.35" />
+                  <stop offset="0%" stopColor="#05070d" stopOpacity="0.5" />
+                  <stop offset="100%" stopColor="#05070d" stopOpacity="0" />
                 </linearGradient>
+                <filter id="terrain-shadow-soften" x="-5%" y="-40%" width="110%" height="180%">
+                  <feGaussianBlur stdDeviation="3" />
+                </filter>
               </defs>
-              {shadowPolygons.map((poly, idx) => (
-                <path
-                  key={`shadow-${poly.startCol}-${poly.endCol}-${idx}`}
-                  d={poly.pathData}
-                  fill="url(#terrain-hill-shadow)"
-                />
-              ))}
+              <g filter="url(#terrain-shadow-soften)">
+                {shadowPolygons.map((poly, idx) => (
+                  <path
+                    key={`shadow-${poly.startCol}-${poly.endCol}-${idx}`}
+                    d={poly.pathData}
+                    fill="url(#terrain-hill-shadow)"
+                  />
+                ))}
+              </g>
             </svg>
           )}
 

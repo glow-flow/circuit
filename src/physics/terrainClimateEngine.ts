@@ -32,7 +32,11 @@ import {
   GRID_ROWS,
 } from './terrainGrid';
 import { getSolarPanelVoltage } from './solarPanel';
-import { detectTurbineWaterFlow, calculateHydroOperatingPoint } from './hydroPhysics';
+import {
+  detectTurbineWaterFlow,
+  calculateHydroOperatingPoint,
+  measureSubmergedDepthPx,
+} from './hydroPhysics';
 
 /** Baseline terrain surface row (row 15 out of 20 = rows - 5 in default landscape) */
 export const TERRAIN_BASELINE_ROW = 15;
@@ -46,6 +50,12 @@ export const HELLMANN_WIND_EXPONENT = 0.4;
 /** Diffuse solar irradiance multiplier when direct sunlight is blocked by terrain shadow (15%) */
 export const DIFFUSE_SHADING_RATIO = 0.15;
 
+/** How far a ground shadow band rises above the grass line (px). */
+export const SHADOW_BAND_LIFT_PX = 8;
+
+/** How deep a ground shadow band reaches into the soil (px). */
+export const SHADOW_BAND_DEPTH_PX = 30;
+
 /** Standard default outdoor sandbox canvas dimensions */
 export const DEFAULT_OUTDOOR_WIDTH = 1360;
 export const DEFAULT_OUTDOOR_HEIGHT = 680;
@@ -55,6 +65,16 @@ export interface SunPosition {
   elevationDeg: number;
   /** Sun azimuth compass angle (90° = East/Morning, 180° = South/Noon, 270° = West/Afternoon) */
   azimuthDeg: number;
+  /**
+   * Optional world-anchored sun disc position as a fraction (0..1) of the stage width.
+   * When both `worldXRatio` and `worldYPx` are set, the sun is a point light living in
+   * world space: each receiver derives its own ray angle toward the disc, and terrain
+   * lying beyond the disc itself (the sun is behind the receiver's far side) can never
+   * cast a shadow on it.
+   */
+  worldXRatio?: number;
+  /** World-space Y of the sun disc center in px, measured on the 680px reference stage. */
+  worldYPx?: number;
 }
 
 export type SunTimeOfDay = 'morning' | 'noon' | 'afternoon';
@@ -65,6 +85,30 @@ export const SUN_PRESETS: Record<SunTimeOfDay, SunPosition> = {
   noon: { elevationDeg: 75, azimuthDeg: 180 },
   afternoon: { elevationDeg: 35, azimuthDeg: 270 },
 };
+
+/** World-space anchors of the visible sun disc for each time-of-day preset. */
+export const SUN_WORLD_ANCHORS: Record<SunTimeOfDay, { xRatio: number; yPx: number }> = {
+  morning: { xRatio: 0.07, yPx: 120 },
+  noon: { xRatio: 0.5, yPx: 64 },
+  afternoon: { xRatio: 0.93, yPx: 120 },
+};
+
+/**
+ * Returns a preset sun position extended with its world-space disc anchor, so the
+ * rendered sun orb and the shadow math always agree on where the sun is.
+ * Time Complexity: O(1).
+ *
+ * @param timeOfDay - Time-of-day preset name
+ * @returns SunPosition carrying `worldXRatio` / `worldYPx`
+ */
+export function getAnchoredSunPosition(timeOfDay: SunTimeOfDay): SunPosition {
+  const anchor = SUN_WORLD_ANCHORS[timeOfDay] ?? SUN_WORLD_ANCHORS.morning;
+  return {
+    ...(SUN_PRESETS[timeOfDay] ?? SUN_PRESETS.morning),
+    worldXRatio: anchor.xRatio,
+    worldYPx: anchor.yPx,
+  };
+}
 
 export interface WindShearResult {
   /** Original user slider base speed (0 - 100%) */
@@ -124,7 +168,16 @@ export function resolveSunPosition(
   }
   const elevationDeg = Math.max(0, Math.min(90, Number.isFinite(sunSetting.elevationDeg) ? sunSetting.elevationDeg : 35));
   const azimuthDeg = Number.isFinite(sunSetting.azimuthDeg) ? (sunSetting.azimuthDeg % 360 + 360) % 360 : 90;
-  return { elevationDeg, azimuthDeg };
+  return {
+    elevationDeg,
+    azimuthDeg,
+    ...(typeof sunSetting.worldXRatio === 'number' && Number.isFinite(sunSetting.worldXRatio)
+      ? { worldXRatio: Math.max(0, Math.min(1, sunSetting.worldXRatio)) }
+      : {}),
+    ...(typeof sunSetting.worldYPx === 'number' && Number.isFinite(sunSetting.worldYPx)
+      ? { worldYPx: sunSetting.worldYPx }
+      : {}),
+  };
 }
 
 /**
@@ -303,7 +356,7 @@ export function cast1DTopographicShadowRay(
 
   const targetCol = Math.max(0, Math.min(cols - 1, Math.floor(targetX / cellWidth)));
   const elevationRad = (elevationDeg * Math.PI) / 180;
-  const tanElevation = Math.tan(elevationRad);
+  let tanElevation = Math.tan(elevationRad);
 
   const heightmap = getTerrainHeightmap(terrainGrid);
 
@@ -335,14 +388,38 @@ export function cast1DTopographicShadowRay(
   // - Afternoon (azimuthDeg > 180°): West sun, rays travel from right to left -> check hills on the right (col > targetCol)
   // - Noon (azimuthDeg === 180°): High midday sun in southern sky -> in an East-West canyon/trench,
   //   walls on either side steeper than elevationDeg block the direct sun ray.
-  const checkLeft = azimuthDeg <= 180;
-  const checkRight = azimuthDeg >= 180;
+  let checkLeft = azimuthDeg <= 180;
+  let checkRight = azimuthDeg >= 180;
+  // Farthest horizontal distance a blocker may sit from the receiver (px).
+  let maxReachPx = Infinity;
+
+  // World-anchored sun: the ray angle is derived from the receiver toward the visible disc.
+  // A receiver the sun has moved "behind" sees the old blocker on its lit side, so it is unshaded.
+  if (sunPosition.worldXRatio !== undefined && sunPosition.worldYPx !== undefined) {
+    const sunX = sunPosition.worldXRatio * safeWidth;
+    const sunY = sunPosition.worldYPx * (safeHeight / DEFAULT_OUTDOOR_HEIGHT);
+    const sunOffsetX = sunX - targetX;
+    const sunDropY = targetY - sunY;
+    if (sunDropY <= 0 || Math.abs(sunOffsetX) < cellWidth * 0.5) {
+      return {
+        isShaded: false,
+        blockingCol: null,
+        blockingRow: null,
+        effectiveSunlightRatio: 1.0,
+      };
+    }
+    tanElevation = sunDropY / Math.abs(sunOffsetX);
+    checkLeft = sunOffsetX < 0;
+    checkRight = sunOffsetX > 0;
+    maxReachPx = Math.abs(sunOffsetX);
+  }
 
   if (checkLeft) {
     for (let c = targetCol - 1; c >= 0; c--) {
       const colCenterX = (c + 0.5) * cellWidth;
       const distX = targetX - colCenterX;
       if (distX <= 0) continue;
+      if (distX >= maxReachPx) break;
 
       const rayY = targetY - distX * tanElevation;
       // If ray is already above the ceiling of the world, no terrain can obstruct it
@@ -370,6 +447,7 @@ export function cast1DTopographicShadowRay(
       const colCenterX = (c + 0.5) * cellWidth;
       const distX = colCenterX - targetX;
       if (distX <= 0) continue;
+      if (distX >= maxReachPx) break;
 
       const rayY = targetY - distX * tanElevation;
       if (rayY < 0) break;
@@ -422,7 +500,9 @@ export function computeTerrainShadowPolygons(
   const sunPosition = resolveSunPosition(sunSetting);
   const { elevationDeg } = sunPosition;
 
-  if (elevationDeg <= 0 || elevationDeg >= 85) {
+  const isWorldAnchored =
+    sunPosition.worldXRatio !== undefined && sunPosition.worldYPx !== undefined;
+  if (elevationDeg <= 0 || (!isWorldAnchored && elevationDeg >= 85)) {
     return [];
   }
 
@@ -436,75 +516,67 @@ export function computeTerrainShadowPolygons(
 
   const polygons: TerrainShadowPolygon[] = [];
 
-  // Identify shaded ground regions across all columns
-  let currentShadowStart: number | null = null;
-  let shadowPoints: Array<{ x: number; y: number }> = [];
+  // Pixel surface height per column (null where a column holds no solid ground).
+  const surfaceYByCol: Array<number | null> = heightmap.map((surfaceRow) =>
+    surfaceRow >= rows ? null : surfaceRow * cellHeight
+  );
 
-  for (let c = 0; c < cols; c++) {
-    const colCenterX = (c + 0.5) * cellWidth;
-    const surfaceRow = heightmap[c];
-    const surfaceY = surfaceRow * cellHeight;
-
-    // Test whether column ground surface is in shadow (test 2px above ground in the air)
-    const rayResult = cast1DTopographicShadowRay(
-      colCenterX,
+  // 1. Classify every column: is its ground surface hidden from the sun?
+  const isColumnShaded: boolean[] = surfaceYByCol.map((surfaceY, c) => {
+    if (surfaceY === null) return false;
+    return cast1DTopographicShadowRay(
+      (c + 0.5) * cellWidth,
       surfaceY - 2,
       terrainGrid,
       sunPosition,
       safeWidth,
       safeHeight
-    );
+    ).isShaded;
+  });
 
-    if (rayResult.isShaded) {
-      if (currentShadowStart === null) {
-        currentShadowStart = c;
-        shadowPoints = [];
+  // 2. Emit one soft ground band per contiguous shaded run. The band hugs the surface
+  //    profile (diagonal across one-row steps, vertical across cliffs) instead of
+  //    filling whole columns down to the bottom of the world.
+  let runStart = -1;
+  const flushRun = (runEnd: number) => {
+    if (runStart < 0) return;
+    const topEdge: Array<{ x: number; y: number }> = [];
+    for (let boundary = runStart; boundary <= runEnd + 1; boundary++) {
+      const x = boundary * cellWidth;
+      const leftY = surfaceYByCol[Math.max(runStart, boundary - 1)] ?? 0;
+      const rightY = surfaceYByCol[Math.min(runEnd, boundary)] ?? 0;
+      if (boundary === runStart) {
+        topEdge.push({ x, y: rightY });
+      } else if (boundary === runEnd + 1) {
+        topEdge.push({ x, y: leftY });
+      } else if (Math.abs(leftY - rightY) <= cellHeight * 1.01) {
+        topEdge.push({ x, y: (leftY + rightY) / 2 });
+      } else {
+        topEdge.push({ x, y: leftY }, { x, y: rightY });
       }
-      // Top of shadow polygon includes 12px clearance to encompass low-profile grass blades
-      const shadowTopY = Math.max(0, surfaceY - 12);
-      shadowPoints.push({ x: c * cellWidth, y: shadowTopY });
-      shadowPoints.push({ x: (c + 1) * cellWidth, y: shadowTopY });
+    }
+    const lit = (pt: { x: number; y: number }, drop: number) =>
+      `${pt.x.toFixed(1)} ${Math.min(safeHeight, pt.y + drop).toFixed(1)}`;
+    let pathData = `M ${lit(topEdge[0], -SHADOW_BAND_LIFT_PX)}`;
+    for (let i = 1; i < topEdge.length; i++) {
+      pathData += ` L ${lit(topEdge[i], -SHADOW_BAND_LIFT_PX)}`;
+    }
+    for (let i = topEdge.length - 1; i >= 0; i--) {
+      pathData += ` L ${lit(topEdge[i], SHADOW_BAND_DEPTH_PX)}`;
+    }
+    pathData += ' Z';
+    polygons.push({ pathData, startCol: runStart, endCol: runEnd });
+    runStart = -1;
+  };
+
+  for (let c = 0; c < cols; c++) {
+    if (isColumnShaded[c]) {
+      if (runStart < 0) runStart = c;
     } else {
-      if (currentShadowStart !== null && shadowPoints.length > 0) {
-        // Close polygon to bottom
-        const startX = currentShadowStart * cellWidth;
-        const endX = c * cellWidth;
-        const bottomY = safeHeight;
-
-        let pathData = `M ${startX} ${bottomY}`;
-        for (const pt of shadowPoints) {
-          pathData += ` L ${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`;
-        }
-        pathData += ` L ${endX} ${bottomY} Z`;
-
-        polygons.push({
-          pathData,
-          startCol: currentShadowStart,
-          endCol: c - 1,
-        });
-        currentShadowStart = null;
-        shadowPoints = [];
-      }
+      flushRun(c - 1);
     }
   }
-
-  if (currentShadowStart !== null && shadowPoints.length > 0) {
-    const startX = currentShadowStart * cellWidth;
-    const endX = cols * cellWidth;
-    const bottomY = safeHeight;
-
-    let pathData = `M ${startX} ${bottomY}`;
-    for (const pt of shadowPoints) {
-      pathData += ` L ${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`;
-    }
-    pathData += ` L ${endX} ${bottomY} Z`;
-
-    polygons.push({
-      pathData,
-      startCol: currentShadowStart,
-      endCol: cols - 1,
-    });
-  }
+  flushRun(cols - 1);
 
   return polygons;
 }
@@ -671,6 +743,7 @@ export function applyTerrainMicroclimateToNodes(
           hydraulicHeadMeters: effectiveHead,
           voltage: hydroPoint.voltage,
           rpm: hydroPoint.rpm,
+          submergedDepthPx: measureSubmergedDepthPx(box, terrainGrid, width, height),
           hasWaterContact: waterFlow.hasWaterContact || (hasManualOverride && effectiveFlow > 0),
         },
       };

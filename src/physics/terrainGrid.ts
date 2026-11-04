@@ -67,8 +67,8 @@ export const COMPONENT_DIMENSIONS: Partial<Record<ComponentType, { width: number
   transmission_tower: { width: 132, height: 226 },
   'bess-substation': { width: 156, height: 116 },
   bess_substation: { width: 156, height: 116 },
-  'hydro-turbine': { width: 144, height: 144 },
-  hydro_turbine: { width: 144, height: 144 },
+  'hydro-turbine': { width: 208, height: 208 },
+  hydro_turbine: { width: 208, height: 208 },
 };
 
 export const DEFAULT_COMPONENT_DIMENSION = { width: 150, height: 170 };
@@ -609,6 +609,9 @@ export function doesComponentTouchWater(
  * @param terrainGrid - 2D terrain grid (rows x cols)
  * @param containerWidth - Container width in pixels
  * @param containerHeight - Container height in pixels
+ * @param componentType - Optional component type (selects the support footprint)
+ * @param options - `waterIsSolid`: whether liquid WATER counts as ground. Defaults to true for
+ *   every component except hydro turbines, which stand on the riverbed beneath the water.
  * @returns Surface row index, surface Y coordinate in pixels, and single cell height
  */
 export function findTerrainSurfaceY(
@@ -616,8 +619,11 @@ export function findTerrainSurfaceY(
   terrainGrid: TerrainCellType[][],
   containerWidth: number,
   containerHeight: number,
-  componentType?: ComponentType
+  componentType?: ComponentType,
+  options?: { waterIsSolid?: boolean }
 ): { surfaceRow: number; surfaceY: number; cellHeight: number } {
+  const isHydroTurbine = componentType === 'hydro-turbine' || componentType === 'hydro_turbine';
+  const waterIsSolid = options?.waterIsSolid ?? !isHydroTurbine;
   const safeWidth = containerWidth > 0 ? containerWidth : 960;
   const safeHeight = containerHeight > 0 ? containerHeight : 680;
 
@@ -662,7 +668,8 @@ export function findTerrainSurfaceY(
   let highestSurfaceRow = rows;
   for (let c = startCol; c <= endCol; c++) {
     for (let r = 0; r < rows; r++) {
-      if (terrainGrid[r][c] !== 'EMPTY') {
+      const cell = terrainGrid[r][c];
+      if (cell !== 'EMPTY' && (waterIsSolid || cell !== 'WATER')) {
         if (r < highestSurfaceRow) {
           highestSurfaceRow = r;
         }
@@ -719,8 +726,17 @@ export function evaluateComponentDropPhysics(
   };
   const settledBox = getComponentBoundingBox(settledPosition, type);
 
-  // Positive dropDistancePx means the component was released above the ground surface
-  const dropDistancePx = Math.max(0, settledY - position.y);
+  // Positive dropDistancePx means the component was released above the ground surface.
+  // A hydro turbine is lowered into the river, so its fall is measured to the water surface
+  // (water cushions the landing) rather than all the way down to the riverbed.
+  const isHydroTurbine = type === 'hydro-turbine' || type === 'hydro_turbine';
+  const impactSurfaceY = isHydroTurbine
+    ? findTerrainSurfaceY(rawBox, terrainGrid, containerSize.width, containerSize.height, type, {
+        waterIsSolid: true,
+      }).surfaceY
+    : surfaceY;
+  const impactY = Math.max(8, Math.round(impactSurfaceY - rawBox.height + groundOffset));
+  const dropDistancePx = Math.max(0, impactY - position.y);
   const dropRows = cellHeight > 0 ? dropDistancePx / cellHeight : 0;
 
   // 1. Check Excessive Drop Height Tolerance (if dropped too high above the ground -> explode on impact!)

@@ -227,11 +227,10 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
       {/* Physical Photovoltaic Panel + Ground Support Stand (Anchored flush at bottom-0 = 156px!) */}
       <div className="relative w-[136px] h-[82px] flex flex-col items-center justify-end pb-1 overflow-visible shrink-0">
         {data.isShaded && (
-          <div className="absolute inset-x-2 top-2 bottom-4 bg-slate-950/45 rounded pointer-events-none z-20 border border-amber-400/30 flex items-center justify-center">
-            <span className="text-[8px] font-mono font-bold text-amber-200/95 bg-black/75 px-1.5 py-0.5 rounded shadow">
-              {isId ? 'Bayangan Bukit' : 'Hill Shadow'}
-            </span>
-          </div>
+          <div
+            className="absolute inset-x-3 top-2.5 bottom-6 bg-slate-950/40 rounded-[2px] pointer-events-none z-20"
+            aria-hidden="true"
+          />
         )}
         <img
           src="/assets/solar-panel.png"

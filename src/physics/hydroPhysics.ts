@@ -43,6 +43,9 @@ export const NOMINAL_MAX_FLOW_RATE_M3_S = 0.004;
 /** Height conversion factor: meters of hydraulic head per terrain grid row */
 export const METERS_PER_TERRAIN_ROW = 0.45;
 
+/** Vertical position of the Pelton runner hub as a fraction of the turbine node height. */
+export const HYDRO_RUNNER_CENTER_RATIO = 0.165;
+
 /** Default internal generator coil resistance in Ohms */
 export const HYDRO_GENERATOR_INTERNAL_RESISTANCE = 0.15;
 
@@ -130,6 +133,45 @@ export function calculateHydroOperatingPoint(
 }
 
 /**
+ * Measures how far the turbine's base is submerged in a river, so the node can render the
+ * waterline across its frame. Only water that is contiguous from the base upward counts,
+ * so a falling waterfall column above the turbine is never mistaken for submersion.
+ *
+ * Time Complexity: O(GRID_ROWS) = O(1).
+ *
+ * @param box - Turbine bounding box in canvas pixels
+ * @param terrainGrid - 2D terrain grid
+ * @param canvasWidth - Outdoor canvas width in pixels
+ * @param canvasHeight - Outdoor canvas height in pixels
+ * @returns Submerged depth in px, clamped to [0, box.height]
+ */
+export function measureSubmergedDepthPx(
+  box: BoundingBox,
+  terrainGrid: TerrainCellType[][],
+  canvasWidth: number = 1360,
+  canvasHeight: number = 680
+): number {
+  if (!terrainGrid || terrainGrid.length === 0 || !box || canvasWidth <= 0 || canvasHeight <= 0) {
+    return 0;
+  }
+  const rows = terrainGrid.length;
+  const cols = terrainGrid[0].length;
+  const cellWidth = canvasWidth / cols;
+  const cellHeight = canvasHeight / rows;
+
+  const centerCol = Math.max(0, Math.min(cols - 1, Math.floor((box.x + box.width / 2) / cellWidth)));
+  const baseY = box.y + box.height;
+  let row = Math.max(0, Math.min(rows - 1, Math.floor((baseY - 1) / cellHeight)));
+
+  if (terrainGrid[row]?.[centerCol] !== 'WATER') return 0;
+  while (row > 0 && terrainGrid[row - 1]?.[centerCol] === 'WATER') {
+    row--;
+  }
+  const waterTopY = row * cellHeight;
+  return Math.max(0, Math.min(box.height, Math.round(baseY - waterTopY)));
+}
+
+/**
  * Scans the 2D terrain grid to detect falling or resting water around a micro-hydro turbine.
  *
  * Algorithm:
@@ -165,7 +207,7 @@ export function detectTurbineWaterFlow(
   // The runner rotor sits at the top center of the A-frame (approx top 25% height),
   // while the turbine base/tailrace rests at box.y + box.height.
   const runnerCenterX = box.x + box.width * 0.5;
-  const runnerCenterY = box.y + box.height * 0.25;
+  const runnerCenterY = box.y + box.height * HYDRO_RUNNER_CENTER_RATIO;
   const turbineBottomY = box.y + box.height;
 
   const runnerCol = Math.max(0, Math.min(cols - 1, Math.floor(runnerCenterX / cellWidth)));

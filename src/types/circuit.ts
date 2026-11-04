@@ -141,6 +141,7 @@ export interface CircuitElementData {
   manualWaterFlowRate?: number;    // Explicit user valve slider override (0 - 100%, cleared on drag settlement)
   hydraulicHeadMeters?: number;    // Effective hydraulic head drop (meters)
   rpm?: number;                    // Pelton runner rotational speed (RPM)
+  submergedDepthPx?: number;       // Height of the turbine base standing under the river surface (px)
   hasWaterContact?: boolean;       // Whether waterfall/river is currently contacting runner
 
   // Transmission Tower & Lab Distribution Panel (MCB + Step-Down) properties

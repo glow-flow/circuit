@@ -46,6 +46,7 @@ import {
 } from '../physics/terrainGrid';
 import {
   applyTerrainMicroclimateToNodes,
+  getAnchoredSunPosition,
   SunPosition,
   SunTimeOfDay,
 } from '../physics/terrainClimateEngine';
@@ -264,7 +265,12 @@ function recalculateCircuit(
   // Microclimate coupling: evaluate orographic wind shear and 1D topographic sun ray shadows
   let workingNodes =
     activeTerrainGrid && activeTerrainGrid.length > 0
-      ? applyTerrainMicroclimateToNodes(nodes, activeTerrainGrid, { sunPosition: activeSunSetting })
+      ? applyTerrainMicroclimateToNodes(nodes, activeTerrainGrid, {
+          sunPosition:
+            typeof activeSunSetting === 'string'
+              ? getAnchoredSunPosition(activeSunSetting)
+              : activeSunSetting,
+        })
       : nodes;
 
   let components: CircuitElementData[] = workingNodes.map((node) => node.data);

@@ -4,8 +4,15 @@ import { Handle, Position, NodeProps } from 'reactflow';
 import { Waves, Info, X, Droplets } from 'lucide-react';
 import { CircuitElementData } from '../../../types/circuit';
 import { useCircuitStore } from '../../../store/useCircuitStore';
-import { calculateHydroOperatingPoint } from '../../../physics/hydroPhysics';
+import {
+  calculateHydroOperatingPoint,
+  HYDRO_RUNNER_CENTER_RATIO,
+} from '../../../physics/hydroPhysics';
+import { COMPONENT_DIMENSIONS } from '../../../physics/terrainGrid';
 import { useModalKeyboardClose } from '../../../hooks/useModalKeyboardClose';
+
+/** Rendered node edge length (px), kept identical to the physics footprint. */
+const HYDRO_NODE_SIZE_PX = COMPONENT_DIMENSIONS['hydro-turbine']?.width ?? 208;
 
 /**
  * Waterfall Micro-Hydro Generator Node (`type: 'hydro-turbine'`).
@@ -69,7 +76,7 @@ export const HydroTurbineNode: React.FC<NodeProps<CircuitElementData>> = ({
       className={`relative select-none transition-transform duration-150 ${
         selected ? 'ring-2 ring-cyan-400/90 rounded-2xl' : ''
       }`}
-      style={{ width: '144px', height: '144px' }}
+      style={{ width: `${HYDRO_NODE_SIZE_PX}px`, height: `${HYDRO_NODE_SIZE_PX}px` }}
     >
       {/* Floating Water Flow & Power Telemetry Badge */}
       <div className="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap z-30">
@@ -106,9 +113,9 @@ export const HydroTurbineNode: React.FC<NodeProps<CircuitElementData>> = ({
         className="absolute z-10 pointer-events-none select-none transition-transform"
         style={{
           left: '50%',
-          top: '16.5%',
-          width: '68px',
-          height: '68px',
+          top: `${HYDRO_RUNNER_CENTER_RATIO * 100}%`,
+          width: `${Math.round(HYDRO_NODE_SIZE_PX * 0.47)}px`,
+          height: `${Math.round(HYDRO_NODE_SIZE_PX * 0.47)}px`,
           transform: 'translate(-50%, -50%)',
         }}
       >
@@ -132,6 +139,15 @@ export const HydroTurbineNode: React.FC<NodeProps<CircuitElementData>> = ({
         draggable={false}
         className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none z-20 drop-shadow-[0_6px_14px_rgba(0,0,0,0.5)]"
       />
+
+      {/* Waterline: the frame base stands on the riverbed, so the lower part is under water */}
+      {(data.submergedDepthPx ?? 0) > 2 && (
+        <div
+          className="absolute inset-x-0 bottom-0 z-[25] pointer-events-none rounded-b-md border-t border-cyan-200/70 bg-cyan-400/25"
+          style={{ height: `${data.submergedDepthPx}px` }}
+          aria-hidden="true"
+        />
+      )}
 
       {/* Info Icon Button */}
       <button
