@@ -119,7 +119,11 @@ const OutdoorTowerView: React.FC<NodeProps<CircuitElementData>> = memo(({ id, da
               />
               <Zap className={`w-3 h-3 shrink-0 ${isLineOverheated ? 'text-red-400' : isStepUp ? 'text-cyan-400' : 'text-emerald-400'}`} />
               <span className="tabular-nums">
-                {isStepUp ? `[240V HV ${busVoltage.toFixed(0)}V]` : `[12V Dir ${busVoltage.toFixed(0)}V]`}
+                {isStepUp
+                  ? `240V Step-Up (Bus ${busVoltage.toFixed(1)}V)`
+                  : isId
+                  ? `12V Langsung (Bus ${busVoltage.toFixed(1)}V)`
+                  : `12V Direct (Bus ${busVoltage.toFixed(1)}V)`}
                 {currentAmperes > 0.001 ? ` · ${currentDisplay}` : ''}
               </span>
             </>

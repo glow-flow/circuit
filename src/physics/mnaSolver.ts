@@ -185,8 +185,8 @@ export function getBatteryChargingParameters(component: CircuitElementData): {
 } {
   if (component.type === 'bess-substation' || component.type === 'bess_substation') {
     return {
-      baseResistance: component.internalResistance ?? 0.04,
-      maxCurrent: 40.0,
+      baseResistance: Math.max(0.8, component.internalResistance ?? 0.8),
+      maxCurrent: 3.5,
     };
   }
   if (component.type === 'battery9v') {
@@ -475,8 +475,65 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
         ? Math.min(...configuredStepDownVoltages)
         : null;
 
+    /**
+     * Resolves the highest active renewable generator voltage (Solar, Wind, or Hydro)
+     * connected across the specified positive and negative electrical nets.
+     * Time Complexity: O(C) where C is component count.
+     */
+    const getMaxActiveRenewableVoltageOnNet = (posNet?: string, negNet?: string): number => {
+      if (!posNet || !negNet || posNet === negNet) return 0;
+      let maxRenewableV = 0;
+      for (const comp of components) {
+        if (!isRenewableWithBlockingDiode(comp)) continue;
+        const compPos = pinToNetMap.get(`${comp.id}:pos`);
+        const compNeg = pinToNetMap.get(`${comp.id}:neg`);
+        if (compPos === posNet && compNeg === negNet) {
+          let genV = getVoltageSourceNominalVoltage(comp);
+          if (comp.type === 'hydro-turbine' || comp.type === 'hydro_turbine') {
+            genV = Math.min(genV, 12.0);
+          }
+          if (
+            gridStepDownCeiling !== null &&
+            gridPositiveNet !== undefined &&
+            gridNegativeNet !== undefined &&
+            (compPos === gridPositiveNet || compNeg === gridNegativeNet)
+          ) {
+            genV = Math.min(genV, gridStepDownCeiling);
+          }
+          if (genV > maxRenewableV) {
+            maxRenewableV = genV;
+          }
+        }
+      }
+      return maxRenewableV;
+    };
+
     const getRegulatedSourceVoltage = (sourceComp: CircuitElementData): number => {
-      const rawVoltage = getVoltageSourceNominalVoltage(sourceComp);
+      let rawVoltage = getVoltageSourceNominalVoltage(sourceComp);
+      const srcPosNet = pinToNetMap.get(`${sourceComp.id}:pos`);
+      const srcNegNet = pinToNetMap.get(`${sourceComp.id}:neg`);
+
+      // Micro-Hydro DC Bus AVR: regulates output onto the 12V microgrid bus so parallel
+      // 12V Solar and 12V Wind generators share the bus without false diode lock-out.
+      if (sourceComp.type === 'hydro-turbine' || sourceComp.type === 'hydro_turbine') {
+        rawVoltage = Math.min(rawVoltage, 12.0);
+      }
+
+      // BESS Bidirectional MPPT Charge Controller:
+      // When active renewable generators (>= 4.0V) are present on the same bus and BESS SoC < 100%,
+      // step down BESS internal charging counter-EMF below the generator bus voltage so current
+      // flows smoothly FROM Solar/Wind/Hydro INTO BESS (charging mode).
+      if (sourceComp.type === 'bess-substation' || sourceComp.type === 'bess_substation') {
+        const bessSoc = Math.max(
+          0,
+          Math.min(100, sourceComp.socPercent ?? sourceComp.currentCharge ?? 80)
+        );
+        const maxRenewableV = getMaxActiveRenewableVoltageOnNet(srcPosNet, srcNegNet);
+        if (maxRenewableV >= 4.0 && bessSoc < 100) {
+          rawVoltage = Math.min(rawVoltage, Math.max(0, maxRenewableV - 1.5));
+        }
+      }
+
       const isOutdoorGridSource =
         isRenewableWithBlockingDiode(sourceComp) ||
         sourceComp.type === 'bess-substation' ||
@@ -487,8 +544,6 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
         gridPositiveNet !== undefined &&
         gridNegativeNet !== undefined
       ) {
-        const srcPosNet = pinToNetMap.get(`${sourceComp.id}:pos`);
-        const srcNegNet = pinToNetMap.get(`${sourceComp.id}:neg`);
         if (srcPosNet === gridPositiveNet || srcNegNet === gridNegativeNet) {
           return Math.min(rawVoltage, gridStepDownCeiling);
         }
@@ -585,10 +640,29 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
     //    - Blocking Diode (Schottky) on Solar Panels & Wind Turbines (prevents reverse current I > 0)
     //    - Unidirectional LED Polarity on sockets holding LED bulbs (conducts only when V_p1 >= V_p2)
     //    - Dynamic Adaptive CC-CV Resistance on electrochemical batteries during charging
+    //    - BMS Full-Charge Cut-Off (100% SoC Standby) on BESS when renewable generators are active
     //    - High-Voltage Step-Up / Direct Line Resistance on the Virtual Transmission Grid
     const allVoltageSourceComponents = components.filter((c) => isActiveVoltageSource(c, components));
     const blockedGeneratorSet = new Set<string>();
     const reverseBiasedSocketSet = new Set<string>();
+
+    // BMS Full-Charge Protection: if BESS is at 100% SoC and active renewable generators (>= 4.0V)
+    // are already supplying the same net, place BESS in Standby (0A float cut-off) so it neither
+    // overcharges nor blocks daytime Solar/Wind/Hydro generation.
+    for (const sourceComp of allVoltageSourceComponents) {
+      if (sourceComp.type === 'bess-substation' || sourceComp.type === 'bess_substation') {
+        const bessSoc = Math.max(
+          0,
+          Math.min(100, sourceComp.socPercent ?? sourceComp.currentCharge ?? 80)
+        );
+        const posNet = pinToNetMap.get(`${sourceComp.id}:pos`);
+        const negNet = pinToNetMap.get(`${sourceComp.id}:neg`);
+        const maxRenewableV = getMaxActiveRenewableVoltageOnNet(posNet, negNet);
+        if (bessSoc >= 100 && maxRenewableV >= 4.0) {
+          blockedGeneratorSet.add(sourceComp.id);
+        }
+      }
+    }
 
     // Calculate referred transmission line resistance across active grid towers
     let gridReferredResistance = 0;
@@ -615,6 +689,17 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
     const sourceResistanceMap = new Map<string, number>();
     for (const sourceComp of allVoltageSourceComponents) {
       let baseResistance = getSourceDischargeResistance(sourceComp);
+      if (sourceComp.type === 'bess-substation' || sourceComp.type === 'bess_substation') {
+        const bessSoc = Math.max(
+          0,
+          Math.min(100, sourceComp.socPercent ?? sourceComp.currentCharge ?? 80)
+        );
+        const posNet = pinToNetMap.get(`${sourceComp.id}:pos`);
+        const negNet = pinToNetMap.get(`${sourceComp.id}:neg`);
+        if (bessSoc < 100 && getMaxActiveRenewableVoltageOnNet(posNet, negNet) >= 4.0) {
+          baseResistance = getBatteryChargingParameters(sourceComp).baseResistance;
+        }
+      }
       if (
         gridReferredResistance > 0 &&
         (isRenewableWithBlockingDiode(sourceComp) ||
@@ -665,6 +750,10 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
           component.type === 'solar_panel' ||
           component.type === 'wind-turbine' ||
           component.type === 'wind_turbine' ||
+          component.type === 'bess-substation' ||
+          component.type === 'bess_substation' ||
+          component.type === 'hydro-turbine' ||
+          component.type === 'hydro_turbine' ||
           component.type === 'transmission-tower' ||
           component.type === 'transmission_tower' ||
           component.type === 'distribution-panel' ||
@@ -741,7 +830,7 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
         nodeVoltageMap[net] = solution[index] ?? 0;
       });
 
-      // Check semiconductor diode states (Blocking Diodes on Solar/Wind & LED Polarity)
+      // Check semiconductor diode states (Blocking Diodes on Solar/Wind/Hydro & LED Polarity)
       let stateChanged = false;
 
       activeVoltageSources.forEach((sourceComp, sourceIndex) => {
@@ -784,6 +873,17 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
         const posNet = pinToNetMap.get(`${sourceComp.id}:pos`);
         const negNet = pinToNetMap.get(`${sourceComp.id}:neg`);
         if (!posNet || !negNet) return;
+
+        // BMS Overcharge Cutoff for 100% full BESS Substation
+        if (
+          (sourceComp.type === 'bess-substation' || sourceComp.type === 'bess_substation') &&
+          (sourceComp.socPercent ?? sourceComp.currentCharge ?? 80) >= 100 &&
+          solvedCurrent > 1e-5
+        ) {
+          blockedGeneratorSet.add(sourceComp.id);
+          stateChanged = true;
+          return;
+        }
 
         const vPos = nodeVoltageMap[posNet] ?? 0;
         const vNeg = nodeVoltageMap[negNet] ?? 0;
@@ -831,6 +931,12 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
       }
     }
 
+    const anyBatteryCharging = activeVoltageSources.some((candidateComp, candidateIndex) => {
+      if (!isBatteryComponent(candidateComp)) return false;
+      const candidateCurrent = solution[nonGroundNetCount + candidateIndex] ?? 0;
+      return candidateCurrent > CURRENT_FLOW_EPSILON;
+    });
+
     // Active voltage source currents directly from solution vector
     activeVoltageSources.forEach((sourceComp, sourceIndex) => {
       const sourceCurrentIndex = nonGroundNetCount + sourceIndex;
@@ -840,7 +946,9 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
       branchCurrentMap[sourceComp.id] = sourceCurrent;
 
       const isBattery = isBatteryComponent(sourceComp);
-      const isLegitimateCharging = isBattery && sourceCurrent > CURRENT_FLOW_EPSILON;
+      const isLegitimateCharging =
+        (isBattery && sourceCurrent > CURRENT_FLOW_EPSILON) ||
+        (anyBatteryCharging && sourceCurrent < -CURRENT_FLOW_EPSILON);
 
       // Topological direct terminal short check: (+) and (-) belong to the same electrical net
       const positiveNet = pinToNetMap.get(`${sourceComp.id}:pos`);

@@ -12,8 +12,10 @@
  *      - H: Effective hydraulic head drop (meters)
  *
  * 2. Generator Electromotive Force (EMF) & Rotor Speed:
- *    - Open-circuit output EMF voltage: V_oc = min(24.0, 12.0 * sqrt(P_hydro / 30.0))
- *    - Rotor rotational speed: RPM = min(600, round(Q_ratio * sqrt(H) * 200))
+ *    - Open-circuit output EMF voltage: calibrated so 30W yields 12.0V nominal DC,
+ *      with an integrated DC AVR (Automatic Voltage Regulator) smoothly governing
+ *      high-flow / high-head output between 12.0V and 13.8V (standard 12V microgrid bus).
+ *    - Rotor rotational speed: RPM = min(600, round(Q_ratio * sqrt(2*g*H) * 60))
  *    - CSS rotation duration: t_rot = 60 / RPM seconds (paused if RPM == 0)
  *
  * 3. 2D Terrain Grid Water Flow Detection:
@@ -109,9 +111,14 @@ export function calculateHydroOperatingPoint(
   const rawPower = safeEfficiency * WATER_DENSITY_KG_M3 * GRAVITY_ACCELERATION_M_S2 * flowRateM3S * safeHead;
   const powerWatts = Number(rawPower.toFixed(2));
 
-  // Open-circuit EMF voltage: calibrated so 30W yields 12.0V nominal DC
-  const rawVoltage = 12.0 * Math.sqrt(powerWatts / 30.0);
-  const voltage = Number(Math.min(24.0, Math.max(0, rawVoltage)).toFixed(2));
+  // Open-circuit EMF voltage: calibrated so 30W yields 12.0V nominal DC,
+  // with an integrated DC AVR (Automatic Voltage Regulator) smoothly governing
+  // high-flow / high-head output between 12.0V and 13.8V (standard 12V microgrid bus).
+  const rawVoltage =
+    powerWatts <= 30.0
+      ? 12.0 * Math.sqrt(powerWatts / 30.0)
+      : 12.0 + 1.8 * Math.min(1.0, (powerWatts - 30.0) / 50.0);
+  const voltage = Number(Math.min(13.8, Math.max(0, rawVoltage)).toFixed(2));
 
   // Pelton runner RPM is proportional to jet velocity v = sqrt(2 * g * H) and flow
   const rawRpm = flowRatio * Math.sqrt(2 * GRAVITY_ACCELERATION_M_S2 * safeHead) * 60;

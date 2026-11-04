@@ -6,6 +6,7 @@
  *    - Capacity and Coulomb counting.
  *    - Dynamic charge / discharge state classification.
  *    - Voltage sag curve and zero-crash protection.
+ *    - BMS CC-CV current regulation, full-charge (100% SoC) cut-off, and day/night microgrid cycling.
  * 2. Waterfall Micro-Hydro Generator Electromechanics:
  *    - Hydraulic potential to mechanical power: P = eta * rho * g * Q * H.
  *    - Open-circuit EMF voltage and Pelton runner RPM calculation.
@@ -166,6 +167,127 @@ describe('BESS Substation & Waterfall Micro-Hydro (Nature Mode Phase 3)', () => 
       // BESS should be classified as discharging
       const updatedBess = updatedStore.nodes.find((n) => n.id === bess.id)!;
       expect(updatedBess.data.chargeState).toBe('discharging');
+    });
+
+    it('charges BESS (<100% SoC) safely from Hydro Turbine + Wind Turbine on a SUTET Tower without false short-circuit or 29A overcurrent', () => {
+      const containerSize = { width: 1360, height: 680 };
+      useCircuitStore.getState().placeOutdoorComponent('wind-turbine', { x: 200, y: 260 }, containerSize);
+      useCircuitStore.getState().placeOutdoorComponent('transmission-tower', { x: 420, y: 260 }, containerSize);
+      useCircuitStore.getState().placeOutdoorComponent('bess-substation', { x: 640, y: 260 }, containerSize);
+      useCircuitStore.getState().placeOutdoorComponent('hydro-turbine', { x: 900, y: 320 }, containerSize);
+
+      const state = useCircuitStore.getState();
+      const wind = state.nodes.find((n) => n.data.type === 'wind-turbine')!;
+      const tower = state.nodes.find((n) => n.data.type === 'transmission-tower')!;
+      const bess = state.nodes.find((n) => n.data.type === 'bess-substation')!;
+      const hydro = state.nodes.find((n) => n.data.type === 'hydro-turbine')!;
+
+      // Wire Wind, BESS (80% SoC), and Hydro in parallel onto the Transmission Tower
+      for (const gen of [wind, bess, hydro]) {
+        useCircuitStore.getState().onConnect({
+          source: gen.id,
+          sourceHandle: 'pos',
+          target: tower.id,
+          targetHandle: 'pos',
+        });
+        useCircuitStore.getState().onConnect({
+          source: gen.id,
+          sourceHandle: 'neg',
+          target: tower.id,
+          targetHandle: 'neg',
+        });
+      }
+
+      const afterConnect = useCircuitStore.getState();
+      const sim = afterConnect.simulation;
+      const updatedBess = afterConnect.nodes.find((n) => n.id === bess.id)!;
+
+      // Must NOT trigger false short-circuit ("Korslet!")
+      expect(sim.isShortCircuit).toBe(false);
+      expect(sim.shortCircuitBranches).toHaveLength(0);
+
+      // BESS (80% SoC) must be charging at a safe BMS-regulated current (<= 4.5A, never 29.20A!)
+      const bessCurrent = sim.branchCurrents[bess.id] ?? 0;
+      expect(bessCurrent).toBeGreaterThan(0.2);
+      expect(bessCurrent).toBeLessThanOrEqual(4.5);
+      expect(updatedBess.data.chargeState).toBe('charging');
+    });
+
+    it('activates BMS Full-Charge Cut-Off (0A idle/standby) when BESS reaches 100% SoC with no Lab load', () => {
+      const containerSize = { width: 1360, height: 680 };
+      useCircuitStore.getState().placeOutdoorComponent('wind-turbine', { x: 200, y: 260 }, containerSize);
+      useCircuitStore.getState().placeOutdoorComponent('transmission-tower', { x: 420, y: 260 }, containerSize);
+      useCircuitStore.getState().placeOutdoorComponent('bess-substation', { x: 640, y: 260 }, containerSize);
+      useCircuitStore.getState().placeOutdoorComponent('hydro-turbine', { x: 900, y: 320 }, containerSize);
+
+      const state = useCircuitStore.getState();
+      const wind = state.nodes.find((n) => n.data.type === 'wind-turbine')!;
+      const tower = state.nodes.find((n) => n.data.type === 'transmission-tower')!;
+      const bess = state.nodes.find((n) => n.data.type === 'bess-substation')!;
+      const hydro = state.nodes.find((n) => n.data.type === 'hydro-turbine')!;
+
+      for (const gen of [wind, bess, hydro]) {
+        useCircuitStore.getState().onConnect({
+          source: gen.id,
+          sourceHandle: 'pos',
+          target: tower.id,
+          targetHandle: 'pos',
+        });
+        useCircuitStore.getState().onConnect({
+          source: gen.id,
+          sourceHandle: 'neg',
+          target: tower.id,
+          targetHandle: 'neg',
+        });
+      }
+
+      // Recharge BESS to 100% SoC (like in the user's screenshot)
+      useCircuitStore.getState().rechargeBattery(bess.id);
+
+      const fullState = useCircuitStore.getState();
+      const fullSim = fullState.simulation;
+      const fullBess = fullState.nodes.find((n) => n.id === bess.id)!;
+
+      expect(fullSim.isShortCircuit).toBe(false);
+      expect(fullBess.data.socPercent).toBe(100);
+      expect(fullBess.data.chargeState).toBe('idle');
+      expect(Math.abs(fullSim.branchCurrents[bess.id] ?? 0)).toBeLessThan(0.01);
+      expect(Math.abs(fullSim.branchCurrents[hydro.id] ?? 0)).toBeLessThan(0.01);
+    });
+
+    it('seamlessly transitions BESS from charging during daytime sun to discharging at night', () => {
+      const containerSize = { width: 1360, height: 680 };
+      useCircuitStore.getState().placeOutdoorComponent('solar-panel', { x: 200, y: 260 }, containerSize);
+      useCircuitStore.getState().placeOutdoorComponent('bess-substation', { x: 450, y: 260 }, containerSize);
+      useCircuitStore.getState().addComponent('resistor', { x: 700, y: 260 });
+
+      const state = useCircuitStore.getState();
+      const solar = state.nodes.find((n) => n.data.type === 'solar-panel')!;
+      const bess = state.nodes.find((n) => n.data.type === 'bess-substation')!;
+      const load = state.nodes.find((n) => n.data.type === 'resistor')!;
+
+      // Wire Solar (12V), BESS (80% SoC), and 100 Ohm load in parallel
+      useCircuitStore.getState().onConnect({ source: solar.id, sourceHandle: 'pos', target: load.id, targetHandle: 'p1' });
+      useCircuitStore.getState().onConnect({ source: solar.id, sourceHandle: 'neg', target: load.id, targetHandle: 'p2' });
+      useCircuitStore.getState().onConnect({ source: bess.id, sourceHandle: 'pos', target: load.id, targetHandle: 'p1' });
+      useCircuitStore.getState().onConnect({ source: bess.id, sourceHandle: 'neg', target: load.id, targetHandle: 'p2' });
+
+      // 1. Daytime (100% sunlight -> 12V): Solar powers load AND charges BESS (80% SoC)
+      const dayBess = useCircuitStore.getState().nodes.find((n) => n.id === bess.id)!;
+      expect(dayBess.data.chargeState).toBe('charging');
+      expect(useCircuitStore.getState().simulation.branchCurrents[bess.id]).toBeGreaterThan(0.1);
+
+      // 2. Nighttime (0% sunlight -> 0V): Solar is diode-blocked, BESS discharges at 12.8V to power the 100 Ohm load
+      useCircuitStore.getState().updateComponentData(solar.id, {
+        baseSunlight: 0,
+        sunlight: 0,
+        effectiveSunlight: 0,
+        voltage: 0,
+      });
+      const nightState = useCircuitStore.getState();
+      const nightBess = nightState.nodes.find((n) => n.id === bess.id)!;
+      expect(nightBess.data.chargeState).toBe('discharging');
+      expect(Math.abs(nightState.simulation.branchCurrents[load.id] ?? 0)).toBeCloseTo(0.128, 2);
     });
   });
 
