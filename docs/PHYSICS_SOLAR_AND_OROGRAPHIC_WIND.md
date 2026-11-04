@@ -16,14 +16,22 @@ Source Module: `src/physics/terrainClimateEngine.ts`
 
 ---
 
-## 1. Solar Ephemeris & 1D Topographic Shadow Ray-Casting
+## 1. World-Anchored Solar Ephemeris & 1D Topographic Shadow Ray-Casting
 
-In **Alam Terbuka**, solar panels (`solar-panel`) do not merely output a static voltage. Their irradiance is dynamically modulated by the sun's ephemeris (`sunTimeOfDay`: `'morning'` at $35^\circ$ East, `'noon'` at $75^\circ$ Zenith, `'afternoon'` at $35^\circ$ West) and the surrounding [[PHYSICS_TERRAIN_CELLULAR_AUTOMATA|2D Terrain Grid]]:
+In **Alam Terbuka**, solar panels (`solar-panel`) do not merely output a static voltage. Their irradiance is dynamically modulated by the world-anchored sun ephemeris (`sunTimeOfDay`: `'morning'` at $35^\circ$ East, `'noon'` at $75^\circ$ Zenith, `'afternoon'` at $35^\circ$ West) and the surrounding [[PHYSICS_TERRAIN_CELLULAR_AUTOMATA|2D Terrain Grid]]:
 
-1. **Ray Marching (`cast1DTopographicShadowRay`)**:
-   - Traces a ray from the solar panel's photovoltaic receiver coordinates $(x_{rec}, y_{rec})$ toward the active sun position $(x_{sun}, y_{sun})$ across all $C = 40$ terrain columns.
-   - If any solid terrain column (`DIRT`, `GRASS`, `ROCK`) rises above the ray's altitude at that column, the panel is occluded (`isShaded = true`).
-2. **Diffuse Sky Irradiance Ratio (`DIFFUSE_SHADING_RATIO = 0.15`)**:
+1. **World-Space Celestial Sun Anchors (`SUN_WORLD_ANCHORS` & `getAnchoredSunPosition`)**:
+   - The sun orb (`#outdoor-sun-orb`) and its atmospheric horizon glow are anchored in **world space** across the full stage width (`worldStageWidth`) rather than following the camera viewport (`cameraScrollX`):
+     - **Morning (`'morning'`)**: `worldXRatio = 0.07`, `worldYPx = 122` (Eastern horizon)
+     - **Noon (`'noon'`)**: `worldXRatio = 0.50`, `worldYPx = 68` (Overhead zenith)
+     - **Afternoon (`'afternoon'`)**: `worldXRatio = 0.93`, `worldYPx = 122` (Western horizon)
+2. **Finite-Segment Ray Marching (`cast1DTopographicShadowRay`)**:
+   - Traces a ray strictly along the finite segment from the solar panel's photovoltaic receiver coordinates $(x_{rec}, y_{rec})$ toward the world-space sun disc $(x_{sun}, y_{sun})$ across the $C = 40$ terrain columns.
+   - Hills located on the opposite side of the panel from the sun, or cliffs located beyond the sun disc itself, never falsely cast shadows on the panel.
+   - If any solid terrain column (`DIRT`, `GRASS`) between the panel and the sun rises above the ray's altitude at that column, the panel is occluded (`isShaded = true`).
+3. **Surface-Hugging Topographic Shadow Band (`computeTerrainShadowPolygons`)**:
+   - Instead of stretching vertical black columns to the bottom of the 680px canvas, shadow polygons hug the terrain contour (`SHADOW_BAND_LIFT_PX = 8`, `SHADOW_BAND_DEPTH_PX = 30`) with a soft vertical SVG gradient (`#terrain-hill-shadow`) and Gaussian blur filter (`#terrain-shadow-soften`).
+4. **Diffuse Sky Irradiance Ratio (`DIFFUSE_SHADING_RATIO = 0.15`)**:
    - Unshaded panels receive $E_{eff} = E_{base}$ (up to $100\% \rightarrow 12.0\,\text{V}$).
    - Shaded panels drop to $15\%$ diffuse sky radiation ($E_{eff} = 0.15 \cdot E_{base}$), teaching students why hilltop or un-occluded placement matters and triggering the [[HARDWARE_COMPONENTS_AND_PROTECTION|Schottky Blocking Diode]] when paired in parallel with unshaded generators.
    - User slider adjustments update `baseSunlight` so temporary terrain shadows never overwrite the user's baseline irradiance setting.

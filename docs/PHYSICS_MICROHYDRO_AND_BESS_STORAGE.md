@@ -28,6 +28,11 @@ $$P_{hydro} = \eta \cdot \rho \cdot g \cdot Q \cdot H$$
 - **$Q \in [0, 0.004]\,\text{m}^3/\text{s}$**: Volumetric flow rate scaled by `waterFlowRate` ($0\text{--}100\%$).
 - **$H \in [0.5, 5.0]\,\text{m}$**: Effective hydraulic head drop (`hydraulicHeadMeters`) derived from vertical waterfall cascade height or river basin kinetic flow (`cols 24..32`).
 
+### Riverbed Submersion & `208x208` Structural Frame
+- **Enlarged Structural Footprint (`208x208 px`)**: The A-frame hydro turbine (`HYDRO_NODE_SIZE_PX = 208`) and its Pelton runner (`98px` diameter centered at `top: 16.5%`) are scaled to match the visual hierarchy of outdoor infrastructure (`wind-turbine`, `transmission-tower`, `bess-substation`).
+- **Riverbed Gravity Settling (`waterIsSolid: false`)**: In `findTerrainSurfaceY` (`src/physics/terrainGrid.ts`), `hydro-turbine` penetrates `'WATER'` cells (`rows 15..17`) and settles directly onto the solid `'DIRT'` riverbed (`row 18`, `y = 612px`), while `evaluateComponentDropPhysics` measures drop distance against the water surface (`row 15`) so water cushions the landing without causing structural fall damage.
+- **Submerged Waterline Overlay (`measureSubmergedDepthPx`)**: Calculates the exact pixel depth of the lower A-frame submerged beneath the river surface (`~102px` in the default 3-row river basin) and renders a translucent cyan waterline shimmer across the submerged frame.
+
 ### Water Contact & Manual Valve Override Semantics
 - **In River / Waterfall (`waterFlow.hasWaterContact === true`)**: Automatically senses terrain water flow and generates $11.9\text{--}24.0\,\text{V}$ DC with rotor speed $150\text{--}450\,\text{RPM}$.
 - **Manual Valve Override (`manualWaterFlowRate`)**: Users can throttle the test water valve slider (`0%..100%`) inside the Micro-Hydro modal or right-hand Inspector.
