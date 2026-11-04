@@ -27,10 +27,10 @@ This document tracks the multi-phase architecture of **Nature Mode (Alam Terbuka
    - Implements gravity-settled soil (`DIRT`), grass conversion (`GRASS`), solid cliff bedrock (`ROCK`), stationary mountain springs (`WATER_SPRING`), and fluid cellular automata (`WATER`).
 3. **Topographic Microclimate Physics**:
    - Documented in [[PHYSICS_SOLAR_AND_OROGRAPHIC_WIND]].
-   - Combines 1D topographic shadow ray-casting ($E_{eff} = E_{base} \cdot 0.15$ when occluded) with Hellmann power-law orographic wind shear ($v(h) = v_0 \cdot (h/h_0)^\alpha$).
+   - Combines world-anchored 1D topographic shadow ray-casting ($E_{eff} = E_{base} \cdot 0.15$ when occluded) with Hellmann power-law orographic wind shear ($v(h) = v_0 \cdot (h/h_0)^\alpha$).
 4. **Hydroelectrics & Electrochemical Grid Storage**:
    - Documented in [[PHYSICS_MICROHYDRO_AND_BESS_STORAGE]].
-   - Implements Pelton turbine mechanics ($P = \eta \rho g Q H$) and 1.0 kWh $\text{LiFePO}_4$ BESS Coulomb counting.
+   - Implements riverbed-submerged `208x208` Pelton turbine mechanics ($P = \eta \rho g Q H$) and 1.0 kWh $\text{LiFePO}_4$ BESS Coulomb counting.
 5. **High-Voltage Transmission & PUIL Protection**:
    - Documented in [[HARDWARE_TRANSMISSION_AND_TRAFO_SUTET]] and [[HARDWARE_COMPONENTS_AND_PROTECTION]].
    - Couples outdoor `transmission-tower` nodes to indoor `distribution-panel` nodes across the [[PHYSICS_MNA_SOLVER_AND_TRANSMISSION_GRID|MNA Solver Virtual Grid Bus]].
@@ -61,6 +61,22 @@ This document tracks the multi-phase architecture of **Nature Mode (Alam Terbuka
 - **Resolution**:
   - Updated the Solar Panel irradiance slider to write `baseSunlight: val, sunlight: val` so `applyTerrainMicroclimateToNodes` preserves the user's slider setting.
   - Added full Inspector property controls for `bess-substation` (SoC slider + 1000 Wh Recharge button), `hydro-turbine` (Water Flow Q & Hydraulic Head H sliders), and `distribution-panel` (MCB breaker switch + DC Step-Down voltage selector).
+
+### Fix D: World-Anchored Celestial Sun, Finite Ray-Casting & Surface-Hugging Shadow Band
+- **Symptom**:
+  1. The sun orb (`#outdoor-sun-orb`) moved with `cameraScrollX`, causing physical inconsistency if the camera panned past a solar panel while infinite parallel rays still shaded it.
+  2. Terrain shadows were rendered as full-height vertical black rectangles down to `680px` and protruded `12px` above the grass at hill steps, plus a cluttered `"Bayangan Bukit"` badge obscured the solar panel artwork.
+- **Resolution**:
+  - Added `SUN_WORLD_ANCHORS` (`morning: 0.07`, `noon: 0.50`, `afternoon: 0.93`) and `getAnchoredSunPosition` (`src/physics/terrainClimateEngine.ts`), anchoring the sun orb and atmospheric sky lighting in world space (`worldStageWidth`).
+  - Updated `cast1DTopographicShadowRay` and `resolveSunPosition` to trace finite ray segments strictly between the panel receiver and the world-anchored sun disc.
+  - Rewrote `computeTerrainShadowPolygons` to emit soft surface-hugging shadow bands (`SHADOW_BAND_LIFT_PX = 8`, `SHADOW_BAND_DEPTH_PX = 30`) with SVG vertical gradient fade and Gaussian blur, and removed the redundant `"Bayangan Bukit"` text overlay on `SolarPanelNode.tsx`.
+
+### Fix E: Enlarged `208x208` Micro-Hydro Turbine & Riverbed Gravity Submersion
+- **Symptom**: `hydro-turbine` was undersized (`144x144`) and floated on top of the water surface (`row 15`) instead of resting on the riverbed (`row 18`).
+- **Resolution**:
+  - Scaled `hydro-turbine` to `208x208` (`COMPONENT_DIMENSIONS` & `HydroTurbineNode.tsx`, with `98px` Pelton runner at `top: 16.5%`).
+  - Updated `findTerrainSurfaceY` (`src/physics/terrainGrid.ts`) with `waterIsSolid: false` for `hydro-turbine` so its A-frame legs settle on the solid `'DIRT'` riverbed (`row 18`) while `evaluateComponentDropPhysics` measures fall impact against the water surface (`row 15`).
+  - Added `measureSubmergedDepthPx` (`src/physics/hydroPhysics.ts`) and rendered a translucent submerged waterline overlay on the lower A-frame.
 
 ---
 
