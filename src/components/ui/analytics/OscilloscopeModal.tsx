@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useCircuitStore } from '../../../store/useCircuitStore';
 import { OscilloscopeDataPoint } from '../../../types/analytics';
+import { getComponentDisplayName } from '../../../utils/nodeLocalization';
 
 interface OscilloscopeModalProps {
   isOpen: boolean;
@@ -215,19 +216,21 @@ export const OscilloscopeModal: React.FC<OscilloscopeModalProps> = ({ isOpen, on
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-5"
       role="dialog"
       aria-modal="true"
-      aria-label="Oskiloskop & Analitik Listrik"
+      aria-label={isId ? 'Oskiloskop & Analitik Listrik' : 'Live Oscilloscope & Analytics'}
     >
       <div className="w-full max-w-3xl max-h-[92dvh] rounded-2xl bg-void-900 border border-white/15 shadow-2xl flex flex-col overflow-hidden animate-in fade-in duration-150">
         {/* Header */}
-        <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between bg-void-850 shrink-0 select-none">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-electric-500/15 border border-electric-500/30 flex items-center justify-center text-electric-400">
+        <div className="px-4 sm:px-5 py-3.5 sm:py-4 border-b border-white/10 flex items-center justify-between gap-2 bg-void-850 shrink-0 select-none">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-electric-500/15 border border-electric-500/30 flex items-center justify-center text-electric-400 shrink-0">
               <Activity className="w-5 h-5" />
             </div>
-            <div>
-              <h2 className="text-sm sm:text-base font-bold text-slate-100 flex items-center gap-2">
-                <span>{isId ? 'Oskiloskop & Analitik Listrik Real-Time' : 'Live Oscilloscope & Analytics'}</span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-electric-500/10 text-electric-400 border border-electric-500/20">
+            <div className="min-w-0">
+              <h2 className="text-sm sm:text-base font-bold text-slate-100 flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <span className="truncate">
+                  {isId ? 'Oskiloskop & Analitik Listrik Real-Time' : 'Live Oscilloscope & Analytics'}
+                </span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-electric-500/10 text-electric-400 border border-electric-500/20 shrink-0">
                   {sampleIntervalMs}ms
                 </span>
               </h2>
@@ -239,13 +242,13 @@ export const OscilloscopeModal: React.FC<OscilloscopeModalProps> = ({ isOpen, on
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={handleExportCsv}
               disabled={history.length === 0}
               className="min-h-[44px] px-3 py-1.5 rounded-xl text-xs font-semibold bg-void-900 hover:bg-white/5 disabled:opacity-40 text-slate-300 border border-white/10 flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
-              title="Ekspor data CSV"
+              title={isId ? 'Ekspor data CSV' : 'Export CSV data'}
             >
               <Download className="w-4 h-4 text-electric-400" />
               <span className="hidden sm:inline">{isId ? 'Ekspor CSV' : 'Export CSV'}</span>
@@ -255,54 +258,59 @@ export const OscilloscopeModal: React.FC<OscilloscopeModalProps> = ({ isOpen, on
               type="button"
               onClick={onClose}
               className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-void-900 text-slate-400 hover:text-white border border-white/10 active:scale-95 transition-all cursor-pointer"
-              aria-label="Tutup"
+              aria-label={isId ? 'Tutup' : 'Close'}
             >
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        {/* Oscilloscope Control & Target Bar */}
-        <div className="p-4 border-b border-white/10 bg-void-950/60 flex flex-wrap items-center justify-between gap-3 shrink-0 select-none">
+        {/* Oscilloscope Control & Target Bar — Stacked on Mobile (360px Anti-Collision) */}
+        <div className="p-3.5 sm:p-4 border-b border-white/10 bg-void-950/60 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 shrink-0 select-none">
           {/* Target Component Selector */}
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <Sliders className="w-4 h-4 text-electric-400 shrink-0" />
-            <span className="text-xs font-semibold text-slate-300 shrink-0">
+            <label
+              htmlFor="oscilloscope-probe-select"
+              className="text-xs font-semibold text-slate-300 shrink-0 whitespace-nowrap"
+            >
               {isId ? 'Target Probe:' : 'Probe Channel:'}
-            </span>
+            </label>
             <select
+              id="oscilloscope-probe-select"
               value={probedNodeId ?? ''}
               onChange={(e) => setProbedNodeId(e.target.value || null)}
-              className="flex-1 min-w-[160px] max-w-xs px-3 py-1.5 rounded-xl bg-void-900 border border-white/10 text-xs text-slate-200 focus:outline-none cursor-pointer truncate"
+              className="flex-1 min-w-0 w-full sm:max-w-xs min-h-[40px] px-3 py-1.5 rounded-xl bg-void-900 border border-white/10 text-xs text-slate-200 focus:outline-none focus:border-electric-400/50 cursor-pointer truncate"
             >
               <option value="">{isId ? 'Total Rangkaian (Global)' : 'Global Circuit Total'}</option>
               {nodes.map((node) => (
                 <option key={node.id} value={node.id}>
-                  {node.data.label} ({node.data.type})
+                  {getComponentDisplayName(node.data, language)}
                 </option>
               ))}
             </select>
           </div>
 
-          {/* Action buttons (Play/Pause, Interval, Clear) */}
-          <div className="flex items-center gap-2 shrink-0">
+          {/* Action buttons (Interval, Play/Pause, Clear) */}
+          <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
             {/* Interval selector */}
             <select
+              aria-label={isId ? 'Interval Sampel' : 'Sample Interval'}
               value={sampleIntervalMs}
               onChange={(e) => setSampleIntervalMs(Number(e.target.value))}
-              className="px-2.5 py-1.5 rounded-xl bg-void-900 border border-white/10 text-xs text-slate-300 focus:outline-none cursor-pointer"
+              className="flex-1 sm:flex-initial min-w-0 min-h-[40px] px-2.5 py-1.5 rounded-xl bg-void-900 border border-white/10 text-xs text-slate-300 focus:outline-none focus:border-electric-400/50 cursor-pointer truncate"
             >
-              <option value={100}>100 ms (Fast)</option>
+              <option value={100}>{isId ? '100 ms (Cepat)' : '100 ms (Fast)'}</option>
               <option value={250}>250 ms</option>
               <option value={500}>500 ms (Normal)</option>
-              <option value={1000}>1000 ms (1s)</option>
+              <option value={1000}>{isId ? '1000 ms (1 dtk)' : '1000 ms (1s)'}</option>
             </select>
 
             {/* Play / Pause Toggle */}
             <button
               type="button"
               onClick={() => setIsPaused(!isPaused)}
-              className={`min-h-[44px] px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer ${
+              className={`min-h-[40px] sm:min-h-[44px] px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer shrink-0 ${
                 isPaused
                   ? 'bg-emerald-500 hover:bg-emerald-400 text-void-950 shadow-glow'
                   : 'bg-amber-500 hover:bg-amber-400 text-void-950 shadow-glow'
@@ -317,7 +325,8 @@ export const OscilloscopeModal: React.FC<OscilloscopeModalProps> = ({ isOpen, on
               type="button"
               onClick={handleClearHistory}
               title={isId ? 'Bersihkan riwayat data' : 'Clear data buffer'}
-              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-void-900 hover:bg-white/5 text-slate-400 hover:text-white border border-white/10 active:scale-95 transition-all cursor-pointer"
+              aria-label={isId ? 'Bersihkan riwayat data' : 'Clear data buffer'}
+              className="min-h-[40px] sm:min-h-[44px] min-w-[40px] sm:min-w-[44px] flex items-center justify-center rounded-xl bg-void-900 hover:bg-white/5 text-slate-400 hover:text-white border border-white/10 active:scale-95 transition-all cursor-pointer shrink-0"
             >
               <RotateCcw className="w-4 h-4" />
             </button>
@@ -378,50 +387,50 @@ export const OscilloscopeModal: React.FC<OscilloscopeModalProps> = ({ isOpen, on
         {/* Vector SVG Oscilloscope Waveform Display */}
         <div className="p-4 flex-1 flex flex-col justify-center bg-void-950 overflow-hidden relative">
           {/* Signal Channel Filter Chips */}
-          <div className="absolute top-3 left-4 z-10 flex items-center gap-1.5 text-[10px] font-mono select-none">
+          <div className="absolute top-3 left-4 right-4 z-10 flex flex-wrap items-center gap-1.5 text-[10px] font-mono select-none">
             <button
               type="button"
               onClick={() => setActiveSignal('all')}
-              className={`px-2 py-0.5 rounded-full border transition-all ${
+              className={`px-2 py-0.5 rounded-full border transition-all cursor-pointer ${
                 activeSignal === 'all'
                   ? 'bg-white/10 border-white text-white font-bold'
                   : 'bg-void-900 border-white/10 text-slate-400'
               }`}
             >
-              ALL
+              {isId ? 'SEMUA' : 'ALL'}
             </button>
             <button
               type="button"
               onClick={() => setActiveSignal('voltage')}
-              className={`px-2 py-0.5 rounded-full border transition-all ${
+              className={`px-2 py-0.5 rounded-full border transition-all cursor-pointer ${
                 activeSignal === 'voltage'
                   ? 'bg-sky-500/20 border-sky-400 text-sky-300 font-bold'
                   : 'bg-void-900 border-white/10 text-sky-400'
               }`}
             >
-              V (Peak {maxV.toFixed(1)}V)
+              V ({isId ? 'Puncak' : 'Peak'} {maxV.toFixed(1)}V)
             </button>
             <button
               type="button"
               onClick={() => setActiveSignal('current')}
-              className={`px-2 py-0.5 rounded-full border transition-all ${
+              className={`px-2 py-0.5 rounded-full border transition-all cursor-pointer ${
                 activeSignal === 'current'
                   ? 'bg-amber-500/20 border-amber-400 text-amber-300 font-bold'
                   : 'bg-void-900 border-white/10 text-amber-400'
               }`}
             >
-              I (Peak {maxI.toFixed(2)}A)
+              I ({isId ? 'Puncak' : 'Peak'} {maxI.toFixed(2)}A)
             </button>
             <button
               type="button"
               onClick={() => setActiveSignal('power')}
-              className={`px-2 py-0.5 rounded-full border transition-all ${
+              className={`px-2 py-0.5 rounded-full border transition-all cursor-pointer ${
                 activeSignal === 'power'
                   ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300 font-bold'
                   : 'bg-void-900 border-white/10 text-emerald-400'
               }`}
             >
-              P (Peak {maxP.toFixed(1)}W)
+              P ({isId ? 'Puncak' : 'Peak'} {maxP.toFixed(1)}W)
             </button>
           </div>
 

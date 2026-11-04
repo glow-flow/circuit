@@ -71,19 +71,46 @@ export const TEAM_CONTRIBUTORS: ReadonlyArray<ContributorMember> = [
   },
   {
     name: 'MUHAMMAD SYAFIK AL ROSYID',
-    roleId: 'Quality Assurance & Scenario Tester',
+    roleId: 'Penguji Penjaminan Mutu (QA) & Skenario',
     roleEn: 'Quality Assurance & Scenario Tester',
   },
 ];
 
-export const AI_TOOLS_AND_HARNESS: ReadonlyArray<string> = [
-  'Google Antigravity (Engineering Harness)',
-  'Nano Banana 2.1',
-  'Gemini 3.8 Flash High',
-  'Gemini 4 Argon High',
-  'Claude Sonnet 5.5 High',
-  'DeepSeek V4.1 1017',
+export interface AiToolHarnessBadge {
+  labelId: string;
+  labelEn: string;
+}
+
+export const AI_TOOLS_AND_HARNESS_BADGES: ReadonlyArray<AiToolHarnessBadge> = [
+  {
+    labelId: 'Google Antigravity (Harness Rekayasa)',
+    labelEn: 'Google Antigravity (Engineering Harness)',
+  },
+  {
+    labelId: 'Nano Banana 2.1',
+    labelEn: 'Nano Banana 2.1',
+  },
+  {
+    labelId: 'Gemini 3.8 Flash High',
+    labelEn: 'Gemini 3.8 Flash High',
+  },
+  {
+    labelId: 'Gemini 4 Argon High',
+    labelEn: 'Gemini 4 Argon High',
+  },
+  {
+    labelId: 'Claude Sonnet 5.5 High',
+    labelEn: 'Claude Sonnet 5.5 High',
+  },
+  {
+    labelId: 'DeepSeek V4.1 1017',
+    labelEn: 'DeepSeek V4.1 1017',
+  },
 ];
+
+export const AI_TOOLS_AND_HARNESS: ReadonlyArray<string> = AI_TOOLS_AND_HARNESS_BADGES.map(
+  (badge) => badge.labelEn
+);
 
 /**
  * Developer & Contributors Modal (`CreditsModal.tsx`).
@@ -243,19 +270,21 @@ export const CreditsModal: React.FC<CreditsModalProps> = ({ isOpen, onClose }) =
                   : 'Originality & Zero-Plagiarism Statement'}
               </span>
             </div>
-            <p className="text-[11px] text-slate-200 leading-relaxed">
-              This project was originally conceived, designed, and built by{' '}
-              <strong className="text-white">KENZIE RAKA ROMERO</strong> with
-              zero plagiarism of any other projects. All creative concepts, dual-world
-              physics mechanics, and interactive scenarios originate from the author&apos;s
-              own vision.
-            </p>
-            {isId && (
-              <p className="text-[11px] text-emerald-200/90 leading-relaxed pt-1 border-t border-emerald-400/20">
+            {isId ? (
+              <p className="text-[11px] text-emerald-200/95 leading-relaxed">
                 Proyek ini dirancang dan dibangun secara orisinal oleh{' '}
-                <strong>Kenzie Raka Romero</strong> (SMPN 12 Surabaya) tanpa
-                plagiarisme terhadap karya pihak mana pun. Kreativitas, ide fitur,
-                dan desain sistem berasal murni dari gagasan penulis.
+                <strong className="text-white">KENZIE RAKA ROMERO</strong> (SMPN 12
+                Surabaya) tanpa plagiarisme terhadap karya pihak mana pun. Seluruh
+                konsep kreatif, mekanika fisika dua dunia, dan skenario interaktif
+                berasal murni dari gagasan penulis.
+              </p>
+            ) : (
+              <p className="text-[11px] text-slate-200 leading-relaxed">
+                This project was originally conceived, designed, and built by{' '}
+                <strong className="text-white">KENZIE RAKA ROMERO</strong> with
+                zero plagiarism of any other projects. All creative concepts, dual-world
+                physics mechanics, and interactive scenarios originate from the author&apos;s
+                own vision.
               </p>
             )}
           </div>
@@ -276,19 +305,30 @@ export const CreditsModal: React.FC<CreditsModalProps> = ({ isOpen, onClose }) =
             </div>
 
             <p className="text-[11px] text-slate-400 leading-relaxed">
-              Some tools and technologies were used to assist in realizing this
-              project. The development harness used to build this is{' '}
-              <strong className="text-slate-200">Google Antigravity</strong>:
+              {isId ? (
+                <>
+                  Beberapa perangkat dan teknologi digunakan untuk membantu
+                  mewujudkan proyek ini. Harness pengembangan yang digunakan
+                  untuk membangun aplikasi ini adalah{' '}
+                  <strong className="text-slate-200">Google Antigravity</strong>:
+                </>
+              ) : (
+                <>
+                  Some tools and technologies were used to assist in realizing this
+                  project. The development harness used to build this is{' '}
+                  <strong className="text-slate-200">Google Antigravity</strong>:
+                </>
+              )}
             </p>
 
             <div className="flex flex-wrap gap-1.5 pt-0.5">
-              {AI_TOOLS_AND_HARNESS.map((tool) => (
+              {AI_TOOLS_AND_HARNESS_BADGES.map((badge) => (
                 <span
-                  key={tool}
+                  key={badge.labelEn}
                   className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-void-900 border border-white/10 text-[10px] font-mono font-semibold text-cyan-300"
                 >
                   <Code2 className="w-3 h-3 text-electric-400 shrink-0" />
-                  {tool}
+                  {isId ? badge.labelId : badge.labelEn}
                 </span>
               ))}
             </div>

@@ -27,3 +27,13 @@ always_on: true
 - **Floating Island Dock**: Consolidate toolbars into a single-row translucent glass pill dock (`bg-void-950/90 backdrop-blur-xl border border-white/20`).
 - **Scenic Mode Requirement**: Always provide a one-tap scenic view toggle (`Eye` / `EyeOff`) that collapses toolbars into a minimal badge, granting users 100% unobstructed view of the canvas, sky, and landscape.
 - **Tactile Transitions**: Touch targets must be $\ge 44 \times 44\text{px}$ with `active:scale-95` tactile click feedback.
+
+## 5. Mobile Modal Control Bars & Dropdown Anti-Collision (`360px` Viewport Invariant)
+- **No Sibling Select Collision**: Never place a `flex-1` `<select>` dropdown and a secondary action toolbar on the same horizontal flex row on mobile without explicit vertical stacking (`flex-col sm:flex-row items-stretch sm:items-center`).
+- **Bounded Select Widths**: Every `<select>` inside a modal or toolbar must use `w-full sm:w-auto min-w-0 truncate` so long `<option>` labels never blow out flex containers or clip adjacent labels (such as `"Target Probe:"`).
+- **Localized Select Options**: Component selector `<option>` elements must always resolve labels through `getComponentDisplayName(node.data, language)` from `src/utils/nodeLocalization.ts` instead of rendering raw `node.data.label` or `node.data.type`.
+
+## 6. Strict Bilingual Localization Completeness (`isId` Audit Gate)
+- **Zero Untranslated English Leakage in `id` Mode**: Before marking any UI modal, card, or feature complete, audit every text node, paragraph, role title, badge, `<option>` label, chip (`ALL` / `SEMUA`, `Peak` / `Puncak`), and `aria-label`/`title` attribute to ensure 100% parity between `language === 'id'` and `language === 'en'`.
+- **No Bilingual Duplication in Single-Language Mode**: When `isId` is active, render strictly the Indonesian copy (and strictly English when `!isId`) rather than leaving untranslated English paragraphs stacked above Indonesian translations.
+- **Catalog & Localization Sync**: Every new `ComponentType` added to the simulation must simultaneously register its default `id` and `en` display names in `DEFAULT_LABEL_PAIRS` within `src/utils/nodeLocalization.ts`.

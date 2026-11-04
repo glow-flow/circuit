@@ -78,6 +78,15 @@ This document tracks the multi-phase architecture of **Nature Mode (Alam Terbuka
   - Updated `findTerrainSurfaceY` (`src/physics/terrainGrid.ts`) with `waterIsSolid: false` for `hydro-turbine` so its A-frame legs settle on the solid `'DIRT'` riverbed (`row 18`) while `evaluateComponentDropPhysics` measures fall impact against the water surface (`row 15`).
   - Added `measureSubmergedDepthPx` (`src/physics/hydroPhysics.ts`) and rendered a translucent submerged waterline overlay on the lower A-frame.
 
+### Fix F: Mobile Oscilloscope Control Anti-Collision & Strict Bilingual `id`/`en` Localization Audit (Reported by Achmad Sandy Pratama)
+- **Symptom**:
+  1. On mobile portrait screens (`360px`–`412px`), the `OscilloscopeModal.tsx` probe selector (`"Target Probe:"` / `"Probe Channel:"`) collided horizontally with the `500 ms (Normal)` interval dropdown and the `Jeda`/`Pause` button, rendering the text unreadable (`"Target Pr..."` / `"Probe C..."`).
+  2. In `CreditsModal.tsx` and `OscilloscopeModal.tsx`, several strings remained in English when Bahasa Indonesia (`language === 'id'`) was active: Muhammad Syafik Al Rosyid's role (`Quality Assurance & Scenario Tester`), the English originality paragraph rendered above the Indonesian declaration, the `Google Antigravity` harness introduction paragraph, oscilloscope interval options (`100 ms (Fast)`), and waveform filter chips (`ALL`, `Peak`).
+- **Resolution**:
+  - Restructured the `OscilloscopeModal.tsx` control bar to stack cleanly across two rows on mobile (`flex-col sm:flex-row items-stretch sm:items-center`) with bounded `<select>` widths (`min-w-0 flex-1 truncate`), ensuring 100% legibility on `360px` screens.
+  - Connected `OscilloscopeModal.tsx` probe `<option>` labels to `getComponentDisplayName(node.data, language)` (`O(1)` lookup in `src/utils/nodeLocalization.ts`) and registered all Nature Mode 4.0 components (`bess-substation`, `hydro-turbine`, `trafo-stepup`) in `DEFAULT_LABEL_PAIRS`.
+  - Completed full `isId` localization parity across `CreditsModal.tsx` and `OscilloscopeModal.tsx`, and codified the **Mobile Modal Control Anti-Collision** and **Strict Bilingual Localization Audit** guardrails in `.agents/rules/circuit-physics-and-mobile-performance.md` and [[UI_UX_ANTISLOP_AND_MOBILE_ENGINE]].
+
 ---
 
 ## 3. Related Vault Nodes

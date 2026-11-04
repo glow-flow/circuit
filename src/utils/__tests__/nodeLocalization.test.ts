@@ -81,4 +81,24 @@ describe('nodeLocalization - getComponentDisplayName', () => {
     expect(getComponentDisplayName(null, 'en')).toBe('Component');
     expect(getComponentDisplayName(undefined, 'en')).toBe('Component');
   });
+
+  it('localizes Nature Mode 4.0 outdoor components between ID and EN', () => {
+    expect(
+      getComponentDisplayName({ type: 'bess-substation', label: 'Gardu Baterai BESS' }, 'en')
+    ).toBe('BESS Battery Substation');
+    expect(
+      getComponentDisplayName({ type: 'bess-substation', label: 'BESS Battery Substation' }, 'id')
+    ).toBe('Gardu Baterai BESS');
+
+    expect(
+      getComponentDisplayName({ type: 'hydro-turbine', label: 'Turbin Mikrohidro' }, 'en')
+    ).toBe('Micro-Hydro Turbine');
+    expect(
+      getComponentDisplayName({ type: 'hydro-turbine', label: 'Micro-Hydro Turbine' }, 'id')
+    ).toBe('Turbin Mikrohidro');
+
+    expect(
+      getComponentDisplayName({ type: 'transmission-tower', label: 'Gardu Trafo SUTET' }, 'en')
+    ).toBe('SUTET Pole Transformer');
+  });
 });

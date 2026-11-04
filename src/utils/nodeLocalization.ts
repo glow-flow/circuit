@@ -92,8 +92,16 @@ const DEFAULT_LABEL_PAIRS: readonly LocalizedNamePair[] = [
 
   // Outdoor Components
   { id: 'Panel Surya Alam', en: 'Outdoor Solar Panel' },
+  { id: 'Panel Surya', en: 'Solar Panel' },
   { id: 'Turbin Angin Alam', en: 'Outdoor Wind Turbine' },
+  { id: 'Turbin Angin', en: 'Wind Turbine' },
   { id: 'Menara Transmisi Luar', en: 'Outdoor Transmission Tower' },
+  { id: 'Menara Transmisi', en: 'Transmission Tower' },
+  { id: 'Menara Transmisi SUTET', en: 'SUTET Transmission Tower' },
+  { id: 'Gardu Trafo SUTET', en: 'SUTET Pole Transformer' },
+  { id: 'Gardu Trafo Step-Up', en: 'Step-Up Transformer Substation' },
+  { id: 'Gardu Baterai BESS', en: 'BESS Battery Substation' },
+  { id: 'Turbin Mikrohidro', en: 'Micro-Hydro Turbine' },
   { id: 'Panel Distribusi Lab', en: 'Lab Distribution Panel' },
 ];
 
