@@ -14,12 +14,16 @@ export const OUTDOOR_ALLOWED_ENTRY_IDS = new Set<string>([
   'solar-panel',
   'wind-turbine',
   'transmission-tower',
+  'bess-substation',
+  'hydro-turbine',
 ]);
 
 /** Outdoor-exclusive generators excluded from the Indoor Lab palette (`worldMode === 'lab'`). */
 export const LAB_EXCLUDED_ENTRY_IDS = new Set<string>([
   'solar-panel',
   'wind-turbine',
+  'bess-substation',
+  'hydro-turbine',
 ]);
 
 /** Entry count per category in Lab mode, computed once (catalog is static). O(N). */
@@ -35,10 +39,11 @@ const LAB_COUNT_BY_CATEGORY: Readonly<Record<string, number>> = PALETTE_ENTRIES.
 /**
  * UI state for the component box: which category is open and which part is selected.
  * - In `worldMode === 'outside'`, filters strictly to Outdoor Power & Grid items
- *   (`solar-panel`, `wind-turbine`, `transmission-tower`) so indoor lab items are hidden.
- * - In `worldMode === 'lab'`, excludes `solar-panel` and `wind-turbine` (which belong
- *   exclusively to the Outdoor Sandbox) while keeping `transmission-tower` so users can
- *   receive transmitted outdoor power inside the Lab.
+ *   (`solar-panel`, `wind-turbine`, `transmission-tower`, `bess-substation`, `hydro-turbine`)
+ *   so indoor lab items are hidden.
+ * - In `worldMode === 'lab'`, excludes outdoor-only equipment (`solar-panel`, `wind-turbine`,
+ *   `bess-substation`, `hydro-turbine`) while keeping `transmission-tower` so users can
+ *   receive transmitted outdoor power inside the Lab via the Lab Distribution Panel.
  *
  * Time Complexity: O(1) per interaction.
  */

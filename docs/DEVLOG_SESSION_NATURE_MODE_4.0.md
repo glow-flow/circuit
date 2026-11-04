@@ -1,164 +1,79 @@
 ---
-title: "Devlog & Architecture Notes: Outdoor Mode 4.0 & Mobile Optimization"
-date: 2026-11-04
+title: Nature Mode 4.0 Engineering Devlog & Bug Resolution Record
 tags:
-  - circuit-simulator
-  - nature-mode
+  - hub
+  - outdoor-nature
   - physics-engine
-  - mobile-optimization
-  - anti-slop-ui
-  - devlog
-status: completed
-version: 4.0.0
+  - hardware-node
+aliases:
+  - Nature Mode 4.0 Devlog
 ---
 
-# 🌿 Outdoor Mode ("Zona Alam Terbuka") 4.0 Devlog & Architecture Notes
+# Nature Mode 4.0: Engineering Devlog & Audit Record
 
-> [!NOTE]
-> Dokumen ini mencatat seluruh rangkaian evolusi arsitektur, fisika mikroklimat, optimasi performa *cold-load* mobile, serta redesain antarmuka (UI/UX) pada sesi pengembangan **Circuit Sandbox 4.0**. Dokumen ini diformat agar ramah dibuka langsung melalui aplikasi **Obsidian** sebagai *knowledge vault*.
+Parent Hub: [[README|Circuit Sandbox 4.0 Master Architecture Hub (MOC)]]
 
----
-
-## 📌 1. Ringkasan Sesi & Masalah yang Diselesaikan
-
-Dalam sesi pengembangan ini, terdapat 4 fokus utama yang dieksekusi hingga status produksi di Vercel:
-
-1. **Siklus Cuaca & Mikroklimat Topografis**: Integrasi siklus Pagi (35° Timur), Siang (75° Zenith), dan Sore (35° Barat) dengan proyeksi bayangan tebing bukit (*Raycasting 1D*) dan bonus kecepatan angin orografis (*Hellmann Wind Shear*).
-2. **Pembangkit Listrik Energi Terbarukan & Gardu**: Penambahan Menara Transmisi Grid Virtual, Panel Surya Fotovoltaik (PV), Turbin Angin, Gardu BESS (*Battery Energy Storage System*), dan Turbin Air Pelton (*Waterfall Hydro*).
-3. **Optimasi Drastis Cold-Load Mobile (93.3% Reduksi Payload)**: Memangkas durasi unduh aset pada HP baru dari ~4 menit menjadi instan (< 1 detik) melalui kuantisasi palet LANCZOS dan header cache imutabel.
-4. **Fix Glitch Penempatan Fisika & Redesain UI Anti-Slop**:
-   - Menghilangkan *bug* panel surya yang amblas ke dalam tanah (*dirt* di bawah rumput).
-   - Menghilangkan *bug* turbin angin yang miring/terpotong di bibir lereng bukit.
-   - Merombak 3 bar toolbar bertumpuk (yang memakan 40% layar HP) menjadi **Ultra-Compact Floating Island Dock** bersensor gestur dan mode pemandangan penuh (*Scenic Mode*).
+This document tracks the multi-phase architecture of **Nature Mode (Alam Terbuka)**, the **Dual-World Quarantine**, **BESS Substation**, **Waterfall Micro-Hydro**, and the full root-cause audit of all simulation and UI edge cases.
 
 ---
 
-## 🏗️ 2. Arsitektur Fisika & Grid Medan 2D
+## 1. Architectural Subsystems Linked to This Session
 
-### 2.1 Koordinat & Struktur Terrain
-Medan alam dibangun menggunakan representasi matriks 2D diskrit $40 \times 20$ (`TerrainCellType[][]`), di mana setiap sel memiliki ukuran proporsional terhadap *viewport* $1360 \times 680\text{ px}$ (lebar $34\text{ px}$, tinggi $34\text{ px}$):
-
-```
-Baris 0..13   : SKY (EMPTY)
-Baris 14      : Dataran Tinggi / Bukit Kiri (GRASS di kolom 4..11)
-Baris 15      : Dataran Rumput Normal (GRASS di kolom 0..3 & 12..23, 33..39)
-Baris 15..17  : Cekungan Sungai / Air Terjun (WATER di kolom 24..32)
-Baris 18..19  : Dasar Tanah Sungai (DIRT)
-Baris 16..19  : Lapisan Tanah Bawah (DIRT)
-```
-
-```mermaid
-flowchart TD
-    Sky["Langit Bebas (EMPTY)"] --> GrassTop["Permukaan Rumput (GRASS)"]
-    GrassTop --> DirtSub["Lapisan Tanah (DIRT)"]
-    GrassTop --> Basin["Cekungan Air (WATER)"]
-    Basin --> Riverbed["Dasar Sungai (DIRT)"]
-    
-    subgraph PhysicsPasses["Siklus Fisika O(R × C)"]
-        Gravity["Cellular Automata Gravity"]
-        Hydro["Liquid Water Lateral Leveling"]
-        GrassGrowth["3s Exposure Grass Regrowth"]
-    end
-```
+1. **Dual-World Quarantine (`worldMode`)**:
+   - Documented in [[ARCHITECTURE_OUTDOOR_AND_LAB_QUARANTINE]].
+   - Enforces strict separation between Outdoor renewable macro-infrastructure and Indoor Lab bench components.
+2. **2D Terrain & Hydrological Cellular Automata (`40x20` Grid)**:
+   - Documented in [[PHYSICS_TERRAIN_CELLULAR_AUTOMATA]].
+   - Implements gravity-settled soil (`DIRT`), grass conversion (`GRASS`), solid cliff bedrock (`ROCK`), stationary mountain springs (`WATER_SPRING`), and fluid cellular automata (`WATER`).
+3. **Topographic Microclimate Physics**:
+   - Documented in [[PHYSICS_SOLAR_AND_OROGRAPHIC_WIND]].
+   - Combines 1D topographic shadow ray-casting ($E_{eff} = E_{base} \cdot 0.15$ when occluded) with Hellmann power-law orographic wind shear ($v(h) = v_0 \cdot (h/h_0)^\alpha$).
+4. **Hydroelectrics & Electrochemical Grid Storage**:
+   - Documented in [[PHYSICS_MICROHYDRO_AND_BESS_STORAGE]].
+   - Implements Pelton turbine mechanics ($P = \eta \rho g Q H$) and 1.0 kWh $\text{LiFePO}_4$ BESS Coulomb counting.
+5. **High-Voltage Transmission & PUIL Protection**:
+   - Documented in [[HARDWARE_TRANSMISSION_AND_TRAFO_SUTET]] and [[HARDWARE_COMPONENTS_AND_PROTECTION]].
+   - Couples outdoor `transmission-tower` nodes to indoor `distribution-panel` nodes across the [[PHYSICS_MNA_SOLVER_AND_TRANSMISSION_GRID|MNA Solver Virtual Grid Bus]].
+6. **Industrial Anti-Slop UI & Mobile Ergonomics**:
+   - Documented in [[UI_UX_ANTISLOP_AND_MOBILE_ENGINE]] and verified by [[TESTING_AND_VERIFICATION_MATRIX]].
 
 ---
 
-## 🔬 3. Bedah Masalah (Post-Mortem) & Solusi Teknikal
+## 2. Root-Cause Audit & Fixes Applied in Final Review
 
-### 3.1 Glitch Penempatan: Panel Surya Tenggelam & Kaki Turbin Menggantung
-* **Gejala**: Saat menekan tombol *"⚡ Pasang Pembangkit Alam (12V)"*, panel surya masuk ke dalam lapisan tanah cokelat (di bawah rumput hijau) dan terminal kabelnya tertutup tanah. Turbin angin di lereng bukit tampak terpotong miring.
-* **Akar Masalah**:
-  1. **Disparitas Dimensi DOM vs. Fisika**: `COMPONENT_DIMENSIONS['solar-panel']` di [`terrainGrid.ts`](file:///c:/Users/ASUS/Desktop/circuit/src/physics/terrainGrid.ts) bernilai tinggi `156px`, sedangkan kartu kendali DOM yang dirender memiliki tinggi aktual `~200px` karena adanya selektor cuaca dan badge status. Saat sistem menghitung `settledY = surfaceY - height`, posisi atas diletakkan di `surfaceY - 156`, sehingga bagian bawah kontainer jatuh di `surfaceY + 44px` (masuk lebih dari 1 baris ke lapisan DIRT!).
-  2. **Offset Artifisial**: Terdapat `const groundOffset = 6` yang sengaja menurunkan posisi komponen 6px ke dalam tanah.
-  3. **Sampling Lebar Turbin yang Terlalu Lebar**: Turbin angin memiliki diameter bilah rotor yang lebar. Fungsi `findTerrainSurfaceY` semula mengambil interval $0.22 - 0.78$ dari lebar kontainer ($144\text{ px}$). Ketika diletakkan dekat bibir lereng, bilah rotor yang melayang di atas lembah mendeteksi ketinggian lereng atas, sehingga tiang turbin tampak menggantung di tepi jurang.
-* **Perbaikan Kode**:
-  1. **Sampling Kaki Terpusat**:
-     ```ts
-     // src/physics/terrainGrid.ts
-     let footLeft = targetBox.x + targetBox.width * 0.22;
-     let footRight = targetBox.x + targetBox.width * 0.78;
+### Fix A: Pure Candidate Probing for Outdoor Palette Placement
+- **Symptom**: Clicking *"Taruh di Kanvas"* (`handlePlace` in `SidebarPalette.tsx`) for `bess-substation` after spawning the 12V Power Station caused false water explosions or false success toasts when nearby candidates overlapped existing nodes or touched the river (`cols 24..32`).
+- **Root Cause**: `SidebarPalette.tsx` invoked the side-effecting `placeOutdoorComponent` store action inside a candidate search loop, and `computeOutdoorSpawnCandidates` (`src/utils/canvasSpawnPosition.ts`) did not filter out water-hazard columns for non-hydro components.
+- **Resolution**:
+  - `computeOutdoorSpawnCandidates` now inspects `findTerrainSurfaceY(...).hitWater` and prioritizes dry terrace coordinates for all non-water-immune components, including stage-wide terrace anchors (`x = 630, 440, 240, 40, 1140`).
+  - `SidebarPalette.tsx` now probes candidates using the pure `evaluateComponentDropPhysics` function (`status === 'settled'`) before calling `placeOutdoorComponent` once, and only fires the placement toast when `placedSuccessfully === true`.
 
-     if (componentType === 'wind-turbine' || componentType === 'wind_turbine') {
-       // Kaki tiang turbin terpusat di tiang baja utama
-       footLeft = targetBox.x + targetBox.width * 0.42;
-       footRight = targetBox.x + targetBox.width * 0.58;
-     } else if (componentType === 'solar-panel' || componentType === 'solar_panel') {
-       // Pasak ganda penopang panel surya
-       footLeft = targetBox.x + targetBox.width * 0.35;
-       footRight = targetBox.x + targetBox.width * 0.65;
-     }
-     ```
-  2. **Ground Offset Nol**: Menghapus penurunan paksa 6px (`const groundOffset = 0`). Kaki komponen kini duduk pas tepat di permukaan rumput (*turf*).
+### Fix B: Micro-Hydro River Contact vs. Manual Valve Override & Dry-Land Reset
+- **Symptom**:
+  1. Dragging a `hydro-turbine` from the river (`col 27`, `100%` flow) onto dry land (`col 6`) left `waterFlowRate` stuck at `100%` (`11.9V`, `238 RPM` on bone-dry land).
+  2. Dragging the `Debit Aliran Air (Q)` slider inside `HydroTurbineNode.tsx` while the turbine was in the river had no effect because `applyTerrainMicroclimateToNodes` immediately overwrote `waterFlowRate` back to `waterFlow.flowPercentage` (`100%`).
+- **Resolution**:
+  - Added `manualWaterFlowRate?: number` to `CircuitElementData` (`src/types/circuit.ts`).
+  - In `applyTerrainMicroclimateToNodes` (`src/physics/terrainClimateEngine.ts`), when `manualWaterFlowRate` is set by the user's valve slider, it takes precedence; otherwise, flow is `waterFlow.flowPercentage` when `waterFlow.hasWaterContact === true` and strictly `0` on dry land.
+  - In `settleOutdoorNodeAfterDrag` (`src/store/useCircuitStore.ts`), `manualWaterFlowRate` is cleared (`undefined`) whenever a node settles at a new terrain coordinate so moving between river and dry land immediately reflects physical terrain contact.
+
+### Fix C: Right-Hand Inspector Controls (`InspectorPropertiesTab.tsx`)
+- **Resolution**:
+  - Updated the Solar Panel irradiance slider to write `baseSunlight: val, sunlight: val` so `applyTerrainMicroclimateToNodes` preserves the user's slider setting.
+  - Added full Inspector property controls for `bess-substation` (SoC slider + 1000 Wh Recharge button), `hydro-turbine` (Water Flow Q & Hydraulic Head H sliders), and `distribution-panel` (MCB breaker switch + DC Step-Down voltage selector).
 
 ---
 
-### 3.2 Kecepatan Unduh Mobile: Pangkas 12.2 MB Menjadi 0.82 MB (Reduksi 93.3%)
-* **Gejala**: Pengguna melaporkan bahwa saat membuka situs di HP baru tanpa data cache (*cold load*), unduhan aset memakan waktu hingga ~4 menit.
-* **Akar Masalah**:
-  1. Terdapat folder duplikat backup `public/assets/originals/` berukuran ~5 MB yang tidak sengaja ikut tersaji.
-  2. 34 berkas gambar PNG beresolusi mentah tinggi (rata-rata 300–700 KB per gambar) menghasilkan total payload ~12.2 MB.
-  3. Belum ada konfigurasi header cache HTTP imutabel.
-* **Solusi**:
-  1. Script Python [`scripts/optimize_assets.py`](file:///c:/Users/ASUS/Desktop/circuit/scripts/optimize_assets.py) dijalankan dengan algoritma filter **LANCZOS** + kuantisasi palet 256 warna (`FASTOCTREE`).
-  2. Resolusi dipertahankan pada retina HD ($550\text{ px}$), namun ukuran per berkas turun dari ~500 KB ke ~15-25 KB.
-  3. Total payload turun dari **12.2 MB ke 0.82 MB** (pengurangan 93.3%).
-  4. Penambahan [`vercel.json`](file:///c:/Users/ASUS/Desktop/circuit/vercel.json):
-     ```json
-     {
-       "headers": [
-         {
-           "source": "/assets/(.*)",
-           "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
-         }
-       ]
-     }
-     ```
+## 3. Related Vault Nodes
 
----
-
-### 3.3 Redesain UI/UX: Ultra-Compact Island Dock & Scenic Mode
-* **Gejala**: Di layar ponsel berorientasi *portrait* (lebar 360–412 px), toolbar atas yang terdiri dari 3 kontainer tebal (`#tour-outdoor-brushes`, tombol matahari, dan tombol spawn) memakan 40% area vertikal layar dan menutupi orb matahari serta panorama bukit.
-* **Solusi Desain (Anti-Slop Guidelines)**:
-  1. **Single-Row Floating Glass Dock**: Seluruh alat kuas (*Geser, Tanah, Air, Gali*), selektor waktu (🌅/☀️/🌇), dan tombol generator ⚡ 12V diringkas ke dalam **satu baris kapsul kaca melayang** bertransparansi tinggi (`bg-void-950/90 backdrop-blur-xl border-white/20`).
-  2. **Scenic Mode (Mode Pemandangan Penuh)**: Menambahkan tombol toggle mata (`Eye` / `EyeOff`). Ketika pengguna menekan tombol ini:
-     - Toolbar utama bertransisi halus (*fade & slide out*) menghilang.
-     - Muncul kapsul minimalis di sudut kanan atas: **🌿 Alat Alam**.
-     - Pengguna mendapatkan **100% ruang pandang bebas tanpa gangguan** untuk menikmati matahari, langit fajar/senja, dan merangkai kabel sirkuit.
-
-```mermaid
-stateDiagram-v2
-    [*] --> CompactDock: Buka Zona Alam
-    CompactDock --> ScenicMode: Klik Ikon EyeOff (Sembunyikan)
-    ScenicMode --> CompactDock: Klik Kapsul "🌿 Alat Alam" (Tampilkan)
-    
-    state CompactDock {
-        KuasMedan: Geser / Tanah / Air / Gali
-        WaktuMatahari: Pagi (35°) / Siang (75°) / Sore (35°)
-        PasangStasiun: ⚡ Pembangkit 12V
-    }
-```
-
----
-
-## ⚡ 4. Matriks Pengujian & Verifikasi
-
-Semua perubahan wajib melalui rangkaian audit otomatis:
-
-| Parameter Uji | Perintah | Hasil | Catatan |
-| :--- | :--- | :--- | :--- |
-| **Unit Testing** | `npx vitest run` | **PASS (42/42 files, 295 tests)** | Isolasi mode Alam vs Lab, MNA solver, AABB collision, raycasting bayangan. |
-| **Type Check** | `npx tsc --noEmit` | **PASS (0 errors)** | Integritas tipe data TypeScript ketat. |
-| **Production Build** | `npm run build` | **PASS (0 errors)** | Bundle Vite & minifikasi CSS/JS bersih. |
-| **Git Deployment** | `git push origin main` | **DEPLOYED** | Otomatis di-*build* & di-*host* di Vercel (`circuit-gamma-one.vercel.app`). |
-
----
-
-## 🔗 5. Peta Berkas Terkait
-
-- [[src/physics/terrainGrid.ts]] : Fisika gravitasi selular, deteksi tubrukan AABB, dan perhitungan elevasi permukaan tanah.
-- [[src/physics/terrainClimateEngine.ts]] : Proyeksi bayangan bukit 1D, *orographic wind shear*, dan mikroklimat.
-- [[src/components/canvas/OutdoorSandbox.tsx]] : Komponen utama kanvas Zona Alam Terbuka, *celestial sun orb*, dan *floating island dock*.
-- [[src/components/canvas/nodes/SolarPanelNode.tsx]] : Node visual panel surya fotovoltaik, preset cuaca, dan terminal kabel terangkat.
-- [[src/components/canvas/nodes/WindTurbineNode.tsx]] : Node visual turbin angin dengan bilah berputar CSS GPU dan penyearah Schottky.
-- [[scripts/optimize_assets.py]] : Skrip optimasi & kompresi aset gambar retina HD LANCZOS.
-- [[vercel.json]] : Konfigurasi cache statis imutabel CDN 1 tahun.
+- [[README]]
+- [[ARCHITECTURE_OUTDOOR_AND_LAB_QUARANTINE]]
+- [[PHYSICS_MNA_SOLVER_AND_TRANSMISSION_GRID]]
+- [[PHYSICS_TERRAIN_CELLULAR_AUTOMATA]]
+- [[PHYSICS_SOLAR_AND_OROGRAPHIC_WIND]]
+- [[PHYSICS_MICROHYDRO_AND_BESS_STORAGE]]
+- [[HARDWARE_COMPONENTS_AND_PROTECTION]]
+- [[HARDWARE_TRANSMISSION_AND_TRAFO_SUTET]]
+- [[PEDAGOGY_ACADEMY_AND_EXPLAINABLE_TUTOR]]
+- [[UI_UX_ANTISLOP_AND_MOBILE_ENGINE]]
+- [[TESTING_AND_VERIFICATION_MATRIX]]

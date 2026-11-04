@@ -97,13 +97,13 @@ export const InspectorLiveDataTab: React.FC<InspectorLiveDataTabProps> = ({
         </div>
 
         {/* Heat dissipation rate */}
-        <div className="p-3 rounded-xl bg-void-950 border border-purple-500/20 space-y-1">
+        <div className="p-3 rounded-xl bg-void-950 border border-sky-500/20 space-y-1">
           <div className="flex items-center justify-between text-slate-400 text-[11px]">
             <span>{isId ? 'Laju Kalor Joule' : 'Joule Heat Rate'}</span>
-            <Activity className="w-3.5 h-3.5 text-purple-400" />
+            <Activity className="w-3.5 h-3.5 text-sky-400" />
           </div>
-          <div className="text-base font-mono font-bold text-purple-300">
-            {powerWatts.toFixed(2)} <span className="text-xs text-purple-400 font-sans">J/s</span>
+          <div className="text-base font-mono font-bold text-sky-300">
+            {powerWatts.toFixed(2)} <span className="text-xs text-sky-400 font-sans">J/s</span>
           </div>
           <div className="text-[10px] text-slate-500 font-mono">
             {(powerWatts * 0.239).toFixed(2)} kalori/detik

@@ -474,6 +474,7 @@ function recalculateCircuit(
       const isDischarging = branchCurrent < -0.05;
       const bessMode: 'idle' | 'charging' | 'discharging' = isCharging ? 'charging' : isDischarging ? 'discharging' : 'idle';
       const outputPower = Math.abs(branchCurrent * effectiveV);
+      const nominalCapacityWh = node.data.nominalCapacityWh ?? 1000;
 
       return {
         ...node,
@@ -482,7 +483,8 @@ function recalculateCircuit(
           worldMode: 'outside' as const,
           socPercent: soc,
           currentCharge: soc,
-          voltage: effectiveV,
+          storedEnergyWh: Number(((soc / 100) * nominalCapacityWh).toFixed(1)),
+          voltage: nominalV,
           bessMode,
           chargeState: bessMode as BatteryChargeState,
           calculatedCurrent: branchCurrent,
@@ -690,15 +692,15 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     const message =
       timeOfDay === 'morning'
         ? isId
-          ? '🌅 Matahari Pagi (35° Timur): Bayangan tebing terproyeksi ke arah barat'
-          : '🌅 Morning Sun (35° East): Cliff shadows project westward'
+          ? 'Matahari Pagi (35° Timur): Bayangan tebing terproyeksi ke arah barat.'
+          : 'Morning Sun (35° East): Cliff shadows project westward.'
         : timeOfDay === 'noon'
         ? isId
-          ? '☀️ Matahari Siang (75° Zenith): Sinar tegak lurus, pembangkit surya menerima radiasi puncak!'
-          : '☀️ Noon Sun (75° Zenith): Overhead sunlight, solar generation at peak irradiance!'
+          ? 'Matahari Siang (75° Zenith): Sinar tegak lurus, pembangkit surya menerima radiasi puncak.'
+          : 'Noon Sun (75° Zenith): Overhead sunlight, solar generation at peak irradiance.'
         : isId
-        ? '🌇 Matahari Sore (35° Barat): Bayangan tebing terproyeksi ke arah timur'
-        : '🌇 Afternoon Sun (35° West): Cliff shadows project eastward';
+        ? 'Matahari Sore (35° Barat): Bayangan tebing terproyeksi ke arah timur.'
+        : 'Afternoon Sun (35° West): Cliff shadows project eastward.';
 
     set({
       sunTimeOfDay: timeOfDay,
@@ -1048,7 +1050,16 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     // 4. Gravity Settlement: Snap component's Y onto the terrain surface so it never floats in mid-air,
     // and dynamically recalculate circuit simulation & microclimate physics for the settled node
     const nextNodes = currentNodes.map((n) =>
-      n.id === nodeId ? { ...n, position: { ...outcome.settledPosition } } : n
+      n.id === nodeId
+        ? {
+            ...n,
+            position: { ...outcome.settledPosition },
+            data: {
+              ...n.data,
+              manualWaterFlowRate: undefined,
+            },
+          }
+        : n
     );
     const { simulation, updatedNodes } = recalculateCircuit(
       nextNodes,
@@ -1197,8 +1208,8 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     if (activeWorldMode === 'lab' && isOutdoorOnly) {
       get().notify(
         isId
-          ? '⚠️ Turbin Angin dan Panel Surya hanya boleh ada di Alam Terbuka!'
-          : '⚠️ Wind Turbines and Solar Panels are strictly prohibited in the Lab!'
+          ? 'Turbin Angin dan Panel Surya hanya boleh ada di Alam Terbuka (termasuk Gardu BESS & Mikrohidro).'
+          : 'Wind Turbines and Solar Panels are strictly prohibited in the Lab (including BESS & Micro-Hydro).'
       );
       return;
     }
@@ -2055,16 +2066,16 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     if (isStillTripped) {
       get().notify(
         isId
-          ? '⚠️ Gagal reset MCB! Kabel (+) dan (-) masih korsleting langsung. Putus atau pisahkan kabel terlebih dahulu!'
-          : '⚠️ MCB Reset Failed! Output wires (+) and (-) are still short-circuited. Disconnect shorted wire first!'
+          ? 'Gagal reset MCB: Kabel (+) dan (-) masih korsleting langsung. Pisahkan kabel terlebih dahulu.'
+          : 'MCB Reset Failed: Output wires (+) and (-) are still short-circuited. Disconnect shorted wire first.'
       );
       return false;
     }
 
     get().notify(
       isId
-        ? '✅ Tuas MCB Panel Distribusi Lab: ON (Aliran Listrik Terhubung)'
-        : '✅ Lab Distribution Panel MCB: ON (Grid Connected)'
+        ? 'Tuas MCB Panel Distribusi Lab: ON (Aliran Listrik Terhubung).'
+        : 'Lab Distribution Panel MCB: ON (Grid Connected).'
     );
     return true;
   },
@@ -2188,10 +2199,13 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     const currentNodes = state.nodes;
 
     const nextNodes = currentNodes.map((node) => {
+      const isBess =
+        node.data.type === 'bess-substation' || node.data.type === 'bess_substation';
       if (
         node.data.type !== 'battery' &&
         node.data.type !== 'battery9v' &&
-        node.data.type !== 'battery-holder'
+        node.data.type !== 'battery-holder' &&
+        !isBess
       ) {
         return node;
       }
@@ -2204,7 +2218,9 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
         return node;
       }
 
-      const currentCharge = node.data.currentCharge ?? 100;
+      const currentCharge = isBess
+        ? (node.data.socPercent ?? node.data.currentCharge ?? 80)
+        : (node.data.currentCharge ?? 100);
       const capacity =
         node.data.capacity ??
         getDefaultBatteryCapacity(node.data.type, node.data.batteryCount);
@@ -2223,11 +2239,19 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
         chargeState !== node.data.chargeState
       ) {
         hasChanged = true;
+        const nominalCapacityWh = node.data.nominalCapacityWh ?? 1000;
         return {
           ...node,
           data: {
             ...node.data,
             currentCharge: newCharge,
+            ...(isBess
+              ? {
+                  socPercent: Number(newCharge.toFixed(1)),
+                  storedEnergyWh: Number(((newCharge / 100) * nominalCapacityWh).toFixed(1)),
+                  bessMode: chargeState,
+                }
+              : {}),
             capacity,
             chargeState,
           },
@@ -2249,11 +2273,21 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   rechargeBattery: (nodeId: string) => {
     const nextNodes = get().nodes.map((node) => {
       if (node.id === nodeId) {
+        const isBess =
+          node.data.type === 'bess-substation' || node.data.type === 'bess_substation';
+        const nominalCapacityWh = node.data.nominalCapacityWh ?? 1000;
         return {
           ...node,
           data: {
             ...node.data,
             currentCharge: 100,
+            ...(isBess
+              ? {
+                  socPercent: 100,
+                  storedEnergyWh: nominalCapacityWh,
+                  bessMode: 'idle' as const,
+                }
+              : {}),
             chargeState: 'idle' as const,
           },
         };
@@ -2266,16 +2300,27 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
 
   rechargeAllBatteries: () => {
     const nextNodes = get().nodes.map((node) => {
+      const isBess =
+        node.data.type === 'bess-substation' || node.data.type === 'bess_substation';
       if (
         node.data.type === 'battery' ||
         node.data.type === 'battery9v' ||
-        node.data.type === 'battery-holder'
+        node.data.type === 'battery-holder' ||
+        isBess
       ) {
+        const nominalCapacityWh = node.data.nominalCapacityWh ?? 1000;
         return {
           ...node,
           data: {
             ...node.data,
             currentCharge: 100,
+            ...(isBess
+              ? {
+                  socPercent: 100,
+                  storedEnergyWh: nominalCapacityWh,
+                  bessMode: 'idle' as const,
+                }
+              : {}),
             chargeState: 'idle' as const,
           },
         };
@@ -2736,11 +2781,7 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       set({ terrainGrid: customTerrainGrid });
     }
     const formattedNodes: Node<CircuitElementData>[] = customNodes.map((node) => {
-      const isOutdoorOnly =
-        node.data.type === 'solar-panel' ||
-        node.data.type === 'solar_panel' ||
-        node.data.type === 'wind-turbine' ||
-        node.data.type === 'wind_turbine';
+      const isOutdoorOnly = isOutdoorOnlyComponent(node.data?.type);
 
       const resolvedMode: WorldMode = isOutdoorOnly
         ? 'outside'

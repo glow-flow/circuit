@@ -27,8 +27,10 @@ import {
   GRAVITY_ACCELERATION_M_S2,
 } from '../hydroPhysics';
 import {
+  createDefaultOutdoorTerrain,
   createEmptyTerrainGrid,
   evaluateComponentDropPhysics,
+  getComponentBoundingBox,
   stepTerrainGravity,
 } from '../terrainGrid';
 import { isOutdoorOnlyComponent } from '../../types/circuit';
@@ -73,6 +75,58 @@ describe('BESS Substation & Waterfall Micro-Hydro (Nature Mode Phase 3)', () => 
 
       // Depleted (0%) -> 0.0V (dead cell)
       expect(computeEffectiveBatteryVoltage(nominalVoltage, 0)).toBe(0.0);
+    });
+
+    it('does not compound voltage decay across repeated recalculateCircuit passes at low SoC (<20%) and supports tickBatteryCharge/rechargeBattery', () => {
+      useCircuitStore.getState().addComponent('bess-substation', { x: 300, y: 350 });
+      useCircuitStore.getState().addComponent('resistor', { x: 500, y: 350 });
+
+      const bess = useCircuitStore
+        .getState()
+        .nodes.find((n) => n.data.type === 'bess-substation')!;
+      const resistor = useCircuitStore
+        .getState()
+        .nodes.find((n) => n.data.type === 'resistor')!;
+
+      useCircuitStore.getState().onConnect({
+        source: bess.id,
+        sourceHandle: 'pos',
+        target: resistor.id,
+        targetHandle: 'p1',
+      });
+      useCircuitStore.getState().onConnect({
+        source: bess.id,
+        sourceHandle: 'neg',
+        target: resistor.id,
+        targetHandle: 'p2',
+      });
+
+      // Set SoC to 10% (below 20% sag threshold) and run multiple simulations
+      useCircuitStore.getState().setNodes(
+        useCircuitStore.getState().nodes.map((n) =>
+          n.id === bess.id
+            ? { ...n, data: { ...n.data, socPercent: 10, currentCharge: 10 } }
+            : n
+        )
+      );
+      for (let i = 0; i < 4; i++) {
+        useCircuitStore.getState().runSimulation();
+      }
+
+      const lowSocBess = useCircuitStore.getState().nodes.find((n) => n.id === bess.id)!;
+      expect(lowSocBess.data.voltage).toBe(12.8);
+      // Effective voltage is 6.4V -> current across 100 Ohm resistor is ~0.064A (not decaying toward 0)
+      const lowSocCurrent = Math.abs(
+        useCircuitStore.getState().simulation.branchCurrents[bess.id] ?? 0
+      );
+      expect(lowSocCurrent).toBeCloseTo(0.064, 2);
+
+      // Recharge BESS back to 100%
+      useCircuitStore.getState().rechargeBattery(bess.id);
+      const rechargedBess = useCircuitStore.getState().nodes.find((n) => n.id === bess.id)!;
+      expect(rechargedBess.data.socPercent).toBe(100);
+      expect(rechargedBess.data.storedEnergyWh).toBe(1000);
+      expect(rechargedBess.data.voltage).toBe(12.8);
     });
 
     it('participates in MNA linear circuit solution and powers load resistors', () => {
@@ -201,6 +255,77 @@ describe('BESS Substation & Waterfall Micro-Hydro (Nature Mode Phase 3)', () => 
       expect(wetCheck.hasWaterContact).toBe(true);
       expect(wetCheck.flowPercentage).toBeGreaterThan(0);
       expect(wetCheck.headMeters).toBeGreaterThan(1.0);
+    });
+
+    it('detects river basin flow when settled directly on the default outdoor river surface (cols 24..32)', () => {
+      const grid = createDefaultOutdoorTerrain(20, 40);
+      const canvasWidth = 1360;
+      const canvasHeight = 680;
+
+      // Drop hydro-turbine over the river basin (col ~27 -> x = 900)
+      const outcome = evaluateComponentDropPhysics(
+        { x: 900, y: 300 },
+        'hydro-turbine',
+        null,
+        [],
+        grid,
+        { width: canvasWidth, height: canvasHeight }
+      );
+      expect(outcome.status).toBe('settled');
+      if (outcome.status === 'settled') {
+        const box = getComponentBoundingBox(outcome.settledPosition, 'hydro-turbine');
+        const riverFlow = detectTurbineWaterFlow(box, grid, canvasWidth, canvasHeight);
+        expect(riverFlow.hasWaterContact).toBe(true);
+        expect(riverFlow.flowPercentage).toBeGreaterThan(0);
+        expect(riverFlow.headMeters).toBeGreaterThan(0);
+      }
+    });
+
+    it('respects manualWaterFlowRate valve slider in river and resets to 0V when dragged onto dry land', () => {
+      const containerSize = { width: 1360, height: 680 };
+
+      // 1. Place hydro-turbine in the river basin (x = 900)
+      const placed = useCircuitStore
+        .getState()
+        .placeOutdoorComponent('hydro-turbine', { x: 900, y: 320 }, containerSize);
+      expect(placed).toBe(true);
+
+      let hydro = useCircuitStore
+        .getState()
+        .nodes.find((n) => n.data.type === 'hydro-turbine')!;
+      expect(hydro.data.hasWaterContact).toBe(true);
+      expect(hydro.data.waterFlowRate).toBe(100);
+      expect(hydro.data.voltage).toBeGreaterThan(11.0);
+
+      // 2. User throttles manual valve slider to 50% while turbine is still in the river
+      useCircuitStore.getState().updateComponentData(hydro.id, {
+        manualWaterFlowRate: 50,
+        waterFlowRate: 50,
+        hasWaterContact: true,
+      });
+      hydro = useCircuitStore
+        .getState()
+        .nodes.find((n) => n.id === hydro.id)!;
+      expect(hydro.data.waterFlowRate).toBe(50);
+
+      // 3. User drags hydro-turbine onto dry hilltop terrace (x = 200, y = 260) and releases
+      const prevPos = { ...hydro.position };
+      useCircuitStore.getState().setNodes(
+        useCircuitStore.getState().nodes.map((n) =>
+          n.id === hydro.id ? { ...n, position: { x: 200, y: 260 } } : n
+        )
+      );
+      useCircuitStore
+        .getState()
+        .settleOutdoorNodeAfterDrag(hydro.id, prevPos, containerSize);
+
+      hydro = useCircuitStore
+        .getState()
+        .nodes.find((n) => n.id === hydro.id)!;
+      expect(hydro.data.hasWaterContact).toBe(false);
+      expect(hydro.data.waterFlowRate).toBe(0);
+      expect(hydro.data.voltage).toBe(0);
+      expect(hydro.data.rpm).toBe(0);
     });
   });
 

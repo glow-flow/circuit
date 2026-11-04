@@ -1,0 +1,215 @@
+{
+  "main": {
+    "id": "4315d9d9f83c750a",
+    "type": "split",
+    "children": [
+      {
+        "id": "8d10b46f2842e5fc",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "1a2cfcfd6caca4fe",
+            "type": "leaf",
+            "state": {
+              "type": "graph",
+              "state": {},
+              "icon": "lucide-git-fork",
+              "title": "Graph view"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "d4940b3cd9f2103e",
+    "type": "split",
+    "children": [
+      {
+        "id": "040290ca1178536f",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "3ada51d7c2e01711",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "6279fbd988d94f67",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "f96b1ed0934ff08a",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 200
+  },
+  "right": {
+    "id": "4a90f924cd39616a",
+    "type": "split",
+    "children": [
+      {
+        "id": "fad2e3216fc7ab95",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "22909020705a7b7c",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks"
+            }
+          },
+          {
+            "id": "d768445c36a46210",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links"
+            }
+          },
+          {
+            "id": "f5cbf780b946b7e8",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "4fe63a8c851d98a0",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "a42e39c64f2c73df",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false
+    }
+  },
+  "active": "1a2cfcfd6caca4fe",
+  "lastOpenFiles": [
+    "docs/README.md",
+    "docs/PHYSICS_MNA_SOLVER_AND_TRANSMISSION_GRID.md",
+    "dist/assets/index-C3Eqka8l.css",
+    "dist/assets/vendor-reactflow-D00Fxh_q.js",
+    "dist/assets/vendor-icons-CmIs2mVa.js",
+    "dist/assets/TroubleshootingModal-CI1wd0S3.js",
+    "dist/assets/RenewableLabModal-C7KshjqX.js",
+    "dist/assets/PresetGalleryModal-B3r_JQxR.js",
+    "dist/assets/PresetConfirmDialog-1tuUiM4w.js",
+    "dist/assets/OscilloscopeModal-CTK5EZbe.js",
+    "dist/assets/MissionModal-C50GQ19K.js",
+    "dist/assets/ExplainableTutorModal-FAPP4csi.js",
+    "docs/CIRCUIT_SANDBOX_4.0_ARCHITECTURE.canvas",
+    "docs/TESTING_AND_VERIFICATION_MATRIX.md",
+    "docs/UI_UX_ANTISLOP_AND_MOBILE_ENGINE.md",
+    "docs/PEDAGOGY_ACADEMY_AND_EXPLAINABLE_TUTOR.md",
+    "docs/HARDWARE_TRANSMISSION_AND_TRAFO_SUTET.md",
+    "docs/HARDWARE_COMPONENTS_AND_PROTECTION.md",
+    "docs/PHYSICS_MICROHYDRO_AND_BESS_STORAGE.md",
+    "docs/PHYSICS_SOLAR_AND_OROGRAPHIC_WIND.md",
+    "docs/PHYSICS_TERRAIN_CELLULAR_AUTOMATA.md",
+    "docs/ARCHITECTURE_OUTDOOR_AND_LAB_QUARANTINE.md",
+    "Untitled 1.canvas",
+    "Untitled.canvas",
+    "2026-11-04.md",
+    "img_pln_calculator.png",
+    "docs/DEVLOG_SESSION_NATURE_MODE_4.0.md",
+    "node_modules/assertion-error/README.md"
+  ]
+}

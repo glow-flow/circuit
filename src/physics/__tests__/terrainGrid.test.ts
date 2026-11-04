@@ -213,5 +213,24 @@ describe('Outdoor Sandbox Terrain Physics & Spatial Collision Engine', () => {
       expect(Math.abs(settledBottom - expectedSurfaceY)).toBeLessThanOrEqual(2);
       expect(settledBottom).toBeLessThan(expectedSurfaceY + 10);
     }
+
+    // Verify solar-panel also settles flush on the terrain surface (groundOffset = 0)
+    const solarBox = getComponentBoundingBox({ x: 80, y: 200 }, 'solar-panel');
+    expect(solarBox.height).toBe(156);
+    const solarOutcome = evaluateComponentDropPhysics(
+      { x: 80, y: 200 },
+      'solar-panel',
+      null,
+      [],
+      grid,
+      containerSize
+    );
+    expect(solarOutcome.status).toBe('settled');
+    if (solarOutcome.status === 'settled') {
+      const solarBottom = solarOutcome.settledPosition.y + solarBox.height;
+      // At x = 80 (col ~2..4), support feet (0.35..0.65) sit at x = 134..180 (cols 3..5 -> hill row 14)
+      const expectedSolarSurfaceY = Math.round(14 * cellHeight); // 476px
+      expect(solarBottom).toBe(expectedSolarSurfaceY);
+    }
   });
 });

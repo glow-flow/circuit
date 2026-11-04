@@ -142,6 +142,38 @@ describe('canvasSpawnPosition utilities', () => {
         ])
       );
     });
+
+    it('prioritizes dry terrace positions before river water columns for non-hydro components', () => {
+      // Position camera directly over the river basin (cols 24..32 -> x = 816..1122)
+      (globalThis as any).document = {
+        getElementById: (id: string) => {
+          if (id === 'outdoor-scroll-viewport') {
+            return {
+              scrollLeft: 750,
+              clientWidth: 400,
+            };
+          }
+          if (id === 'outdoor-world-stage') {
+            return {
+              getBoundingClientRect: () => ({ width: 1360, height: 680 }),
+            };
+          }
+          return null;
+        },
+        querySelector: () => null,
+      };
+
+      const terrainGrid = createDefaultOutdoorTerrain(20, 40);
+      const { candidatePositions } = computeOutdoorSpawnCandidates(
+        'bess-substation',
+        terrainGrid
+      );
+
+      // First candidate must be on a dry terrace (e.g. left of col 24 at x <= 660, or right of col 32 at x >= 1122)
+      const firstX = candidatePositions[0].x;
+      const isDryTerrace = firstX + 156 <= 816 || firstX >= 1122;
+      expect(isDryTerrace).toBe(true);
+    });
   });
 
   describe('useCircuitStore.addComponent camera-centered default placement', () => {

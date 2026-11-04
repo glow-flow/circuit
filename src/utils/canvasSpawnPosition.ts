@@ -24,6 +24,7 @@ import { ComponentType, TerrainCellType } from '../types/circuit';
 import {
   COMPONENT_DIMENSIONS,
   DEFAULT_COMPONENT_DIMENSION,
+  doesComponentTouchWater,
   findTerrainSurfaceY,
   OUTDOOR_WORLD_MIN_WIDTH,
 } from '../physics/terrainGrid';
@@ -145,8 +146,11 @@ export function computeOutdoorSpawnCandidates(
     Math.min(worldContainerWidth - componentDimension.width - 24, baseCenteredX)
   );
 
-  // Compute safe drop Y elevation close to the ground surface to prevent height explosion
-  const computeSafeDropY = (candidateX: number): number => {
+  // Compute safe drop Y elevation close to the ground surface to prevent height explosion,
+  // and detect whether the landing footprint intersects water cells
+  const inspectCandidateSurface = (
+    candidateX: number
+  ): { dropY: number; hitsWater: boolean } => {
     if (terrainGrid && terrainGrid.length > 0) {
       const surfaceMetrics = findTerrainSurfaceY(
         {
@@ -157,43 +161,125 @@ export function computeOutdoorSpawnCandidates(
         },
         terrainGrid,
         worldContainerWidth,
-        worldContainerHeight
+        worldContainerHeight,
+        componentType
       );
       // Position slightly above settled point (e.g. 20px) so dropRows < 1 (safe drop threshold is 4.5 rows)
       const settledY = Math.max(
         8,
-        Math.round(surfaceMetrics.surfaceY - componentDimension.height + 6)
+        Math.round(surfaceMetrics.surfaceY - componentDimension.height)
       );
-      return Math.max(16, settledY - 20);
+      const settledBox = {
+        x: candidateX,
+        y: settledY,
+        width: componentDimension.width,
+        height: componentDimension.height,
+      };
+      return {
+        dropY: Math.max(16, settledY - 20),
+        hitsWater: doesComponentTouchWater(
+          settledBox,
+          terrainGrid,
+          worldContainerWidth,
+          worldContainerHeight
+        ),
+      };
     }
     // Fallback if terrainGrid not provided: ~45% down the container
-    return Math.round(worldContainerHeight * 0.45);
+    return {
+      dropY: Math.round(worldContainerHeight * 0.45),
+      hitsWater: false,
+    };
   };
 
-  // Generate candidate positions radiating from clampedBaseX: center, left, right, left-further, right-further...
-  // All candidates remain centered around the user's current camera view!
-  const horizontalOffsets = [0, -75, 75, -150, 150, -225, 225, -300, 300];
+  const isWaterImmune =
+    componentType === 'hydro-turbine' || componentType === 'hydro_turbine';
   const candidatePositions: Array<{ x: number; y: number }> = [];
+  const wetFallbackPositions: Array<{ x: number; y: number }> = [];
 
-  for (const offset of horizontalOffsets) {
-    const candidateX = Math.max(
-      24,
-      Math.min(worldContainerWidth - componentDimension.width - 24, clampedBaseX + offset)
-    );
-    // Prevent duplicate entries caused by clamping at edges
-    if (!candidatePositions.some((pos) => Math.abs(pos.x - candidateX) < 10)) {
-      candidatePositions.push({
-        x: candidateX,
-        y: computeSafeDropY(candidateX),
-      });
+  const pushUniqueCandidate = (
+    targetList: Array<{ x: number; y: number }>,
+    candidateX: number,
+    dropY: number
+  ) => {
+    if (
+      !candidatePositions.some((pos) => Math.abs(pos.x - candidateX) < 10) &&
+      !wetFallbackPositions.some((pos) => Math.abs(pos.x - candidateX) < 10)
+    ) {
+      targetList.push({ x: candidateX, y: dropY });
+    }
+  };
+
+  // For Micro-Hydro Turbines, prioritize spawning directly on active river/water columns if present
+  if (
+    isWaterImmune &&
+    terrainGrid &&
+    terrainGrid.length > 0 &&
+    terrainGrid[0].length > 0
+  ) {
+    const cols = terrainGrid[0].length;
+    const rows = terrainGrid.length;
+    const cellWidth = worldContainerWidth / cols;
+    const waterCols: number[] = [];
+
+    for (let c = 0; c < cols; c++) {
+      for (let r = 0; r < rows; r++) {
+        if (terrainGrid[r][c] === 'WATER' || terrainGrid[r][c] === 'WATER_SPRING') {
+          waterCols.push(c);
+          break;
+        }
+      }
+    }
+
+    if (waterCols.length > 0) {
+      const midWaterCol = waterCols[Math.floor(waterCols.length / 2)];
+      const waterCenterX = Math.round((midWaterCol + 0.5) * cellWidth - halfComponentWidth);
+      const waterOffsets = [0, -70, 70, -140, 140];
+      for (const wOffset of waterOffsets) {
+        const candidateX = Math.max(
+          24,
+          Math.min(worldContainerWidth - componentDimension.width - 24, waterCenterX + wOffset)
+        );
+        const { dropY } = inspectCandidateSurface(candidateX);
+        pushUniqueCandidate(candidatePositions, candidateX, dropY);
+      }
     }
   }
 
+  // Generate candidate positions radiating from clampedBaseX: center, left, right, left-further, right-further...
+  // Followed by stage-wide dry terrace anchors so placement succeeds even when initial terrace slots are full.
+  const horizontalOffsets = [
+    0, -75, 75, -150, 150, -225, 225, -300, 300, -380, 380, -460, 460,
+  ];
+  const stageTerraceAnchors = [630, 440, 240, 40, 1140];
+
+  const rawXPositions = [
+    ...horizontalOffsets.map((offset) => clampedBaseX + offset),
+    ...stageTerraceAnchors,
+  ];
+
+  for (const rawX of rawXPositions) {
+    const candidateX = Math.max(
+      24,
+      Math.min(worldContainerWidth - componentDimension.width - 24, rawX)
+    );
+    const { dropY, hitsWater } = inspectCandidateSurface(candidateX);
+    if (!isWaterImmune && hitsWater) {
+      pushUniqueCandidate(wetFallbackPositions, candidateX, dropY);
+    } else {
+      pushUniqueCandidate(candidatePositions, candidateX, dropY);
+    }
+  }
+
+  // Append any wet fallback positions only after all dry positions
+  candidatePositions.push(...wetFallbackPositions);
+
   // Ensure there is at least one candidate
   if (candidatePositions.length === 0) {
+    const { dropY } = inspectCandidateSurface(clampedBaseX);
     candidatePositions.push({
       x: clampedBaseX,
-      y: computeSafeDropY(clampedBaseX),
+      y: dropY,
     });
   }
 

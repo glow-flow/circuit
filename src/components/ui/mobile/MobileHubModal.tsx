@@ -4,7 +4,8 @@ import {
   GraduationCap,
   Wrench,
   Sun,
-  Sparkles,
+  Compass,
+  Cpu,
   LayoutGrid,
   Share2,
   HelpCircle,
@@ -72,7 +73,7 @@ export const MobileHubModal: React.FC<MobileHubModalProps> = ({ isOpen, onClose 
         <div className="px-5 pt-4 pb-3 border-b border-white/10 flex items-center justify-between shrink-0 bg-void-900/60">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-electric-500/15 border border-electric-500/30 flex items-center justify-center text-electric-400">
-              <Sparkles className="w-4 h-4 text-electric-400" />
+              <Compass className="w-4 h-4 text-electric-400" />
             </div>
             <div>
               <h3 className="text-sm font-bold text-white tracking-tight">
@@ -179,13 +180,13 @@ export const MobileHubModal: React.FC<MobileHubModalProps> = ({ isOpen, onClose 
               <button
                 type="button"
                 onClick={() => handleLaunchModal('tutor')}
-                className="text-left p-3 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 transition-all active:scale-95 cursor-pointer flex flex-col justify-between space-y-2 shadow-sm"
+                className="text-left p-3 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 transition-all active:scale-95 cursor-pointer flex flex-col justify-between space-y-2 shadow-sm"
               >
                 <div className="flex items-center justify-between">
-                  <div className="w-7 h-7 rounded-lg bg-purple-500/20 flex items-center justify-center text-purple-300">
-                    <Sparkles className="w-4 h-4" />
+                  <div className="w-7 h-7 rounded-lg bg-sky-500/20 flex items-center justify-center text-sky-300">
+                    <Cpu className="w-4 h-4" />
                   </div>
-                  <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30">
+                  <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 font-bold border border-sky-500/30">
                     Fisika MNA
                   </span>
                 </div>

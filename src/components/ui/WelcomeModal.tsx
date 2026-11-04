@@ -1,5 +1,5 @@
 import React from 'react';
-import { Compass, Sparkles, X, Zap } from 'lucide-react';
+import { Compass, X, Zap } from 'lucide-react';
 import { markTutorialAsSeen } from '../../utils/presetStorage';
 import { startTour } from '../../utils/tour';
 import { useCircuitStore } from '../../store/useCircuitStore';
@@ -156,7 +156,6 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose }) =
             >
               <Compass className="w-4 h-4" />
               <span>{isId ? 'Mulai Tutorial' : 'Start Tutorial'}</span>
-              <Sparkles className="w-3.5 h-3.5" />
             </button>
 
             <button

@@ -1,0 +1,30 @@
+{
+	"nodes":[
+		{"id":"hub-readme","type":"file","file":"docs/README.md","x":0,"y":0,"width":420,"height":260,"color":"5"},
+		{"id":"node-quarantine","type":"file","file":"docs/ARCHITECTURE_OUTDOOR_AND_LAB_QUARANTINE.md","x":-560,"y":-340,"width":400,"height":240,"color":"2"},
+		{"id":"node-devlog","type":"file","file":"docs/DEVLOG_SESSION_NATURE_MODE_4.0.md","x":560,"y":-340,"width":400,"height":240,"color":"5"},
+		{"id":"node-mna","type":"file","file":"docs/PHYSICS_MNA_SOLVER_AND_TRANSMISSION_GRID.md","x":-560,"y":20,"width":400,"height":240,"color":"4"},
+		{"id":"node-terrain","type":"file","file":"docs/PHYSICS_TERRAIN_CELLULAR_AUTOMATA.md","x":560,"y":20,"width":400,"height":240,"color":"4"},
+		{"id":"node-solar-wind","type":"file","file":"docs/PHYSICS_SOLAR_AND_OROGRAPHIC_WIND.md","x":560,"y":360,"width":400,"height":240,"color":"2"},
+		{"id":"node-hydro-bess","type":"file","file":"docs/PHYSICS_MICROHYDRO_AND_BESS_STORAGE.md","x":0,"y":380,"width":420,"height":240,"color":"4"},
+		{"id":"node-sutet","type":"file","file":"docs/HARDWARE_TRANSMISSION_AND_TRAFO_SUTET.md","x":-560,"y":360,"width":400,"height":240,"color":"1"},
+		{"id":"node-protection","type":"file","file":"docs/HARDWARE_COMPONENTS_AND_PROTECTION.md","x":-560,"y":680,"width":400,"height":220,"color":"1"},
+		{"id":"node-pedagogy","type":"file","file":"docs/PEDAGOGY_ACADEMY_AND_EXPLAINABLE_TUTOR.md","x":0,"y":-360,"width":420,"height":240,"color":"3"},
+		{"id":"node-antislop","type":"file","file":"docs/UI_UX_ANTISLOP_AND_MOBILE_ENGINE.md","x":560,"y":680,"width":400,"height":220,"color":"6"},
+		{"id":"node-testing","type":"file","file":"docs/TESTING_AND_VERIFICATION_MATRIX.md","x":0,"y":680,"width":420,"height":220,"color":"4"}
+	],
+	"edges":[
+		{"id":"edge-hub-quarantine","fromNode":"hub-readme","fromSide":"left","toNode":"node-quarantine","toSide":"right","label":"Dual-World Quarantine"},
+		{"id":"edge-hub-devlog","fromNode":"hub-readme","fromSide":"right","toNode":"node-devlog","toSide":"left","label":"Nature Mode 4.0 Audit"},
+		{"id":"edge-hub-mna","fromNode":"hub-readme","fromSide":"left","toNode":"node-mna","toSide":"right","label":"Ax = z Linear Solver"},
+		{"id":"edge-hub-terrain","fromNode":"hub-readme","fromSide":"right","toNode":"node-terrain","toSide":"left","label":"40x20 Cellular Automata"},
+		{"id":"edge-hub-hydro","fromNode":"hub-readme","fromSide":"bottom","toNode":"node-hydro-bess","toSide":"top","label":"Pelton Hydro & 1kWh BESS"},
+		{"id":"edge-hub-pedagogy","fromNode":"hub-readme","fromSide":"top","toNode":"node-pedagogy","toSide":"bottom","label":"KCL/KVL Proofs"},
+		{"id":"edge-terrain-solar","fromNode":"node-terrain","fromSide":"bottom","toNode":"node-solar-wind","toSide":"top","label":"Ray-Casting & Wind Shear"},
+		{"id":"edge-terrain-hydro","fromNode":"node-terrain","fromSide":"left","toNode":"node-hydro-bess","toSide":"right","label":"River & Waterfall Contact"},
+		{"id":"edge-mna-sutet","fromNode":"node-mna","fromSide":"bottom","toNode":"node-sutet","toSide":"top","label":"Virtual HVDC Grid Bus"},
+		{"id":"edge-sutet-protection","fromNode":"node-sutet","fromSide":"bottom","toNode":"node-protection","toSide":"top","label":"PUIL MCB & Step-Down"},
+		{"id":"edge-hydro-testing","fromNode":"node-hydro-bess","fromSide":"bottom","toNode":"node-testing","toSide":"top","label":"300+ Vitest Assertions"},
+		{"id":"edge-devlog-antislop","fromNode":"node-solar-wind","fromSide":"bottom","toNode":"node-antislop","toSide":"top","label":"60fps Telemetry HUD"}
+	]
+}

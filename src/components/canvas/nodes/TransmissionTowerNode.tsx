@@ -2,7 +2,7 @@ import React, { memo, useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Handle, Position, NodeProps } from 'reactflow';
 import { CircuitElementData } from '../../../types/circuit';
-import { Flame, Radio, Sparkles, X, Zap } from 'lucide-react';
+import { Flame, Radio, X, Zap } from 'lucide-react';
 import { useCircuitStore } from '../../../store/useCircuitStore';
 import { PanelDistribusiNode } from './PanelDistribusiNode';
 import { useModalKeyboardClose } from '../../../hooks/useModalKeyboardClose';
@@ -80,11 +80,11 @@ const OutdoorTowerView: React.FC<NodeProps<CircuitElementData>> = memo(({ id, da
       notify(
         targetMode === 'step_up'
           ? isId
-            ? '⚡ Gardu Trafo Cantol SUTET: Step-Up 240V Aktif! Arus kawat turun 20×, rugi panas I²R berkurang 400×, kabel transmisi dingin!'
-            : '⚡ SUTET Transformer Substation: Step-Up 240V Active! Line current dropped 20×, I²R heat loss slashed 400×, transmission wire cool!'
+            ? 'Gardu Trafo Cantol SUTET: Step-Up 240V Aktif! Arus kawat turun 20×, rugi panas I²R berkurang 400×, kabel transmisi dingin!'
+            : 'SUTET Transformer Substation: Step-Up 240V Active! Line current dropped 20×, I²R heat loss slashed 400×, transmission wire cool!'
           : isId
-          ? '⚠️ Transmisi 12V Langsung: Arus kawat tinggi menyebabkan rugi panas I²R dan kabel membara!'
-          : '⚠️ Direct 12V Transmission: High line current produces significant I²R Joule heating and wire stress!'
+          ? 'Transmisi 12V Langsung: Arus kawat tinggi menyebabkan rugi panas I²R dan kabel membara!'
+          : 'Direct 12V Transmission: High line current produces significant I²R Joule heating and wire stress!'
       );
     },
     [id, isId, notify, updateComponentData]
@@ -92,20 +92,21 @@ const OutdoorTowerView: React.FC<NodeProps<CircuitElementData>> = memo(({ id, da
 
   return (
     <div
-      className={`relative flex flex-col items-center select-none transition-all duration-200 group w-[132px] pointer-events-none ${
-        selected ? 'filter drop-shadow-[0_0_18px_rgba(34,211,238,0.55)]' : ''
+      className={`relative flex flex-col items-center justify-end select-none transition-all duration-200 group w-[132px] overflow-visible pointer-events-none ${
+        selected ? 'filter drop-shadow-[0_0_14px_rgba(34,211,238,0.45)]' : ''
       }`}
+      style={{ height: '226px' }}
     >
       {/* Top Floating Status & Telemetry Pill (Above Pylon) */}
       <div
-        className={`mb-1 px-2.5 py-1 rounded-2xl text-[10px] font-mono font-bold tracking-tight shadow-[0_8px_20px_rgba(0,0,0,0.45)] backdrop-blur-md border transition-all duration-300 z-30 pointer-events-auto cursor-grab active:cursor-grabbing ${
+        className={`mb-1 px-2.5 py-1 rounded-xl text-[10px] font-mono font-bold tracking-tight shadow-[0_8px_20px_rgba(0,0,0,0.45)] backdrop-blur-md border transition-all duration-300 z-30 pointer-events-auto cursor-grab active:cursor-grabbing ${
           isGridConnected
             ? isLineOverheated
               ? 'bg-red-950/90 text-red-200 border-red-500/80 shadow-[0_0_14px_rgba(239,68,68,0.45)] animate-pulse'
               : isStepUp
-              ? 'bg-cyan-950/90 text-cyan-200 border-cyan-400/60 shadow-[0_0_14px_rgba(34,211,238,0.35)]'
-              : 'bg-emerald-950/90 text-emerald-300 border-emerald-400/50 shadow-[0_0_14px_rgba(16,185,129,0.35)]'
-            : 'bg-void-950/90 text-slate-200 border-white/20'
+              ? 'bg-cyan-950/90 text-cyan-200 border-cyan-400/60'
+              : 'bg-emerald-950/90 text-emerald-300 border-emerald-400/50'
+            : 'bg-void-950/95 text-slate-200 border-white/15'
         }`}
       >
         <div className="flex items-center gap-1 whitespace-nowrap">
@@ -113,11 +114,11 @@ const OutdoorTowerView: React.FC<NodeProps<CircuitElementData>> = memo(({ id, da
             <>
               <span
                 className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                  isLineOverheated ? 'bg-red-400 animate-ping' : isStepUp ? 'bg-cyan-400 animate-pulse' : 'bg-emerald-400 animate-pulse'
+                  isLineOverheated ? 'bg-red-400 animate-ping' : isStepUp ? 'bg-cyan-400' : 'bg-emerald-400'
                 }`}
               />
               <Zap className={`w-3 h-3 shrink-0 ${isLineOverheated ? 'text-red-400' : isStepUp ? 'text-cyan-400' : 'text-emerald-400'}`} />
-              <span>
+              <span className="tabular-nums">
                 {isStepUp ? `[240V HV ${busVoltage.toFixed(0)}V]` : `[12V Dir ${busVoltage.toFixed(0)}V]`}
                 {currentAmperes > 0.001 ? ` · ${currentDisplay}` : ''}
               </span>
@@ -135,7 +136,7 @@ const OutdoorTowerView: React.FC<NodeProps<CircuitElementData>> = memo(({ id, da
 
       {/* High-Resolution Transparent Transmission Tower Pylon Graphic (288:510 aspect -> 112x198)
           pointer-events-none on the wide box so wires under the cross-arms are never blocked! */}
-      <div className="relative w-[112px] h-[198px] flex items-end justify-center overflow-visible pointer-events-none">
+      <div className="relative w-[112px] h-[198px] flex items-end justify-center overflow-visible pointer-events-none shrink-0">
         {/* Narrow Central Steel Spine Drag Hitbox (38px wide) so users can drag the tower while wires on the sides stay clickable */}
         <div
           className="absolute inset-y-2 left-1/2 -translate-x-1/2 w-[38px] pointer-events-auto cursor-grab active:cursor-grabbing z-20"
@@ -369,7 +370,7 @@ const OutdoorTowerView: React.FC<NodeProps<CircuitElementData>> = memo(({ id, da
                   >
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-sm font-bold font-mono">240V Step-Up</span>
-                      <Sparkles className={`w-4 h-4 ${isStepUp ? 'text-cyan-300' : 'text-slate-500'}`} />
+                      <Zap className={`w-4 h-4 ${isStepUp ? 'text-cyan-300' : 'text-slate-500'}`} />
                     </div>
                     <span className="text-[10px] block text-slate-400 leading-tight">
                       {isId ? 'Tegangan tinggi: Rugi turun 400×, kabel dingin' : 'High voltage: 400× loss reduction, cool wires'}

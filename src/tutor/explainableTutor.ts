@@ -58,7 +58,21 @@ export function analyzeExplainableCircuit(
 
   // Categorize components
   const voltageSources = nodes.filter((n) =>
-    ['battery', 'battery9v', 'battery-holder', 'solar-panel', 'wind-turbine', 'lab-panel'].includes(n.data.type)
+    [
+      'battery',
+      'battery9v',
+      'battery-holder',
+      'solar-panel',
+      'solar_panel',
+      'wind-turbine',
+      'wind_turbine',
+      'bess-substation',
+      'bess_substation',
+      'hydro-turbine',
+      'hydro_turbine',
+      'lab-panel',
+      'lab_panel',
+    ].includes(n.data.type)
   );
 
   const resistors = nodes.filter((n) => n.data.type === 'resistor');

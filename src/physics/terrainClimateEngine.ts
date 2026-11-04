@@ -541,8 +541,24 @@ export function applyTerrainMicroclimateToNodes(
   if (!nodes || nodes.length === 0) return [];
   if (!terrainGrid || terrainGrid.length === 0) return nodes;
 
-  const width = options.containerWidth ?? DEFAULT_OUTDOOR_WIDTH;
-  const height = options.containerHeight ?? DEFAULT_OUTDOOR_HEIGHT;
+  let liveStageWidth: number | undefined;
+  let liveStageHeight: number | undefined;
+  if (
+    options.containerWidth === undefined &&
+    options.containerHeight === undefined &&
+    typeof document !== 'undefined' &&
+    typeof document.getElementById === 'function'
+  ) {
+    const stageEl = document.getElementById('outdoor-world-stage');
+    const rect = stageEl?.getBoundingClientRect ? stageEl.getBoundingClientRect() : null;
+    if (rect && rect.width >= 400 && rect.height >= 250) {
+      liveStageWidth = rect.width;
+      liveStageHeight = rect.height;
+    }
+  }
+
+  const width = options.containerWidth ?? liveStageWidth ?? DEFAULT_OUTDOOR_WIDTH;
+  const height = options.containerHeight ?? liveStageHeight ?? DEFAULT_OUTDOOR_HEIGHT;
   const sunPosition = resolveSunPosition(options.sunPosition);
 
   const rows = terrainGrid.length;
@@ -558,9 +574,17 @@ export function applyTerrainMicroclimateToNodes(
     // --- 1. Photovoltaic Solar Panel ---
     if (node.data.type === 'solar-panel' || node.data.type === 'solar_panel') {
       const box = getComponentBoundingBox(node.position, node.data.type);
+      const { surfaceY } = findTerrainSurfaceY(
+        box,
+        terrainGrid,
+        width,
+        height,
+        node.data.type
+      );
       const receiverX = box.x + box.width * 0.5;
-      // Photovoltaic cell receiver surface is around 45% down the node body
-      const receiverY = box.y + box.height * 0.45;
+      // Photovoltaic cell receiver surface is around 45% down the node body,
+      // clamped above the supporting terrain surface so un-settled preset coordinates never self-shade.
+      const receiverY = Math.min(box.y + box.height * 0.45, surfaceY - cellHeight * 0.55);
 
       const shadowResult = cast1DTopographicShadowRay(
         receiverX,
@@ -598,7 +622,13 @@ export function applyTerrainMicroclimateToNodes(
     // --- 2. Renewable Wind Turbine ---
     if (node.data.type === 'wind-turbine' || node.data.type === 'wind_turbine') {
       const box = getComponentBoundingBox(node.position, node.data.type);
-      const { surfaceY } = findTerrainSurfaceY(box, terrainGrid, width, height);
+      const { surfaceY } = findTerrainSurfaceY(
+        box,
+        terrainGrid,
+        width,
+        height,
+        node.data.type
+      );
 
       const baseSpeed = Math.max(0, Math.min(100, node.data.speed ?? 50));
       const windShear = calculateOrographicWindShear(baseSpeed, surfaceY, baselineY);
@@ -621,9 +651,12 @@ export function applyTerrainMicroclimateToNodes(
       const box = getComponentBoundingBox(node.position, node.data.type);
       const waterFlow = detectTurbineWaterFlow(box, terrainGrid, width, height);
 
-      const effectiveFlow = waterFlow.hasWaterContact
+      const hasManualOverride = typeof node.data.manualWaterFlowRate === 'number';
+      const effectiveFlow = hasManualOverride
+        ? Math.max(0, Math.min(100, node.data.manualWaterFlowRate!))
+        : waterFlow.hasWaterContact
         ? waterFlow.flowPercentage
-        : (node.data.waterFlowRate ?? 0);
+        : 0;
       const effectiveHead = waterFlow.hasWaterContact
         ? waterFlow.headMeters
         : (node.data.hydraulicHeadMeters ?? 2.0);
@@ -638,7 +671,7 @@ export function applyTerrainMicroclimateToNodes(
           hydraulicHeadMeters: effectiveHead,
           voltage: hydroPoint.voltage,
           rpm: hydroPoint.rpm,
-          hasWaterContact: waterFlow.hasWaterContact,
+          hasWaterContact: waterFlow.hasWaterContact || (hasManualOverride && effectiveFlow > 0),
         },
       };
     }

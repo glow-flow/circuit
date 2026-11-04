@@ -1,6 +1,7 @@
 import React from 'react';
 import { Sun, Wind, Waves, BatteryCharging, ExternalLink, Zap } from 'lucide-react';
 import { useCircuitStore } from '../../../store/useCircuitStore';
+import { isOutdoorOnlyComponent } from '../../../types/circuit';
 
 /**
  * Mini Floating Telemetry HUD for Lab Mode (Nature Mode Phase 4).
@@ -8,7 +9,7 @@ import { useCircuitStore } from '../../../store/useCircuitStore';
  * Informs learners inside the indoor laboratory of live power generation
  * occurring outside in Nature Mode:
  * - Real-time breakdown of Solar (PV), Wind, Hydro, and BESS storage.
- * - One-click jump to Nature Mode ("Ke Alam Terbuka 🌲").
+ * - One-click jump to Nature Mode.
  *
  * Time Complexity: O(N) linear pass over circuit nodes (N <= 50).
  */
@@ -20,7 +21,9 @@ export const OutdoorGenerationMiniHud: React.FC = () => {
 
   if (worldMode !== 'lab') return null;
 
-  const outdoorNodes = nodes.filter((n) => n.data?.worldMode === 'outside');
+  const outdoorNodes = nodes.filter(
+    (n) => n.data?.worldMode === 'outside' || isOutdoorOnlyComponent(n.data?.type)
+  );
   if (outdoorNodes.length === 0) return null;
 
   const isId = language === 'id';
@@ -40,9 +43,9 @@ export const OutdoorGenerationMiniHud: React.FC = () => {
     } else if (type === 'wind-turbine' || type === 'wind_turbine') {
       windWatts += power;
     } else if (type === 'hydro-turbine' || type === 'hydro_turbine') {
-      hydroWatts += power;
+      hydroWatts += Math.max(power, node.data?.power ?? 0);
     } else if (type === 'bess-substation' || type === 'bess_substation') {
-      bessSoc = node.data?.socPercent ?? node.data?.currentCharge ?? 80;
+      bessSoc = Math.round((node.data?.socPercent ?? node.data?.currentCharge ?? 80) * 10) / 10;
     }
   }
 
@@ -56,7 +59,7 @@ export const OutdoorGenerationMiniHud: React.FC = () => {
     >
       <div className="flex items-center gap-1.5">
         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-        <span className="text-[11px] font-bold text-emerald-300 font-mono flex items-center gap-1">
+        <span className="text-[11px] font-bold text-emerald-300 font-mono tabular-nums flex items-center gap-1">
           <Zap className="w-3 h-3 text-emerald-400" />
           {totalOutdoorWatts}W
         </span>
@@ -65,7 +68,7 @@ export const OutdoorGenerationMiniHud: React.FC = () => {
       <div className="h-3 w-px bg-white/15" />
 
       {/* Mini Metric Icons */}
-      <div className="flex items-center gap-2 text-[10px] font-mono text-slate-300">
+      <div className="flex items-center gap-2 text-[10px] font-mono tabular-nums text-slate-300">
         <span className="flex items-center gap-0.5" title="Solar PV">
           <Sun className="w-3 h-3 text-amber-400" />
           {Math.round(solarWatts)}W

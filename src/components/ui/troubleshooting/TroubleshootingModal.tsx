@@ -5,7 +5,6 @@ import {
   Wrench,
   CheckCircle2,
   Clock,
-  Sparkles,
   HelpCircle,
   Play,
   ShieldAlert,
@@ -372,7 +371,7 @@ export const TroubleshootingModal: React.FC<TroubleshootingModalProps> = ({ isOp
                   onClick={handleRevealNextHint}
                   className="px-3.5 py-1.5 rounded-lg bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/30 text-sky-300 text-xs font-semibold transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-sky-400" />
+                  <HelpCircle className="w-3.5 h-3.5 text-sky-400" />
                   <span>
                     {isId
                       ? `Buka Petunjuk Tahap ${hintsRevealed + 1} (-${

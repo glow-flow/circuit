@@ -615,7 +615,8 @@ export function findTerrainSurfaceY(
   targetBox: BoundingBox,
   terrainGrid: TerrainCellType[][],
   containerWidth: number,
-  containerHeight: number
+  containerHeight: number,
+  componentType?: ComponentType
 ): { surfaceRow: number; surfaceY: number; cellHeight: number } {
   const safeWidth = containerWidth > 0 ? containerWidth : 960;
   const safeHeight = containerHeight > 0 ? containerHeight : 680;
@@ -635,8 +636,25 @@ export function findTerrainSurfaceY(
   const cellWidth = safeWidth / cols;
   const cellHeight = safeHeight / rows;
 
-  const footLeft = targetBox.x + targetBox.width * 0.22;
-  const footRight = targetBox.x + targetBox.width * 0.78;
+  // Sample the actual physical support base rather than overhanging rotor blades or cross-arms
+  let leftRatio = 0.25;
+  let rightRatio = 0.75;
+  if (componentType === 'wind-turbine' || componentType === 'wind_turbine') {
+    leftRatio = 0.42;
+    rightRatio = 0.58;
+  } else if (componentType === 'solar-panel' || componentType === 'solar_panel') {
+    leftRatio = 0.35;
+    rightRatio = 0.65;
+  } else if (
+    componentType === 'transmission-tower' ||
+    componentType === 'transmission_tower'
+  ) {
+    leftRatio = 0.3;
+    rightRatio = 0.7;
+  }
+
+  const footLeft = targetBox.x + targetBox.width * leftRatio;
+  const footRight = targetBox.x + targetBox.width * rightRatio;
 
   const startCol = Math.max(0, Math.min(cols - 1, Math.floor(footLeft / cellWidth)));
   const endCol = Math.max(0, Math.min(cols - 1, Math.floor(footRight / cellWidth)));
@@ -687,13 +705,13 @@ export function evaluateComponentDropPhysics(
     rawBox,
     terrainGrid,
     containerSize.width,
-    containerSize.height
+    containerSize.height,
+    type
   );
 
-  // Plant the component's base onto the terrain surface:
-  // For wind turbine, groundOffset is 0 so the mast base sits flush on the turf without penetrating the dirt.
-  // For other outdoor components (solar panel, transmission tower), 6px embeds them naturally into grass.
-  const groundOffset = type === 'wind-turbine' || type === 'wind_turbine' ? 0 : 6;
+  // Plant the component's base flush onto the terrain surface (groundOffset = 0)
+  // so no component sinks into the brown dirt row below.
+  const groundOffset = 0;
   const settledY = Math.max(8, Math.round(surfaceY - rawBox.height + groundOffset));
   const settledPosition = {
     x: Math.round(position.x),

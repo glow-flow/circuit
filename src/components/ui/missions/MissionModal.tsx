@@ -7,7 +7,6 @@ import {
   Play,
   X,
   Target,
-  Sparkles,
   ChevronRight,
   ChevronLeft,
   ShieldCheck,
@@ -92,7 +91,7 @@ export const MissionModal: React.FC<MissionModalProps> = ({ isOpen, onClose }) =
           particleCount: 80,
           spread: 70,
           origin: { y: 0.6 },
-          colors: ['#38bdf8', '#f59e0b', '#10b981', '#a855f7'],
+          colors: ['#38bdf8', '#f59e0b', '#10b981', '#0ea5e9'],
         });
       }
     }
@@ -129,7 +128,7 @@ export const MissionModal: React.FC<MissionModalProps> = ({ isOpen, onClose }) =
         );
       case 'advanced':
         return (
-          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-400 border border-purple-500/30">
+          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-400 border border-sky-500/30">
             {isId ? 'Mahir' : 'Advanced'}
           </span>
         );
@@ -332,7 +331,7 @@ export const MissionModal: React.FC<MissionModalProps> = ({ isOpen, onClose }) =
               {/* Dynamic Feedback Message */}
               <div className="mt-3 text-[11px] font-sans text-slate-300 flex items-center gap-2">
                 {validationResult.isCompleted ? (
-                  <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                 ) : (
                   <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
                 )}

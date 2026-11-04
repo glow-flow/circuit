@@ -7,11 +7,11 @@ import {
   Zap,
   Activity,
   Sliders,
-  Sparkles,
   Trees,
 } from 'lucide-react';
 import { useCircuitStore } from '../../../store/useCircuitStore';
 import { createOutdoorPowerStationElements } from '../../../utils/outdoorSpawnUtils';
+import { isOutdoorOnlyComponent } from '../../../types/circuit';
 import {
   calculateSolarOperatingPoint,
   generateSolarIVCurve,
@@ -184,13 +184,12 @@ export const RenewableLabModal: React.FC<RenewableLabModalProps> = ({ isOpen, on
     const nonOutdoorNodes = state.nodes.filter(
       (n) =>
         n.data.worldMode !== 'outside' &&
-        n.data.type !== 'solar-panel' &&
-        n.data.type !== 'solar_panel' &&
-        n.data.type !== 'wind-turbine' &&
-        n.data.type !== 'wind_turbine'
+        !isOutdoorOnlyComponent(n.data.type)
     );
     const outdoorNodeIds = new Set(
-      state.nodes.filter((n) => n.data.worldMode === 'outside').map((n) => n.id)
+      state.nodes
+        .filter((n) => n.data.worldMode === 'outside' || isOutdoorOnlyComponent(n.data.type))
+        .map((n) => n.id)
     );
     const nonOutdoorEdges = state.edges.filter(
       (e) => !outdoorNodeIds.has(e.source) && !outdoorNodeIds.has(e.target)
@@ -284,7 +283,7 @@ export const RenewableLabModal: React.FC<RenewableLabModalProps> = ({ isOpen, on
           <div>
             <div className="flex items-center justify-between mb-2.5">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <Sliders className="w-3.5 h-3.5 text-emerald-400" />
                 {isId ? 'Pilih Skenario Pembelajaran' : 'Select Educational Scenario'}
               </span>
             </div>
@@ -336,7 +335,7 @@ export const RenewableLabModal: React.FC<RenewableLabModalProps> = ({ isOpen, on
                     className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-void-950 font-bold text-xs shadow-md shadow-emerald-500/20 transition-all active:scale-95 cursor-pointer"
                   >
                     <Trees className="w-4 h-4 text-void-950" />
-                    <span>{isId ? '🌲 Pasang Pembangkit di Alam Terbuka' : '🌲 Deploy to Outdoor Sandbox'}</span>
+                    <span>{isId ? 'Pasang Pembangkit di Alam Terbuka' : 'Deploy to Outdoor Sandbox'}</span>
                   </button>
                 </div>
               </div>
@@ -493,10 +492,10 @@ export const RenewableLabModal: React.FC<RenewableLabModalProps> = ({ isOpen, on
               <div className="rounded-xl bg-void-950 border border-white/5 p-3.5 flex flex-col justify-between">
                 <div className="flex items-center justify-between text-slate-400">
                   <span className="text-xs font-medium flex items-center gap-1.5">
-                    <Zap className="w-4 h-4 text-purple-400" />
+                    <Zap className="w-4 h-4 text-sky-400" />
                     {isId ? 'Beban Konsumen' : 'Consumer Load'}
                   </span>
-                  <span className="text-[10px] font-mono text-purple-400">Demand</span>
+                  <span className="text-[10px] font-mono text-sky-400">Demand</span>
                 </div>
                 <div className="my-2">
                   <span className="text-2xl font-mono font-bold text-white tracking-tight">
@@ -794,7 +793,7 @@ export const RenewableLabModal: React.FC<RenewableLabModalProps> = ({ isOpen, on
                 <div>
                   <div className="flex justify-between text-xs font-medium mb-1">
                     <span className="text-slate-300">{isId ? 'Beban Konsumen' : 'Load Demand'}</span>
-                    <span className="font-mono text-purple-400 font-bold">{loadDemandWatts} W</span>
+                    <span className="font-mono text-sky-400 font-bold">{loadDemandWatts} W</span>
                   </div>
                   <input
                     type="range"
@@ -803,7 +802,7 @@ export const RenewableLabModal: React.FC<RenewableLabModalProps> = ({ isOpen, on
                     step="5"
                     value={loadDemandWatts}
                     onChange={(e) => setLoadDemandWatts(Number(e.target.value))}
-                    className="w-full accent-purple-400 cursor-pointer"
+                    className="w-full accent-sky-400 cursor-pointer"
                   />
                 </div>
               </div>

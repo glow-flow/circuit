@@ -152,7 +152,7 @@ export const PresetGalleryModal: React.FC<PresetGalleryModalProps> = ({ isOpen, 
         );
       case 'advanced':
         return (
-          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-400 border border-purple-500/30">
+          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-400 border border-sky-500/30">
             {isId ? 'Mahir' : 'Advanced'}
           </span>
         );

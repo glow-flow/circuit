@@ -362,12 +362,12 @@ export const OscilloscopeModal: React.FC<OscilloscopeModalProps> = ({ isOpen, on
           </div>
 
           {/* Energy */}
-          <div className="p-3 rounded-xl bg-void-900/80 border border-purple-500/20">
+          <div className="p-3 rounded-xl bg-void-900/80 border border-sky-500/20">
             <div className="flex items-center justify-between text-slate-400 text-[11px] font-sans">
               <span>{isId ? 'Energi Kumulatif' : 'Energy (Wh)'}</span>
-              <Activity className="w-3.5 h-3.5 text-purple-400" />
+              <Activity className="w-3.5 h-3.5 text-sky-400" />
             </div>
-            <div className="text-base sm:text-lg font-mono font-bold text-purple-300 mt-1">
+            <div className="text-base sm:text-lg font-mono font-bold text-sky-300 mt-1">
               {latestPoint.energyWattHours < 1
                 ? `${(latestPoint.energyWattHours * 1000).toFixed(1)} mWh`
                 : `${latestPoint.energyWattHours.toFixed(4)} Wh`}

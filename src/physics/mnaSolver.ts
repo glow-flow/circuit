@@ -252,7 +252,11 @@ export function isActiveVoltageSource(
           (c.type === 'solar-panel' ||
             c.type === 'solar_panel' ||
             c.type === 'wind-turbine' ||
-            c.type === 'wind_turbine') &&
+            c.type === 'wind_turbine' ||
+            (c.type === 'bess-substation' && (c.voltage ?? 12.8) > 0) ||
+            (c.type === 'bess_substation' && (c.voltage ?? 12.8) > 0) ||
+            (c.type === 'hydro-turbine' && (c.voltage ?? 0) > 0) ||
+            (c.type === 'hydro_turbine' && (c.voltage ?? 0) > 0)) &&
           c.worldMode === 'outside'
       );
       if (hasGridGenerator) return false;
@@ -473,9 +477,13 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
 
     const getRegulatedSourceVoltage = (sourceComp: CircuitElementData): number => {
       const rawVoltage = getVoltageSourceNominalVoltage(sourceComp);
+      const isOutdoorGridSource =
+        isRenewableWithBlockingDiode(sourceComp) ||
+        sourceComp.type === 'bess-substation' ||
+        sourceComp.type === 'bess_substation';
       if (
         gridStepDownCeiling !== null &&
-        isRenewableWithBlockingDiode(sourceComp) &&
+        isOutdoorGridSource &&
         gridPositiveNet !== undefined &&
         gridNegativeNet !== undefined
       ) {

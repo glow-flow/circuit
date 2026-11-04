@@ -10,6 +10,7 @@ import ReactFlow, {
 import {
   ChevronLeft,
   ChevronRight,
+  CloudRain,
   Compass,
   Droplets,
   Eraser,
@@ -19,19 +20,25 @@ import {
   Hand,
   Layers,
   RotateCcw,
-  Sparkles,
+  Sliders,
   Sprout,
   Sun,
+  Sunrise,
+  Sunset,
+  Zap,
 } from 'lucide-react';
 import { useCircuitStore } from '../../store/useCircuitStore';
 import {
   CircuitElementData,
   ExplosionEvent,
   TerrainBrushTool,
+  isOutdoorOnlyComponent,
 } from '../../types/circuit';
 import { PALETTE_DRAG_MIME, getPaletteEntry } from '../../constants/componentCatalog';
 import {
   evaluateComponentDropPhysics,
+  findTerrainSurfaceY,
+  getComponentBoundingBox,
   getHillEdgeSlopeSide,
   GRID_COLS,
   GRID_ROWS,
@@ -181,7 +188,7 @@ const OutdoorSandboxInner: React.FC = () => {
           topPx: 64,
           elevationDeg: 75,
           azimuthText: isId ? 'Zenith (Tepat di Atas)' : 'Zenith (High Overhead)',
-          label: isId ? '☀️ Siang (75° Zenith)' : '☀️ Noon (75° Zenith)',
+          label: isId ? 'Siang (75° Zenith)' : 'Noon (75° Zenith)',
           sublabel: isId ? 'Radiasi surya maksimal 100%' : 'Peak 100% solar irradiance',
           coreClass:
             'w-16 h-16 bg-gradient-to-tr from-yellow-300 via-amber-200 to-white shadow-[0_0_50px_rgba(253,224,71,0.95)]',
@@ -197,7 +204,7 @@ const OutdoorSandboxInner: React.FC = () => {
           topPx: 120,
           elevationDeg: 35,
           azimuthText: isId ? 'Barat (Senja)' : 'West (Sunset)',
-          label: isId ? '🌇 Sore (35° Barat)' : '🌇 Afternoon (35° West)',
+          label: isId ? 'Sore (35° Barat)' : 'Afternoon (35° West)',
           sublabel: isId ? 'Bayangan tebing jatuh ke timur' : 'Cliff shadows cast eastward',
           coreClass:
             'w-14 h-14 bg-gradient-to-tr from-orange-500 via-amber-400 to-yellow-200 shadow-[0_0_45px_rgba(249,115,22,0.9)]',
@@ -214,7 +221,7 @@ const OutdoorSandboxInner: React.FC = () => {
           topPx: 120,
           elevationDeg: 35,
           azimuthText: isId ? 'Timur (Fajar)' : 'East (Sunrise)',
-          label: isId ? '🌅 Pagi (35° Timur)' : '🌅 Morning (35° East)',
+          label: isId ? 'Pagi (35° Timur)' : 'Morning (35° East)',
           sublabel: isId ? 'Bayangan tebing jatuh ke barat' : 'Cliff shadows cast westward',
           coreClass:
             'w-14 h-14 bg-gradient-to-tr from-amber-400 via-yellow-300 to-orange-100 shadow-[0_0_45px_rgba(245,158,11,0.9)]',
@@ -257,10 +264,7 @@ const OutdoorSandboxInner: React.FC = () => {
       nodes.filter(
         (n) =>
           n.data.worldMode === 'outside' ||
-          n.data.type === 'solar-panel' ||
-          n.data.type === 'solar_panel' ||
-          n.data.type === 'wind-turbine' ||
-          n.data.type === 'wind_turbine'
+          isOutdoorOnlyComponent(n.data.type)
       ),
     [nodes]
   );
@@ -269,6 +273,56 @@ const OutdoorSandboxInner: React.FC = () => {
     const outdoorIds = new Set(outdoorNodes.map((n) => n.id));
     return edges.filter((e) => outdoorIds.has(e.source) && outdoorIds.has(e.target));
   }, [edges, outdoorNodes]);
+
+  /**
+   * Aligns existing outdoor nodes flush onto the terrain surface for the active stage dimensions
+   * without triggering drop-height impact explosions (e.g. when loading a preset or resizing viewport).
+   * Time Complexity: O(N_out * W_node)
+   */
+  const alignOutdoorNodesToTerrainSurface = useCallback(() => {
+    const stageEl = containerRef.current;
+    if (!stageEl) return;
+    const rect = stageEl.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+
+    const state = useCircuitStore.getState();
+    let hasPositionAlignment = false;
+    const alignedNodes = state.nodes.map((node) => {
+      if (
+        (node.data.worldMode !== 'outside' && !isOutdoorOnlyComponent(node.data.type)) ||
+        node.data.type === 'waypoint' ||
+        activeDraggedNodeIdRef.current === node.id
+      ) {
+        return node;
+      }
+      const box = getComponentBoundingBox(node.position, node.data.type);
+      const { surfaceY } = findTerrainSurfaceY(
+        box,
+        state.terrainGrid,
+        rect.width,
+        rect.height,
+        node.data.type
+      );
+      const targetY = Math.max(8, Math.round(surfaceY - box.height));
+      if (Math.abs(targetY - node.position.y) <= 1) {
+        return node;
+      }
+      hasPositionAlignment = true;
+      return {
+        ...node,
+        position: {
+          x: Math.round(node.position.x),
+          y: targetY,
+        },
+      };
+    });
+
+    if (hasPositionAlignment) {
+      state.setNodes(alignedNodes);
+    } else {
+      state.runSimulation();
+    }
+  }, []);
 
   // Keep camera scroll slider synchronized with viewport size & scroll position
   const syncCameraScrollMetrics = useCallback(() => {
@@ -282,20 +336,26 @@ const OutdoorSandboxInner: React.FC = () => {
 
   useEffect(() => {
     syncCameraScrollMetrics();
+    alignOutdoorNodesToTerrainSurface();
     const vp = scrollViewportRef.current;
     let resizeObserver: ResizeObserver | null = null;
     if (typeof ResizeObserver !== 'undefined' && vp) {
       resizeObserver = new ResizeObserver(() => {
         syncCameraScrollMetrics();
+        alignOutdoorNodesToTerrainSurface();
       });
       resizeObserver.observe(vp);
     }
-    window.addEventListener('resize', syncCameraScrollMetrics);
+    const handleWindowResize = () => {
+      syncCameraScrollMetrics();
+      alignOutdoorNodesToTerrainSurface();
+    };
+    window.addEventListener('resize', handleWindowResize);
     return () => {
       resizeObserver?.disconnect();
-      window.removeEventListener('resize', syncCameraScrollMetrics);
+      window.removeEventListener('resize', handleWindowResize);
     };
-  }, [syncCameraScrollMetrics]);
+  }, [syncCameraScrollMetrics, alignOutdoorNodesToTerrainSurface]);
 
   const scrollWorldBy = useCallback((deltaX: number) => {
     const vp = scrollViewportRef.current;
@@ -320,7 +380,9 @@ const OutdoorSandboxInner: React.FC = () => {
 
     const currentOutdoorNodes = useCircuitStore
       .getState()
-      .nodes.filter((n) => n.data.worldMode === 'outside');
+      .nodes.filter(
+        (n) => n.data.worldMode === 'outside' || isOutdoorOnlyComponent(n.data.type)
+      );
 
     for (const node of currentOutdoorNodes) {
       if (node.data.type === 'waypoint') continue;
@@ -345,7 +407,6 @@ const OutdoorSandboxInner: React.FC = () => {
           width: rect.width,
           height: rect.height,
         });
-        break;
       }
     }
   }, [terrainGrid, settleOutdoorNodeAfterDrag]);
@@ -523,24 +584,18 @@ const OutdoorSandboxInner: React.FC = () => {
         : OUTDOOR_WORLD_MIN_WIDTH;
     const canvasHeight = bounds && bounds.height > 250 ? bounds.height : 680;
 
-    // Clear existing outdoor nodes first to avoid overlap, and purge any rogue solar/wind nodes from nonOutdoor
+    // Clear existing outdoor nodes first to avoid overlap, and purge any rogue outdoor nodes from nonOutdoor
     const nonOutdoorNodes = state.nodes.filter(
       (n) =>
         n.data.worldMode !== 'outside' &&
-        n.data.type !== 'solar-panel' &&
-        n.data.type !== 'solar_panel' &&
-        n.data.type !== 'wind-turbine' &&
-        n.data.type !== 'wind_turbine'
+        !isOutdoorOnlyComponent(n.data.type)
     );
     const outdoorNodeIds = new Set(
       state.nodes
         .filter(
           (n) =>
             n.data.worldMode === 'outside' ||
-            n.data.type === 'solar-panel' ||
-            n.data.type === 'solar_panel' ||
-            n.data.type === 'wind-turbine' ||
-            n.data.type === 'wind_turbine'
+            isOutdoorOnlyComponent(n.data.type)
         )
         .map((n) => n.id)
     );
@@ -565,8 +620,8 @@ const OutdoorSandboxInner: React.FC = () => {
     scrollViewportRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
     state.notify(
       isId
-        ? '⚡ Pembangkit Listrik Alam (Solar + Turbin + Menara Transmisi) siap menyalurkan 12V ke Lab!'
-        : '⚡ Outdoor Power Station (Solar + Wind + Transmission Tower) ready to transmit 12V to Lab!'
+        ? 'Pembangkit Listrik Alam (Solar + Turbin + Menara Transmisi) siap menyalurkan 12V ke Lab.'
+        : 'Outdoor Power Station (Solar + Wind + Transmission Tower) ready to transmit 12V to Lab.'
     );
   }, [isId]);
 
@@ -597,6 +652,13 @@ const OutdoorSandboxInner: React.FC = () => {
       fullLabel: isId ? '+ Air (Bahaya!)' : '+ Water (Hazard!)',
       icon: <Droplets className="w-3.5 h-3.5 text-sky-400" />,
       activeClass: 'bg-sky-500/30 border-sky-400 text-sky-100 shadow-[0_0_12px_rgba(56,189,248,0.35)]',
+    },
+    {
+      id: 'WATER_SPRING',
+      label: isId ? 'Mata Air' : 'Spring',
+      fullLabel: isId ? '+ Mata Air Abadi (Hulu Turbin Air)' : '+ Water Spring (Continuous Flow)',
+      icon: <CloudRain className="w-3.5 h-3.5 text-cyan-300" />,
+      activeClass: 'bg-cyan-500/30 border-cyan-300 text-cyan-100 shadow-[0_0_12px_rgba(34,211,238,0.35)]',
     },
     {
       id: 'EMPTY',
@@ -878,6 +940,23 @@ const OutdoorSandboxInner: React.FC = () => {
                   );
                 }
 
+                if (cellType === 'WATER_SPRING') {
+                  return (
+                    <div
+                      key={key}
+                      className="w-[calc(100%+1px)] h-[calc(100%+1px)] relative overflow-hidden bg-cyan-900/90 border border-cyan-300/70 shadow-[inset_0_0_10px_rgba(34,211,238,0.65)]"
+                      style={{
+                        backgroundImage: "url('/assets/tile-water.png')",
+                        backgroundSize: '120px 120px',
+                        backgroundPosition: `-${(cIdx % 6) * 20}px -${(rIdx % 6) * 20}px`,
+                      }}
+                    >
+                      <div className="absolute inset-x-0 top-0 h-[3px] bg-cyan-200 shadow-[0_0_8px_rgba(103,232,249,0.95)]" />
+                      <div className="absolute inset-1 rounded-xs border border-cyan-200/40 bg-cyan-400/20 animate-pulse" />
+                    </div>
+                  );
+                }
+
                 if (cellType === 'WATER') {
                   const isTopWaterSurface =
                     rIdx === 0 || terrainGrid[rIdx - 1]?.[cIdx] === 'EMPTY';
@@ -1108,8 +1187,8 @@ const OutdoorSandboxInner: React.FC = () => {
             title={isId ? 'Tampilkan Menu Alat Alam' : 'Show Outdoor Toolbar'}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-void-950/90 backdrop-blur-xl border border-emerald-400/50 text-emerald-300 text-xs font-semibold shadow-[0_8px_24px_rgba(0,0,0,0.6)] active:scale-95 hover:border-emerald-300 hover:text-emerald-200 transition-all cursor-pointer"
           >
-            <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-            <span>{isId ? '🌿 Alat Alam' : '🌿 Outdoor Tools'}</span>
+            <Sliders className="w-3.5 h-3.5 text-emerald-400" />
+            <span>{isId ? 'Alat Alam' : 'Outdoor Tools'}</span>
             <Eye className="w-3 h-3 text-emerald-400/80 ml-0.5" />
           </button>
         </div>
@@ -1184,7 +1263,7 @@ const OutdoorSandboxInner: React.FC = () => {
                   : 'bg-void-900/80 hover:bg-void-800 border-white/10 text-slate-400 hover:text-white'
               }`}
             >
-              <span>🌅</span>
+              <Sunrise className="w-3.5 h-3.5 text-amber-400" />
               <span className="hidden md:inline">{isId ? 'Pagi (35°)' : 'Morning (35°)'}</span>
             </button>
 
@@ -1198,7 +1277,7 @@ const OutdoorSandboxInner: React.FC = () => {
                   : 'bg-void-900/80 hover:bg-void-800 border-white/10 text-slate-400 hover:text-white'
               }`}
             >
-              <span>☀️</span>
+              <Sun className="w-3.5 h-3.5 text-yellow-300" />
               <span className="hidden md:inline">{isId ? 'Siang (75°)' : 'Noon (75°)'}</span>
             </button>
 
@@ -1212,7 +1291,7 @@ const OutdoorSandboxInner: React.FC = () => {
                   : 'bg-void-900/80 hover:bg-void-800 border-white/10 text-slate-400 hover:text-white'
               }`}
             >
-              <span>🌇</span>
+              <Sunset className="w-3.5 h-3.5 text-orange-400" />
               <span className="hidden md:inline">{isId ? 'Sore (35°)' : 'Afternoon (35°)'}</span>
             </button>
           </div>
@@ -1227,14 +1306,14 @@ const OutdoorSandboxInner: React.FC = () => {
             onClick={handleSpawnOutdoorPowerStation}
             title={
               isId
-                ? '⚡ Pasang Pembangkit Alam (Panel Surya 12V + Turbin Angin + Menara Transmisi)'
-                : '⚡ Spawn Outdoor Station (Solar Panel 12V + Wind Turbine + Transmission Tower)'
+                ? 'Pasang Pembangkit Alam (Panel Surya 12V + Turbin Angin + Menara Transmisi)'
+                : 'Spawn Outdoor Station (Solar Panel 12V + Wind Turbine + Transmission Tower)'
             }
             className="flex items-center gap-1 px-2 sm:px-3 py-1 rounded-xl bg-emerald-500/25 hover:bg-emerald-500/35 border border-emerald-400/60 text-emerald-200 text-[11px] font-bold shadow-[0_0_14px_rgba(16,185,129,0.3)] backdrop-blur-md active:scale-95 transition-all cursor-pointer shrink-0"
           >
-            <Sparkles className="w-3.5 h-3.5 text-emerald-300" />
+            <Zap className="w-3.5 h-3.5 text-emerald-300" />
             <span className="hidden sm:inline">
-              {isId ? '⚡ Pembangkit (12V)' : '⚡ Station (12V)'}
+              {isId ? 'Pembangkit (12V)' : 'Station (12V)'}
             </span>
             <span className="sm:hidden font-mono">12V</span>
           </button>

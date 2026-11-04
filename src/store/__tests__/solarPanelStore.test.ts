@@ -4,6 +4,7 @@ import { createEmptyTerrainGrid } from '../../physics/terrainGrid';
 
 describe('useCircuitStore - World Mode, Outdoor Sandbox & MNA Integration', () => {
   beforeEach(() => {
+    useCircuitStore.getState().setLanguage('id');
     useCircuitStore.getState().clearCanvas();
     useCircuitStore.getState().setWorldMode('lab');
     useCircuitStore.getState().resetOutdoorTerrain();

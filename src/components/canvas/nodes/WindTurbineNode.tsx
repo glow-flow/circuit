@@ -1,7 +1,7 @@
 import React, { memo, useCallback } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
 import { CircuitElementData } from '../../../types/circuit';
-import { Wind, Zap } from 'lucide-react';
+import { Wind, Zap, Mountain, TrendingDown, ShieldCheck } from 'lucide-react';
 import { useCircuitStore } from '../../../store/useCircuitStore';
 
 /**
@@ -13,6 +13,7 @@ import { useCircuitStore } from '../../../store/useCircuitStore';
  * - Progressive anime/cinema motion-blur smear frame overlay when spinning fast.
  * - Slider from 0% to 100% controlling rotor speed and linear output EMF (0V to 12V).
  * - Dual terminals (Positive and Negative) at bottom base of the mast.
+ * - Strictly calibrated 260px height (`justify-end`) so the mast base stays flush on the ground.
  *
  * Time Complexity: O(1) per render.
  */
@@ -55,22 +56,19 @@ export const WindTurbineNode: React.FC<NodeProps<CircuitElementData>> = memo(
 
     return (
       <div
-        className={`relative flex flex-col items-center select-none transition-all duration-200 group w-[144px] ${
-          selected ? 'filter drop-shadow-[0_0_18px_rgba(34,211,238,0.6)]' : ''
+        className={`relative flex flex-col items-center justify-end select-none transition-all duration-200 group w-[144px] overflow-visible ${
+          selected ? 'filter drop-shadow-[0_0_14px_rgba(34,211,238,0.5)]' : ''
         }`}
+        style={{ height: '260px' }}
       >
         {/* Top Floating Control & Voltage Pill */}
-        <div className="nodrag mb-1 w-full px-2 py-1.5 rounded-2xl bg-void-950/90 backdrop-blur-md border border-cyan-400/40 shadow-[0_8px_20px_rgba(0,0,0,0.45)] flex flex-col gap-1 z-30">
+        <div className="nodrag mb-1 w-full px-2 py-1.5 rounded-xl bg-void-950/95 backdrop-blur-md border border-white/15 shadow-[0_8px_20px_rgba(0,0,0,0.45)] flex flex-col gap-1 z-30">
           <div className="flex items-center justify-between text-[10px] font-mono">
             <span className="flex items-center gap-1 font-bold text-cyan-300 truncate">
-              <Wind
-                className={`w-3 h-3 text-cyan-400 shrink-0 ${
-                  effectiveSpeed > 0 ? 'animate-pulse' : ''
-                }`}
-              />
+              <Wind className="w-3 h-3 text-cyan-400 shrink-0" />
               <span>{isId ? 'Turbin' : 'Turbine'}</span>
             </span>
-            <span className="flex items-center gap-1 font-bold text-amber-300 shrink-0">
+            <span className="flex items-center gap-1 font-bold text-amber-300 shrink-0 tabular-nums">
               <Zap className="w-2.5 h-2.5 text-amber-400" />
               {outputVoltage.toFixed(1)}V
               {powerWatts > 0.01 ? ` · ${powerWatts.toFixed(1)}W` : ''}
@@ -89,7 +87,7 @@ export const WindTurbineNode: React.FC<NodeProps<CircuitElementData>> = memo(
               className="w-full h-1.5 bg-void-900 rounded-lg appearance-none cursor-pointer accent-cyan-400 focus:outline-none"
               aria-label="Wind Turbine Speed"
             />
-            <span className="text-[9px] font-mono font-bold text-cyan-200 w-7 text-right shrink-0">
+            <span className="text-[9px] font-mono font-bold text-cyan-200 w-7 text-right shrink-0 tabular-nums">
               {baseSpeed}%
             </span>
           </div>
@@ -100,7 +98,7 @@ export const WindTurbineNode: React.FC<NodeProps<CircuitElementData>> = memo(
               id="turbine-elevation-bonus"
               className="px-1.5 py-0.5 rounded bg-cyan-950/90 border border-cyan-400/50 text-[8px] font-mono font-bold text-cyan-300 text-center flex items-center justify-center gap-1 shadow-sm"
             >
-              <span>🏔️</span>
+              <Mountain className="w-2.5 h-2.5 text-cyan-400 shrink-0" />
               <span className="truncate">
                 {isId
                   ? `Puncak Bukit +${elevationBonus}% RPM & Daya`
@@ -113,7 +111,7 @@ export const WindTurbineNode: React.FC<NodeProps<CircuitElementData>> = memo(
               id="turbine-elevation-penalty"
               className="px-1.5 py-0.5 rounded bg-slate-900/90 border border-amber-500/40 text-[8px] font-mono font-bold text-amber-300 text-center flex items-center justify-center gap-1 shadow-sm"
             >
-              <span>📉</span>
+              <TrendingDown className="w-2.5 h-2.5 text-amber-400 shrink-0" />
               <span className="truncate">
                 {isId
                   ? `Lembah ${elevationBonus}% RPM & Daya`
@@ -125,8 +123,9 @@ export const WindTurbineNode: React.FC<NodeProps<CircuitElementData>> = memo(
           <div className="flex items-center justify-between text-[8px] font-mono text-slate-400 pt-0.5 border-t border-white/10">
             <span className="text-cyan-300/90">AC→DC Rectifier</span>
             {data.isBlockingDiodeActive ? (
-              <span className="text-emerald-300 font-bold">
-                {isId ? '🛡️ Anti-Arus Balik' : '🛡️ Diode Active'}
+              <span className="text-emerald-300 font-bold flex items-center gap-0.5">
+                <ShieldCheck className="w-2.5 h-2.5 text-emerald-400 shrink-0" />
+                {isId ? 'Anti-Arus Balik' : 'Diode Active'}
               </span>
             ) : (
               <span>Schottky Diode</span>
@@ -135,7 +134,7 @@ export const WindTurbineNode: React.FC<NodeProps<CircuitElementData>> = memo(
         </div>
 
         {/* Physical Wind Turbine Assembly: Mast Base Anchored at Bottom-0 */}
-        <div className="relative w-[144px] h-[184px] flex items-end justify-center overflow-visible">
+        <div className="relative w-[144px] h-[184px] flex items-end justify-center overflow-visible shrink-0">
           {/* Stationary Tapered Tower Mast (height 144px, hub center at 7.54% from top = 133.1px from bottom) */}
           <img
             src="/assets/wind-turbine-mast.png"

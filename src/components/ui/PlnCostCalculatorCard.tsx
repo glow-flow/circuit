@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import * as Slider from '@radix-ui/react-slider';
-import { Banknote, Clock, Leaf, Sparkles, Zap } from 'lucide-react';
+import { Banknote, Clock, Leaf, Zap } from 'lucide-react';
 import { useCircuitStore } from '../../store/useCircuitStore';
 import {
   calculatePlnCostEstimate,
@@ -277,7 +277,7 @@ export const PlnCostCalculatorCard: React.FC = () => {
       ) : (
         estimate.rawTotalPowerWatts > 0 && (
           <div className="rounded-lg bg-void-900/70 border border-white/5 px-2.5 py-2 flex items-center gap-2 text-[10px] text-slate-400">
-            <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <Leaf className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
             <span>
               {isId
                 ? 'Tips Hemat: Keluar ke Alam & sambungkan Panel Surya/Turbin Angin ke Menara Transmisi agar biaya PLN menjadi Rp 0 (Gratis)!'

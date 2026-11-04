@@ -1,0 +1,13 @@
+{
+  "userIgnoreFilters": [
+    "node_modules",
+    "dist",
+    "assets_backup",
+    ".git",
+    "public",
+    "scripts"
+  ],
+  "strictLineBreaks": false,
+  "showFrontmatter": true,
+  "attachmentFolderPath": "docs/assets"
+}

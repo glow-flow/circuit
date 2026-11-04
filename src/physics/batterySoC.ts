@@ -57,6 +57,9 @@ export function getDefaultBatteryCapacity(
       return DEFAULT_9V_CAPACITY_MAH;
     case 'battery-holder':
       return (cellCount ?? 2) * DEFAULT_AA_CAPACITY_MAH;
+    case 'bess-substation':
+    case 'bess_substation':
+      return 10000;
     default:
       return DEFAULT_AA_CAPACITY_MAH;
   }

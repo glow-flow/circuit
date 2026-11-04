@@ -1,9 +1,11 @@
 import React, { useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Handle, Position, NodeProps } from 'reactflow';
 import { Waves, Info, X, Droplets } from 'lucide-react';
 import { CircuitElementData } from '../../../types/circuit';
 import { useCircuitStore } from '../../../store/useCircuitStore';
 import { calculateHydroOperatingPoint } from '../../../physics/hydroPhysics';
+import { useModalKeyboardClose } from '../../../hooks/useModalKeyboardClose';
 
 /**
  * Waterfall Micro-Hydro Generator Node (`type: 'hydro-turbine'`).
@@ -27,6 +29,7 @@ export const HydroTurbineNode: React.FC<NodeProps<CircuitElementData>> = ({
   const updateComponentData = useCircuitStore((state) => state.updateComponentData);
 
   const [isInspectOpen, setIsInspectOpen] = useState(false);
+  useModalKeyboardClose(isInspectOpen, () => setIsInspectOpen(false));
   const isId = language === 'id';
 
   // Effective flow and head
@@ -51,8 +54,10 @@ export const HydroTurbineNode: React.FC<NodeProps<CircuitElementData>> = ({
       const nextFlow = parseInt(e.target.value, 10);
       const nextPoint = calculateHydroOperatingPoint(nextFlow, headMeters);
       updateComponentData(id, {
+        manualWaterFlowRate: nextFlow,
         waterFlowRate: nextFlow,
         voltage: nextPoint.voltage,
+        rpm: nextPoint.rpm,
         hasWaterContact: nextFlow > 0,
       });
     },
@@ -69,27 +74,28 @@ export const HydroTurbineNode: React.FC<NodeProps<CircuitElementData>> = ({
       {/* Floating Water Flow & Power Telemetry Badge */}
       <div className="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap z-30">
         <div
+          onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation();
             setIsInspectOpen(true);
           }}
-          className={`px-2 py-0.5 rounded-full border text-[9px] font-mono font-bold flex items-center gap-1 shadow-md cursor-pointer transition-colors active:scale-95 ${
+          className={`nodrag px-2.5 py-0.5 rounded-full border text-[9.5px] font-mono font-bold flex items-center gap-1 shadow-md cursor-pointer transition-colors active:scale-95 tabular-nums ${
             isGenerating
-              ? 'bg-cyan-950/90 border-cyan-400/70 text-cyan-300 shadow-cyan-500/20'
-              : 'bg-slate-900/90 border-slate-700 text-slate-400'
+              ? 'bg-cyan-950/95 border-cyan-400/70 text-cyan-200'
+              : 'bg-slate-900/95 border-white/15 text-slate-300'
           }`}
         >
           {isGenerating ? (
             <>
-              <Waves className="w-2.5 h-2.5 text-cyan-400 animate-pulse" />
+              <Waves className="w-3 h-3 text-cyan-400 shrink-0" />
               <span>
-                {flowPercentage}% • {hydroPoint.powerWatts}W
+                {flowPercentage}% · {nominalVoltage.toFixed(1)}V · {hydroPoint.powerWatts}W
               </span>
             </>
           ) : (
             <>
-              <Droplets className="w-2.5 h-2.5 text-slate-400" />
-              <span>{isId ? 'Butuh Air' : 'Needs Water'}</span>
+              <Droplets className="w-3 h-3 text-sky-400 shrink-0" />
+              <span>{isId ? 'Taruh di Sungai / Air (Klik Setel)' : 'Place in River / Water'}</span>
             </>
           )}
         </div>
@@ -129,156 +135,165 @@ export const HydroTurbineNode: React.FC<NodeProps<CircuitElementData>> = ({
 
       {/* Info Icon Button */}
       <button
+        type="button"
+        onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => {
           e.stopPropagation();
           setIsInspectOpen(true);
         }}
-        className="absolute top-1 right-1 z-30 w-5 h-5 rounded-full bg-slate-900/90 border border-white/20 text-slate-300 hover:text-white flex items-center justify-center shadow hover:scale-110 active:scale-95 transition-transform"
+        className="nodrag absolute top-1 right-1 z-30 w-6 h-6 rounded-full bg-slate-900/90 border border-white/20 text-slate-300 hover:text-white flex items-center justify-center shadow hover:scale-110 active:scale-95 transition-transform cursor-pointer"
         title={isId ? 'Detail Mikrohidro' : 'Micro-Hydro Details'}
       >
-        <Info className="w-3 h-3 text-cyan-400" />
+        <Info className="w-3.5 h-3.5 text-cyan-400" />
       </button>
 
       {/* Elevated High-Visibility Binding Post Terminals */}
-      {/* Positive Terminal (+ Red Binding Post) at left 46%, bottom 4px */}
       <Handle
         type="source"
         position={Position.Bottom}
         id="pos"
-        style={{ left: '46%', bottom: '4px', transform: 'translateX(-50%)' }}
-        className="!w-4 !h-4 !bg-red-500 !border-2 !border-white !rounded-full shadow-[0_0_10px_rgba(239,68,68,0.9)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center"
+        style={{ left: '44%', bottom: '6px', transform: 'translateX(-50%)' }}
+        className="!w-5 !h-5 !bg-red-500 !border-2 !border-white !rounded-full shadow-[0_0_10px_rgba(239,68,68,0.85)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center"
         title={isId ? 'Kutub Positif Generator (+)' : 'Hydro Positive (+)'}
       >
-        <span className="text-[8px] font-mono font-black text-white leading-none pointer-events-none">
+        <span className="text-[9px] font-mono font-black text-white leading-none pointer-events-none">
           +
         </span>
       </Handle>
 
-      {/* Negative Terminal (- Black Binding Post) at right 54%, bottom 4px */}
       <Handle
         type="source"
         position={Position.Bottom}
         id="neg"
-        style={{ left: '54%', bottom: '4px', transform: 'translateX(-50%)' }}
-        className="!w-4 !h-4 !bg-sky-500 !border-2 !border-white !rounded-full shadow-[0_0_10px_rgba(56,189,248,0.9)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center"
+        style={{ left: '56%', bottom: '6px', transform: 'translateX(-50%)' }}
+        className="!w-5 !h-5 !bg-sky-500 !border-2 !border-white !rounded-full shadow-[0_0_10px_rgba(56,189,248,0.85)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center"
         title={isId ? 'Kutub Negatif Generator (-)' : 'Hydro Negative (-)'}
       >
-        <span className="text-[9px] font-mono font-black text-white leading-none pointer-events-none">
+        <span className="text-[10px] font-mono font-black text-white leading-none pointer-events-none">
           -
         </span>
       </Handle>
 
-      {/* Interactive Telemetry & Flow Adjustment Modal */}
-      {isInspectOpen && (
-        <div
-          onClick={(e) => e.stopPropagation()}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-        >
-          <div className="w-full max-w-sm rounded-2xl bg-slate-900 border border-cyan-500/40 p-5 shadow-2xl text-white font-sans animate-in fade-in zoom-in-95 duration-150">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center">
-                  <Waves className="w-5 h-5 text-cyan-400" />
+      {/* Interactive Telemetry & Flow Adjustment Modal via Portal */}
+      {isInspectOpen &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            onClick={() => setIsInspectOpen(false)}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm p-4 pointer-events-auto"
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm rounded-2xl bg-slate-900 border border-white/15 p-5 shadow-2xl text-white font-sans select-none"
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-white/10">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-cyan-500/15 border border-cyan-500/35 flex items-center justify-center">
+                    <Waves className="w-5 h-5 text-cyan-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-white leading-tight">
+                      {isId ? 'Pembangkit Mikrohidro' : 'Micro-Hydro Turbine'}
+                    </h3>
+                    <p className="text-xs text-slate-400 font-mono">
+                      Pelton Runner · P = η · ρ · g · Q · H
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-base font-bold text-white leading-tight">
-                    {isId ? 'Pembangkit Mikrohidro' : 'Micro-Hydro Turbine'}
-                  </h3>
-                  <p className="text-xs text-slate-400 font-mono">
-                    Pelton Runner • P = η · ρ · g · Q · H
+                <button
+                  type="button"
+                  onClick={() => setIsInspectOpen(false)}
+                  className="w-8 h-8 rounded-lg bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center active:scale-95 transition-transform cursor-pointer"
+                  aria-label="Close"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Metrics Grid */}
+              <div className="grid grid-cols-2 gap-2.5 my-4">
+                <div className="p-3 rounded-xl bg-slate-800/70 border border-white/5">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
+                    {isId ? 'Tinggi Jatuh (Head H)' : 'Hydraulic Head (H)'}
+                  </span>
+                  <p className="text-sm font-bold font-mono text-cyan-400 mt-0.5 tabular-nums">
+                    {headMeters.toFixed(1)} meter
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-800/70 border border-white/5">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
+                    {isId ? 'Kecepatan Kincir (RPM)' : 'Rotor Speed (RPM)'}
+                  </span>
+                  <p className="text-sm font-bold font-mono text-emerald-400 mt-0.5 tabular-nums">
+                    {hydroPoint.rpm} RPM
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-800/70 border border-white/5">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
+                    {isId ? 'Tegangan GGL (V)' : 'Generated EMF (V)'}
+                  </span>
+                  <p className="text-sm font-bold font-mono text-amber-300 mt-0.5 tabular-nums">
+                    {nominalVoltage.toFixed(1)} V
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-800/70 border border-white/5">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
+                    {isId ? 'Daya Listrik (W)' : 'Output Power (W)'}
+                  </span>
+                  <p className="text-sm font-bold font-mono text-cyan-300 mt-0.5 tabular-nums">
+                    {hydroPoint.powerWatts} W ({formattedCurrent})
                   </p>
                 </div>
               </div>
+
+              {/* Interactive Flow Rate Slider */}
+              <div className="space-y-2 mb-4 bg-slate-800/50 p-3 rounded-xl border border-white/5">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="font-semibold text-slate-300">
+                    {isId ? 'Debit Aliran Air (Q):' : 'Water Flow Rate (Q):'}
+                  </span>
+                  <span className="font-mono font-bold text-sm text-cyan-400 tabular-nums">
+                    {flowPercentage}% ({(hydroPoint.flowRateM3S * 1000).toFixed(1)} L/s)
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={flowPercentage}
+                  onChange={handleFlowSliderChange}
+                  className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                />
+                <div className="flex justify-between text-[10px] font-mono text-slate-400">
+                  <span>0% ({isId ? 'Kering' : 'Dry'})</span>
+                  <span>50%</span>
+                  <span>100% ({isId ? 'Maksimal' : 'Max'})</span>
+                </div>
+              </div>
+
+              {/* Educational Insight for SMP Students */}
+              <div className="p-2.5 rounded-xl bg-cyan-950/40 border border-cyan-500/20 text-[11px] text-cyan-200/90 leading-relaxed mb-4">
+                {isId
+                  ? 'Semakin tinggi tebing air terjun (Head H) dan semakin deras debit air (Q), semakin besar energi potensial gravitasi yang diubah menjadi listrik oleh sudu Pelton.'
+                  : 'Higher waterfall drop (Head H) and larger flow volume (Q) produce greater gravitational potential energy converted into electricity by the Pelton runner.'}
+              </div>
+
+              {/* Close Button */}
               <button
+                type="button"
                 onClick={() => setIsInspectOpen(false)}
-                className="w-8 h-8 rounded-lg bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center active:scale-95 transition-transform"
+                className="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 text-xs font-semibold transition-transform cursor-pointer"
               >
-                <X className="w-4 h-4" />
+                {isId ? 'Tutup' : 'Close'}
               </button>
             </div>
-
-            {/* Metrics Grid */}
-            <div className="grid grid-cols-2 gap-2.5 my-4">
-              <div className="p-3 rounded-xl bg-slate-800/70 border border-white/5">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
-                  {isId ? 'Tinggi Jatuh (Head H)' : 'Hydraulic Head (H)'}
-                </span>
-                <p className="text-sm font-bold font-mono text-cyan-400 mt-0.5">
-                  {headMeters.toFixed(1)} meter
-                </p>
-              </div>
-
-              <div className="p-3 rounded-xl bg-slate-800/70 border border-white/5">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
-                  {isId ? 'Kecepatan Kincir (RPM)' : 'Rotor Speed (RPM)'}
-                </span>
-                <p className="text-sm font-bold font-mono text-emerald-400 mt-0.5">
-                  {hydroPoint.rpm} RPM
-                </p>
-              </div>
-
-              <div className="p-3 rounded-xl bg-slate-800/70 border border-white/5">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
-                  {isId ? 'Tegangan GGL (V)' : 'Generated EMF (V)'}
-                </span>
-                <p className="text-sm font-bold font-mono text-amber-300 mt-0.5">
-                  {nominalVoltage.toFixed(1)} V
-                </p>
-              </div>
-
-              <div className="p-3 rounded-xl bg-slate-800/70 border border-white/5">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
-                  {isId ? 'Daya Listrik (W)' : 'Output Power (W)'}
-                </span>
-                <p className="text-sm font-bold font-mono text-cyan-300 mt-0.5">
-                  {hydroPoint.powerWatts} W ({formattedCurrent})
-                </p>
-              </div>
-            </div>
-
-            {/* Interactive Flow Rate Slider */}
-            <div className="space-y-2 mb-4 bg-slate-800/50 p-3 rounded-xl border border-white/5">
-              <div className="flex justify-between items-center text-xs">
-                <span className="font-semibold text-slate-300">
-                  {isId ? 'Debit Aliran Air (Q):' : 'Water Flow Rate (Q):'}
-                </span>
-                <span className="font-mono font-bold text-sm text-cyan-400">
-                  {flowPercentage}% ({hydroPoint.flowRateM3S * 1000} L/detik)
-                </span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={flowPercentage}
-                onChange={handleFlowSliderChange}
-                className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
-              />
-              <div className="flex justify-between text-[10px] font-mono text-slate-400">
-                <span>0% ({isId ? 'Kering' : 'Dry'})</span>
-                <span>50%</span>
-                <span>100% ({isId ? 'Maksimal' : 'Max'})</span>
-              </div>
-            </div>
-
-            {/* Educational Insight for SMP Students */}
-            <div className="p-2.5 rounded-xl bg-cyan-950/40 border border-cyan-500/20 text-[11px] text-cyan-200/90 leading-relaxed mb-4">
-              💡 {isId
-                ? 'Semakin tinggi tebing air terjun (Head H) dan semakin deras debit air (Q), semakin besar energi potensial gravitasi yang diubah menjadi listrik oleh sudu Pelton.'
-                : 'Higher waterfall drop (Head H) and larger flow volume (Q) produce greater gravitational potential energy converted into electricity by the Pelton runner.'}
-            </div>
-
-            {/* Close Button */}
-            <button
-              onClick={() => setIsInspectOpen(false)}
-              className="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 text-xs font-semibold transition-transform"
-            >
-              {isId ? 'Tutup' : 'Close'}
-            </button>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 };

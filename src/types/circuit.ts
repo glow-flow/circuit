@@ -138,6 +138,7 @@ export interface CircuitElementData {
 
   // Waterfall Micro-Hydro Turbine properties
   waterFlowRate?: number;          // Volumetric flow rate percentage (0 - 100%)
+  manualWaterFlowRate?: number;    // Explicit user valve slider override (0 - 100%, cleared on drag settlement)
   hydraulicHeadMeters?: number;    // Effective hydraulic head drop (meters)
   rpm?: number;                    // Pelton runner rotational speed (RPM)
   hasWaterContact?: boolean;       // Whether waterfall/river is currently contacting runner

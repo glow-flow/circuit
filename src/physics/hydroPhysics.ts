@@ -162,31 +162,43 @@ export function detectTurbineWaterFlow(
   const cellWidth = canvasWidth / cols;
   const cellHeight = canvasHeight / rows;
 
-  // The runner rotor sits at the top center of the A-frame (approx top 40% height)
+  // The runner rotor sits at the top center of the A-frame (approx top 25% height),
+  // while the turbine base/tailrace rests at box.y + box.height.
   const runnerCenterX = box.x + box.width * 0.5;
   const runnerCenterY = box.y + box.height * 0.25;
+  const turbineBottomY = box.y + box.height;
 
   const runnerCol = Math.max(0, Math.min(cols - 1, Math.floor(runnerCenterX / cellWidth)));
   const runnerRow = Math.max(0, Math.min(rows - 1, Math.floor(runnerCenterY / cellHeight)));
+  // Include up to 2 rows below the turbine base so a turbine settled onto a river surface
+  // detects the flowing river water channel directly underneath its tailrace/wheel.
+  const maxScanRow = Math.max(
+    runnerRow + 1,
+    Math.min(rows - 1, Math.floor(turbineBottomY / cellHeight) + 2)
+  );
 
   // Check columns spanned by the turbine rotor: [runnerCol - 1, runnerCol, runnerCol + 1]
   const minCol = Math.max(0, runnerCol - 1);
   const maxCol = Math.min(cols - 1, runnerCol + 1);
 
   let highestWaterRow: number | null = null;
+  let lowestWaterRow: number | null = null;
   let waterCellCount = 0;
   let directContact = false;
 
   for (let c = minCol; c <= maxCol; c++) {
-    for (let r = 0; r <= runnerRow + 1 && r < rows; r++) {
+    for (let r = 0; r <= maxScanRow && r < rows; r++) {
       const cell = terrainGrid[r][c];
       if (cell === 'WATER' || cell === 'WATER_SPRING') {
         waterCellCount++;
         if (highestWaterRow === null || r < highestWaterRow) {
           highestWaterRow = r;
         }
-        // Direct contact if water cell is adjacent to or inside the runner intake
-        if (Math.abs(r - runnerRow) <= 1 && Math.abs(c - runnerCol) <= 1) {
+        if (lowestWaterRow === null || r > lowestWaterRow) {
+          lowestWaterRow = r;
+        }
+        // Direct contact if water cell is inside/above the runner OR directly in the tailrace river basin
+        if (r >= runnerRow - 1 && r <= maxScanRow && Math.abs(c - runnerCol) <= 1) {
           directContact = true;
         }
       }
@@ -197,9 +209,14 @@ export function detectTurbineWaterFlow(
     return { flowPercentage: 0, headMeters: 0, hasWaterContact: false };
   }
 
-  // Calculate hydraulic head in rows dropped from highest water source to runner
-  const rowDrop = Math.max(1, runnerRow - highestWaterRow);
-  const headMeters = Number((rowDrop * METERS_PER_TERRAIN_ROW).toFixed(2));
+  // Calculate hydraulic head:
+  // - For overhead waterfalls (highestWaterRow < runnerRow): vertical drop from highest water cell to runner.
+  // - For river/stream basin placement (highestWaterRow >= runnerRow): effective kinetic head from river depth.
+  const waterfallDropRows = runnerRow - highestWaterRow;
+  const riverDepthRows = lowestWaterRow !== null ? lowestWaterRow - highestWaterRow + 1 : 1;
+  const effectiveRowDrop =
+    waterfallDropRows >= 1 ? waterfallDropRows : Math.max(4, riverDepthRows + 2);
+  const headMeters = Number((effectiveRowDrop * METERS_PER_TERRAIN_ROW).toFixed(2));
 
   // Flow percentage scales with number of active water cells feeding the turbine
   const flowPercentage = Math.min(100, Math.max(25, waterCellCount * 25));
@@ -207,6 +224,6 @@ export function detectTurbineWaterFlow(
   return {
     flowPercentage,
     headMeters,
-    hasWaterContact: directContact,
+    hasWaterContact: directContact || waterCellCount >= 2,
   };
 }

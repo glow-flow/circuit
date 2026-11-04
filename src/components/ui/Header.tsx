@@ -20,7 +20,7 @@ import {
   Moon,
   GraduationCap,
   Wrench,
-  Sparkles,
+  Cpu,
 } from 'lucide-react';
 import { useCircuitStore } from '../../store/useCircuitStore';
 import { TRANSLATIONS } from '../../i18n/translations';
@@ -102,8 +102,8 @@ export const Header: React.FC = () => {
             onClick={() => setIsCreditsModalOpen(true)}
             title={
               isId
-                ? 'Circuit Sandbox — Karya SMPN 12 Surabaya'
-                : 'Circuit Sandbox — By SMPN 12 Surabaya'
+                ? 'Circuit Sandbox · Karya SMPN 12 Surabaya'
+                : 'Circuit Sandbox · By SMPN 12 Surabaya'
             }
             className="flex items-center justify-center w-8 h-8 rounded-xl bg-electric-500/15 hover:bg-electric-500/25 border border-electric-500/30 text-electric-400 shrink-0 transition-transform active:scale-95 cursor-pointer"
           >
@@ -179,7 +179,7 @@ export const Header: React.FC = () => {
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-electric-500/15 hover:bg-electric-500/25 text-electric-300 border border-electric-500/30 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
               title={isId ? 'Tutor Fisika Rangkaian Terjelaskan' : 'Explainable Circuit Physics Tutor'}
             >
-              <Sparkles className="w-3.5 h-3.5 text-electric-400" />
+              <Cpu className="w-3.5 h-3.5 text-electric-400" />
               <span>Tutor</span>
             </button>
 

@@ -8,7 +8,7 @@ import {
   Pin,
   LayoutGrid,
   Trophy,
-  Sparkles,
+  Compass,
 } from 'lucide-react';
 import { Header } from './components/ui/Header';
 import { SidebarPalette } from './components/ui/SidebarPalette';
@@ -406,11 +406,11 @@ export const App: React.FC = () => {
           onClick={() => setIsMobileHubOpen(true)}
           className={`flex-1 min-h-[44px] flex flex-col items-center justify-center rounded-xl text-[9px] font-semibold transition-all active:scale-95 cursor-pointer ${
             isMobileHubOpen
-              ? 'bg-purple-500/20 text-purple-300 font-bold border border-purple-500/40'
+              ? 'bg-electric-500/20 text-electric-300 font-bold border border-electric-500/40'
               : 'text-slate-300 hover:bg-white/5'
           }`}
         >
-          <Sparkles className="w-4 h-4 text-purple-400" />
+          <Compass className="w-4 h-4 text-electric-400" />
           <span className="truncate">{isId ? 'Menu 4.0' : 'Menu 4.0'}</span>
         </button>
       </nav>

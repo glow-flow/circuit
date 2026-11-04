@@ -7,7 +7,6 @@ import {
   Flame,
   Award,
   CheckCircle2,
-  Sparkles,
   FlaskConical,
   Play,
   Lock,
@@ -413,7 +412,7 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
               {/* Learning Objectives */}
               <div className="p-4 rounded-xl bg-void-950 border border-white/5 space-y-2">
                 <div className="font-semibold text-xs text-slate-200 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-electric-400" />
+                  <BookOpen className="w-3.5 h-3.5 text-electric-400" />
                   <span>{isId ? 'Tujuan Pembelajaran' : 'Learning Objectives'}</span>
                 </div>
                 <ul className="space-y-1 text-xs text-slate-400 list-disc list-inside">
@@ -588,7 +587,7 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
                       }
                       className="px-5 py-2.5 rounded-xl bg-electric-500 hover:bg-electric-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs shadow-md transition-all active:scale-95 cursor-pointer flex items-center gap-2"
                     >
-                      <Sparkles className="w-4 h-4" />
+                      <CheckCircle2 className="w-4 h-4" />
                       <span>{isId ? 'Periksa Jawaban & Klaim XP' : 'Submit & Claim XP'}</span>
                     </button>
                   </div>

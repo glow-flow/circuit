@@ -7,6 +7,7 @@ import {
   computeOutdoorSpawnCandidates,
   getLabCanvasSpawnPosition,
 } from '../../utils/canvasSpawnPosition';
+import { evaluateComponentDropPhysics } from '../../physics/terrainGrid';
 import { CategoryTabs } from './palette/CategoryTabs';
 import { PaletteDetailBar } from './palette/PaletteDetailBar';
 import { PaletteTile } from './palette/PaletteTile';
@@ -18,7 +19,7 @@ interface SidebarPaletteProps {
 }
 
 /**
- * "Kotak Komponen": category tabs → image tiles → detail strip with the place action.
+ * "Kotak Komponen": category tabs -> image tiles -> detail strip with the place action.
  * One shared body renders both the desktop sidebar and the mobile bottom sheet (DRY);
  * only the shell (width, columns, close button) differs.
  *
@@ -55,49 +56,59 @@ export const SidebarPalette: React.FC<SidebarPaletteProps> = ({
   };
 
   const handlePlace = (entry: PaletteEntry) => {
+    let placedSuccessfully = false;
+
     if (worldMode === 'outside') {
-      const terrainGrid = useCircuitStore.getState().terrainGrid;
+      const storeState = useCircuitStore.getState();
+      const terrainGrid = storeState.terrainGrid;
+      const currentNodes = storeState.nodes;
       const { worldContainerWidth, worldContainerHeight, candidatePositions } =
         computeOutdoorSpawnCandidates(entry.type, terrainGrid);
+      const containerSize = { width: worldContainerWidth, height: worldContainerHeight };
 
-      let placedSuccessfully = false;
-      for (const candidatePosition of candidatePositions) {
-        if (
-          placeOutdoorComponent(
-            entry.type,
-            candidatePosition,
-            { width: worldContainerWidth, height: worldContainerHeight },
-            entry.placement
-          )
-        ) {
-          placedSuccessfully = true;
-          break;
-        }
-      }
-      if (!placedSuccessfully && candidatePositions.length > 0) {
-        placeOutdoorComponent(
+      // Purely probe candidate coordinates first so we never trigger false explosions or overlap toasts while searching
+      const validCandidate = candidatePositions.find((candidatePosition) => {
+        const outcome = evaluateComponentDropPhysics(
+          candidatePosition,
           entry.type,
-          candidatePositions[0],
-          { width: worldContainerWidth, height: worldContainerHeight },
+          null,
+          currentNodes,
+          terrainGrid,
+          containerSize
+        );
+        return outcome.status === 'settled';
+      });
+
+      const targetPosition = validCandidate ?? candidatePositions[0];
+      if (targetPosition) {
+        placedSuccessfully = placeOutdoorComponent(
+          entry.type,
+          targetPosition,
+          containerSize,
           entry.placement
         );
       }
     } else {
+      const beforeCount = useCircuitStore.getState().nodes.length;
       const spawnPosition = getLabCanvasSpawnPosition(
         useCircuitStore.getState().reactFlowInstance,
         entry.type
       );
       addComponent(entry.type, spawnPosition, entry.placement);
+      placedSuccessfully = useCircuitStore.getState().nodes.length > beforeCount;
     }
-    if (isMobileDrawer && onCloseMobile) {
-      onCloseMobile();
+
+    if (placedSuccessfully) {
+      if (isMobileDrawer && onCloseMobile) {
+        onCloseMobile();
+      }
+      const notify = useCircuitStore.getState().notify;
+      notify(
+        isIndonesian
+          ? `${pickLabel(entry)} berhasil ditaruh ke kanvas.`
+          : `${pickLabel(entry)} placed on canvas.`
+      );
     }
-    const notify = useCircuitStore.getState().notify;
-    notify(
-      isIndonesian
-        ? `✓ ${pickLabel(entry)} berhasil ditaruh ke kanvas!`
-        : `✓ ${pickLabel(entry)} placed on canvas!`
-    );
   };
 
   const body = (

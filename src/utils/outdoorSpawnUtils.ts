@@ -50,10 +50,10 @@ export function createOutdoorPowerStationElements(
   const turbineId = `wind_out_${Date.now() + 1}`;
   const towerId = `tower_out_${Date.now() + 2}`;
 
-  // Horizontal coordinates across the elevated grassy terrace (columns 2..22)
-  const solarX = 60;
-  const turbineX = 290;
-  const towerX = 530;
+  // Horizontal coordinates across the elevated grassy terrace (columns 1..17), leaving cols 18..23 open for BESS/extra units
+  const solarX = 40;
+  const turbineX = 240;
+  const towerX = 440;
 
   const computeGroundedY = (
     x: number,
@@ -64,10 +64,10 @@ export function createOutdoorPowerStationElements(
       boundingBox,
       terrainGrid,
       effectiveWidth,
-      effectiveHeight
+      effectiveHeight,
+      type
     );
-    const offset = type === 'wind-turbine' ? 0 : 6;
-    return Math.max(8, Math.round(surfaceY - boundingBox.height + offset));
+    return Math.max(8, Math.round(surfaceY - boundingBox.height));
   };
 
   const nodes: Node<CircuitElementData>[] = [

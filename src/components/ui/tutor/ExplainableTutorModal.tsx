@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import {
   X,
-  Sparkles,
   AlertTriangle,
   CheckCircle2,
   ChevronDown,
@@ -50,7 +49,7 @@ export const ExplainableTutorModal: React.FC<ExplainableTutorModalProps> = ({ is
         <div className="px-4 sm:px-5 py-3 sm:py-4 border-b border-white/10 bg-void-900 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-electric-500/15 border border-electric-500/30 flex items-center justify-center text-electric-400 shrink-0">
-              <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-electric-400" />
+              <Calculator className="w-4 h-4 sm:w-5 sm:h-5 text-electric-400" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
@@ -106,7 +105,7 @@ export const ExplainableTutorModal: React.FC<ExplainableTutorModalProps> = ({ is
             </div>
             <div className="px-2 sm:px-2.5 py-1 rounded-lg bg-void-950 border border-white/10">
               <span className="text-slate-400">P: </span>
-              <strong className="text-purple-400">{analysis.totalPowerWatts}W</strong>
+              <strong className="text-sky-400">{analysis.totalPowerWatts}W</strong>
             </div>
           </div>
         </div>

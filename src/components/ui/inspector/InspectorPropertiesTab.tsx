@@ -314,7 +314,7 @@ export const InspectorPropertiesTab: React.FC<InspectorPropertiesTabProps> = ({
                           componentData.type !== 'socket' || spec.baseType === 'screw'
                       ).map((spec) => (
                         <option key={spec.type} value={spec.type}>
-                          {isId ? spec.label : spec.labelEn} — {spec.resistance}Ω (Maks {spec.maxPower}W)
+                          {isId ? spec.label : spec.labelEn} · {spec.resistance}Ω (Maks {spec.maxPower}W)
                         </option>
                       ))}
                     </select>
@@ -394,19 +394,22 @@ export const InspectorPropertiesTab: React.FC<InspectorPropertiesTabProps> = ({
                 {isId ? 'Intensitas Cahaya Surya' : 'Solar Irradiance'}
               </span>
               <span className="text-xs font-mono font-bold text-amber-400">
-                {componentData.sunlight ?? 100}% ({(componentData.voltage ?? 12.0).toFixed(1)} V)
+                {componentData.baseSunlight ?? componentData.sunlight ?? 100}% (
+                {(componentData.voltage ?? 12.0).toFixed(1)} V)
               </span>
             </div>
 
             <Slider.Root
               className="relative flex items-center select-none touch-none w-full h-6 cursor-pointer"
-              value={[componentData.sunlight ?? 100]}
+              value={[componentData.baseSunlight ?? componentData.sunlight ?? 100]}
               min={0}
               max={100}
               step={1}
               onValueChange={([val]) =>
                 updateComponentData(nodeId, {
+                  baseSunlight: val,
                   sunlight: val,
+                  effectiveSunlight: val,
                   voltage: Number(((val / 100) * 12.0).toFixed(2)),
                 })
               }
@@ -452,8 +455,117 @@ export const InspectorPropertiesTab: React.FC<InspectorPropertiesTabProps> = ({
           </div>
         )}
 
-        {/* Transmission Tower & MCB Panel Controls */}
-        {(componentData.type === 'transmission-tower' || componentData.type === 'transmission_tower') && (
+        {/* BESS Substation Controls */}
+        {(componentData.type === 'bess-substation' || componentData.type === 'bess_substation') && (
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-semibold text-slate-200">
+                {isId ? 'Status Muatan Baterai (SoC)' : 'State of Charge (SoC)'}
+              </span>
+              <span className="text-xs font-mono font-bold text-emerald-400">
+                {Math.round(componentData.socPercent ?? componentData.currentCharge ?? 80)}% (
+                {Math.round(componentData.storedEnergyWh ?? 800)} Wh)
+              </span>
+            </div>
+
+            <Slider.Root
+              className="relative flex items-center select-none touch-none w-full h-6 cursor-pointer"
+              value={[Math.round(componentData.socPercent ?? componentData.currentCharge ?? 80)]}
+              min={0}
+              max={100}
+              step={1}
+              onValueChange={([val]) => {
+                const nominalCap = componentData.nominalCapacityWh ?? 1000;
+                updateComponentData(nodeId, {
+                  socPercent: val,
+                  currentCharge: val,
+                  storedEnergyWh: Number(((val / 100) * nominalCap).toFixed(1)),
+                });
+              }}
+            >
+              <Slider.Track className="bg-void-900 relative grow rounded-full h-2 border border-white/10">
+                <Slider.Range className="absolute bg-emerald-400 rounded-full h-full" />
+              </Slider.Track>
+              <Slider.Thumb className="block w-5 h-5 bg-white rounded-full shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-transform active:scale-125" />
+            </Slider.Root>
+
+            <button
+              type="button"
+              onClick={() => rechargeBattery(nodeId)}
+              className="w-full py-2 rounded-xl font-bold text-xs bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+            >
+              <BatteryCharging className="w-3.5 h-3.5" />
+              {isId ? 'Isi Penuh BESS (100% / 1000 Wh)' : 'Recharge BESS Full (100% / 1000 Wh)'}
+            </button>
+          </div>
+        )}
+
+        {/* Waterfall Micro-Hydro Turbine Controls */}
+        {(componentData.type === 'hydro-turbine' || componentData.type === 'hydro_turbine') && (
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-semibold text-slate-200">
+                {isId ? 'Debit Aliran Air (Katup Q)' : 'Water Flow Rate (Valve Q)'}
+              </span>
+              <span className="text-xs font-mono font-bold text-cyan-400">
+                {componentData.waterFlowRate ?? 0}% ({(componentData.voltage ?? 0).toFixed(1)} V)
+              </span>
+            </div>
+
+            <Slider.Root
+              className="relative flex items-center select-none touch-none w-full h-6 cursor-pointer"
+              value={[componentData.waterFlowRate ?? 0]}
+              min={0}
+              max={100}
+              step={5}
+              onValueChange={([val]) =>
+                updateComponentData(nodeId, {
+                  manualWaterFlowRate: val,
+                  waterFlowRate: val,
+                  hasWaterContact: val > 0,
+                })
+              }
+            >
+              <Slider.Track className="bg-void-900 relative grow rounded-full h-2 border border-white/10">
+                <Slider.Range className="absolute bg-cyan-400 rounded-full h-full" />
+              </Slider.Track>
+              <Slider.Thumb className="block w-5 h-5 bg-white rounded-full shadow-md focus:outline-none focus:ring-2 focus:ring-cyan-400 transition-transform active:scale-125" />
+            </Slider.Root>
+
+            <div className="flex justify-between items-center pt-1">
+              <span className="text-xs font-semibold text-slate-200">
+                {isId ? 'Tinggi Jatuh Air (Head H)' : 'Hydraulic Head (H)'}
+              </span>
+              <span className="text-xs font-mono font-bold text-sky-400">
+                {(componentData.hydraulicHeadMeters ?? 2.0).toFixed(1)} m
+              </span>
+            </div>
+
+            <Slider.Root
+              className="relative flex items-center select-none touch-none w-full h-6 cursor-pointer"
+              value={[componentData.hydraulicHeadMeters ?? 2.0]}
+              min={0.5}
+              max={5.0}
+              step={0.1}
+              onValueChange={([val]) =>
+                updateComponentData(nodeId, {
+                  hydraulicHeadMeters: val,
+                })
+              }
+            >
+              <Slider.Track className="bg-void-900 relative grow rounded-full h-2 border border-white/10">
+                <Slider.Range className="absolute bg-sky-400 rounded-full h-full" />
+              </Slider.Track>
+              <Slider.Thumb className="block w-5 h-5 bg-white rounded-full shadow-md focus:outline-none focus:ring-2 focus:ring-sky-400 transition-transform active:scale-125" />
+            </Slider.Root>
+          </div>
+        )}
+
+        {/* Transmission Tower & Lab Distribution Panel MCB Controls */}
+        {(componentData.type === 'transmission-tower' ||
+          componentData.type === 'transmission_tower' ||
+          componentData.type === 'distribution-panel' ||
+          componentData.type === 'distribution_panel') && (
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <span className="text-xs font-semibold text-slate-200">

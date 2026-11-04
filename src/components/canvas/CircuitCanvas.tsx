@@ -11,7 +11,7 @@ import ReactFlow, {
   Node,
 } from 'reactflow';
 import { useCircuitStore } from '../../store/useCircuitStore';
-import { CircuitElementData } from '../../types/circuit';
+import { CircuitElementData, isOutdoorOnlyComponent } from '../../types/circuit';
 import { PALETTE_DRAG_MIME, getPaletteEntry } from '../../constants/componentCatalog';
 import { BatteryNode } from './nodes/BatteryNode';
 import { Battery9VNode } from './nodes/Battery9VNode';
@@ -54,10 +54,7 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
       nodes.filter(
         (n) =>
           (n.data.worldMode ?? 'lab') === 'lab' &&
-          n.data.type !== 'solar-panel' &&
-          n.data.type !== 'solar_panel' &&
-          n.data.type !== 'wind-turbine' &&
-          n.data.type !== 'wind_turbine'
+          !isOutdoorOnlyComponent(n.data.type)
       ),
     [nodes]
   );
@@ -143,16 +140,14 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
       if (!droppedEntry || !reactFlowInstance || !reactFlowWrapper.current) {
         return;
       }
-      const isOutdoorOnly =
-        droppedEntry.type === 'solar-panel' ||
-        droppedEntry.type === 'wind-turbine';
+      const isOutdoorOnly = isOutdoorOnlyComponent(droppedEntry.type);
 
       if (isOutdoorOnly) {
         const isIndonesian = useCircuitStore.getState().language === 'id';
         useCircuitStore.getState().notify(
           isIndonesian
-            ? '⚠️ Pembangkit EBT luar ruangan (Panel Surya, Turbin Angin, BESS, Mikrohidro) hanya boleh ada di Alam Terbuka!'
-            : '⚠️ Outdoor renewable generators (Solar, Wind, BESS, Hydro) are strictly prohibited in the Lab!'
+            ? 'Pembangkit luar ruangan (Panel Surya, Turbin Angin, BESS, Mikrohidro) hanya boleh ada di Alam Terbuka!'
+            : 'Outdoor renewable generators (Solar, Wind, BESS, Hydro) are strictly prohibited in the Lab!'
         );
         return;
       }

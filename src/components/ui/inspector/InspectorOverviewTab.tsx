@@ -52,7 +52,7 @@ export const InspectorOverviewTab: React.FC<InspectorOverviewTabProps> = ({
             : isBlown
             ? 'bg-amber-500/10 border-amber-500/30'
             : isReverseBiased
-            ? 'bg-purple-500/10 border-purple-500/30'
+            ? 'bg-sky-500/10 border-sky-500/30'
             : isMcbTripped
             ? 'bg-red-500/10 border-red-500/30'
             : 'bg-void-950 border-white/5'
@@ -66,7 +66,7 @@ export const InspectorOverviewTab: React.FC<InspectorOverviewTabProps> = ({
                   ? 'text-red-400'
                   : isBlown
                   ? 'text-amber-400'
-                  : 'text-purple-400'
+                  : 'text-sky-400'
               }`}
             />
           ) : (

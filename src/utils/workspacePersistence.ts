@@ -80,12 +80,8 @@ export function sanitizeNodesForPersistence(
       ...structuralData
     } = node.data;
 
-    // Strict Rule: Solar Panels and Wind Turbines are NEVER allowed in 'lab'.
-    const isOutdoorOnly =
-      structuralData.type === 'solar-panel' ||
-      structuralData.type === 'solar_panel' ||
-      structuralData.type === 'wind-turbine' ||
-      structuralData.type === 'wind_turbine';
+    // Strict Rule: Outdoor-only generators and BESS are NEVER allowed in 'lab'.
+    const isOutdoorOnly = isOutdoorOnlyComponent(structuralData.type);
 
     const safeWorldMode: WorldMode = isOutdoorOnly
       ? 'outside'
