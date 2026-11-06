@@ -32,25 +32,25 @@ export const PaletteDetailBar: React.FC<PaletteDetailBarProps> = ({
 
   if (isMobileDrawer) {
     return (
-      <div className="shrink-0 border-t border-white/10 bg-void-950/98 p-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-2xl backdrop-blur-md z-30">
-        <div className="flex items-center justify-between gap-2 mb-1.5">
-          <div className="min-w-0 flex-1">
+      <div className="shrink-0 border-t border-white/10 bg-void-950/98 px-3 pt-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-2xl z-30">
+        <div className="mb-2 space-y-1">
+          <div className="flex items-baseline justify-between gap-2">
             <h3 className="text-xs font-bold text-white tracking-tight truncate flex items-center gap-1.5">
               <span>{displayLabel}</span>
               <span className="font-mono text-[10px] text-electric-400 font-semibold">{entry.spec}</span>
             </h3>
-            <p className="text-[11px] leading-tight text-slate-300 truncate">{displayHint}</p>
+            {entry.standardBadge && (
+              <span className="shrink-0 text-[10px] font-mono text-slate-400 truncate max-w-[48%]">
+                {entry.standardBadge}
+              </span>
+            )}
           </div>
-          {entry.standardBadge && (
-            <span className="shrink-0 text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-400/25 text-emerald-300">
-              {entry.standardBadge}
-            </span>
-          )}
+          <p className="text-[11px] leading-snug text-slate-300 line-clamp-2">{displayHint}</p>
         </div>
         <button
           type="button"
           onClick={() => onPlace(entry)}
-          className="w-full h-11 rounded-xl bg-electric-600 hover:bg-electric-500 text-white text-xs font-bold flex items-center justify-center gap-2 transition-all duration-150 active:scale-95 shadow-md cursor-pointer"
+          className="w-full h-11 rounded-xl bg-electric-600 hover:bg-electric-500 text-white text-xs font-bold flex items-center justify-center gap-2 transition-all duration-150 active:scale-95 cursor-pointer"
         >
           <PlusCircle className="w-4 h-4 text-white shrink-0" />
           <span className="truncate">Taruh {displayLabel} ke Kanvas</span>
@@ -68,11 +68,10 @@ export const PaletteDetailBar: React.FC<PaletteDetailBarProps> = ({
       <p className="mt-1 text-xs leading-snug text-slate-300 min-h-[2.25rem]">{displayHint}</p>
       {entry.standardBadge && (
         <div
-          className="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-400/25 text-[10px] font-mono text-emerald-300 truncate max-w-full"
+          className="mt-1.5 text-[10px] font-mono text-slate-400 truncate max-w-full"
           title={entry.datasheetSource}
         >
-          <span className="shrink-0">📚</span>
-          <span className="truncate">{entry.standardBadge}</span>
+          {entry.standardBadge}
         </div>
       )}
       <button

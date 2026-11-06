@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  Zap,
+
   Trash2,
   BookOpen,
   AlertOctagon,
@@ -105,16 +105,20 @@ export const Header: React.FC = () => {
                 ? 'Circuit Sandbox · Karya SMPN 12 Surabaya'
                 : 'Circuit Sandbox · By SMPN 12 Surabaya'
             }
-            className="flex items-center justify-center w-8 h-8 rounded-xl bg-electric-500/15 hover:bg-electric-500/25 border border-electric-500/30 text-electric-400 shrink-0 transition-transform active:scale-95 cursor-pointer"
+            className="flex items-center justify-center w-8 h-8 rounded-xl bg-void-950 hover:bg-void-850 border border-white/10 shrink-0 transition-transform active:scale-95 cursor-pointer overflow-hidden"
           >
-            <Zap className="w-4 h-4 fill-electric-400" />
+            <img
+              src="/assets/logo-circuit-sandbox.png"
+              alt="Circuit Sandbox"
+              width={32}
+              height={32}
+              fetchPriority="high"
+              className="w-full h-full object-contain pointer-events-none select-none"
+            />
           </button>
           <div className="hidden sm:block min-w-0">
-            <h1 className="text-xs sm:text-sm font-bold text-slate-100 tracking-tight flex items-center gap-1.5 whitespace-nowrap leading-[1.1]">
+            <h1 className="text-xs sm:text-sm font-bold text-slate-100 tracking-tight flex items-center gap-1.5 whitespace-nowrap leading-[1.1] pb-0.5">
               <span>Circuit Sandbox</span>
-              <span className="hidden lg:inline-block text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-electric-500/10 text-electric-400 border border-electric-500/20 font-medium whitespace-nowrap">
-                IPA Kelas 9
-              </span>
             </h1>
             <p className="text-[11px] text-slate-400 hidden md:block truncate">
               {t.appSubtitle}
@@ -146,40 +150,40 @@ export const Header: React.FC = () => {
             <button
               type="button"
               onClick={() => setActiveModal('missions')}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-void-950 hover:bg-void-850 text-slate-200 hover:text-white border border-white/10 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
               title={isId ? 'Misi & Tantangan Praktikum IPA' : 'Missions & Challenges'}
             >
-              <Trophy className="w-3.5 h-3.5 text-amber-400" />
+              <Trophy className="w-3.5 h-3.5 text-slate-300" />
               <span>{isId ? 'Tantangan' : 'Challenges'}</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveModal('troubleshooting')}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-void-950 hover:bg-void-850 text-slate-200 hover:text-white border border-white/10 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
               title={isId ? 'Lab Pemecahan Masalah & Diagnostik Gangguan' : 'Troubleshooting & Fault Injection Lab'}
             >
-              <Wrench className="w-3.5 h-3.5 text-rose-400" />
+              <Wrench className="w-3.5 h-3.5 text-slate-300" />
               <span>{isId ? 'Troubleshoot' : 'Troubleshoot'}</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveModal('renewable')}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-void-950 hover:bg-void-850 text-slate-200 hover:text-white border border-white/10 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
               title={isId ? 'Digital Twin Energi Terbarukan & Microgrid' : 'Renewable Energy & Microgrid Digital Twin'}
             >
-              <Sun className="w-3.5 h-3.5 text-emerald-400" />
+              <Sun className="w-3.5 h-3.5 text-slate-300" />
               <span>{isId ? 'EBT' : 'Renewable'}</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveModal('tutor')}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-electric-500/15 hover:bg-electric-500/25 text-electric-300 border border-electric-500/30 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-void-950 hover:bg-void-850 text-slate-200 hover:text-white border border-white/10 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
               title={isId ? 'Tutor Fisika Rangkaian Terjelaskan' : 'Explainable Circuit Physics Tutor'}
             >
-              <Cpu className="w-3.5 h-3.5 text-electric-400" />
+              <Cpu className="w-3.5 h-3.5 text-slate-300" />
               <span>Tutor</span>
             </button>
 

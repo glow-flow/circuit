@@ -11,7 +11,9 @@
 		{"id":"node-protection","type":"file","file":"docs/HARDWARE_COMPONENTS_AND_PROTECTION.md","x":-560,"y":680,"width":400,"height":220,"color":"1"},
 		{"id":"node-pedagogy","type":"file","file":"docs/PEDAGOGY_ACADEMY_AND_EXPLAINABLE_TUTOR.md","x":0,"y":-360,"width":420,"height":240,"color":"3"},
 		{"id":"node-antislop","type":"file","file":"docs/UI_UX_ANTISLOP_AND_MOBILE_ENGINE.md","x":560,"y":680,"width":400,"height":220,"color":"6"},
-		{"id":"node-testing","type":"file","file":"docs/TESTING_AND_VERIFICATION_MATRIX.md","x":0,"y":680,"width":420,"height":220,"color":"4"}
+		{"id":"node-testing","type":"file","file":"docs/TESTING_AND_VERIFICATION_MATRIX.md","x":0,"y":680,"width":420,"height":220,"color":"4"},
+		{"id":"node-nano-banana","type":"file","file":"docs/ASSET_PIPELINE_NANO_BANANA_AND_ALPHA_MATTING.md","x":1040,"y":360,"width":420,"height":240,"color":"6"},
+		{"id":"node-antislop-devlog","type":"file","file":"docs/DEVLOG_ANTISLOP_MODAL_AND_ASSET_OVERHAUL.md","x":1040,"y":680,"width":420,"height":240,"color":"5"}
 	],
 	"edges":[
 		{"id":"edge-hub-quarantine","fromNode":"hub-readme","fromSide":"left","toNode":"node-quarantine","toSide":"right","label":"Dual-World Quarantine"},
@@ -24,7 +26,9 @@
 		{"id":"edge-terrain-hydro","fromNode":"node-terrain","fromSide":"left","toNode":"node-hydro-bess","toSide":"right","label":"River & Waterfall Contact"},
 		{"id":"edge-mna-sutet","fromNode":"node-mna","fromSide":"bottom","toNode":"node-sutet","toSide":"top","label":"Virtual HVDC Grid Bus"},
 		{"id":"edge-sutet-protection","fromNode":"node-sutet","fromSide":"bottom","toNode":"node-protection","toSide":"top","label":"PUIL MCB & Step-Down"},
-		{"id":"edge-hydro-testing","fromNode":"node-hydro-bess","fromSide":"bottom","toNode":"node-testing","toSide":"top","label":"300+ Vitest Assertions"},
-		{"id":"edge-devlog-antislop","fromNode":"node-solar-wind","fromSide":"bottom","toNode":"node-antislop","toSide":"top","label":"60fps Telemetry HUD"}
+		{"id":"edge-hydro-testing","fromNode":"node-hydro-bess","fromSide":"bottom","toNode":"node-testing","toSide":"top","label":"314 Vitest Assertions"},
+		{"id":"edge-devlog-antislop","fromNode":"node-solar-wind","fromSide":"bottom","toNode":"node-antislop","toSide":"top","label":"60fps Telemetry HUD"},
+		{"id":"edge-antislop-nanobanana","fromNode":"node-antislop","fromSide":"right","toNode":"node-nano-banana","toSide":"left","label":"Nano Banana 2.1 + BFS Matte"},
+		{"id":"edge-antislop-overhaul","fromNode":"node-antislop","fromSide":"right","toNode":"node-antislop-devlog","toSide":"left","label":"5-Screen Anti-Slop Audit"}
 	]
 }

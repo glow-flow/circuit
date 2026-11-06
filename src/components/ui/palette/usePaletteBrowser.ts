@@ -95,7 +95,7 @@ export function usePaletteBrowser() {
             hintEn:
               'Wall distribution box receiving outdoor Transmission Tower power into the Lab with a digital meter, short-circuit MCB breaker, and DC Step-Down regulator.',
             spec: 'MCB · Step-Down',
-            image: undefined,
+            image: '/assets/distribution-panel.png',
             glyph: 'distribution-panel',
           };
         }

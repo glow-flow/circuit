@@ -28,9 +28,10 @@ The graph is organized into **7 color-coded engineering clusters**:
 ## 1. Core Architecture & Session Devlogs (`#hub`)
 
 - [[DEVLOG_SESSION_NATURE_MODE_4.0|Nature Mode 4.0 Engineering Devlog]]
+- [[DEVLOG_ANTISLOP_MODAL_AND_ASSET_OVERHAUL|Anti-Slop 5-Screen Modal & Hardware Asset Overhaul Devlog]]
 - [[ARCHITECTURE_OUTDOOR_AND_LAB_QUARANTINE|Dual-World Quarantine & Virtual Grid Bus Architecture]]
 - [[CIRCUIT_SANDBOX_4.0_ARCHITECTURE.canvas|Visual System Architecture Canvas (.canvas)]]
-- [[TESTING_AND_VERIFICATION_MATRIX|Deterministic Vitest Verification Matrix (300+ Tests)]]
+- [[TESTING_AND_VERIFICATION_MATRIX|Deterministic Vitest Verification Matrix (314 Tests)]]
 
 ---
 
@@ -47,6 +48,7 @@ The graph is organized into **7 color-coded engineering clusters**:
 
 - [[HARDWARE_COMPONENTS_AND_PROTECTION|SNI/IEC Hardware Catalog, Schottky Diodes & PUIL MCB Protection]]
 - [[HARDWARE_TRANSMISSION_AND_TRAFO_SUTET|Gardu Trafo Cantol SUTET (12V vs 240V Step-Up) & Joule Line Loss]]
+- [[ASSET_PIPELINE_NANO_BANANA_AND_ALPHA_MATTING|Nano Banana 2.1 Asset Engineering & BFS Alpha-Matting Pipeline]]
 
 ---
 

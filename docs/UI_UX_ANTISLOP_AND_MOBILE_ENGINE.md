@@ -47,10 +47,23 @@ Circuit Sandbox 4.0 strictly enforces an industrial instrumentation aesthetic in
 
 ---
 
-## 3. Connected Knowledge Nodes
+## 3. Shared DRY Modal Architecture & Tactile Hardware Assets
+
+- **Unified `LabModalHeader.tsx` (`src/components/ui/common/LabModalHeader.tsx`)**:
+  - Eliminates duplicated modal header code across `ExplainableTutorModal.tsx`, `AcademyModal.tsx`, `CreditsModal.tsx`, and `RenewableLabModal.tsx` (documented in [[DEVLOG_ANTISLOP_MODAL_AND_ASSET_OVERHAUL]]).
+  - Replaces glowing icon boxes and decorative `CIRCUIT 4.0` capsule badges with clean typographic hierarchy (`leading-[1.15]`), optional monochrome technical eyebrows, and `44x44px` accessible close buttons.
+- **Tactile Hardware PNG Assets via Nano Banana 2.1**:
+  - All code-generated neon `<svg>` icons in the component palette and canvas nodes (`switch`, `voltmeter`, `ammeter`, `ground`, `distribution-panel`, and `logo-circuit-sandbox`) have been replaced with semi-realistic 2D hardware illustrations processed via the [[ASSET_PIPELINE_NANO_BANANA_AND_ALPHA_MATTING|BFS Exterior Flood-Fill & Slit-Guard Alpha-Matting Pipeline]].
+  - Every `<img>` element enforces explicit `width` and `height` attributes (`R-40`) to prevent Cumulative Layout Shift (CLS) and includes a defensive `onError` structural fallback (`R-27`).
+
+---
+
+## 4. Connected Knowledge Nodes
 
 - [[README]]
 - [[DEVLOG_SESSION_NATURE_MODE_4.0]]
+- [[DEVLOG_ANTISLOP_MODAL_AND_ASSET_OVERHAUL]]
+- [[ASSET_PIPELINE_NANO_BANANA_AND_ALPHA_MATTING]]
 - [[ARCHITECTURE_OUTDOOR_AND_LAB_QUARANTINE]]
 - [[PHYSICS_TERRAIN_CELLULAR_AUTOMATA]]
 - [[PEDAGOGY_ACADEMY_AND_EXPLAINABLE_TUTOR]]

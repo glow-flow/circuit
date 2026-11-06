@@ -14,14 +14,9 @@ interface PaletteTileProps {
   onDragStart: (event: React.DragEvent, entry: PaletteEntry) => void;
 }
 
-const BLUEPRINT_DOT_GRID: React.CSSProperties = {
-  backgroundImage: 'radial-gradient(rgba(148,163,184,0.16) 1px, transparent 1px)',
-  backgroundSize: '9px 9px',
-};
-
 /**
- * One "specimen plate" in the component box: the real part image (or textbook symbol)
- * on a blueprint-dot stage, a mono spec tag, and the part name.
+ * One hardware specimen plate in the component box: renders the physical hardware asset
+ * (with textbook schematic symbol as resilient fallback), spec tag, and part name.
  * On mobile: tap selects, tap again or tap '+' button places directly on canvas.
  * On desktop: click selects; double-click or drag places.
  *
@@ -61,7 +56,7 @@ export const PaletteTile: React.FC<PaletteTileProps> = ({
         isDraggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
       } ${
         isSelected
-          ? 'border-electric-500 bg-electric-500/10 shadow-md ring-1 ring-electric-500/30'
+          ? 'border-electric-500 bg-electric-500/10 ring-1 ring-electric-500/30'
           : 'border-white/10 bg-void-950/60 hover:border-white/25'
       }`}
     >
@@ -73,20 +68,19 @@ export const PaletteTile: React.FC<PaletteTileProps> = ({
             onPlace(entry);
           }}
           title="Pasang ke Kanvas"
-          className="absolute top-2 right-2 z-20 w-6 h-6 rounded-full bg-electric-600 hover:bg-electric-500 text-white flex items-center justify-center text-xs font-bold shadow-md active:scale-90 transition-transform cursor-pointer"
+          className="absolute top-2 right-2 z-20 w-6 h-6 rounded-lg bg-electric-600 hover:bg-electric-500 text-white flex items-center justify-center text-xs font-bold shadow-sm active:scale-90 transition-transform cursor-pointer"
         >
           +
         </span>
       )}
 
-      <div
-        className="relative aspect-square rounded-lg bg-void-950 overflow-hidden flex items-center justify-center"
-        style={BLUEPRINT_DOT_GRID}
-      >
+      <div className="relative aspect-square rounded-lg bg-void-950 overflow-hidden flex items-center justify-center">
         {entry.image && !hasImageFailed ? (
           <img
             src={entry.image}
             alt=""
+            width={96}
+            height={96}
             loading="lazy"
             draggable={false}
             onError={() => setHasImageFailed(true)}
@@ -104,7 +98,7 @@ export const PaletteTile: React.FC<PaletteTileProps> = ({
           </span>
         )}
 
-        <span className="absolute left-1 bottom-1 max-w-[calc(100%-8px)] truncate px-1.5 py-0.5 rounded bg-void-900/90 border border-white/10 text-[10px] leading-none font-mono text-slate-200">
+        <span className="absolute left-1 bottom-1 max-w-[calc(100%-8px)] truncate px-1.5 py-0.5 rounded bg-void-900/95 border border-white/10 text-[10px] leading-none font-mono text-slate-200">
           {entry.spec}
         </span>
       </div>

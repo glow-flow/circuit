@@ -1,5 +1,5 @@
 ---
-title: Deterministic Vitest Verification Matrix (307 Tests)
+title: Deterministic Vitest Verification Matrix (314 Tests)
 tags:
   - architecture
   - physics-engine
@@ -10,16 +10,16 @@ aliases:
   - Unit Test Suite
 ---
 
-# Deterministic Vitest Verification Matrix (307 Tests)
+# Deterministic Vitest Verification Matrix (314 Tests)
 
 Parent Hub: [[README|Circuit Sandbox 4.0 Master Architecture Hub (MOC)]]  
-Related Devlog: [[DEVLOG_SESSION_NATURE_MODE_4.0]]
+Related Devlogs: [[DEVLOG_SESSION_NATURE_MODE_4.0]], [[DEVLOG_ANTISLOP_MODAL_AND_ASSET_OVERHAUL]]
 
 ---
 
 ## 1. Test Suite Architecture (`npx vitest run --no-isolate`)
 
-All physics engines, store actions, quarantine boundaries, and pedagogical validators are verified by **43 deterministic test suites** (`307` individual assertions):
+All physics engines, store actions, quarantine boundaries, hardware asset bindings, and pedagogical validators are verified by **44 deterministic test suites** (`314` individual assertions):
 
 | Subsystem | Primary Test Suites | Verified Invariants |
 | :--- | :--- | :--- |
@@ -27,7 +27,7 @@ All physics engines, store actions, quarantine boundaries, and pedagogical valid
 | **MNA Solver & Grid Bus** | `mnaSolver.test.ts`, `transmissionPhysics.test.ts`, `virtualGridAndWindTurbine.test.ts` | $Ax = z$ accuracy, virtual grid coupling, $240\,\text{V}$ step-up Joule loss reduction, Schottky diodes |
 | **2D Terrain & Microclimate** | `terrainGrid.test.ts`, `terrainClimateEngine.test.ts`, `anchoredSunAndRiverbed.test.ts`, `solarPanelStore.test.ts` | World-anchored sun finite ray-casting, surface-hugging shadow bands, Hellmann wind shear, gravity drop tolerance |
 | **Micro-Hydro & BESS** | `bessAndHydro.test.ts`, `anchoredSunAndRiverbed.test.ts`, `batterySoC.test.ts` | $P = \eta \rho g Q H$, `208x208` riverbed settling (`row 18`), `measureSubmergedDepthPx`, manual valve override, dry-land 0V reset |
-| **Spawn & Mobile UI** | `canvasSpawnPosition.test.ts`, `outdoorSpawnUtils.test.ts` | Camera-centered spawn coordinates, dry-terrace candidate prioritization, non-overlapping power station layout |
+| **Spawn & Mobile UI** | `canvasSpawnPosition.test.ts`, `outdoorSpawnUtils.test.ts`, `CreditsModal.test.ts` | Camera-centered spawn coordinates, dry-terrace candidate prioritization, bilingual localization & Nano Banana 2.1 harness badges |
 | **Pedagogy & Protection** | `explainableTutor.test.ts`, `academyProgress.test.ts`, `troubleshootingValidation.test.ts`, `missionValidator.test.ts` | KCL/KVL proof generation, PUIL MCB trip & one-tap jumper cut recovery |
 
 ---
@@ -36,6 +36,8 @@ All physics engines, store actions, quarantine boundaries, and pedagogical valid
 
 - [[README]]
 - [[DEVLOG_SESSION_NATURE_MODE_4.0]]
+- [[DEVLOG_ANTISLOP_MODAL_AND_ASSET_OVERHAUL]]
+- [[ASSET_PIPELINE_NANO_BANANA_AND_ALPHA_MATTING]]
 - [[ARCHITECTURE_OUTDOOR_AND_LAB_QUARANTINE]]
 - [[PHYSICS_MNA_SOLVER_AND_TRANSMISSION_GRID]]
 - [[PHYSICS_TERRAIN_CELLULAR_AUTOMATA]]

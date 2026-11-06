@@ -5,117 +5,80 @@ interface PresetThumbnailProps {
   category?: string;
 }
 
+interface ThumbnailPart {
+  src: string;
+  alt: string;
+}
+
+const PRESET_PARTS_BY_ID: Readonly<Record<string, readonly ThumbnailPart[]>> = {
+  'simple-lamp': [
+    { src: '/assets/processed/battery-holder.png', alt: '3V Holder' },
+    { src: '/assets/switch-knife.png', alt: 'Switch' },
+    { src: '/assets/bulb-incandescent.png', alt: 'Bulb' },
+  ],
+  'voltage-divider': [
+    { src: '/assets/battery-9v.png', alt: '9V Battery' },
+    { src: '/assets/bulb-incandescent.png', alt: 'Bulb 1' },
+    { src: '/assets/bulb-led-standard.png', alt: 'Bulb 2' },
+    { src: '/assets/voltmeter.png', alt: 'Voltmeter' },
+  ],
+  'parallel-bulbs': [
+    { src: '/assets/battery-9v.png', alt: '9V Battery' },
+    { src: '/assets/bulb-led-standard.png', alt: 'Branch 1' },
+    { src: '/assets/bulb-cfl.png', alt: 'Branch 2' },
+    { src: '/assets/bulb-edison.png', alt: 'Branch 3' },
+  ],
+  'short-circuit-demo': [
+    { src: '/assets/distribution-panel.png', alt: 'MCB Panel' },
+    { src: '/assets/switch-knife.png', alt: 'Bypass Switch' },
+    { src: '/assets/ammeter.png', alt: 'Ammeter' },
+  ],
+  'ultimate-power-grid': [
+    { src: '/assets/solar-panel.png', alt: 'Solar Panel' },
+    { src: '/assets/bess-substation.png', alt: 'BESS' },
+    { src: '/assets/distribution-panel.png', alt: 'Distribution Panel' },
+    { src: '/assets/bulb-led.png', alt: 'Load' },
+  ],
+};
+
+const DEFAULT_PARTS: readonly ThumbnailPart[] = [
+  { src: '/assets/battery-9v.png', alt: 'Source' },
+  { src: '/assets/switch-knife.png', alt: 'Switch' },
+  { src: '/assets/bulb-incandescent.png', alt: 'Load' },
+];
+
 /**
- * Renders an optimized vector thumbnail for circuit presets.
- * Displays accurate schematic silhouettes (power source, switches, lamps, meter nodes)
- * with dark-glass industrial styling.
+ * Renders a hardware specimen strip for circuit presets using real component PNG assets
+ * connected along a clean copper bus line instead of synthetic vector cartoons.
  *
- * Time Complexity: O(1)
+ * Time Complexity: O(1) render.
  */
 export const PresetThumbnail: React.FC<PresetThumbnailProps> = ({ presetId }) => {
-  switch (presetId) {
-    case 'simple-lamp':
-      return (
-        <svg viewBox="0 0 200 120" className="w-full h-full bg-void-950/80 rounded-xl p-2" fill="none">
-          {/* Wire loop */}
-          <rect x="30" y="25" width="140" height="70" rx="8" stroke="#38bdf8" strokeWidth="2.5" strokeDasharray="4 3" />
-          {/* Battery */}
-          <rect x="22" y="45" width="16" height="30" rx="3" fill="#1e293b" stroke="#38bdf8" strokeWidth="2" />
-          <line x1="30" y1="40" x2="30" y2="45" stroke="#ef4444" strokeWidth="3" />
-          <text x="30" y="64" fill="#38bdf8" fontSize="10" fontWeight="bold" textAnchor="middle">3V</text>
-          {/* Switch */}
-          <circle cx="100" cy="25" r="4" fill="#38bdf8" />
-          <circle cx="125" cy="25" r="4" fill="#38bdf8" />
-          <line x1="100" y1="25" x2="122" y2="15" stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="round" />
-          {/* Bulb */}
-          <circle cx="170" cy="60" r="14" fill="#f59e0b" fillOpacity="0.2" stroke="#f59e0b" strokeWidth="2" />
-          <path d="M 163 67 L 177 53 M 163 53 L 177 67" stroke="#f59e0b" strokeWidth="2" />
-        </svg>
-      );
+  const parts = PRESET_PARTS_BY_ID[presetId] ?? DEFAULT_PARTS;
 
-    case 'voltage-divider':
-      return (
-        <svg viewBox="0 0 200 120" className="w-full h-full bg-void-950/80 rounded-xl p-2" fill="none">
-          {/* Series loop with 3 bulbs */}
-          <rect x="25" y="25" width="150" height="70" rx="8" stroke="#38bdf8" strokeWidth="2.5" strokeDasharray="4 3" />
-          {/* Battery */}
-          <rect x="17" y="45" width="16" height="30" rx="3" fill="#1e293b" stroke="#38bdf8" strokeWidth="2" />
-          {/* Bulb 1 */}
-          <circle cx="75" cy="25" r="11" fill="#f59e0b" fillOpacity="0.2" stroke="#f59e0b" strokeWidth="2" />
-          <path d="M 70 30 L 80 20 M 70 20 L 80 30" stroke="#f59e0b" strokeWidth="1.5" />
-          {/* Bulb 2 */}
-          <circle cx="175" cy="60" r="11" fill="#f59e0b" fillOpacity="0.2" stroke="#f59e0b" strokeWidth="2" />
-          <path d="M 170 65 L 180 55 M 170 55 L 180 65" stroke="#f59e0b" strokeWidth="1.5" />
-          {/* Bulb 3 */}
-          <circle cx="100" cy="95" r="11" fill="#f59e0b" fillOpacity="0.2" stroke="#f59e0b" strokeWidth="2" />
-          <path d="M 95 100 L 105 90 M 95 90 L 105 100" stroke="#f59e0b" strokeWidth="1.5" />
-        </svg>
-      );
-
-    case 'parallel-bulbs':
-      return (
-        <svg viewBox="0 0 200 120" className="w-full h-full bg-void-950/80 rounded-xl p-2" fill="none">
-          {/* Battery on left */}
-          <rect x="20" y="45" width="16" height="30" rx="3" fill="#1e293b" stroke="#38bdf8" strokeWidth="2" />
-          {/* Bus rails */}
-          <line x1="28" y1="25" x2="175" y2="25" stroke="#38bdf8" strokeWidth="2.5" />
-          <line x1="28" y1="95" x2="175" y2="95" stroke="#64748b" strokeWidth="2.5" />
-          <line x1="28" y1="45" x2="28" y2="25" stroke="#38bdf8" strokeWidth="2.5" />
-          <line x1="28" y1="75" x2="28" y2="95" stroke="#64748b" strokeWidth="2.5" />
-          {/* 3 Parallel branches */}
-          {[75, 120, 165].map((branchX, idx) => (
-            <g key={idx}>
-              <line x1={branchX} y1="25" x2={branchX} y2="48" stroke="#38bdf8" strokeWidth="1.8" />
-              <circle cx={branchX} cy="60" r="11" fill="#f59e0b" fillOpacity="0.25" stroke="#f59e0b" strokeWidth="2" />
-              <path d={`M ${branchX - 5} 65 L ${branchX + 5} 55 M ${branchX - 5} 55 L ${branchX + 5} 65`} stroke="#f59e0b" strokeWidth="1.5" />
-              <line x1={branchX} y1="72" x2={branchX} y2="95" stroke="#64748b" strokeWidth="1.8" />
-            </g>
-          ))}
-        </svg>
-      );
-
-    case 'short-circuit-demo':
-      return (
-        <svg viewBox="0 0 200 120" className="w-full h-full bg-void-950/80 rounded-xl p-2" fill="none">
-          <rect x="30" y="25" width="140" height="70" rx="8" stroke="#ef4444" strokeWidth="2.5" strokeDasharray="3 3" />
-          {/* 9V Battery */}
-          <rect x="22" y="45" width="16" height="30" rx="3" fill="#ef4444" fillOpacity="0.2" stroke="#ef4444" strokeWidth="2" />
-          <text x="30" y="64" fill="#ef4444" fontSize="10" fontWeight="bold" textAnchor="middle">9V</text>
-          {/* Short bypass switch */}
-          <line x1="100" y1="25" x2="100" y2="95" stroke="#ef4444" strokeWidth="3" />
-          <circle cx="100" cy="60" r="9" fill="#ef4444" fillOpacity="0.8" />
-          <path d="M 97 55 L 103 65 M 103 55 L 97 65" stroke="#ffffff" strokeWidth="2" />
-          {/* Bulb (bypassed) */}
-          <circle cx="170" cy="60" r="12" fill="#334155" stroke="#64748b" strokeWidth="1.5" />
-        </svg>
-      );
-
-    case 'ultimate-power-grid':
-      return (
-        <svg viewBox="0 0 200 120" className="w-full h-full bg-void-950/80 rounded-xl p-2" fill="none">
-          {/* Smart Grid Multi-bus network */}
-          <line x1="20" y1="30" x2="180" y2="30" stroke="#38bdf8" strokeWidth="2" />
-          <line x1="20" y1="90" x2="180" y2="90" stroke="#64748b" strokeWidth="2" />
-          {/* Battery & meter */}
-          <rect x="15" y="45" width="14" height="28" rx="2" fill="#1e293b" stroke="#38bdf8" strokeWidth="1.5" />
-          <circle cx="48" cy="60" r="9" fill="#1e293b" stroke="#38bdf8" strokeWidth="1.5" />
-          <text x="48" y="63" fill="#38bdf8" fontSize="8" fontWeight="bold" textAnchor="middle">V</text>
-          <circle cx="75" cy="60" r="9" fill="#1e293b" stroke="#f59e0b" strokeWidth="1.5" />
-          <text x="75" y="63" fill="#f59e0b" fontSize="8" fontWeight="bold" textAnchor="middle">A</text>
-          {/* Load zones */}
-          <circle cx="115" cy="60" r="10" fill="#f59e0b" fillOpacity="0.3" stroke="#f59e0b" strokeWidth="1.5" />
-          <circle cx="145" cy="60" r="10" fill="#10b981" fillOpacity="0.3" stroke="#10b981" strokeWidth="1.5" />
-          <circle cx="175" cy="60" r="10" fill="#a855f7" fillOpacity="0.3" stroke="#a855f7" strokeWidth="1.5" />
-        </svg>
-      );
-
-    default:
-      return (
-        <svg viewBox="0 0 200 120" className="w-full h-full bg-void-950/80 rounded-xl p-2" fill="none">
-          <rect x="30" y="25" width="140" height="70" rx="8" stroke="#38bdf8" strokeWidth="2" strokeDasharray="3 3" />
-          <circle cx="100" cy="60" r="14" fill="#38bdf8" fillOpacity="0.15" stroke="#38bdf8" strokeWidth="1.5" />
-          <text x="100" y="64" fill="#38bdf8" fontSize="12" fontWeight="bold" textAnchor="middle">★</text>
-        </svg>
-      );
-  }
+  return (
+    <div className="relative w-full h-full bg-void-950 rounded-xl px-3 py-2 flex items-center justify-around overflow-hidden border border-white/5">
+      {/* Subtle horizontal copper bus trace behind hardware icons */}
+      <div
+        className="absolute left-6 right-6 top-1/2 -translate-y-1/2 h-[2px] bg-slate-700/70 pointer-events-none"
+        aria-hidden="true"
+      />
+      {parts.map((part, index) => (
+        <div
+          key={`${part.src}-${index}`}
+          className="relative z-10 w-10 h-10 sm:w-11 sm:h-11 rounded-lg bg-void-900/95 border border-white/10 p-1.5 flex items-center justify-center shadow-sm"
+        >
+          <img
+            src={part.src}
+            alt={part.alt}
+            width={36}
+            height={36}
+            loading="lazy"
+            draggable={false}
+            className="w-full h-full object-contain pointer-events-none select-none"
+          />
+        </div>
+      ))}
+    </div>
+  );
 };

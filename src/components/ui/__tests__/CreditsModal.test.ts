@@ -25,4 +25,11 @@ describe('CreditsModal bilingual localization & contributor roster audit', () =>
     expect(harnessBadge?.labelId).toBe('Google Antigravity (Harness Rekayasa)');
     expect(harnessBadge?.labelEn).toBe('Google Antigravity (Engineering Harness)');
   });
+
+  it('includes Nano Banana 2.1 in the AI tools and harness badges', () => {
+    const nanoBananaBadge = AI_TOOLS_AND_HARNESS_BADGES.find((b) =>
+      b.labelEn.includes('Nano Banana 2.1')
+    );
+    expect(nanoBananaBadge).toBeDefined();
+  });
 });

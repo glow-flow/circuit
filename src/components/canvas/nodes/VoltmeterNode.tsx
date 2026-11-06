@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
 import { Gauge } from 'lucide-react';
 import { CircuitElementData } from '../../../types/circuit';
@@ -8,10 +8,8 @@ import { NodeInfoPopover } from './NodeInfoPopover';
 
 /**
  * Digital Voltmeter Node (`type: 'voltmeter'`).
- * Clean, direct asset-first presentation (like SocketNode/BulbNode):
- * - Canvas displays a compact digital meter pod with left (+) and right (-) probes.
- * - Measured differential voltage is rendered clearly on the LCD screen.
- * - Detailed telemetry and connection guides appear inside NodeInfoPopover on select.
+ * Renders the physical `/assets/voltmeter.png` benchtop instrument with live digital
+ * LCD readout overlaid on the recessed glass screen and bottom binding post terminals.
  *
  * Time Complexity: O(1) render.
  */
@@ -20,8 +18,8 @@ export const VoltmeterNode: React.FC<NodeProps<CircuitElementData>> = ({ id, sel
   const edges = useCircuitStore((state) => state.edges);
   const language = useCircuitStore((state) => state.language);
   const t = TRANSLATIONS[language].nodes.voltmeter;
+  const [hasImageError, setHasImageError] = useState(false);
 
-  // Find wires connected to this voltmeter's p1 and p2 handles
   const wireP1 = edges.find(
     (e) =>
       (e.source === id && e.sourceHandle === 'p1') ||
@@ -46,65 +44,84 @@ export const VoltmeterNode: React.FC<NodeProps<CircuitElementData>> = ({ id, sel
 
   return (
     <div
-      className="group relative select-none cursor-grab active:cursor-grabbing flex items-center justify-center"
+      className="group relative select-none cursor-grab active:cursor-grabbing flex flex-col items-center justify-center"
       style={{
-        width: 92,
-        height: 48,
+        width: 96,
+        height: 112,
         overflow: 'visible',
       }}
     >
-      {/* Probe 1 (+) Handle (Left) */}
-      <Handle
-        type="source"
-        position={Position.Left}
-        id="p1"
-        className="!bg-red-500 !border-2 !border-white !w-3.5 !h-3.5 !-left-1.5 z-20 shadow-sm"
-      />
-
-      {/* Main Meter Pod Casing */}
+      {/* Hardware Instrument Casing */}
       <div
-        className={`relative flex flex-col items-center justify-center h-full w-full rounded-xl bg-void-900 border border-white/10 px-2 py-1 shadow-md transition-all duration-150 ${
+        className={`relative w-full h-full flex items-center justify-center rounded-2xl transition-transform duration-150 ${
           selected
-            ? 'outline outline-1 outline-offset-2 outline-amber-400 shadow-md'
-            : 'group-hover:border-slate-400/50'
+            ? 'ring-2 ring-electric-400 ring-offset-2 ring-offset-void-950'
+            : ''
         }`}
-        style={{ zIndex: 10 }}
       >
-        <span className="text-[8px] font-mono font-bold text-slate-400 uppercase tracking-wider leading-none mb-0.5">
-          VOLT
-        </span>
-        <div className="text-sm font-mono font-bold text-sky-400 tracking-tight leading-tight">
-          {displayVoltage} <span className="text-[10px] text-slate-400">V</span>
+        {!hasImageError ? (
+          <img
+            src="/assets/voltmeter.png"
+            alt={t.title}
+            width={96}
+            height={112}
+            draggable={false}
+            onError={() => setHasImageError(true)}
+            className="w-full h-full object-contain pointer-events-none select-none drop-shadow-md"
+          />
+        ) : (
+          <div className="w-full h-full rounded-xl bg-void-900 border border-white/15" />
+        )}
+
+        {/* Recessed LCD Screen Digital Overlay */}
+        <div className="absolute top-[13%] left-[13%] right-[13%] h-[40%] flex flex-col items-center justify-center pointer-events-none px-1">
+          <span className="text-[7px] font-mono font-semibold text-slate-400 uppercase tracking-widest leading-none mb-0.5">
+            DC VOLT
+          </span>
+          <div className="text-[13px] font-mono font-bold text-sky-300 tracking-tight leading-none">
+            {displayVoltage}
+            <span className="text-[9px] text-sky-400/80 ml-0.5">V</span>
+          </div>
         </div>
       </div>
 
-      {/* Probe 2 (-) Handle (Right) */}
+      {/* Probe 1 (+) Handle aligned over Left Red Binding Post */}
       <Handle
         type="source"
-        position={Position.Right}
+        position={Position.Bottom}
+        id="p1"
+        style={{ left: '28%', bottom: 2 }}
+        className="!bg-red-500 !border-2 !border-white !w-3.5 !h-3.5 z-20 shadow-sm"
+      />
+
+      {/* Probe 2 (-) Handle aligned over Right Black Binding Post */}
+      <Handle
+        type="source"
+        position={Position.Bottom}
         id="p2"
-        className="!bg-slate-700 !border-2 !border-white !w-3.5 !h-3.5 !-right-1.5 z-20 shadow-sm"
+        style={{ left: '72%', bottom: 2 }}
+        className="!bg-slate-700 !border-2 !border-white !w-3.5 !h-3.5 z-20 shadow-sm"
       />
 
       {/* Detailed Telemetry: ONLY when selected */}
       {selected && (
-        <NodeInfoPopover placement="bottom" width={190}>
+        <NodeInfoPopover placement="top" width={190}>
           <div className="mb-2 flex items-center justify-between gap-1.5">
             <div className="flex items-center gap-1.5 min-w-0">
-              <div className="p-1 rounded-md bg-electric-500/10 text-electric-400 border border-electric-500/20">
+              <div className="p-1 rounded-md bg-void-950 text-electric-400 border border-white/10">
                 <Gauge className="w-3.5 h-3.5" />
               </div>
               <div className="truncate text-xs font-bold text-slate-100">
                 {t.title}
               </div>
             </div>
-            <span className="text-[9px] font-mono px-1 py-0.5 rounded bg-white/5 text-slate-300">
+            <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-void-950 border border-white/10 text-slate-300">
               PARALEL
             </span>
           </div>
 
           <div className="rounded-lg bg-void-950 p-2 border border-white/10 font-mono text-center mb-1.5">
-            <div className="text-base font-bold text-sky-400">
+            <div className="text-base font-bold text-sky-300">
               {displayVoltage} V
             </div>
             <div className="text-[9px] text-slate-400 font-sans mt-0.5">
