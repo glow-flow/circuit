@@ -21,7 +21,6 @@ import {
   Layers,
   RotateCcw,
   Sliders,
-  Sprout,
   Sun,
   Sunrise,
   Sunset,
@@ -186,7 +185,7 @@ const OutdoorSandboxInner: React.FC = () => {
       case 'noon':
         return {
           leftPercent: 50,
-          topPx: 64,
+          topPx: 102,
           elevationDeg: 75,
           azimuthText: isId ? 'Zenith (Tepat di Atas)' : 'Zenith (High Overhead)',
           label: isId ? 'Siang (75° Zenith)' : 'Noon (75° Zenith)',
@@ -202,7 +201,7 @@ const OutdoorSandboxInner: React.FC = () => {
       case 'afternoon':
         return {
           leftPercent: 82,
-          topPx: 120,
+          topPx: 146,
           elevationDeg: 35,
           azimuthText: isId ? 'Barat (Senja)' : 'West (Sunset)',
           label: isId ? 'Sore (35° Barat)' : 'Afternoon (35° West)',
@@ -219,7 +218,7 @@ const OutdoorSandboxInner: React.FC = () => {
       default:
         return {
           leftPercent: 18,
-          topPx: 120,
+          topPx: 146,
           elevationDeg: 35,
           azimuthText: isId ? 'Timur (Fajar)' : 'East (Sunrise)',
           label: isId ? 'Pagi (35° Timur)' : 'Morning (35° East)',
@@ -1160,11 +1159,12 @@ const OutdoorSandboxInner: React.FC = () => {
       </div>
 
       {/* ====================================================================
-          TOP FLOATING SANDBOX TOOLBAR (Ultra-Compact Island Dock)
-          Ultra-sleek single-row translucent glass capsule that preserves the
-          panoramic sky and landscape view on mobile & desktop!
+          OPTION A LABELED 2-MODE NATURE CONTROL DOCK
+          Replaces the 11-icon unlabeled strip with a teacher-friendly 2-mode
+          labeled toolbar:
+          - Mode 1 ('Mode Rangkai'): Move/Wire + Labeled Sun Time + Send to Lab
+          - Mode 2 ('Ubah Tanah/Air'): Labeled Terrain Brushes (+Tanah, +Air, +Mata Air, Gali, Reset)
          ==================================================================== */}
-      {/* Mini Collapsed Floating Capsule (When user taps Hide/Scenic View) */}
       {isToolbarCollapsed && (
         <div
           onPointerDown={(e) => e.stopPropagation()}
@@ -1173,7 +1173,7 @@ const OutdoorSandboxInner: React.FC = () => {
           <button
             type="button"
             onClick={() => setIsToolbarCollapsed(false)}
-            title={isId ? 'Tampilkan Menu Alat Alam' : 'Show Outdoor Toolbar'}
+            title={isId ? 'Tampilkan Kontrol Alam' : 'Show Outdoor Controls'}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-void-950/90 backdrop-blur-xl border border-emerald-400/50 text-emerald-300 text-xs font-semibold shadow-[0_8px_24px_rgba(0,0,0,0.6)] active:scale-95 hover:border-emerald-300 hover:text-emerald-200 transition-all cursor-pointer"
           >
             <Sliders className="w-3.5 h-3.5 text-emerald-400" />
@@ -1183,139 +1183,169 @@ const OutdoorSandboxInner: React.FC = () => {
         </div>
       )}
 
-      {/* Main Single-Row Floating Glass Capsule Toolbar */}
       <div
         onPointerDown={(e) => e.stopPropagation()}
-        className={`absolute top-2.5 left-2 right-2 sm:left-1/2 sm:-translate-x-1/2 sm:w-auto z-40 flex items-center justify-center pointer-events-none transition-all duration-300 ${
+        className={`absolute top-2 left-2 right-2 sm:left-1/2 sm:-translate-x-1/2 sm:w-auto sm:min-w-[460px] z-40 flex items-center justify-center pointer-events-none transition-all duration-300 ${
           isToolbarCollapsed
             ? 'opacity-0 -translate-y-4 pointer-events-none scale-95'
             : 'opacity-100 pointer-events-auto translate-y-0 scale-100'
         }`}
       >
-        <div className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-2xl bg-void-950/90 backdrop-blur-xl border border-white/15 shadow-[0_12px_36px_rgba(0,0,0,0.65)] max-w-full overflow-x-auto no-scrollbar">
-          {/* Section 1: Terrain Brush Selector */}
-          <div
-            id="tour-outdoor-brushes"
-            className="flex items-center gap-1 shrink-0"
-          >
-            <span className="hidden xl:flex items-center gap-1 text-[10px] font-mono uppercase tracking-wider text-emerald-400 px-1 font-bold">
-              <Sprout className="w-3.5 h-3.5" />
-              {isId ? 'Medan:' : 'Terrain:'}
-            </span>
+        <div
+          id="tour-outdoor-brushes"
+          className="w-full sm:w-auto flex flex-col gap-1.5 px-2.5 py-2 rounded-2xl bg-void-950/95 backdrop-blur-xl border border-emerald-500/35 shadow-[0_12px_36px_rgba(0,0,0,0.7)]"
+        >
+          {/* Row 1: 2-Mode Switcher ('Mode Rangkai' vs 'Ubah Tanah/Air') + 1-Click PLTS 12V CTA */}
+          <div className="flex items-center justify-between gap-1.5">
+            <div className="flex items-center gap-1 bg-void-900 p-0.5 rounded-xl border border-white/10 shrink-0">
+              <button
+                type="button"
+                onClick={() => setTerrainBrush('cursor')}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] sm:text-[11px] font-bold transition-all active:scale-95 cursor-pointer ${
+                  terrainBrush === 'cursor'
+                    ? 'bg-electric-600 text-white shadow-sm'
+                    : 'text-slate-300 hover:text-white'
+                }`}
+              >
+                <Hand className="w-3.5 h-3.5 shrink-0" />
+                <span>{isId ? 'Mode Rangkai' : 'Build Mode'}</span>
+              </button>
 
-            {brushButtons.map((btn) => {
-              const isActive = terrainBrush === btn.id;
-              return (
+              <button
+                type="button"
+                onClick={() => {
+                  if (terrainBrush === 'cursor') {
+                    setTerrainBrush('DIRT');
+                  }
+                }}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] sm:text-[11px] font-bold transition-all active:scale-95 cursor-pointer ${
+                  terrainBrush !== 'cursor'
+                    ? 'bg-amber-600 text-white shadow-sm'
+                    : 'text-slate-300 hover:text-white'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5 shrink-0" />
+                <span>{isId ? 'Ubah Tanah/Air' : 'Edit Terrain'}</span>
+              </button>
+            </div>
+
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                id="tour-outdoor-spawn"
+                type="button"
+                onClick={handleSpawnOutdoorPowerStation}
+                title={
+                  isId
+                    ? 'Pasang Otomatis Pembangkit Listrik Alam (Panel Surya 12V + Turbin Angin + Menara SUTET)'
+                    : 'Auto-Spawn 12V Outdoor Power Station (Solar + Wind + SUTET Tower)'
+                }
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 border border-emerald-400/60 text-white text-[10px] sm:text-[11px] font-bold shadow-sm active:scale-95 transition-all cursor-pointer shrink-0"
+              >
+                <Zap className="w-3.5 h-3.5 text-emerald-200 shrink-0" />
+                <span>{isId ? 'Pasang PLTS 12V' : 'Spawn 12V Station'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsToolbarCollapsed(true)}
+                title={isId ? 'Sembunyikan Panel' : 'Hide Panel'}
+                className="p-1.5 rounded-xl bg-void-900 hover:bg-void-800 border border-white/10 text-slate-400 hover:text-white active:scale-95 transition-all cursor-pointer shrink-0"
+              >
+                <EyeOff className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Row 2: Contextual Labeled Controls (Sun Time + Send to Lab OR Labeled Terrain Brushes) */}
+          {terrainBrush === 'cursor' ? (
+            <div
+              id="tour-outdoor-sun-time"
+              className="flex items-center justify-between gap-1.5 pt-0.5"
+            >
+              <div className="flex items-center gap-1 flex-1 min-w-0">
                 <button
-                  key={btn.id}
                   type="button"
-                  onClick={() => setTerrainBrush(btn.id)}
-                  title={btn.fullLabel}
-                  className={`flex items-center gap-1 px-2 py-1 rounded-xl text-[11px] font-semibold border transition-all active:scale-95 cursor-pointer shrink-0 ${
-                    isActive
-                      ? btn.activeClass
-                      : 'bg-void-900/80 hover:bg-void-800 border-white/10 text-slate-300 hover:text-white'
+                  onClick={() => setSunTimeOfDay('morning')}
+                  className={`flex-1 flex items-center justify-center gap-1 px-2 py-1 rounded-lg text-[10px] sm:text-[11px] font-semibold border transition-all active:scale-95 cursor-pointer ${
+                    sunTimeOfDay === 'morning'
+                      ? 'bg-amber-500/25 border-amber-400 text-amber-200'
+                      : 'bg-void-900/90 border-white/10 text-slate-300 hover:text-white'
                   }`}
                 >
-                  {btn.icon}
-                  <span className="hidden md:inline">{btn.label}</span>
+                  <Sunrise className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span>{isId ? 'Pagi' : 'Morning'}</span>
                 </button>
-              );
-            })}
 
-            <button
-              type="button"
-              onClick={resetOutdoorTerrain}
-              title={isId ? 'Reset Medan Alam' : 'Reset Terrain'}
-              className="flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-xl text-[11px] font-medium bg-void-900/80 hover:bg-void-800 border border-white/10 text-slate-400 hover:text-white active:scale-95 transition-all cursor-pointer shrink-0"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span className="hidden lg:inline">{isId ? 'Reset' : 'Reset'}</span>
-            </button>
-          </div>
+                <button
+                  type="button"
+                  onClick={() => setSunTimeOfDay('noon')}
+                  className={`flex-1 flex items-center justify-center gap-1 px-2 py-1 rounded-lg text-[10px] sm:text-[11px] font-semibold border transition-all active:scale-95 cursor-pointer ${
+                    sunTimeOfDay === 'noon'
+                      ? 'bg-yellow-500/25 border-yellow-400 text-yellow-200'
+                      : 'bg-void-900/90 border-white/10 text-slate-300 hover:text-white'
+                  }`}
+                >
+                  <Sun className="w-3.5 h-3.5 text-yellow-300 shrink-0" />
+                  <span>{isId ? 'Siang' : 'Noon'}</span>
+                </button>
 
-          {/* Translucent Divider */}
-          <div className="w-px h-4 bg-white/15 shrink-0 mx-0.5 sm:mx-1" />
+                <button
+                  type="button"
+                  onClick={() => setSunTimeOfDay('afternoon')}
+                  className={`flex-1 flex items-center justify-center gap-1 px-2 py-1 rounded-lg text-[10px] sm:text-[11px] font-semibold border transition-all active:scale-95 cursor-pointer ${
+                    sunTimeOfDay === 'afternoon'
+                      ? 'bg-orange-500/25 border-orange-400 text-orange-200'
+                      : 'bg-void-900/90 border-white/10 text-slate-300 hover:text-white'
+                  }`}
+                >
+                  <Sunset className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                  <span>{isId ? 'Sore' : 'Afternoon'}</span>
+                </button>
+              </div>
 
-          {/* Section 2: Sun Position / Time of Day */}
-          <div
-            id="tour-outdoor-sun-time"
-            className="flex items-center gap-1 shrink-0"
-          >
-            <button
-              type="button"
-              onClick={() => setSunTimeOfDay('morning')}
-              title={isId ? 'Matahari Pagi (Bayangan ke Barat)' : 'Morning Sun (Shadows Westward)'}
-              className={`flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-xl text-[11px] font-semibold border transition-all active:scale-95 cursor-pointer shrink-0 ${
-                sunTimeOfDay === 'morning'
-                  ? 'bg-amber-500/25 border-amber-400 text-amber-200 shadow-[0_0_12px_rgba(245,158,11,0.35)]'
-                  : 'bg-void-900/80 hover:bg-void-800 border-white/10 text-slate-400 hover:text-white'
-              }`}
-            >
-              <Sunrise className="w-3.5 h-3.5 text-amber-400" />
-              <span className="hidden md:inline">{isId ? 'Pagi (35°)' : 'Morning (35°)'}</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => useCircuitStore.getState().triggerWorldTransition('lab')}
+                className="px-2.5 py-1 rounded-lg bg-void-900 hover:bg-void-850 border border-emerald-500/40 text-emerald-300 text-[10px] sm:text-[11px] font-mono font-bold transition-all active:scale-95 cursor-pointer shrink-0"
+              >
+                {isId ? 'Kirim ke Lab ->' : 'To Lab ->'}
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-1 pt-0.5 overflow-x-auto no-scrollbar">
+              {brushButtons
+                .filter((b) => b.id !== 'cursor')
+                .map((btn) => {
+                  const isActive = terrainBrush === btn.id;
+                  return (
+                    <button
+                      key={btn.id}
+                      type="button"
+                      onClick={() => setTerrainBrush(btn.id)}
+                      title={btn.fullLabel}
+                      className={`flex-1 flex items-center justify-center gap-1 px-2 py-1 rounded-lg text-[10px] sm:text-[11px] font-semibold border transition-all active:scale-95 cursor-pointer shrink-0 ${
+                        isActive
+                          ? btn.activeClass
+                          : 'bg-void-900/90 hover:bg-void-800 border-white/10 text-slate-300 hover:text-white'
+                      }`}
+                    >
+                      {btn.icon}
+                      <span>+{btn.label}</span>
+                    </button>
+                  );
+                })}
 
-            <button
-              type="button"
-              onClick={() => setSunTimeOfDay('noon')}
-              title={isId ? 'Matahari Siang (Tinggi di Atas)' : 'Noon Sun (High Overhead)'}
-              className={`flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-xl text-[11px] font-semibold border transition-all active:scale-95 cursor-pointer shrink-0 ${
-                sunTimeOfDay === 'noon'
-                  ? 'bg-yellow-500/25 border-yellow-400 text-yellow-200 shadow-[0_0_12px_rgba(234,179,8,0.35)]'
-                  : 'bg-void-900/80 hover:bg-void-800 border-white/10 text-slate-400 hover:text-white'
-              }`}
-            >
-              <Sun className="w-3.5 h-3.5 text-yellow-300" />
-              <span className="hidden md:inline">{isId ? 'Siang (75°)' : 'Noon (75°)'}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setSunTimeOfDay('afternoon')}
-              title={isId ? 'Matahari Sore (Bayangan ke Timur)' : 'Afternoon Sun (Shadows Eastward)'}
-              className={`flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-xl text-[11px] font-semibold border transition-all active:scale-95 cursor-pointer shrink-0 ${
-                sunTimeOfDay === 'afternoon'
-                  ? 'bg-orange-500/25 border-orange-400 text-orange-200 shadow-[0_0_12px_rgba(249,115,22,0.35)]'
-                  : 'bg-void-900/80 hover:bg-void-800 border-white/10 text-slate-400 hover:text-white'
-              }`}
-            >
-              <Sunset className="w-3.5 h-3.5 text-orange-400" />
-              <span className="hidden md:inline">{isId ? 'Sore (35°)' : 'Afternoon (35°)'}</span>
-            </button>
-          </div>
-
-          {/* Translucent Divider */}
-          <div className="w-px h-4 bg-white/15 shrink-0 mx-0.5 sm:mx-1" />
-
-          {/* Section 3: Quick Demo Generator */}
-          <button
-            id="tour-outdoor-spawn"
-            type="button"
-            onClick={handleSpawnOutdoorPowerStation}
-            title={
-              isId
-                ? 'Pasang Pembangkit Alam (Panel Surya 12V + Turbin Angin + Menara Transmisi)'
-                : 'Spawn Outdoor Station (Solar Panel 12V + Wind Turbine + Transmission Tower)'
-            }
-            className="flex items-center gap-1 px-2 sm:px-3 py-1 rounded-xl bg-emerald-500/25 hover:bg-emerald-500/35 border border-emerald-400/60 text-emerald-200 text-[11px] font-bold shadow-[0_0_14px_rgba(16,185,129,0.3)] backdrop-blur-md active:scale-95 transition-all cursor-pointer shrink-0"
-          >
-            <Zap className="w-3.5 h-3.5 text-emerald-300" />
-            <span className="hidden sm:inline">
-              {isId ? 'Pembangkit (12V)' : 'Station (12V)'}
-            </span>
-            <span className="sm:hidden font-mono">12V</span>
-          </button>
-
-          {/* Section 4: Minimize / Scenic Mode Toggle Button */}
-          <button
-            type="button"
-            onClick={() => setIsToolbarCollapsed(true)}
-            title={isId ? 'Mode Pemandangan Penuh (Sembunyikan Menu)' : 'Scenic View (Hide Toolbar)'}
-            className="p-1 rounded-xl bg-void-900/80 hover:bg-void-800 border border-white/10 text-slate-400 hover:text-white active:scale-95 transition-all cursor-pointer shrink-0 ml-0.5"
-          >
-            <EyeOff className="w-3.5 h-3.5" />
-          </button>
+              <button
+                type="button"
+                onClick={resetOutdoorTerrain}
+                title={isId ? 'Reset Medan Alam' : 'Reset Terrain'}
+                className="flex items-center justify-center gap-1 px-2 py-1 rounded-lg text-[10px] sm:text-[11px] font-semibold bg-void-900/90 hover:bg-void-800 border border-white/10 text-slate-300 hover:text-white active:scale-95 transition-all cursor-pointer shrink-0"
+              >
+                <RotateCcw className="w-3 h-3 shrink-0" />
+                <span>{isId ? 'Reset' : 'Reset'}</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

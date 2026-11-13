@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import {
-
   Trash2,
-  BookOpen,
   AlertOctagon,
   RotateCcw,
   Globe,
@@ -40,22 +38,57 @@ const AcademyModal = React.lazy(() =>
   import('./academy/AcademyModal').then((m) => ({ default: m.AcademyModal }))
 );
 const TroubleshootingModal = React.lazy(() =>
-  import('./troubleshooting/TroubleshootingModal').then((m) => ({ default: m.TroubleshootingModal }))
+  import('./troubleshooting/TroubleshootingModal').then((m) => ({
+    default: m.TroubleshootingModal,
+  }))
 );
 const RenewableLabModal = React.lazy(() =>
   import('./renewable/RenewableLabModal').then((m) => ({ default: m.RenewableLabModal }))
 );
 const ExplainableTutorModal = React.lazy(() =>
-  import('./tutor/ExplainableTutorModal').then((m) => ({ default: m.ExplainableTutorModal }))
+  import('./tutor/ExplainableTutorModal').then((m) => ({
+    default: m.ExplainableTutorModal,
+  }))
 );
 const OscilloscopeModal = React.lazy(() =>
-  import('./analytics/OscilloscopeModal').then((m) => ({ default: m.OscilloscopeModal }))
+  import('./analytics/OscilloscopeModal').then((m) => ({
+    default: m.OscilloscopeModal,
+  }))
 );
 const CircuitShareModal = React.lazy(() =>
-  import('./workspace/CircuitShareModal').then((m) => ({ default: m.CircuitShareModal }))
+  import('./workspace/CircuitShareModal').then((m) => ({
+    default: m.CircuitShareModal,
+  }))
 );
 
-export const Header: React.FC = () => {
+export interface HeaderProps {
+  /** Opens the Teacher & Student Quick-Start Guide / Interactive Practice modal. */
+  onOpenWelcomeGuide?: () => void;
+  /** Controlled state for the Save Custom Circuit modal (accessible from Header & Mobile Menu). */
+  isSaveModalOpen?: boolean;
+  /** Setter for the Save Custom Circuit modal state. */
+  onSaveModalOpenChange?: (isOpen: boolean) => void;
+}
+
+/**
+ * Top Application Header (`Header.tsx`).
+ *
+ * Implements Option A ("Clean Classroom Dock"):
+ * - On mobile (`< lg`), eliminates the 10-icon unlabeled clutter and duplicate Gallery/Academy
+ *   icons. Displays only:
+ *   1. Brand Logo (`CreditsModal`)
+ *   2. Labeled 2-Mode Segmented World Switcher (`[Lab Rangkaian]` | `[Alam EBT]`)
+ *   3. Labeled `[? Panduan]` button
+ *   4. Labeled `[Reset]` button
+ * - On desktop (`lg:`), displays the full horizontal studio bar.
+ *
+ * Time Complexity: O(1) render.
+ */
+export const Header: React.FC<HeaderProps> = ({
+  onOpenWelcomeGuide,
+  isSaveModalOpen: externalSaveModalOpen,
+  onSaveModalOpenChange,
+}) => {
   const simulation = useCircuitStore((state) => state.simulation);
   const clearCanvas = useCircuitStore((state) => state.clearCanvas);
   const loadPreset = useCircuitStore((state) => state.loadPreset);
@@ -73,9 +106,12 @@ export const Header: React.FC = () => {
   const theme = useCircuitStore((state) => state.theme);
   const toggleTheme = useCircuitStore((state) => state.toggleTheme);
 
-  const [isSaveModalOpen, setIsSaveModalOpen] = useState<boolean>(false);
+  const [internalSaveModalOpen, setInternalSaveModalOpen] = useState<boolean>(false);
   const [isCreditsModalOpen, setIsCreditsModalOpen] = useState<boolean>(false);
   const [presetNameInput, setPresetNameInput] = useState<string>('');
+
+  const isSaveModalOpen = externalSaveModalOpen ?? internalSaveModalOpen;
+  const setIsSaveModalOpen = onSaveModalOpenChange ?? setInternalSaveModalOpen;
 
   const t = TRANSLATIONS[language].header;
   const isId = language === 'id';
@@ -92,20 +128,31 @@ export const Header: React.FC = () => {
     setIsSaveModalOpen(false);
   };
 
+  const handleGuideClick = () => {
+    if (onOpenWelcomeGuide) {
+      onOpenWelcomeGuide();
+    } else {
+      startTour();
+    }
+  };
+
   return (
     <>
-      <header id="app-header" className="h-12 sm:h-14 border-b border-white/10 bg-void-900 px-1.5 sm:px-4 flex items-center justify-between gap-1 sm:gap-2 z-20 shrink-0 select-none w-full max-w-full">
-        {/* Left: Brand Identity & Feature Launchers */}
+      <header
+        id="app-header"
+        className="h-13 sm:h-14 border-b border-white/10 bg-void-900 px-2 sm:px-4 flex items-center justify-between gap-1.5 sm:gap-2 z-20 shrink-0 select-none w-full max-w-full"
+      >
+        {/* Left: Brand Identity & Desktop Feature Launchers */}
         <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 shrink-0">
           <button
             type="button"
             onClick={() => setIsCreditsModalOpen(true)}
             title={
               isId
-                ? 'Circuit Sandbox · Karya SMPN 12 Surabaya'
-                : 'Circuit Sandbox · By SMPN 12 Surabaya'
+                ? 'Circuit Sandbox · Karya SMPN 12 Surabaya (Klik untuk Info & Referensi)'
+                : 'Circuit Sandbox · By SMPN 12 Surabaya (Click for Credits)'
             }
-            className="flex items-center justify-center w-8 h-8 rounded-xl bg-void-950 hover:bg-void-850 border border-white/10 shrink-0 transition-transform active:scale-95 cursor-pointer overflow-hidden"
+            className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-void-950 hover:bg-void-850 border border-white/15 shrink-0 transition-transform active:scale-95 cursor-pointer overflow-hidden"
           >
             <img
               src="/assets/logo-circuit-sandbox.png"
@@ -116,35 +163,37 @@ export const Header: React.FC = () => {
               className="w-full h-full object-contain pointer-events-none select-none"
             />
           </button>
-          <div className="hidden sm:block min-w-0">
+
+          <div className="hidden md:block min-w-0">
             <h1 className="text-xs sm:text-sm font-bold text-slate-100 tracking-tight flex items-center gap-1.5 whitespace-nowrap leading-[1.1] pb-0.5">
               <span>Circuit Sandbox</span>
             </h1>
-            <p className="text-[11px] text-slate-400 hidden md:block truncate">
+            <p className="text-[11px] text-slate-400 hidden xl:block truncate">
               {t.appSubtitle}
             </p>
           </div>
 
-          {/* Quick-Access Top Pills: Academy, Preset Gallery, Missions, Oscilloscope */}
+          {/* Desktop Quick-Access Top Pills (Hidden on Mobile where Bottom Dock & Menu Lab organize them cleanly) */}
           <div className="hidden lg:flex items-center gap-1 pl-1">
             <button
               type="button"
               onClick={() => setActiveModal('academy')}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-electric-500/15 hover:bg-electric-500/25 text-electric-300 border border-electric-500/30 text-xs font-semibold transition-all active:scale-95 cursor-pointer shadow-sm"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/35 text-xs font-semibold transition-all active:scale-95 cursor-pointer shadow-sm"
               title={isId ? 'Akademi Kelistrikan & Kurikulum' : 'Electrical Academy & Curriculum'}
             >
-              <GraduationCap className="w-3.5 h-3.5 text-electric-400" />
+              <GraduationCap className="w-3.5 h-3.5 text-emerald-400" />
               <span>{isId ? 'Akademi' : 'Academy'}</span>
             </button>
 
             <button
+              id="tour-dropdown-contoh"
               type="button"
               onClick={() => setActiveModal('gallery')}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-void-950 hover:bg-void-850 text-slate-200 hover:text-white border border-white/10 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
-              title={isId ? 'Buka Galeri Rangkaian Visual' : 'Open Visual Preset Gallery'}
+              title={isId ? 'Buka Contoh Rangkaian Visual' : 'Open Visual Preset Gallery'}
             >
-              <LayoutGrid className="w-3.5 h-3.5 text-electric-400" />
-              <span>{isId ? 'Galeri' : 'Gallery'}</span>
+              <LayoutGrid className="w-3.5 h-3.5 text-amber-400" />
+              <span>{isId ? 'Contoh (5)' : 'Presets (5)'}</span>
             </button>
 
             <button
@@ -153,8 +202,8 @@ export const Header: React.FC = () => {
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-void-950 hover:bg-void-850 text-slate-200 hover:text-white border border-white/10 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
               title={isId ? 'Misi & Tantangan Praktikum IPA' : 'Missions & Challenges'}
             >
-              <Trophy className="w-3.5 h-3.5 text-slate-300" />
-              <span>{isId ? 'Tantangan' : 'Challenges'}</span>
+              <Trophy className="w-3.5 h-3.5 text-amber-400" />
+              <span>{isId ? 'Misi' : 'Missions'}</span>
             </button>
 
             <button
@@ -164,7 +213,7 @@ export const Header: React.FC = () => {
               title={isId ? 'Lab Pemecahan Masalah & Diagnostik Gangguan' : 'Troubleshooting & Fault Injection Lab'}
             >
               <Wrench className="w-3.5 h-3.5 text-slate-300" />
-              <span>{isId ? 'Troubleshoot' : 'Troubleshoot'}</span>
+              <span>{isId ? 'Korsleting' : 'Fault Lab'}</span>
             </button>
 
             <button
@@ -173,8 +222,8 @@ export const Header: React.FC = () => {
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-void-950 hover:bg-void-850 text-slate-200 hover:text-white border border-white/10 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
               title={isId ? 'Digital Twin Energi Terbarukan & Microgrid' : 'Renewable Energy & Microgrid Digital Twin'}
             >
-              <Sun className="w-3.5 h-3.5 text-slate-300" />
-              <span>{isId ? 'EBT' : 'Renewable'}</span>
+              <Sun className="w-3.5 h-3.5 text-emerald-400" />
+              <span>{isId ? 'Microgrid' : 'Microgrid'}</span>
             </button>
 
             <button
@@ -183,7 +232,7 @@ export const Header: React.FC = () => {
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-void-950 hover:bg-void-850 text-slate-200 hover:text-white border border-white/10 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
               title={isId ? 'Tutor Fisika Rangkaian Terjelaskan' : 'Explainable Circuit Physics Tutor'}
             >
-              <Cpu className="w-3.5 h-3.5 text-slate-300" />
+              <Cpu className="w-3.5 h-3.5 text-electric-400" />
               <span>Tutor</span>
             </button>
 
@@ -198,6 +247,17 @@ export const Header: React.FC = () => {
             </button>
 
             <button
+              id="tour-btn-save"
+              type="button"
+              onClick={() => setIsSaveModalOpen(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-void-950 hover:bg-void-850 text-electric-300 border border-white/10 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
+              title={t.savePresetModalTitle}
+            >
+              <BookmarkPlus className="w-3.5 h-3.5 text-electric-400" />
+              <span>{t.savePresetBtn}</span>
+            </button>
+
+            <button
               type="button"
               onClick={() => setActiveModal('share')}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-void-950 hover:bg-void-850 text-slate-200 hover:text-white border border-white/10 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
@@ -209,120 +269,48 @@ export const Header: React.FC = () => {
           </div>
         </div>
 
-        {/* Center: Unified Gallery & Save Capsule (Lab Mode) or Nature Badge (Outdoor Mode) */}
-        {worldMode === 'lab' ? (
-          <div className="flex items-center bg-void-950 border border-white/10 rounded-xl p-0.5 shadow-inner shrink-0">
-            {/* Direct Academy Trigger Pill */}
-            <button
-              type="button"
-              onClick={() => setActiveModal('academy')}
-              title={isId ? 'Buka Akademi Kelistrikan' : 'Open Circuit Academy'}
-              className="flex items-center gap-1.5 px-2 py-1.5 sm:px-2.5 sm:py-1.5 rounded-lg bg-electric-500/15 hover:bg-electric-500/25 text-electric-300 transition-all active:scale-95 cursor-pointer text-[11px] sm:text-xs font-semibold"
-            >
-              <GraduationCap className="w-3.5 h-3.5 text-electric-400 shrink-0" />
-              <span className="hidden sm:inline">{isId ? 'Akademi' : 'Academy'}</span>
-            </button>
-
-            <div className="w-px h-4 bg-white/10 shrink-0 mx-0.5" />
-
-            {/* Direct Visual Gallery Trigger Pill */}
-            <button
-              id="tour-dropdown-contoh"
-              type="button"
-              onClick={() => setActiveModal('gallery')}
-              title={isId ? 'Buka Galeri Rangkaian Interaktif' : 'Open Interactive Circuit Gallery'}
-              aria-label="Open Circuit Gallery"
-              className="flex items-center gap-1 px-1.5 py-1.5 sm:px-3 sm:py-1.5 rounded-lg hover:bg-white/10 text-slate-200 hover:text-white transition-all active:scale-95 cursor-pointer text-[11px] sm:text-xs font-semibold"
-            >
-              <BookOpen className="w-3.5 h-3.5 text-electric-400 shrink-0" />
-              <span className="hidden md:inline">{isId ? 'Galeri Rangkaian' : 'Circuit Gallery'}</span>
-              <span className="text-[9px] font-mono px-1 py-0.5 rounded bg-electric-500/20 text-electric-300 font-bold border border-electric-500/30">
-                5
-              </span>
-            </button>
-
-            <div className="w-px h-4 bg-white/10 shrink-0 mx-0.5" />
-
-            {/* Save Custom Preset Action inside Unified Capsule */}
-            <button
-              id="tour-btn-save"
-              type="button"
-              onClick={() => setIsSaveModalOpen(true)}
-              title={t.savePresetModalTitle}
-              aria-label={t.savePresetModalTitle}
-              className="flex items-center gap-1 px-1.5 sm:px-2.5 py-1.5 rounded-lg bg-electric-500/15 hover:bg-electric-500/25 text-electric-400 text-[11px] sm:text-xs font-semibold transition-all active:scale-95 shrink-0 cursor-pointer"
-            >
-              <BookmarkPlus className="w-3.5 h-3.5 shrink-0" />
-              <span className="hidden md:inline">{t.savePresetBtn}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => loadPreset('simple-lamp')}
-              className="hidden lg:flex p-1.5 ml-0.5 rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all active:scale-95 shrink-0 cursor-pointer"
-              title={t.resetTitle}
-              onClickCapture={runSimulation}
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-void-950 border border-emerald-500/30 text-emerald-300 text-[10px] sm:text-xs font-mono font-semibold truncate min-w-0">
-            <Trees className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            <span className="truncate">
-              {isId ? 'Zona Alam Terbuka' : 'Outdoor Sandbox'}
-            </span>
-          </div>
-        )}
-
-        {/* Right: World Switcher + Unified Dark-Glass Utility Dock */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          {/* Primary World Mode Switcher Pill */}
+        {/* Center: Segmented 2-Mode World Switcher Capsule (Clear on Mobile & Desktop!) */}
+        <div
+          id="tour-btn-world"
+          role="group"
+          aria-label={isId ? 'Pilih Dunia Simulasi' : 'Select Simulation World'}
+          className="flex items-center bg-void-950 border border-white/15 rounded-xl p-0.5 shadow-inner shrink-0"
+        >
           <button
-            id="tour-btn-world"
             type="button"
             disabled={isTransitioningWorld}
-            onClick={() => triggerWorldTransition()}
-            title={
+            onClick={() => {
+              if (worldMode !== 'lab') triggerWorldTransition('lab');
+            }}
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all active:scale-95 cursor-pointer disabled:opacity-50 ${
               worldMode === 'lab'
-                ? isId
-                  ? 'Keluar ke Alam Terbuka (Outdoor Sandbox)'
-                  : 'Go Outside (Outdoor Sandbox)'
-                : isId
-                ? 'Kembali ke Dalam Laboratorium'
-                : 'Go Inside (Back to Lab)'
-            }
-            aria-label="Toggle World Mode"
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-xl border text-[11px] sm:text-xs font-semibold transition-all active:scale-95 shrink-0 cursor-pointer disabled:opacity-50 ${
-              worldMode === 'outside'
-                ? 'bg-electric-500/15 hover:bg-electric-500/25 border-electric-400/40 text-electric-300'
-                : 'bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-400/40 text-emerald-300'
+                ? 'bg-electric-600 text-white shadow-sm'
+                : 'text-slate-300 hover:text-white hover:bg-white/5'
             }`}
           >
-            {worldMode === 'outside' ? (
-              <FlaskConical className="w-3.5 h-3.5 text-electric-400 shrink-0" />
-            ) : (
-              <Trees className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            )}
-            <span className="tracking-tight">
-              {worldMode === 'outside' ? (
-                <>
-                  <span className="hidden sm:inline">
-                    {isId ? 'Masuk Lab' : 'Lab Mode'}
-                  </span>
-                  <span className="sm:hidden">{isId ? 'Lab' : 'Lab'}</span>
-                </>
-              ) : (
-                <>
-                  <span className="hidden sm:inline">
-                    {isId ? 'Ke Alam' : 'Outside'}
-                  </span>
-                  <span className="sm:hidden">{isId ? 'Alam' : 'Outside'}</span>
-                </>
-              )}
-            </span>
+            <FlaskConical className="w-3.5 h-3.5 shrink-0" />
+            <span>{isId ? 'Lab Rangkaian' : 'Lab Mode'}</span>
           </button>
 
+          <button
+            type="button"
+            disabled={isTransitioningWorld}
+            onClick={() => {
+              if (worldMode !== 'outside') triggerWorldTransition('outside');
+            }}
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all active:scale-95 cursor-pointer disabled:opacity-50 ${
+              worldMode === 'outside'
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'text-emerald-300 hover:text-emerald-200 hover:bg-emerald-500/10'
+            }`}
+          >
+            <Trees className="w-3.5 h-3.5 shrink-0" />
+            <span>{isId ? 'Alam EBT' : 'Outdoor EBT'}</span>
+          </button>
+        </div>
+
+        {/* Right: Labeled Guide & Reset Buttons (+ Desktop Theme/Lang Utility) */}
+        <div className="flex items-center gap-1.5 shrink-0">
           {/* Short-Circuit Alert Pill */}
           {simulation.isShortCircuit && (
             <div className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-xl bg-danger-500/15 border border-danger-500/40 text-danger-500 text-[10px] sm:text-xs font-semibold animate-pulse whitespace-nowrap shrink-0">
@@ -332,24 +320,20 @@ export const Header: React.FC = () => {
             </div>
           )}
 
-          {/* Unified Dark-Glass Utility Dock */}
-          <div className="flex items-center bg-void-950 border border-white/10 rounded-xl p-0.5 shadow-inner shrink-0">
-            {/* Interactive Spotlight Tour Trigger */}
-            <button
-              id="tour-btn-help"
-              type="button"
-              onClick={() => startTour()}
-              title={isId ? 'Mulai Panduan Interaktif' : 'Start Interactive Tour'}
-              aria-label={isId ? 'Mulai Panduan Interaktif' : 'Start Interactive Tour'}
-              className="flex items-center gap-1 px-1.5 sm:px-2 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 text-[11px] font-medium transition-all active:scale-95 shrink-0 cursor-pointer"
-            >
-              <HelpCircle className="w-3.5 h-3.5 text-electric-400" />
-              <span className="hidden lg:inline">{isId ? 'Panduan' : 'Guide'}</span>
-            </button>
+          {/* Labeled Interactive Guide Button (Always has text label on mobile!) */}
+          <button
+            id="tour-btn-help"
+            type="button"
+            onClick={handleGuideClick}
+            title={isId ? 'Buka Panduan & Contekan Guru' : 'Open Guide & Teacher Cards'}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-void-950 hover:bg-void-850 border border-electric-500/35 text-slate-100 hover:text-white text-[11px] sm:text-xs font-bold transition-all active:scale-95 shrink-0 cursor-pointer"
+          >
+            <HelpCircle className="w-3.5 h-3.5 text-electric-400 shrink-0" />
+            <span>{isId ? 'Panduan' : 'Guide'}</span>
+          </button>
 
-            <div className="w-px h-4 bg-white/10 shrink-0" />
-
-            {/* Theme Toggle (Dark Mode / Buku Lab Light Mode) */}
+          {/* Desktop-Only Theme & Language Buttons (On mobile, these live with full labels inside 'Menu Lab') */}
+          <div className="hidden lg:flex items-center bg-void-950 border border-white/10 rounded-xl p-0.5 shadow-inner shrink-0">
             <button
               id="tour-btn-theme"
               type="button"
@@ -364,7 +348,7 @@ export const Header: React.FC = () => {
                   : 'Dark Mode'
               }
               aria-label="Toggle Theme"
-              className="flex items-center gap-1 px-1.5 sm:px-2 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 text-[10px] sm:text-xs font-mono font-bold transition-all active:scale-95 shrink-0 cursor-pointer"
+              className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 text-xs font-mono font-bold transition-all active:scale-95 shrink-0 cursor-pointer"
             >
               {theme === 'dark' ? (
                 <Sun className="w-3.5 h-3.5 text-amber-400" />
@@ -375,31 +359,40 @@ export const Header: React.FC = () => {
 
             <div className="w-px h-4 bg-white/10 shrink-0" />
 
-            {/* Language Switcher (ID / EN) */}
             <button
               type="button"
               onClick={toggleLanguage}
               title={t.langToggleTitle}
-              className="flex items-center gap-1 px-1.5 sm:px-2 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 text-[10px] sm:text-xs font-mono font-bold transition-all active:scale-95 shrink-0 cursor-pointer"
+              className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 text-xs font-mono font-bold transition-all active:scale-95 shrink-0 cursor-pointer"
             >
-              <Globe className="w-3.5 h-3.5 text-slate-400 hidden sm:inline" />
+              <Globe className="w-3.5 h-3.5 text-slate-400" />
               <span>{language === 'id' ? 'ID' : 'EN'}</span>
             </button>
 
             <div className="w-px h-4 bg-white/10 shrink-0" />
 
-            {/* Clear Canvas Button */}
             <button
-              id="tour-btn-reset"
               type="button"
-              onClick={clearCanvas}
-              className="flex items-center gap-1 px-1.5 sm:px-2 py-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-950/40 text-xs font-medium transition-all active:scale-95 shrink-0 cursor-pointer"
-              title={t.clearTitle}
+              onClick={() => loadPreset('simple-lamp')}
+              onClickCapture={runSimulation}
+              title={t.resetTitle}
+              className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 text-xs font-medium transition-all active:scale-95 shrink-0 cursor-pointer"
             >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">{t.clearAll}</span>
+              <RotateCcw className="w-3.5 h-3.5" />
             </button>
           </div>
+
+          {/* Labeled Clear / Reset Canvas Button */}
+          <button
+            id="tour-btn-reset"
+            type="button"
+            onClick={clearCanvas}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-red-950/40 hover:bg-red-900/50 border border-red-500/40 text-red-200 hover:text-white text-[11px] sm:text-xs font-bold transition-all active:scale-95 shrink-0 cursor-pointer"
+            title={t.clearTitle}
+          >
+            <Trash2 className="w-3.5 h-3.5 text-red-400 shrink-0" />
+            <span>{isId ? 'Reset' : 'Clear'}</span>
+          </button>
         </div>
       </header>
 
@@ -493,7 +486,7 @@ export const Header: React.FC = () => {
               <p className="text-xs text-slate-400 leading-relaxed">
                 {isId
                   ? 'Rangkaian yang kamu buat akan disimpan di cache browser (LocalStorage) agar tidak hilang dan bisa dibuka kapan saja dari daftar Contoh Rangkaian.'
-                  : 'Your custom circuit will be saved in your browser cache (LocalStorage) and available anytime under the Presets dropdown.'}
+                  : 'Your custom circuit will be saved in your browser cache (LocalStorage) and available anytime under the Presets gallery.'}
               </p>
 
               <div>

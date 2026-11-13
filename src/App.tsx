@@ -1,14 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import {
-  PlusCircle,
   Sliders,
-  Activity,
   Scissors,
   Pin,
-  LayoutGrid,
-  Trophy,
-  Compass,
 } from 'lucide-react';
 import { Header } from './components/ui/Header';
 import { SidebarPalette } from './components/ui/SidebarPalette';
@@ -19,7 +14,9 @@ import { Inspector } from './components/ui/Inspector';
 import { WelcomeModal } from './components/ui/WelcomeModal';
 import { Toast } from './components/ui/Toast';
 import { MobileBottomSheet, BottomSheetSnapState } from './components/ui/mobile/MobileBottomSheet';
+import { MobileBottomNav } from './components/ui/mobile/MobileBottomNav';
 import { MobileHubModal } from './components/ui/mobile/MobileHubModal';
+import { InteractiveTutorialBanner } from './components/ui/tutorial/InteractiveTutorialBanner';
 import { useCircuitStore } from './store/useCircuitStore';
 import { TRANSLATIONS } from './i18n/translations';
 import { hasSeenTutorial } from './utils/presetStorage';
@@ -47,7 +44,6 @@ export const App: React.FC = () => {
   const splitEdgeAtMidpoint = useCircuitStore((state) => state.splitEdgeAtMidpoint);
   const language = useCircuitStore((state) => state.language);
   const worldMode = useCircuitStore((state) => state.worldMode);
-  const setActiveModal = useCircuitStore((state) => state.setActiveModal);
   const theme = useCircuitStore((state) => state.theme);
 
   // Synchronize document theme class for clean light mode / dark mode
@@ -63,7 +59,6 @@ export const App: React.FC = () => {
     }
   }, [theme]);
 
-  const t = TRANSLATIONS[language].mobileNav;
   const wireT = TRANSLATIONS[language].wire;
   const isId = language === 'id';
 
@@ -71,6 +66,8 @@ export const App: React.FC = () => {
   const [bottomSheetSnap, setBottomSheetSnap] = useState<BottomSheetSnapState>('closed');
   const [isWelcomeOpen, setIsWelcomeOpen] = useState<boolean>(() => !hasSeenTutorial());
   const [isMobileHubOpen, setIsMobileHubOpen] = useState<boolean>(false);
+  const [isInteractiveCoachOpen, setIsInteractiveCoachOpen] = useState<boolean>(false);
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState<boolean>(false);
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId);
   const selectedNodeHasWires = Boolean(
@@ -209,7 +206,11 @@ export const App: React.FC = () => {
   return (
     <div className="flex flex-col h-[100dvh] min-h-[100dvh] w-full max-w-full bg-void-950 text-slate-100 overflow-hidden font-sans">
       {/* Top Utility Header */}
-      <Header />
+      <Header
+        onOpenWelcomeGuide={() => setIsWelcomeOpen(true)}
+        isSaveModalOpen={isSaveModalOpen}
+        onSaveModalOpenChange={setIsSaveModalOpen}
+      />
 
       {/* Main Workspace Layout */}
       <div className="flex flex-1 min-h-0 relative w-full overflow-hidden">
@@ -224,8 +225,15 @@ export const App: React.FC = () => {
           {worldMode === 'outside' ? <OutdoorSandbox /> : <CircuitCanvas />}
           <OutdoorGenerationMiniHud />
 
+          {/* Interactive Hands-On Practice Coach Banner */}
+          <InteractiveTutorialBanner
+            isOpen={isInteractiveCoachOpen}
+            onClose={() => setIsInteractiveCoachOpen(false)}
+            onOpenFullGuide={() => setIsWelcomeOpen(true)}
+          />
+
           {/* Floating Quick-Edit & Disconnect Wires Bar on Mobile when a component is selected */}
-          {selectedNode && activeMobileSheet === 'none' && (
+          {selectedNode && activeMobileSheet === 'none' && !isInteractiveCoachOpen && (
             <div className="md:hidden absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 max-w-[94vw]">
               <button
                 type="button"
@@ -337,94 +345,27 @@ export const App: React.FC = () => {
         )}
       </div>
 
-      {/* Mobile Bottom Navigation Bar (WCAG AA compliant with 44px minimum tap targets) */}
-      <nav className="tour-mobile-nav md:hidden min-h-[52px] bg-void-900 border-t border-white/10 px-1.5 py-1 flex items-center justify-between gap-0.5 z-30 shrink-0 select-none">
-        {/* 1. Add Part Button */}
-        <button
-          id="tour-btn-tambah"
-          type="button"
-          onClick={() => openMobileSheet('palette')}
-          className={`flex-1 min-h-[44px] flex flex-col items-center justify-center rounded-xl text-[9px] font-semibold transition-all active:scale-95 cursor-pointer ${
-            activeMobileSheet === 'palette'
-              ? 'bg-electric-500/20 text-electric-300 font-bold border border-electric-500/40'
-              : 'text-slate-300 hover:bg-white/5'
-          }`}
-        >
-          <PlusCircle className="w-4 h-4 text-electric-400" />
-          <span className="truncate">{t.addPart}</span>
-        </button>
+      {/* Option A Mobile Bottom Navigation Dock (5 Labeled Tabs with Subtitles) */}
+      <MobileBottomNav
+        activeMobileSheet={activeMobileSheet}
+        isMobileHubOpen={isMobileHubOpen}
+        onOpenMobileSheet={openMobileSheet}
+        onOpenMobileHub={() => setIsMobileHubOpen(true)}
+      />
 
-        {/* 2. Preset Gallery Button */}
-        <button
-          id="tour-btn-galeri"
-          type="button"
-          onClick={() => setActiveModal('gallery')}
-          className="flex-1 min-h-[44px] flex flex-col items-center justify-center rounded-xl text-[9px] font-semibold text-slate-300 hover:bg-white/5 transition-all active:scale-95 cursor-pointer"
-        >
-          <LayoutGrid className="w-4 h-4 text-electric-400" />
-          <span className="truncate">{isId ? 'Galeri' : 'Gallery'}</span>
-        </button>
-
-        {/* 3. Challenge Missions Button */}
-        <button
-          type="button"
-          onClick={() => setActiveModal('missions')}
-          className="flex-1 min-h-[44px] flex flex-col items-center justify-center rounded-xl text-[9px] font-semibold text-amber-300 hover:bg-amber-500/10 transition-all active:scale-95 cursor-pointer"
-        >
-          <Trophy className="w-4 h-4 text-amber-400" />
-          <span className="truncate">{isId ? 'Misi' : 'Missions'}</span>
-        </button>
-
-        {/* 4. Live Oscilloscope Button */}
-        <button
-          type="button"
-          onClick={() => setActiveModal('oscilloscope')}
-          className="flex-1 min-h-[44px] flex flex-col items-center justify-center rounded-xl text-[9px] font-semibold text-emerald-300 hover:bg-emerald-500/10 transition-all active:scale-95 cursor-pointer"
-        >
-          <Activity className="w-4 h-4 text-emerald-400" />
-          <span className="truncate">Scope</span>
-        </button>
-
-        {/* 5. Inspector & Formulas Button */}
-        <button
-          id="tour-btn-info"
-          type="button"
-          onClick={() => openMobileSheet('inspector')}
-          className={`flex-1 min-h-[44px] flex flex-col items-center justify-center rounded-xl text-[9px] font-semibold transition-all active:scale-95 cursor-pointer ${
-            activeMobileSheet === 'inspector' || selectedNode
-              ? 'bg-electric-500/20 text-electric-300 font-bold border border-electric-500/40'
-              : 'text-slate-300 hover:bg-white/5'
-          }`}
-        >
-          <Sliders className="w-4 h-4 text-electric-400" />
-          <span className="truncate">{t.inspector}</span>
-        </button>
-
-        {/* 6. Circuit 4.0 Hub Menu Button */}
-        <button
-          type="button"
-          onClick={() => setIsMobileHubOpen(true)}
-          className={`flex-1 min-h-[44px] flex flex-col items-center justify-center rounded-xl text-[9px] font-semibold transition-all active:scale-95 cursor-pointer ${
-            isMobileHubOpen
-              ? 'bg-electric-500/20 text-electric-300 font-bold border border-electric-500/40'
-              : 'text-slate-300 hover:bg-white/5'
-          }`}
-        >
-          <Compass className="w-4 h-4 text-electric-400" />
-          <span className="truncate">{isId ? 'Menu 4.0' : 'Menu 4.0'}</span>
-        </button>
-      </nav>
-
-      {/* Mobile Hub Navigation Drawer */}
+      {/* Mobile Hub Navigation Drawer ("Menu Lab & Alat Praktikum") */}
       <MobileHubModal
         isOpen={isMobileHubOpen}
         onClose={() => setIsMobileHubOpen(false)}
+        onOpenSavePresetModal={() => setIsSaveModalOpen(true)}
+        onOpenWelcomeGuide={() => setIsWelcomeOpen(true)}
       />
 
-      {/* First-Visit Welcome Modal to Launch or Skip Spotlight Tour */}
+      {/* Teacher & Student Quick-Start Guide + Interactive Practice Launcher */}
       <WelcomeModal
         isOpen={isWelcomeOpen}
         onClose={() => setIsWelcomeOpen(false)}
+        onStartInteractivePractice={() => setIsInteractiveCoachOpen(true)}
       />
 
       {/* Transient notifications */}

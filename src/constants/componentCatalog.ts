@@ -251,7 +251,6 @@ const CONTROL_ENTRIES: PaletteEntry[] = [
     hint: 'ON menyambung arus, OFF memutusnya.',
     hintEn: 'ON lets current flow, OFF stops it.',
     spec: 'ON / OFF',
-    image: '/assets/switch-knife.png',
     glyph: 'switch',
     standardBadge: COMPONENT_DATASHEET_CITATIONS.switch.standardBadge,
     datasheetSource: COMPONENT_DATASHEET_CITATIONS.switch.sourceCitationId,

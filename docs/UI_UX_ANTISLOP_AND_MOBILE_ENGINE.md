@@ -56,11 +56,30 @@ Circuit Sandbox 4.0 strictly enforces an industrial instrumentation aesthetic in
   - All code-generated neon `<svg>` icons in the component palette and canvas nodes (`switch`, `voltmeter`, `ammeter`, `ground`, `distribution-panel`, and `logo-circuit-sandbox`) have been replaced with semi-realistic 2D hardware illustrations processed via the [[ASSET_PIPELINE_NANO_BANANA_AND_ALPHA_MATTING|BFS Exterior Flood-Fill & Slit-Guard Alpha-Matting Pipeline]].
   - Every `<img>` element enforces explicit `width` and `height` attributes (`R-40`) to prevent Cumulative Layout Shift (CLS) and includes a defensive `onError` structural fallback (`R-27`).
 
+- **Pure-Code SPST Knife Switch (`src/components/ui/common/KnifeSwitchGraphic.tsx`)**:
+  - The SPST Knife Switch (`switch`) renders 100% in pure SVG + CSS (`KnifeSwitchGraphic.tsx`) with zero external PNG asset dependency, featuring a bakelite base, brass binding posts, a pivoting copper knife blade (`rotate(-32deg)` open vs `rotate(0deg)` closed), red insulated grip, and closed current glow.
+
 ---
 
-## 4. Connected Knowledge Nodes
+## 4. Teacher-First Mobile Classroom Dock (Option A) & Interactive Tutorial
+
+Documented in detail in [[UX_TEACHER_FIRST_OVERHAUL_AND_TUTORIAL_PLAN]]:
+
+- **Option A Mobile Bottom Navigation (`src/components/ui/mobile/MobileBottomNav.tsx`)**:
+  - Replaces the 6-tab icon bar and `"Menu 4.0"` jargon with 5 clearly labeled classroom tabs (`+ Alat`, `Akademi`, `Contoh`, `Rumus`, `Menu Lab`) with subtitles and zero duplicate Gallery triggers.
+- **Option A Mobile Top Header (`src/components/ui/Header.tsx`)**:
+  - Features a labeled 2-Mode World Switcher (`[Lab Rangkaian]` | `[Alam EBT]`), labeled `[? Panduan]` button, and labeled `[Reset]` button on mobile (`360px`–`412px`).
+- **2-Mode Labeled Nature Control Dock (`src/components/canvas/OutdoorSandbox.tsx`)**:
+  - Replaces the 11-icon unlabeled strip with a 2-row labeled dock: Row 1 provides `[Mode Rangkai]` vs `[Ubah Tanah/Air]` + `[Pasang PLTS 12V]`, while Row 2 contextually displays labeled Sun Time pills (`[Pagi]`, `[Siang]`, `[Sore]`, `[Kirim ke Lab ->]`) or labeled Terrain Brush pills (`[+Tanah]`, `[+Air]`, `[+Mata Air]`, `[+Gali]`, `[Reset]`).
+- **Interactive "Learn-by-Doing" Tutorial & Teacher Quick-Cards (`src/tutorial/interactiveTutorialConfig.ts`, `src/components/ui/tutorial/InteractiveTutorialBanner.tsx`, `src/components/ui/WelcomeModal.tsx`)**:
+  - Provides 3 hands-on practice missions with $O(N)$ live state completion detection and 1-click assist buttons, plus 4 Teacher 1-Click Classroom Setup Cards (`basic-switch`, `series-parallel`, `nature-ebt`, `short-circuit`).
+
+---
+
+## 5. Connected Knowledge Nodes
 
 - [[README]]
+- [[UX_TEACHER_FIRST_OVERHAUL_AND_TUTORIAL_PLAN]]
 - [[DEVLOG_SESSION_NATURE_MODE_4.0]]
 - [[DEVLOG_ANTISLOP_MODAL_AND_ASSET_OVERHAUL]]
 - [[ASSET_PIPELINE_NANO_BANANA_AND_ALPHA_MATTING]]

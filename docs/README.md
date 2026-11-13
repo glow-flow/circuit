@@ -56,6 +56,7 @@ The graph is organized into **7 color-coded engineering clusters**:
 
 - [[PEDAGOGY_ACADEMY_AND_EXPLAINABLE_TUTOR|Explainable Circuit Physics Tutor, Academy & Troubleshooting Lab]]
 - [[UI_UX_ANTISLOP_AND_MOBILE_ENGINE|Anti-Slop Industrial UI Design System & Mobile 60fps Engine]]
+- [[UX_TEACHER_FIRST_OVERHAUL_AND_TUTORIAL_PLAN|Teacher-First Mobile UI Overhaul, Creative Interactive Tutorial & Code-Rendered Switch Plan]]
 
 ---
 

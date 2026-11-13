@@ -1,5 +1,6 @@
 import React from 'react';
 import { PaletteGlyphId } from '../../../constants/componentCatalog';
+import { KnifeSwitchGraphic } from '../common/KnifeSwitchGraphic';
 
 interface ComponentGlyphProps {
   glyph: PaletteGlyphId;
@@ -7,8 +8,8 @@ interface ComponentGlyphProps {
 }
 
 /**
- * Monochrome IEC schematic symbol fallback for parts when an image asset fails to load.
- * Drawn strictly with `currentColor` strokes so the parent controls color; 64x64 viewBox.
+ * Monochrome IEC schematic symbol fallback for parts when an image asset fails to load,
+ * plus the pure-code SPST Knife Switch vector graphic for `glyph === 'switch'`.
  *
  * Time Complexity: O(1) render.
  */
@@ -26,15 +27,7 @@ export const ComponentGlyph: React.FC<ComponentGlyphProps> = ({ glyph, className
 
   switch (glyph) {
     case 'switch':
-      return (
-        <svg {...sharedProps}>
-          <line x1="4" y1="44" x2="14" y2="44" />
-          <circle cx="16" cy="44" r="2.5" />
-          <line x1="16" y1="44" x2="46" y2="22" />
-          <circle cx="50" cy="44" r="2.5" />
-          <line x1="52.5" y1="44" x2="60" y2="44" />
-        </svg>
-      );
+      return <KnifeSwitchGraphic isOpen={true} className="w-[88%] h-[88%]" />;
     case 'ground':
       return (
         <svg {...sharedProps}>

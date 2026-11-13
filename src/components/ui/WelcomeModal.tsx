@@ -1,30 +1,68 @@
-import React from 'react';
-import { Compass, X } from 'lucide-react';
+import React, { useState } from 'react';
+import {
+  BookOpen,
+  Compass,
+  Hand,
+  Play,
+  X,
+} from 'lucide-react';
 import { markTutorialAsSeen } from '../../utils/presetStorage';
 import { startTour } from '../../utils/tour';
 import { useCircuitStore } from '../../store/useCircuitStore';
+import {
+  TEACHER_QUICK_CARDS,
+  TeacherQuickCard,
+  executeTeacherQuickCardAction,
+  prepareCanvasForInteractiveMissionOne,
+} from '../../tutorial/interactiveTutorialConfig';
+import { KnifeSwitchGraphic } from './common/KnifeSwitchGraphic';
 
 export interface WelcomeModalProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Optional callback to launch the 3-step hands-on interactive practice banner on the canvas. */
+  onStartInteractivePractice?: () => void;
 }
 
 /**
- * First-visit Welcome Modal (`WelcomeModal.tsx`).
+ * Teacher & Student Quick-Start Guide Modal (`WelcomeModal.tsx`).
  *
- * Greets new users with a clean industrial instrument card and lets them
- * either launch the interactive 9-step `driver.js` spotlight tour ("Mulai Tutorial")
- * or skip directly to the canvas ("Lewati"). Persists `has_seen_tutorial` in localStorage.
+ * Designed specifically for science teachers who are not digitally fluent and
+ * grade-9 students:
+ * 1. Offers a 1-click "Mulai Praktikum Interaktif (3 Langkah Langsung Coba)" that
+ *    lets users learn by physically toggling the Knife Switch and deploying 12V green energy.
+ * 2. Provides 4 "Kartu Contekan Guru 1-Klik" (Classroom Setup Cards) that immediately
+ *    load ready-to-teach circuits (Basic Ohm, Parallel Branch, 12V Nature Station, Short-Circuit).
+ * 3. Includes an interactive mini-preview of the pure-code SPST Knife Switch (`KnifeSwitchGraphic`).
+ * 4. Retains the `driver.js` Spotlight button tour (`startTour`) as a secondary option.
  *
  * Time Complexity: O(1) render and interaction handlers.
  */
-export const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose }) => {
+export const WelcomeModal: React.FC<WelcomeModalProps> = ({
+  isOpen,
+  onClose,
+  onStartInteractivePractice,
+}) => {
   const language = useCircuitStore((state) => state.language);
   const isId = language === 'id';
+  const [previewSwitchOpen, setPreviewSwitchOpen] = useState<boolean>(true);
 
   if (!isOpen) return null;
 
-  const handleStartTour = () => {
+  const handleStartHandsOnPractice = () => {
+    markTutorialAsSeen();
+    prepareCanvasForInteractiveMissionOne();
+    onClose();
+    if (onStartInteractivePractice) {
+      onStartInteractivePractice();
+    } else {
+      window.requestAnimationFrame(() => {
+        startTour();
+      });
+    }
+  };
+
+  const handleStartSpotlightTour = () => {
     markTutorialAsSeen();
     onClose();
     window.requestAnimationFrame(() => {
@@ -32,9 +70,41 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose }) =
     });
   };
 
+  const handleSelectTeacherCard = (cardId: TeacherQuickCard['id']) => {
+    markTutorialAsSeen();
+    executeTeacherQuickCardAction(cardId);
+    onClose();
+  };
+
   const handleSkip = () => {
     markTutorialAsSeen();
     onClose();
+  };
+
+  const getAccentBorderClass = (accent: TeacherQuickCard['accentColor']) => {
+    switch (accent) {
+      case 'cyan':
+        return 'border-electric-500/35 hover:border-electric-400';
+      case 'amber':
+        return 'border-amber-500/35 hover:border-amber-400';
+      case 'emerald':
+        return 'border-emerald-500/35 hover:border-emerald-400';
+      case 'rose':
+        return 'border-rose-500/35 hover:border-rose-400';
+    }
+  };
+
+  const getAccentTextClass = (accent: TeacherQuickCard['accentColor']) => {
+    switch (accent) {
+      case 'cyan':
+        return 'text-electric-300';
+      case 'amber':
+        return 'text-amber-300';
+      case 'emerald':
+        return 'text-emerald-300';
+      case 'rose':
+        return 'text-rose-300';
+    }
   };
 
   return (
@@ -42,113 +112,184 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose }) =
       role="dialog"
       aria-modal="true"
       aria-labelledby="welcome-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 select-none"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4 select-none"
       onClick={handleSkip}
     >
       <div
-        className="w-full max-w-md max-h-[85dvh] overflow-y-auto rounded-2xl bg-void-900 border border-white/15 shadow-2xl text-slate-100 overflow-hidden"
+        className="w-full max-w-lg max-h-[90dvh] overflow-y-auto rounded-2xl bg-void-900 border border-white/15 shadow-2xl text-slate-100 flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Top Hardware Stage */}
-        <div className="relative px-5 pt-5 pb-4 border-b border-white/10 bg-void-950">
+        {/* Top Header & Interactive Pure-Code Switch Preview */}
+        <div className="relative px-4 sm:px-5 pt-4 pb-3.5 border-b border-white/10 bg-void-950 shrink-0">
           <div className="flex items-center justify-between gap-2 mb-3">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 min-w-0">
               <img
                 src="/assets/logo-circuit-sandbox.png"
                 alt="Circuit Sandbox"
                 width={28}
                 height={28}
                 fetchPriority="high"
-                className="w-7 h-7 object-contain"
+                className="w-7 h-7 object-contain shrink-0"
               />
-              <span className="text-[11px] font-mono font-semibold text-slate-300 tracking-wider uppercase">
-                {isId ? 'Lab Fisika Virtual · IPA Kelas 9' : 'Virtual Physics Lab · Circuit Sandbox'}
-              </span>
+              <div className="min-w-0">
+                <span className="block text-[10px] font-mono font-semibold text-electric-400 tracking-wider uppercase truncate">
+                  {isId
+                    ? 'Panduan Cepat Guru & Siswa · IPA Kelas 9'
+                    : 'Teacher & Student Quick-Start Guide'}
+                </span>
+                <h2
+                  id="welcome-modal-title"
+                  className="text-base sm:text-lg font-bold text-white tracking-tight leading-[1.15] truncate"
+                >
+                  {isId
+                    ? 'Selamat Datang di Circuit Sandbox'
+                    : 'Welcome to Circuit Sandbox'}
+                </h2>
+              </div>
             </div>
             <button
               type="button"
               onClick={handleSkip}
-              aria-label={isId ? 'Lewati' : 'Skip'}
-              className="w-9 h-9 rounded-xl bg-void-900 hover:bg-void-850 border border-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-all active:scale-95 cursor-pointer"
+              aria-label={isId ? 'Tutup' : 'Close'}
+              className="w-10 h-10 rounded-xl bg-void-900 hover:bg-void-850 border border-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-all active:scale-95 cursor-pointer shrink-0"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
 
-          {/* Hardware Specimen Preview */}
-          <div className="relative flex items-center justify-between px-4 py-2.5 rounded-xl bg-void-900 border border-white/10">
-            <div className="relative z-10 flex items-center gap-2 bg-void-950 border border-white/10 rounded-lg px-2.5 py-1.5">
-              <img
-                src="/assets/battery-9v.png"
-                alt="9V Battery"
-                width={24}
-                height={32}
-                className="w-6 h-8 object-contain"
+          {/* Interactive Mini Demo: Tap the Pure-Code Saklar right here! */}
+          <div
+            onClick={() => setPreviewSwitchOpen((prev) => !prev)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setPreviewSwitchOpen((prev) => !prev);
+              }
+            }}
+            className="flex items-center justify-between gap-3 px-3.5 py-2 rounded-xl bg-void-900 hover:bg-void-850 border border-white/10 cursor-pointer transition-all active:scale-98"
+          >
+            <div className="w-20 h-14 shrink-0 flex items-center justify-center">
+              <KnifeSwitchGraphic
+                isOpen={previewSwitchOpen}
+                isCurrentFlowing={!previewSwitchOpen}
               />
-              <div>
-                <div className="text-[10px] font-bold text-slate-100">9.0 V</div>
-                <div className="text-[9px] font-mono text-slate-400">Sumber</div>
-              </div>
             </div>
 
-            <span className="relative z-10 px-2.5 py-1 rounded-lg bg-void-950 border border-white/10 text-[10px] font-mono font-bold text-electric-400">
-              V = I × R
-            </span>
-
-            <div className="relative z-10 flex items-center gap-2 bg-void-950 border border-white/10 rounded-lg px-2.5 py-1.5">
-              <img
-                src="/assets/bulb-incandescent.png"
-                alt="Lamp"
-                width={24}
-                height={32}
-                className="w-6 h-8 object-contain"
-              />
-              <div>
-                <div className="text-[10px] font-bold text-slate-100">Lampu</div>
-                <div className="text-[9px] font-mono text-slate-400">P = I²R</div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span
+                  className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold ${
+                    previewSwitchOpen
+                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                      : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                  }`}
+                >
+                  {previewSwitchOpen
+                    ? isId
+                      ? 'SAKLAR: TERBUKA (OFF)'
+                      : 'SWITCH: OPEN (OFF)'
+                    : isId
+                    ? 'SAKLAR: TERTUTUP (ON)'
+                    : 'SWITCH: CLOSED (ON)'}
+                </span>
               </div>
+              <p className="text-[11px] text-slate-300 mt-1 leading-snug">
+                {isId
+                  ? 'Coba ketuk saklar pisau di samping! Di aplikasi ini, semua alat bisa disentuh langsung.'
+                  : 'Tap the knife switch on the left! Every part on the canvas is directly interactive.'}
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Main Copy & Action Buttons */}
-        <div className="p-5 space-y-4">
-          <div className="space-y-1.5">
-            <h2
-              id="welcome-modal-title"
-              className="text-lg sm:text-xl font-bold text-white tracking-tight leading-[1.15]"
-            >
-              {isId
-                ? 'Selamat Datang di Circuit Sandbox'
-                : 'Welcome to Circuit Sandbox'}
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-              {isId
-                ? 'Rangkai baterai, berbagai jenis lampu, saklar, dan alat ukur listrik secara interaktif. Baru pertama kali mencoba? Ikuti tur singkat 1 menit yang menunjuk langsung ke tombol-tombol aplikasi.'
-                : 'Build series and parallel circuits with batteries, lamps, switches, and meters in real time. New here? Take a quick 1-minute interactive spotlight tour.'}
-            </p>
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 pt-1">
+        {/* Scrollable Content: Primary Tutorial Actions + 4 Teacher 1-Click Cards */}
+        <div className="p-4 sm:p-5 space-y-4 overflow-y-auto">
+          {/* Primary Action: 3-Step Hands-On Practice */}
+          <div className="space-y-2">
             <button
               type="button"
-              onClick={handleStartTour}
-              className="flex-1 min-h-[44px] flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-electric-600 hover:bg-electric-500 text-white text-xs sm:text-sm font-bold transition-all active:scale-95 cursor-pointer"
+              onClick={handleStartHandsOnPractice}
+              className="w-full min-h-[46px] flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-electric-600 hover:bg-electric-500 text-white text-xs sm:text-sm font-bold transition-all active:scale-95 cursor-pointer shadow-sm"
             >
-              <Compass className="w-4 h-4" />
-              <span>{isId ? 'Mulai Tutorial' : 'Start Tutorial'}</span>
+              <Hand className="w-4 h-4 shrink-0" />
+              <span>
+                {isId
+                  ? 'Mulai Praktikum Terpadu (3 Langkah Langsung Coba)'
+                  : 'Start Hands-On Practice (3 Interactive Steps)'}
+              </span>
             </button>
 
-            <button
-              type="button"
-              onClick={handleSkip}
-              className="min-h-[44px] px-4 py-2.5 rounded-xl bg-void-850 hover:bg-void-800 border border-white/10 text-slate-300 hover:text-white text-xs sm:text-sm font-semibold transition-all active:scale-95 cursor-pointer"
-            >
-              {isId ? 'Lewati' : 'Skip'}
-            </button>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={handleStartSpotlightTour}
+                className="min-h-[42px] px-3 py-2 rounded-xl bg-void-950 hover:bg-void-850 border border-white/10 text-slate-200 hover:text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+              >
+                <Compass className="w-3.5 h-3.5 text-electric-400 shrink-0" />
+                <span>{isId ? 'Tur Sorot Tombol' : 'Button Spotlight'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSkip}
+                className="min-h-[42px] px-3 py-2 rounded-xl bg-void-950 hover:bg-void-850 border border-white/10 text-slate-300 hover:text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+              >
+                <span>{isId ? 'Langsung ke Kanvas' : 'Skip to Canvas'}</span>
+              </button>
+            </div>
           </div>
 
-          <div className="pt-2.5 border-t border-white/10 flex items-center justify-between gap-2 text-[10px] font-mono text-slate-400">
+          {/* Teacher 1-Click Classroom Setup Cards */}
+          <div className="space-y-2 pt-1 border-t border-white/10">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-mono uppercase tracking-wider text-slate-300 font-bold flex items-center gap-1.5">
+                <BookOpen className="w-3.5 h-3.5 text-electric-400" />
+                {isId
+                  ? 'Kartu Contekan Guru (1-Klik Siap Ajar di Kelas)'
+                  : '1-Click Classroom Setup Cards'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {TEACHER_QUICK_CARDS.map((card) => (
+                <button
+                  key={card.id}
+                  type="button"
+                  onClick={() => handleSelectTeacherCard(card.id)}
+                  className={`text-left p-3 rounded-xl bg-void-950 hover:bg-void-850 border transition-all active:scale-95 cursor-pointer flex flex-col justify-between gap-2 ${getAccentBorderClass(
+                    card.accentColor
+                  )}`}
+                >
+                  <div className="space-y-1">
+                    <span
+                      className={`text-[9px] font-mono font-bold uppercase tracking-wider ${getAccentTextClass(
+                        card.accentColor
+                      )}`}
+                    >
+                      {isId ? card.badgeId : card.badgeEn}
+                    </span>
+                    <div className="text-xs font-bold text-white leading-snug">
+                      {isId ? card.titleId : card.titleEn}
+                    </div>
+                    <p className="text-[11px] text-slate-400 leading-snug">
+                      {isId ? card.descriptionId : card.descriptionEn}
+                    </p>
+                  </div>
+
+                  <div className="pt-1 flex items-center justify-between text-[11px] font-bold text-slate-200">
+                    <span className={getAccentTextClass(card.accentColor)}>
+                      {isId ? card.actionLabelId : card.actionLabelEn}
+                    </span>
+                    <Play className="w-3 h-3 fill-current opacity-80" />
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-white/10 flex items-center justify-between gap-2 text-[10px] font-mono text-slate-400">
             <span>
               {isId
                 ? 'Karya Orisinal: Kenzie Raka Romero (SMPN 12 Surabaya)'
