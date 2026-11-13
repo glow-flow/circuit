@@ -88,6 +88,8 @@ import {
 import { checkPanelDirectShort } from '../utils/circuitShortCircuitUtils';
 import { getComponentDisplayName } from '../utils/nodeLocalization';
 import { getLabCanvasSpawnPosition } from '../utils/canvasSpawnPosition';
+import { computeTransmissionTelemetry } from '../physics/transmissionPhysics';
+import { PhysicsLensMode, ProbeTarget } from '../physics/physicsLensEngine';
 
 interface CircuitState {
   nodes: Node<CircuitElementData>[];
@@ -104,6 +106,18 @@ interface CircuitState {
   theme: 'dark' | 'light';
   setTheme: (theme: 'dark' | 'light') => void;
   toggleTheme: () => void;
+
+  // Interactive Physics X-Ray Lens & Touch Probe State
+  physicsLensMode: PhysicsLensMode;
+  probeTargetA: ProbeTarget | null;
+  probeTargetB: ProbeTarget | null;
+  hoveredProbeTarget: ProbeTarget | null;
+  isPickingProbeB: boolean;
+  setPhysicsLensMode: (mode: PhysicsLensMode) => void;
+  setHoveredProbeTarget: (target: ProbeTarget | null) => void;
+  selectProbeTarget: (target: ProbeTarget | null) => void;
+  setIsPickingProbeB: (picking: boolean) => void;
+  clearProbeTargets: () => void;
 
   // World Mode & CSS Cloud Transition State
   worldMode: WorldMode;
@@ -547,25 +561,19 @@ function recalculateCircuit(
           : 0
         : 0;
 
-      // Transmission physics & Gardu Trafo telemetry
+      // Transmission physics & Gardu Trafo telemetry (DRY delegation to transmissionPhysics)
       const isOutdoorTower = node.data.worldMode === 'outside';
       const hasTransformer = node.data.hasTransformer ?? (isOutdoorTower ? true : false);
       const stepUpVoltage =
         node.data.stepUpVoltage ??
         (node.data.transmissionVoltageMode === 'step_up' ? 240 : 12);
       const lineResistance = node.data.lineResistance ?? 4.0;
-      const turnsRatio = stepUpVoltage > 12 ? stepUpVoltage / 12 : 1;
-
-      const loadCurrent = Math.abs(branchCurrent);
-      const transmissionLineCurrent = turnsRatio > 1 ? loadCurrent / turnsRatio : loadCurrent;
-      const jouleLoss = transmissionLineCurrent * transmissionLineCurrent * lineResistance;
-      const deliveredPower = busVoltage * loadCurrent;
-      const totalPower = deliveredPower + jouleLoss;
-      const efficiency =
-        totalPower > 0
-          ? Math.max(0, Math.min(100, Math.round((deliveredPower / totalPower) * 1000) / 10))
-          : 100.0;
-      const isOverheated = transmissionLineCurrent >= 0.4 && stepUpVoltage <= 12;
+      const telemetry = computeTransmissionTelemetry({
+        loadCurrent: Math.abs(branchCurrent),
+        voltageMode: stepUpVoltage,
+        lineResistance,
+        generatorVoltage: busVoltage > 0 ? busVoltage : 12.0,
+      });
 
       return {
         ...node,
@@ -578,14 +586,14 @@ function recalculateCircuit(
           stepUpVoltage,
           transmissionVoltageMode: (stepUpVoltage === 240 ? 'step_up' : 'direct') as 'step_up' | 'direct',
           lineResistance,
-          transmissionCurrent: transmissionLineCurrent,
-          jouleLoss,
-          transmissionEfficiency: efficiency,
-          isLineOverheated: isOverheated,
+          transmissionCurrent: telemetry.lineCurrentAmperes,
+          jouleLoss: telemetry.jouleLossWatts,
+          transmissionEfficiency: telemetry.efficiencyPercent,
+          isLineOverheated: telemetry.isOverheated,
           towerConnectedCount: effectiveConnectedCount,
           calculatedCurrent: branchCurrent,
           calculatedVoltage: busVoltage,
-          calculatedPower: deliveredPower,
+          calculatedPower: telemetry.powerDeliveredWatts,
           isShortCircuit,
         },
       };
@@ -672,6 +680,89 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     }
     set({ theme: nextTheme });
   },
+  physicsLensMode: 'normal',
+  probeTargetA: null,
+  probeTargetB: null,
+  hoveredProbeTarget: null,
+  isPickingProbeB: false,
+  /**
+   * Switches canvas Physics Lens mode ('normal' | 'thermal' | 'probe').
+   * Clears conflicting component/wire selection popups when entering probe mode.
+   */
+  setPhysicsLensMode: (mode: PhysicsLensMode) => {
+    const validMode: PhysicsLensMode =
+      mode === 'thermal' || mode === 'probe' ? mode : 'normal';
+    if (validMode === 'probe') {
+      set({
+        physicsLensMode: validMode,
+        selectedNodeId: null,
+        selectedEdgeId: null,
+        hoveredProbeTarget: null,
+        isPickingProbeB: false,
+      });
+      return;
+    }
+    set({
+      physicsLensMode: validMode,
+      probeTargetA: null,
+      probeTargetB: null,
+      hoveredProbeTarget: null,
+      isPickingProbeB: false,
+    });
+  },
+  /** Updates transient hover target during pointer hover in probe mode. */
+  setHoveredProbeTarget: (target: ProbeTarget | null) => {
+    set({ hoveredProbeTarget: target });
+  },
+  /**
+   * Pins either primary Probe A or reference Probe B (when picking mode is active).
+   */
+  selectProbeTarget: (target: ProbeTarget | null) => {
+    if (!target) {
+      set({
+        probeTargetA: null,
+        probeTargetB: null,
+        hoveredProbeTarget: null,
+        isPickingProbeB: false,
+      });
+      return;
+    }
+    const { isPickingProbeB, probeTargetA, probeTargetB } = get();
+    if (isPickingProbeB && probeTargetA) {
+      const isSameAsPrimary =
+        probeTargetA.kind === target.kind && probeTargetA.id === target.id;
+      set({
+        probeTargetB: isSameAsPrimary ? null : target,
+        isPickingProbeB: false,
+      });
+      return;
+    }
+    const isSameAsSecondary =
+      probeTargetB !== null &&
+      probeTargetB.kind === target.kind &&
+      probeTargetB.id === target.id;
+    set({
+      probeTargetA: target,
+      probeTargetB: isSameAsSecondary ? null : probeTargetB,
+      isPickingProbeB: false,
+    });
+  },
+  /** Toggles reference Probe B selection mode (requires active Probe A). */
+  setIsPickingProbeB: (picking: boolean) => {
+    if (picking && !get().probeTargetA) {
+      return;
+    }
+    set({ isPickingProbeB: picking });
+  },
+  /** Clears all pinned and hovered probe readings cleanly. */
+  clearProbeTargets: () => {
+    set({
+      probeTargetA: null,
+      probeTargetB: null,
+      hoveredProbeTarget: null,
+      isPickingProbeB: false,
+    });
+  },
   notification: null,
 
   // World Mode & CSS Cloud Transition State
@@ -730,6 +821,10 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       worldMode,
       selectedNodeId: null,
       selectedEdgeId: null,
+      probeTargetA: null,
+      probeTargetB: null,
+      hoveredProbeTarget: null,
+      isPickingProbeB: false,
     });
     saveWorkspaceAutosave(get().nodes, get().edges, worldMode);
   },
@@ -743,6 +838,10 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       transitionTargetMode: nextMode,
       selectedNodeId: null,
       selectedEdgeId: null,
+      probeTargetA: null,
+      probeTargetB: null,
+      hoveredProbeTarget: null,
+      isPickingProbeB: false,
     });
 
     if (typeof window === 'undefined') {
@@ -2186,6 +2285,10 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       edges: [],
       selectedNodeId: null,
       selectedEdgeId: null,
+      probeTargetA: null,
+      probeTargetB: null,
+      hoveredProbeTarget: null,
+      isPickingProbeB: false,
       simulation: DEFAULT_SIMULATION,
     });
   },
@@ -2828,6 +2931,10 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       simulation,
       selectedNodeId: null,
       selectedEdgeId: null,
+      probeTargetA: null,
+      probeTargetB: null,
+      hoveredProbeTarget: null,
+      isPickingProbeB: false,
       fitViewTrigger: get().fitViewTrigger + 1,
     });
   },
@@ -2880,6 +2987,10 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       worldMode: targetWorldMode,
       selectedNodeId: null,
       selectedEdgeId: null,
+      probeTargetA: null,
+      probeTargetB: null,
+      hoveredProbeTarget: null,
+      isPickingProbeB: false,
       fitViewTrigger: get().fitViewTrigger + 1,
     });
   },

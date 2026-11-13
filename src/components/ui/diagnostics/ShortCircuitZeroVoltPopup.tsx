@@ -118,7 +118,7 @@ export const ShortCircuitZeroVoltPopup: React.FC = () => {
           role="status"
           aria-live="polite"
           onPointerDown={(e) => e.stopPropagation()}
-          className="absolute bottom-3 right-3 sm:bottom-5 sm:right-5 z-30 max-w-[295px] sm:max-w-xs pointer-events-auto animate-fade-in"
+          className="absolute bottom-[66px] right-3 lg:bottom-5 lg:right-5 z-30 max-w-[295px] sm:max-w-xs pointer-events-auto animate-fade-in"
         >
           <div className="relative flex items-center gap-2.5 p-2.5 pr-8 rounded-2xl bg-void-950/95 backdrop-blur-xl border-2 border-rose-500/70 shadow-[0_12px_34px_rgba(244,63,94,0.35)] text-slate-100">
             <button

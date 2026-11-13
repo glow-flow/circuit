@@ -6,6 +6,7 @@ import { Flame, Radio, X, Zap } from 'lucide-react';
 import { useCircuitStore } from '../../../store/useCircuitStore';
 import { PanelDistribusiNode } from './PanelDistribusiNode';
 import { useModalKeyboardClose } from '../../../hooks/useModalKeyboardClose';
+import { computeTransmissionTelemetry } from '../../../physics/transmissionPhysics';
 
 /**
  * TransmissionTowerNode Component.
@@ -63,10 +64,16 @@ const OutdoorTowerView: React.FC<NodeProps<CircuitElementData>> = memo(({ id, da
   const stepUpVoltage = data.stepUpVoltage ?? (data.transmissionVoltageMode === 'step_up' ? 240 : 12);
   const isStepUp = stepUpVoltage === 240;
   const lineResistance = data.lineResistance ?? 4.0;
-  const lineCurrent = data.transmissionCurrent ?? (isStepUp ? currentAmperes / 20 : currentAmperes);
-  const jouleLoss = data.jouleLoss ?? lineCurrent * lineCurrent * lineResistance;
-  const efficiency = data.transmissionEfficiency ?? (isStepUp ? 99.8 : (currentAmperes > 0 ? 75.0 : 100.0));
-  const isLineOverheated = data.isLineOverheated ?? (currentAmperes >= 0.4 && !isStepUp);
+  const fallbackTelemetry = computeTransmissionTelemetry({
+    loadCurrent: currentAmperes,
+    voltageMode: stepUpVoltage,
+    lineResistance,
+    generatorVoltage: busVoltage > 0 ? busVoltage : 12.0,
+  });
+  const lineCurrent = data.transmissionCurrent ?? fallbackTelemetry.lineCurrentAmperes;
+  const jouleLoss = data.jouleLoss ?? fallbackTelemetry.jouleLossWatts;
+  const efficiency = data.transmissionEfficiency ?? fallbackTelemetry.efficiencyPercent;
+  const isLineOverheated = data.isLineOverheated ?? fallbackTelemetry.isOverheated;
 
   const handleToggleVoltageMode = useCallback(
     (targetMode: 'direct' | 'step_up') => {

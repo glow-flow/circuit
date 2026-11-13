@@ -1,5 +1,8 @@
 import { Node } from 'reactflow';
 import { CircuitElementData, SimulationResult } from '../types/circuit';
+import { computeEffectiveBatteryVoltage } from './batterySoC';
+import { getComponentEffectiveResistance, getSocketForwardThreshold } from './mnaSolver';
+import { getSolarPanelVoltage } from './solarPanel';
 
 /**
  * Official PT PLN (Persero) / Kementerian ESDM household tariff categories (Golongan Tarif Rumah Tangga).
@@ -105,6 +108,39 @@ export const PLN_TARIFF_TIERS: ReadonlyArray<PlnTariffTier> = [
 const GRID_CO2_KG_PER_KWH = 0.85;
 
 /**
+ * Resolves the nominal operating EMF voltage of an electrochemical or renewable source node.
+ * Applies SoC sag curve for batteries/BESS and accurate defaults (e.g., 9.0V for 9V battery).
+ * Time Complexity: O(1).
+ */
+function resolvePlnSourceNominalVoltage(node: Node<CircuitElementData>): number {
+  const compType = node.data.type;
+  if (compType === 'solar-panel' || compType === 'solar_panel') {
+    return Math.max(0, node.data.voltage ?? getSolarPanelVoltage(node.data.sunlight ?? 100));
+  }
+  if (compType === 'wind-turbine' || compType === 'wind_turbine') {
+    return Math.max(0, node.data.voltage ?? ((node.data.speed ?? 50) / 100) * 12.0);
+  }
+  if (compType === 'hydro-turbine' || compType === 'hydro_turbine') {
+    return Math.max(0, node.data.voltage ?? 12.0);
+  }
+  if (compType === 'bess-substation' || compType === 'bess_substation') {
+    const nominal = Math.max(0, node.data.voltage ?? 12.8);
+    return computeEffectiveBatteryVoltage(nominal, node.data.socPercent ?? node.data.currentCharge);
+  }
+  if (compType === 'battery9v') {
+    const nominal = Math.max(0, node.data.voltage ?? 9.0);
+    return computeEffectiveBatteryVoltage(nominal, node.data.currentCharge);
+  }
+  if (compType === 'battery-holder') {
+    const count = Math.max(1, node.data.batteryCount ?? 2);
+    const nominal = Math.max(0, node.data.voltage ?? count * 1.5);
+    return computeEffectiveBatteryVoltage(nominal, node.data.currentCharge);
+  }
+  const nominal = Math.max(0, node.data.voltage ?? 1.5);
+  return computeEffectiveBatteryVoltage(nominal, node.data.currentCharge);
+}
+
+/**
  * Looks up a PLN tariff tier by ID with safe fallback to `R1_1300_2200`.
  *
  * @param tierId Identifier of the desired PLN tariff tier
@@ -179,6 +215,26 @@ export function calculatePlnCostEstimate(
       ? Math.max(0, simulation.totalPowerDrawn)
       : 0;
 
+    // Pre-check O(N) whether any active power source has signed negative MNA current (supplying/discharging).
+    // Allows distinguishing batteries actively charging (j > 0) from legacy positive-signed synthetic unit mocks.
+    const hasSignedSupplyingSource = safeNodes.some((node) => {
+      if (!node || !node.data) return false;
+      const t = node.data.type;
+      const isSourceNode =
+        t === 'solar-panel' ||
+        t === 'solar_panel' ||
+        t === 'wind-turbine' ||
+        t === 'wind_turbine' ||
+        t === 'hydro-turbine' ||
+        t === 'hydro_turbine' ||
+        t === 'bess-substation' ||
+        t === 'bess_substation' ||
+        t === 'battery' ||
+        t === 'battery9v' ||
+        t === 'battery-holder';
+      return isSourceNode && (branchCurrents[node.id] ?? 0) < -1e-6;
+    });
+
     // Single pass O(N) over nodes to compute per-load consumption and renewable generation
     let renewablePowerWatts = 0;
     let nonRenewablePowerWatts = 0;
@@ -196,50 +252,73 @@ export function calculatePlnCostEstimate(
       if (!node || !node.data) continue;
 
       const compType = node.data.type;
-      const currentAmps = Math.abs(branchCurrents[node.id] ?? 0);
+      const signedCurrentAmps = branchCurrents[node.id] ?? 0;
+      const currentAmps = Math.abs(signedCurrentAmps);
       if (!Number.isFinite(currentAmps) || currentAmps <= 1e-6) {
         continue;
       }
 
-      // Check if this node is a power source supplying energy
-      if (compType === 'solar-panel' || compType === 'solar_panel') {
-        const sourceVoltage = Math.max(
-          0,
-          node.data.voltage ?? ((node.data.sunlight ?? 100) / 100) * 12.0
-        );
+      // Check if this node is a renewable generator supplying clean energy
+      if (
+        compType === 'solar-panel' ||
+        compType === 'solar_panel' ||
+        compType === 'wind-turbine' ||
+        compType === 'wind_turbine' ||
+        compType === 'hydro-turbine' ||
+        compType === 'hydro_turbine'
+      ) {
+        // Skip blocking-diode reverse bias if somehow non-zero
+        if (hasSignedSupplyingSource && signedCurrentAmps > 1e-6) {
+          continue;
+        }
+        const sourceVoltage = resolvePlnSourceNominalVoltage(node);
         renewablePowerWatts += sourceVoltage * currentAmps;
         continue;
       }
 
-      if (compType === 'wind-turbine' || compType === 'wind_turbine') {
-        const sourceVoltage = Math.max(
-          0,
-          node.data.voltage ?? ((node.data.speed ?? 50) / 100) * 12.0
-        );
-        renewablePowerWatts += sourceVoltage * currentAmps;
-        continue;
-      }
-
+      // Electrochemical batteries / BESS:
+      // Only discharge (signedCurrent < 0, or synthetic positive mock when no negative source exists)
+      // counts as discharging source power; charging current (signedCurrent > 0 with supplying source) is energy storage!
       if (
         compType === 'battery' ||
         compType === 'battery9v' ||
-        compType === 'battery-holder'
+        compType === 'battery-holder' ||
+        compType === 'bess-substation' ||
+        compType === 'bess_substation'
       ) {
-        const sourceVoltage = Math.max(0, node.data.voltage ?? 1.5);
-        nonRenewablePowerWatts += sourceVoltage * currentAmps;
+        const isChargingSink = hasSignedSupplyingSource && signedCurrentAmps > 1e-6;
+        if (isChargingSink) {
+          continue;
+        }
+        const sourceVoltage = resolvePlnSourceNominalVoltage(node);
+        if (compType === 'bess-substation' || compType === 'bess_substation') {
+          // BESS substation stores grid/renewable microgrid buffer; only treat primary batteries as fossil baseline
+          renewablePowerWatts += sourceVoltage * currentAmps;
+        } else {
+          nonRenewablePowerWatts += sourceVoltage * currentAmps;
+        }
         continue;
       }
 
-      // Check if this node is a resistive/lamp load dissipating power P = I^2 * R
+      // Check if this node is a resistive/lamp load dissipating power (I^2 * R + Vf * I)
       const isBulbOrSocketLoad =
         compType === 'bulb' ||
         compType === 'resistor' ||
         (compType === 'socket' && Boolean(node.data.installedBulb)) ||
-        (compType === 'pin-socket' && Boolean(node.data.installedBulb));
+        ((compType === 'pin-socket' || compType === 'socket-pin') &&
+          Boolean(node.data.installedBulb));
 
       if (isBulbOrSocketLoad) {
-        const loadResistance = Math.max(0.1, node.data.resistance ?? 100);
-        const dissipatedWatts = currentAmps * currentAmps * loadResistance;
+        const isSocket =
+          compType === 'socket' || compType === 'pin-socket' || compType === 'socket-pin';
+        const loadResistance = isSocket
+          ? getComponentEffectiveResistance(node.data)
+          : Math.max(0.1, node.data.resistance ?? 100);
+        if (loadResistance >= 1e8) continue;
+
+        const forwardThresholdV = isSocket ? getSocketForwardThreshold(node.data) : 0;
+        const dissipatedWatts =
+          currentAmps * currentAmps * loadResistance + forwardThresholdV * currentAmps;
         if (dissipatedWatts > 1e-5) {
           summedLoadPowerWatts += dissipatedWatts;
           rawLoadItems.push({
@@ -252,7 +331,10 @@ export function calculatePlnCostEstimate(
       }
     }
 
-    const rawTotalPowerWatts = Math.max(rawPowerFromSim, summedLoadPowerWatts);
+    // Prefer exact measured useful load dissipation when resistive/lamp loads are present
+    // so charging batteries and internal source R_int heat do not inflate household load kWh.
+    const rawTotalPowerWatts =
+      summedLoadPowerWatts > 1e-5 ? summedLoadPowerWatts : rawPowerFromSim;
     const effectivePowerWatts = rawTotalPowerWatts * safeMultiplier;
     const effectivePowerKilowatts = effectivePowerWatts / 1000;
 

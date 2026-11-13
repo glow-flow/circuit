@@ -28,6 +28,8 @@ import { WaypointNode } from './nodes/WaypointNode';
 import { TransmissionTowerNode } from './nodes/TransmissionTowerNode';
 import { PanelDistribusiNode } from './nodes/PanelDistribusiNode';
 import { WireEdge } from './WireEdge';
+import { PhysicsCanvasOverlay } from './PhysicsCanvasOverlay';
+import { usePhysicsLensCanvasHandlers } from '../../hooks/usePhysicsLensCanvasHandlers';
 
 interface CircuitCanvasInnerProps {
   reactFlowWrapper: React.RefObject<HTMLDivElement | null>;
@@ -40,14 +42,13 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
   const onEdgesChange = useCircuitStore((state) => state.onEdgesChange);
   const onConnect = useCircuitStore((state) => state.onConnect);
   const addComponent = useCircuitStore((state) => state.addComponent);
-  const selectNode = useCircuitStore((state) => state.selectNode);
-  const selectEdge = useCircuitStore((state) => state.selectEdge);
   const splitEdgeWithWaypoint = useCircuitStore((state) => state.splitEdgeWithWaypoint);
   const insertBatteryIntoHolder = useCircuitStore((state) => state.insertBatteryIntoHolder);
   const fitViewTrigger = useCircuitStore((state) => state.fitViewTrigger);
   const settleBulbAfterDrag = useCircuitStore((state) => state.settleBulbAfterDrag);
   const syncSnappedBulbPosition = useCircuitStore((state) => state.syncSnappedBulbPosition);
   const theme = useCircuitStore((state) => state.theme);
+  const lensHandlers = usePhysicsLensCanvasHandlers();
 
   const labNodes = useMemo(
     () =>
@@ -260,18 +261,14 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
         connectionMode={ConnectionMode.Loose}
         connectionRadius={40}
         connectionLineStyle={connectionLineStyle}
-        onNodeClick={(_, node) => {
-          selectEdge(null);
-          selectNode(node.id);
-        }}
-        onEdgeClick={(_, edge) => {
-          selectNode(null);
-          selectEdge(edge.id);
-        }}
-        onPaneClick={() => {
-          selectNode(null);
-          selectEdge(null);
-        }}
+        data-physics-lens={lensHandlers.physicsLensMode}
+        onNodeClick={lensHandlers.handleNodeClick}
+        onNodeMouseEnter={lensHandlers.handleNodeMouseEnter}
+        onNodeMouseLeave={lensHandlers.handleNodeMouseLeave}
+        onEdgeClick={lensHandlers.handleEdgeClick}
+        onEdgeMouseEnter={lensHandlers.handleEdgeMouseEnter}
+        onEdgeMouseLeave={lensHandlers.handleEdgeMouseLeave}
+        onPaneClick={lensHandlers.handlePaneClick}
         fitView
         fitViewOptions={{ padding: 0.24, minZoom: 0.12 }}
         minZoom={0.12}
@@ -282,6 +279,7 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
         proOptions={{ hideAttribution: true }}
         className="bg-transparent relative z-10"
       >
+        <PhysicsCanvasOverlay worldScope="lab" />
         <Background
           variant={BackgroundVariant.Lines}
           gap={20}

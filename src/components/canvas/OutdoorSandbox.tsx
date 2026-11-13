@@ -66,6 +66,8 @@ import { AmmeterNode } from './nodes/AmmeterNode';
 import { TransmissionWireEdge } from './TransmissionWireEdge';
 import { BessSubstationNode } from './nodes/BessSubstationNode';
 import { HydroTurbineNode } from './nodes/HydroTurbineNode';
+import { PhysicsCanvasOverlay } from './PhysicsCanvasOverlay';
+import { usePhysicsLensCanvasHandlers } from '../../hooks/usePhysicsLensCanvasHandlers';
 
 
 /**
@@ -155,10 +157,9 @@ const OutdoorSandboxInner: React.FC<OutdoorSandboxProps> = ({
   const onNodesChange = useCircuitStore((state) => state.onNodesChange);
   const onEdgesChange = useCircuitStore((state) => state.onEdgesChange);
   const onConnect = useCircuitStore((state) => state.onConnect);
-  const selectNode = useCircuitStore((state) => state.selectNode);
-  const selectEdge = useCircuitStore((state) => state.selectEdge);
   const splitEdgeWithWaypoint = useCircuitStore((state) => state.splitEdgeWithWaypoint);
   const language = useCircuitStore((state) => state.language);
+  const lensHandlers = usePhysicsLensCanvasHandlers();
 
   const terrainGrid = useCircuitStore((state) => state.terrainGrid);
   const dirtExposureMap = useCircuitStore((state) => state.dirtExposureMap);
@@ -1026,18 +1027,14 @@ const OutdoorSandboxInner: React.FC<OutdoorSandboxProps> = ({
               connectionMode={ConnectionMode.Loose}
               connectionRadius={40}
               connectionLineStyle={connectionLineStyle}
-              onNodeClick={(_, node) => {
-                selectEdge(null);
-                selectNode(node.id);
-              }}
-              onEdgeClick={(_, edge) => {
-                selectNode(null);
-                selectEdge(edge.id);
-              }}
-              onPaneClick={() => {
-                selectNode(null);
-                selectEdge(null);
-              }}
+              data-physics-lens={lensHandlers.physicsLensMode}
+              onNodeClick={lensHandlers.handleNodeClick}
+              onNodeMouseEnter={lensHandlers.handleNodeMouseEnter}
+              onNodeMouseLeave={lensHandlers.handleNodeMouseLeave}
+              onEdgeClick={lensHandlers.handleEdgeClick}
+              onEdgeMouseEnter={lensHandlers.handleEdgeMouseEnter}
+              onEdgeMouseLeave={lensHandlers.handleEdgeMouseLeave}
+              onPaneClick={lensHandlers.handlePaneClick}
               defaultViewport={{ x: 0, y: 0, zoom: 1 }}
               minZoom={1}
               maxZoom={1}
@@ -1049,7 +1046,9 @@ const OutdoorSandboxInner: React.FC<OutdoorSandboxProps> = ({
               snapToGrid={false}
               deleteKeyCode={['Backspace', 'Delete']}
               className={`bg-transparent w-full h-full ${terrainBrush === 'cursor' ? 'touch-pan-x' : 'touch-none'}`}
-            />
+            >
+              <PhysicsCanvasOverlay worldScope="outside" />
+            </ReactFlow>
           </div>
 
           {/* ====================================================================

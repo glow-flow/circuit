@@ -120,8 +120,16 @@ export function calculateHydroOperatingPoint(
       : 12.0 + 1.8 * Math.min(1.0, (powerWatts - 30.0) / 50.0);
   const voltage = Number(Math.min(13.8, Math.max(0, rawVoltage)).toFixed(2));
 
-  // Pelton runner RPM is proportional to jet velocity v = sqrt(2 * g * H) and flow
-  const rawRpm = flowRatio * Math.sqrt(2 * GRAVITY_ACCELERATION_M_S2 * safeHead) * 60;
+  // True dimensional Pelton runner kinematics:
+  // jet velocity v_j = sqrt(2*g*H), optimal blade speed ratio phi ~ 0.46, pitch diameter D = 0.16 m
+  // N_rpm = flowRatio * (60 * u_runner) / (pi * D)
+  const PELTON_RUNNER_DIAMETER_METERS = 0.16;
+  const PELTON_OPTIMAL_SPEED_RATIO = 0.46;
+  const jetVelocityMPerSec = Math.sqrt(2 * GRAVITY_ACCELERATION_M_S2 * safeHead);
+  const tangentialVelocityMPerSec = PELTON_OPTIMAL_SPEED_RATIO * jetVelocityMPerSec;
+  const rawRpm =
+    flowRatio *
+    ((60 * tangentialVelocityMPerSec) / (Math.PI * PELTON_RUNNER_DIAMETER_METERS));
   const rpm = Math.max(0, Math.min(600, Math.round(rawRpm)));
 
   // CSS animation rotation period (seconds per full 360-degree rotation)

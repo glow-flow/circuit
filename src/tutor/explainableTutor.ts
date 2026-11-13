@@ -21,7 +21,313 @@ import {
   MathematicalDerivationStep,
   WhatIfPrediction,
 } from '../types/tutor';
-import { getComponentEffectiveResistance } from '../physics/mnaSolver';
+import { getComponentEffectiveResistance, getComponentPinIdentifiers } from '../physics/mnaSolver';
+import { UnionFind } from '../physics/unionFind';
+import { computeEffectiveBatteryVoltage } from '../physics/batterySoC';
+import { getBulbSpec } from '../constants/bulbCatalog';
+
+/**
+ * Resolves the accurate EMF voltage for a voltage source component, accounting
+ * for per-type nominal voltages (e.g. 9.0V for 9V battery) and SoC voltage sag.
+ * Time Complexity: O(1).
+ */
+function resolveTutorSourceVoltage(data: CircuitElementData): number {
+  let nominalVoltage: number;
+  if (typeof data.voltage === 'number' && Number.isFinite(data.voltage)) {
+    nominalVoltage = data.voltage;
+  } else {
+    switch (data.type) {
+      case 'battery9v':
+        nominalVoltage = 9.0;
+        break;
+      case 'battery-holder': {
+        const count = Math.max(1, data.batteryCount ?? 2);
+        nominalVoltage = count * 1.5;
+        break;
+      }
+      case 'bess-substation':
+      case 'bess_substation':
+        nominalVoltage = 12.8;
+        break;
+      case 'solar-panel':
+      case 'solar_panel':
+      case 'wind-turbine':
+      case 'wind_turbine':
+      case 'hydro-turbine':
+      case 'hydro_turbine':
+      case 'distribution-panel':
+      case 'distribution_panel':
+        nominalVoltage = data.stepDownVoltage ?? 12.0;
+        break;
+      default:
+        nominalVoltage = 1.5;
+        break;
+    }
+  }
+
+  const soc = data.socPercent ?? data.currentCharge;
+  if (
+    typeof soc === 'number' &&
+    Number.isFinite(soc) &&
+    (data.type === 'battery' ||
+      data.type === 'battery9v' ||
+      data.type === 'battery-holder' ||
+      data.type === 'bess-substation' ||
+      data.type === 'bess_substation')
+  ) {
+    return computeEffectiveBatteryVoltage(nominalVoltage, soc);
+  }
+  return nominalVoltage;
+}
+
+/**
+ * Resolves the bulb type string even when stored inside an `installedBulb` object.
+ * Time Complexity: O(1).
+ */
+function resolveSocketBulbType(data: CircuitElementData): string | undefined {
+  if (typeof data.installedBulb === 'object' && data.installedBulb !== null) {
+    return data.installedBulb.bulbType;
+  }
+  if (typeof data.installedBulb === 'string') {
+    return data.installedBulb;
+  }
+  return data.bulbType;
+}
+
+interface TopologyAnalysisContext {
+  hasExplicitHandles: boolean;
+  pinToNetMap: Map<string, string>;
+  isParallelLoads: boolean;
+}
+
+/**
+ * Inspects wire pin handles (via Union-Find) and graph vertex branching degree
+ * to classify parallel vs series load topologies in O(V + E) time without false positives
+ * on long series chains containing switches or waypoints.
+ */
+function inspectTutorTopologyGraph(
+  nodes: Node<CircuitElementData>[],
+  edges: Edge[],
+  activeLoads: Node<CircuitElementData>[]
+): TopologyAnalysisContext {
+  const hasExplicitHandles = edges.some((e) => Boolean(e.sourceHandle || e.targetHandle));
+  const pinUnionFind = new UnionFind();
+  const netPinCounts = new Map<string, number>();
+
+  for (const node of nodes) {
+    const pins = getComponentPinIdentifiers(node.data);
+    for (const pin of pins) {
+      pinUnionFind.makeSet(pin);
+    }
+    if (
+      node.data.type === 'waypoint' ||
+      (node.data.type === 'switch' && node.data.isOpen !== true)
+    ) {
+      pinUnionFind.union(`${node.id}:p1`, `${node.id}:p2`);
+    }
+  }
+
+  for (const edge of edges) {
+    if (edge.sourceHandle && edge.targetHandle) {
+      pinUnionFind.union(`${edge.source}:${edge.sourceHandle}`, `${edge.target}:${edge.targetHandle}`);
+    }
+  }
+
+  const pinToNetMap = new Map<string, string>();
+  const degreeByNonPassPin = new Map<string, number>();
+  for (const node of nodes) {
+    const pins = getComponentPinIdentifiers(node.data);
+    const isPassThrough =
+      node.data.type === 'waypoint' || node.data.type === 'switch';
+    for (const pin of pins) {
+      const net = pinUnionFind.find(pin);
+      pinToNetMap.set(pin, net);
+      if (!isPassThrough) {
+        degreeByNonPassPin.set(net, (degreeByNonPassPin.get(net) ?? 0) + 1);
+      }
+      netPinCounts.set(net, (netPinCounts.get(net) ?? 0) + 1);
+    }
+  }
+
+  let isParallelLoads = false;
+  if (activeLoads.length > 1) {
+    if (hasExplicitHandles) {
+      const railPairs = new Set<string>();
+      for (const load of activeLoads) {
+        const pins = getComponentPinIdentifiers(load.data);
+        if (pins.length < 2) continue;
+        const netA = pinToNetMap.get(pins[0]);
+        const netB = pinToNetMap.get(pins[1]);
+        if (!netA || !netB || netA === netB) continue;
+
+        const unorderedPair = netA < netB ? `${netA}|${netB}` : `${netB}|${netA}`;
+        if (railPairs.has(unorderedPair)) {
+          // Two loads wired across the exact same electrical node pair -> parallel!
+          isParallelLoads = true;
+          break;
+        }
+        railPairs.add(unorderedPair);
+      }
+
+      if (!isParallelLoads) {
+        // Detect multi-branch fan-out where loads sit in parallel sub-branches off a shared hub net (>= 3 real component terminals)
+        for (const deg of degreeByNonPassPin.values()) {
+          if (deg >= 3) {
+            isParallelLoads = true;
+            break;
+          }
+        }
+      }
+    } else {
+      // Legacy handle-less graph classification: count non-pass-through incident edge degree
+      const incidentDegree = new Map<string, number>();
+      const passThroughIds = new Set(
+        nodes
+          .filter((n) => n.data.type === 'waypoint' || n.data.type === 'switch')
+          .map((n) => n.id)
+      );
+      for (const edge of edges) {
+        incidentDegree.set(edge.source, (incidentDegree.get(edge.source) ?? 0) + 1);
+        incidentDegree.set(edge.target, (incidentDegree.get(edge.target) ?? 0) + 1);
+      }
+      for (const [nodeId, deg] of incidentDegree.entries()) {
+        if (!passThroughIds.has(nodeId) && deg >= 3) {
+          isParallelLoads = true;
+          break;
+        }
+      }
+    }
+  }
+
+  return { hasExplicitHandles, pinToNetMap, isParallelLoads };
+}
+
+/**
+ * Computes effective net EMF of multiple sources considering series-aiding,
+ * parallel rail sharing, and series-opposing configurations in O(S) time.
+ */
+function computeEffectiveSourceBank(
+  voltageSources: Node<CircuitElementData>[],
+  topo: TopologyAnalysisContext
+): {
+  effectiveVoltage: number;
+  lawLabel: string;
+  formulaLatex: string;
+  substitutedFormula: string;
+} {
+  if (voltageSources.length === 0) {
+    return {
+      effectiveVoltage: 0,
+      lawLabel: 'Kaidah Sumber Tegangan Ideal',
+      formulaLatex: 'V_{s} = 0',
+      substitutedFormula: 'V_{s} = 0V',
+    };
+  }
+
+  if (voltageSources.length === 1) {
+    const v0 = Number(resolveTutorSourceVoltage(voltageSources[0].data).toFixed(2));
+    return {
+      effectiveVoltage: v0,
+      lawLabel: 'Kaidah Sumber Tegangan Ideal',
+      formulaLatex: 'V_{s} = V_1',
+      substitutedFormula: `V_{s} = ${v0}V`,
+    };
+  }
+
+  if (topo.hasExplicitHandles) {
+    // Group sources sharing identical unordered terminal net pair into parallel bus banks
+    const parallelBanks = new Map<string, Array<{ v: number; posNet: string; negNet: string }>>();
+    const unlinkedSources: number[] = [];
+
+    for (const src of voltageSources) {
+      const v = resolveTutorSourceVoltage(src.data);
+      const posNet = topo.pinToNetMap.get(`${src.id}:pos`);
+      const negNet = topo.pinToNetMap.get(`${src.id}:neg`);
+      if (!posNet || !negNet || posNet === negNet) {
+        unlinkedSources.push(v);
+        continue;
+      }
+      const key = posNet < negNet ? `${posNet}|${negNet}` : `${negNet}|${posNet}`;
+      const bucket = parallelBanks.get(key) ?? [];
+      bucket.push({ v, posNet, negNet });
+      parallelBanks.set(key, bucket);
+    }
+
+    const bankVoltages: Array<{ v: number; posNet: string; negNet: string }> = [];
+    let hasParallelBank = false;
+    for (const bucket of parallelBanks.values()) {
+      if (bucket.length > 1) {
+        hasParallelBank = true;
+      }
+      const refPos = bucket[0].posNet;
+      let maxAiding = bucket[0].v;
+      let hasOpposing = false;
+      for (let i = 1; i < bucket.length; i++) {
+        if (bucket[i].posNet === refPos) {
+          if (bucket[i].v > maxAiding) maxAiding = bucket[i].v;
+        } else {
+          hasOpposing = true;
+        }
+      }
+      const effectiveBankV = hasOpposing
+        ? Number(Math.abs(bucket[0].v - bucket[1].v).toFixed(2))
+        : Number(maxAiding.toFixed(2));
+      bankVoltages.push({ v: effectiveBankV, posNet: refPos, negNet: bucket[0].negNet });
+    }
+
+    // Across distinct banks in a loop: detect series-aiding vs series-opposing
+    let totalEffective = bankVoltages.reduce((acc, b) => acc + b.v, 0) + unlinkedSources.reduce((a, b) => a + b, 0);
+    let isOpposingSeries = false;
+    if (bankVoltages.length === 2 && unlinkedSources.length === 0) {
+      const [b1, b2] = bankVoltages;
+      if (b1.posNet === b2.posNet || b1.negNet === b2.negNet) {
+        totalEffective = Math.abs(b1.v - b2.v);
+        isOpposingSeries = true;
+      }
+    }
+    totalEffective = Number(totalEffective.toFixed(2));
+
+    if (hasParallelBank && bankVoltages.length === 1) {
+      const sourceStrs = voltageSources.map((s) => `${resolveTutorSourceVoltage(s.data)}V`);
+      return {
+        effectiveVoltage: totalEffective,
+        lawLabel: 'Sumber Tegangan Paralel (Tegangan Bus Sama)',
+        formulaLatex: 'V_{s} = \\max(V_k)',
+        substitutedFormula: `V_{s} = \\text{Paralel}(${sourceStrs.join(', ')}) = ${totalEffective} V`,
+      };
+    }
+
+    if (isOpposingSeries) {
+      return {
+        effectiveVoltage: totalEffective,
+        lawLabel: 'Sumber Tegangan Seri Berlawanan (Opposing KVL)',
+        formulaLatex: 'V_{s} = |V_1 - V_2|',
+        substitutedFormula: `V_{s} = |${bankVoltages.map((b) => `${b.v}V`).join(' - ')}| = ${totalEffective} V`,
+      };
+    }
+  }
+
+  // Fallback for handle-less multi-source graphs or series chains:
+  // If handle-less parallel hub detected with identical sources attached, keep bus voltage rather than summing
+  const values = voltageSources.map((s) => resolveTutorSourceVoltage(s.data));
+  if (!topo.hasExplicitHandles && topo.isParallelLoads) {
+    const busV = Number(Math.max(...values).toFixed(2));
+    return {
+      effectiveVoltage: busV,
+      lawLabel: 'Sumber Tegangan Paralel',
+      formulaLatex: 'V_{s} = V_{\\text{bus}}',
+      substitutedFormula: `V_{s} = \\max(${values.map((v) => `${v}V`).join(', ')}) = ${busV} V`,
+    };
+  }
+
+  const seriesSum = Number(values.reduce((acc, v) => acc + v, 0).toFixed(2));
+  return {
+    effectiveVoltage: seriesSum,
+    lawLabel: 'Kaidah Sumber Tegangan Seri',
+    formulaLatex: 'V_{s} = \\sum V_{k}',
+    substitutedFormula: `V_{s} = ${values.map((v) => `${v}V`).join(' + ')} = ${seriesSum} V`,
+  };
+}
 
 /**
  * Analyzes active circuit schematic and MNA simulation telemetry to formulate
@@ -70,23 +376,23 @@ export function analyzeExplainableCircuit(
       'bess_substation',
       'hydro-turbine',
       'hydro_turbine',
-      'lab-panel',
-      'lab_panel',
+      'distribution-panel',
+      'distribution_panel',
     ].includes(n.data.type)
   );
 
   const resistors = nodes.filter((n) => n.data.type === 'resistor');
-  const bulbs = nodes.filter((n) => ['bulb', 'socket', 'pin-socket'].includes(n.data.type));
+  const bulbs = nodes.filter((n) => ['bulb', 'socket', 'pin-socket', 'socket-pin'].includes(n.data.type));
   const switches = nodes.filter((n) => n.data.type === 'switch');
   const grounds = nodes.filter((n) => n.data.type === 'ground');
+  const activeLoads = [...resistors, ...bulbs];
 
-  // Compute total nominal source voltage
-  let totalSourcesVoltage = 0;
-  for (const source of voltageSources) {
-    const v = typeof source.data.voltage === 'number' ? source.data.voltage : 1.5;
-    totalSourcesVoltage += v;
-  }
-  totalSourcesVoltage = Number(totalSourcesVoltage.toFixed(2));
+  // Inspect handle-level connectivity & branching degree in O(V + E)
+  const topologyCtx = inspectTutorTopologyGraph(nodes, edges, activeLoads);
+
+  // Compute effective EMF across single / series / parallel / opposing voltage sources
+  const sourceBank = computeEffectiveSourceBank(voltageSources, topologyCtx);
+  const totalSourcesVoltage = sourceBank.effectiveVoltage;
 
   // Determine if switches are breaking the circuit
   const openSwitches = switches.filter((s) => s.data.isOpen === true);
@@ -94,7 +400,7 @@ export function analyzeExplainableCircuit(
   // Check for dead short circuit condition
   const isShortCircuit = simulation.isShortCircuit || simulation.shortCircuitBranches.length > 0;
 
-  // Classify topology
+  // Classify topology cleanly via graph connectivity instead of naive edge count
   let topologyType: CircuitTopologyType = 'series_loop';
   let summaryId = '';
   let summaryEn = '';
@@ -111,8 +417,7 @@ export function analyzeExplainableCircuit(
     topologyType = 'open_circuit';
     summaryId = 'Kawat penghantar belum tersambung membentuk loop tertutup (Closed Loop).';
     summaryEn = 'Wires are not connected into a complete closed loop.';
-  } else if (resistors.length + bulbs.length > 1 && edges.length >= 4) {
-    // Check if parallel branch connections exist
+  } else if (topologyCtx.isParallelLoads) {
     topologyType = 'parallel_branches';
     summaryId = 'Rangkaian Paralel Bercabang. Arus total terbagi ke masing-masing cabang beban secara independen.';
     summaryEn = 'Parallel Branch Circuit. Total source current divides independently across each branch.';
@@ -124,7 +429,6 @@ export function analyzeExplainableCircuit(
 
   // Calculate equivalent resistance Req
   let equivalentResistanceOhms = 0;
-  const activeLoads = [...resistors, ...bulbs];
 
   if (activeLoads.length > 0) {
     if (topologyType === 'parallel_branches') {
@@ -191,7 +495,9 @@ export function analyzeExplainableCircuit(
 
   // Phenomenon 3: Unlit or Dim Bulbs
   for (const bulb of bulbs) {
-    const isLed = Boolean(bulb.data.bulbType?.startsWith('led'));
+    const resolvedBulbType = resolveSocketBulbType(bulb.data);
+    const isLed = Boolean(resolvedBulbType?.startsWith('led'));
+    const forwardVf = resolvedBulbType ? getBulbSpec(resolvedBulbType).forwardVoltage ?? 0 : 0;
     const effectiveR = getComponentEffectiveResistance(bulb.data);
     
     // Read exact branch current from MNA linear solver
@@ -203,7 +509,9 @@ export function analyzeExplainableCircuit(
       bulbCurrent = totalLoopCurrentAmps;
     }
 
-    const bulbVoltage = Number((bulbCurrent * effectiveR).toFixed(2));
+    const bulbVoltage = Number(
+      ((bulbCurrent > 1e-6 ? forwardVf : 0) + bulbCurrent * effectiveR).toFixed(2)
+    );
     const bulbPower = Number((bulbVoltage * bulbCurrent).toFixed(2));
 
     if (bulbCurrent < 0.005) {
@@ -271,11 +579,11 @@ export function analyzeExplainableCircuit(
     stepNumber: 1,
     titleId: 'Identifikasi Sumber Tegangan & Topologi',
     titleEn: 'Identify Voltage Sources & Topology',
-    lawOrTheorem: 'Kaidah Sumber Tegangan Ideal',
-    formulaLatex: 'V_{s} = \\sum V_{k}',
+    lawOrTheorem: sourceBank.lawLabel,
+    formulaLatex: sourceBank.formulaLatex,
     calculationDescriptionId: `Mengidentifikasi ${voltageSources.length} sumber tegangan dan ${activeLoads.length} komponen beban aktif dalam topologi ${topologyType}.`,
     calculationDescriptionEn: `Identified ${voltageSources.length} voltage sources and ${activeLoads.length} active load elements in a ${topologyType} configuration.`,
-    substitutedFormula: `V_{s} = ${voltageSources.map((s) => `${s.data.voltage ?? 1.5}V`).join(' + ') || '0V'} = ${totalSourcesVoltage} V`,
+    substitutedFormula: sourceBank.substitutedFormula,
     verifiedResult: `Total EMF = ${totalSourcesVoltage} Volt`,
     relevantComponentIds: voltageSources.map((s) => s.id),
   });
@@ -442,11 +750,18 @@ export function analyzeExplainableCircuit(
   // Interactive What-If Hypotheses
   const whatIfPredictions: WhatIfPrediction[] = [];
 
-  if (activeLoads.length > 0 && totalSourcesVoltage > 0) {
+  if (activeLoads.length > 0 && totalSourcesVoltage > 0 && equivalentResistanceOhms > 0) {
     const firstLoad = activeLoads[0];
     const r1 = getComponentEffectiveResistance(firstLoad.data);
     const doubledR = r1 * 2;
-    const newReq = equivalentResistanceOhms + r1;
+    let newReq = equivalentResistanceOhms + r1;
+    if (topologyType === 'parallel_branches' && equivalentResistanceOhms > 0 && r1 > equivalentResistanceOhms) {
+      // Replacing 1/R1 with 1/(2*R1) subtracts 1/(2*R1) from total conductance 1/R_eq
+      const newConductance = 1 / equivalentResistanceOhms - 1 / doubledR;
+      newReq = newConductance > 1e-6 ? Number((1 / newConductance).toFixed(2)) : doubledR;
+    } else {
+      newReq = Number((equivalentResistanceOhms + r1).toFixed(2));
+    }
     const newCurrent = Number((totalSourcesVoltage / newReq).toFixed(3));
 
     whatIfPredictions.push({

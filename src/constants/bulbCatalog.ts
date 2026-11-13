@@ -60,6 +60,8 @@ export interface BulbSpec {
   label: string;
   labelEn: string;
   resistance: number; // Ohms (Ω)
+  /** Semiconductor forward junction threshold Vf (Volts), e.g., ~2.0V for discrete indicator LED. */
+  forwardVoltage?: number;
   maxPower: number; // Max rated power in Watts (W)
   glowTag: string;
   traits: string;
@@ -192,6 +194,7 @@ export const BULB_CATALOG: readonly BulbSpec[] = [
     label: 'LED Indikator',
     labelEn: 'Green Indicator LED',
     resistance: 5000,
+    forwardVoltage: 2.0,
     maxPower: 3,
     glowTag: 'Green',
     traits: 'Hanya untuk indikator, arus sangat kecil.',
@@ -255,8 +258,9 @@ export function computeBulbPhotometrics(
 } {
   const safeResistance = Math.max(0.1, resistanceOhms);
   const absCurrent = Math.abs(currentAmps);
-  const powerWatts = absCurrent * absCurrent * safeResistance; // P = I^2 * R
-  const voltageDrop = absCurrent * safeResistance; // V = I * R
+  const forwardDrop = absCurrent > 1e-6 ? (spec.forwardVoltage ?? 0) : 0;
+  const voltageDrop = forwardDrop + absCurrent * safeResistance; // Total pin drop Vf + I * R
+  const powerWatts = voltageDrop * absCurrent; // Reduces to I^2 * R when Vf = 0
 
   // Reference baseline power: 3.0V across 800Ω incandescent = 0.01125 W
   // For legacy low-resistance test circuits (< 100Ω), scale against 1.5W

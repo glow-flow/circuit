@@ -31,6 +31,8 @@ import { decodeShareableUrlHash } from './utils/workspaceManagement';
 import { decodeTerrainGrid } from './utils/terrainCompression';
 import { getComponentDisplayName } from './utils/nodeLocalization';
 import { OutdoorGenerationMiniHud } from './components/ui/telemetry/OutdoorGenerationMiniHud';
+import { PhysicsLensDock } from './components/ui/lens/PhysicsLensDock';
+import { ProbeReadoutHud } from './components/ui/lens/ProbeReadoutHud';
 
 type MobileSheetType = TourMobileSheetState;
 
@@ -47,6 +49,7 @@ export const App: React.FC = () => {
   const language = useCircuitStore((state) => state.language);
   const worldMode = useCircuitStore((state) => state.worldMode);
   const theme = useCircuitStore((state) => state.theme);
+  const physicsLensMode = useCircuitStore((state) => state.physicsLensMode);
 
   // Synchronize document theme class for clean light mode / dark mode
   useEffect(() => {
@@ -238,6 +241,14 @@ export const App: React.FC = () => {
             onOpenFullGuide={() => setIsWelcomeOpen(true)}
           />
 
+          {/* Interactive Physics X-Ray Lens & Finger Probe HUD */}
+          <ProbeReadoutHud
+            isHidden={activeMobileSheet !== 'none' || isInteractiveCoachOpen}
+          />
+          <PhysicsLensDock
+            isHidden={activeMobileSheet !== 'none' || isInteractiveCoachOpen}
+          />
+
           {/* Floating Bottom-Right Short-Circuit 0V Battery Pop-Up & Visual Explainer */}
           <ShortCircuitZeroVoltPopup />
 
@@ -245,7 +256,7 @@ export const App: React.FC = () => {
           <OutdoorGridReadyPopup />
 
           {/* Floating Quick-Edit & Disconnect Wires Bar on Mobile when a component is selected */}
-          {selectedNode && activeMobileSheet === 'none' && !isInteractiveCoachOpen && (
+          {selectedNode && activeMobileSheet === 'none' && !isInteractiveCoachOpen && physicsLensMode !== 'probe' && (
             <div className="md:hidden absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 max-w-[94vw]">
               <button
                 type="button"
@@ -286,7 +297,7 @@ export const App: React.FC = () => {
           )}
 
           {/* Top Floating Wire Action Bar (Visible on ALL devices when a wire is selected) */}
-          {selectedEdgeId && activeMobileSheet === 'none' && (
+          {selectedEdgeId && activeMobileSheet === 'none' && physicsLensMode !== 'probe' && (
             <div
               id="tour-wire-actions"
               className="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-void-900/95 backdrop-blur-md border border-white/15 shadow-[0_8px_30px_rgba(0,0,0,0.65)]"

@@ -14,6 +14,10 @@ import {
 import { useCircuitStore } from '../../../store/useCircuitStore';
 import { OscilloscopeDataPoint } from '../../../types/analytics';
 import { getComponentDisplayName } from '../../../utils/nodeLocalization';
+import {
+  computeOscilloscopeSample,
+  SignalPolarityState,
+} from '../../../physics/oscilloscopeTelemetry';
 
 interface OscilloscopeModalProps {
   isOpen: boolean;
@@ -43,6 +47,7 @@ export const OscilloscopeModal: React.FC<OscilloscopeModalProps> = ({ isOpen, on
   const [isPaused, setIsPaused] = useState<boolean>(false);
   const [sampleIntervalMs, setSampleIntervalMs] = useState<number>(500);
   const [history, setHistory] = useState<OscilloscopeDataPoint[]>([]);
+  const [latestPolarity, setLatestPolarity] = useState<SignalPolarityState>('idle');
   const [activeSignal, setActiveSignal] = useState<'all' | 'voltage' | 'current' | 'power'>('all');
 
   const cumulativeEnergyWhRef = useRef<number>(0);
@@ -67,23 +72,9 @@ export const OscilloscopeModal: React.FC<OscilloscopeModalProps> = ({ isOpen, on
       const deltaSeconds = Math.max(0.05, (now - lastSampleEpochRef.current) / 1000);
       lastSampleEpochRef.current = now;
 
-      const probedNode = nodes.find((n) => n.id === probedNodeId);
-
-      let voltage = 0;
-      let current = 0;
-      let power = 0;
-
-      if (probedNode) {
-        // Derive strictly from MNA solver results and node telemetry
-        current = Math.abs(simulation.branchCurrents[probedNode.id] ?? 0);
-        voltage = Math.abs(probedNode.data.calculatedVoltage ?? (probedNode.data.voltage ?? 0));
-        power = probedNode.data.calculatedPower ?? voltage * current;
-      } else {
-        // Circuit-wide global telemetry fallback
-        power = simulation.totalPowerDrawn;
-        voltage = Math.max(0, ...Object.values(simulation.nodeVoltages));
-        current = voltage > 0 ? power / voltage : 0;
-      }
+      const sample = computeOscilloscopeSample(probedNodeId, nodes, simulation);
+      const { voltage, current, power, polarity } = sample;
+      setLatestPolarity(polarity);
 
       // Energy accumulation in Watt-hours: E = P * (t / 3600)
       const energyIncrementWh = (power * deltaSeconds) / 3600;
@@ -348,9 +339,36 @@ export const OscilloscopeModal: React.FC<OscilloscopeModalProps> = ({ isOpen, on
 
           {/* Current */}
           <div className="p-3 rounded-xl bg-void-900/80 border border-amber-500/20">
-            <div className="flex items-center justify-between text-slate-400 text-[11px] font-sans">
+            <div className="flex items-center justify-between text-slate-400 text-[11px] font-sans gap-1">
               <span>{isId ? 'Kuat Arus (I)' : 'Current (I)'}</span>
-              <Gauge className="w-3.5 h-3.5 text-amber-400" />
+              {latestPolarity !== 'idle' && (
+                <span
+                  className={`text-[9px] font-mono px-1.5 py-0.5 rounded border ${
+                    latestPolarity === 'charging'
+                      ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                      : latestPolarity === 'reverse'
+                      ? 'bg-rose-500/15 text-rose-300 border-rose-500/30'
+                      : 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                  }`}
+                >
+                  {latestPolarity === 'charging'
+                    ? isId
+                      ? 'Charging'
+                      : 'Charging'
+                    : latestPolarity === 'supplying'
+                    ? isId
+                      ? 'Suplai'
+                      : 'Supply'
+                    : latestPolarity === 'reverse'
+                    ? isId
+                      ? 'Terbalik'
+                      : 'Reverse'
+                    : isId
+                    ? 'Maju'
+                    : 'Forward'}
+                </span>
+              )}
+              <Gauge className="w-3.5 h-3.5 text-amber-400 shrink-0" />
             </div>
             <div className="text-base sm:text-lg font-mono font-bold text-amber-300 mt-1">
               {latestPoint.current < 1

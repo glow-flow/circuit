@@ -254,23 +254,26 @@ export function calculateTransmissionEfficiency(
 }
 
 /**
- * Checks whether transmission line current exceeds safe thermal limits under low voltage.
+ * Checks whether transmission line current exceeds the conductor's thermal ampacity limit.
+ * Joule conductor heating (P = I^2 * R) depends strictly on conductor current and resistance,
+ * independent of the line voltage level.
  * 
  * @param lineCurrentAmperes - Conductor current in Amperes
- * @param transmissionVoltage - Effective line voltage in Volts
+ * @param _transmissionVoltage - Optional legacy voltage parameter (unused for pure thermal ampacity)
  * @param thresholdAmperes - Maximum safe thermal current limit in Amperes
- * @returns True if line experiences severe thermal stress
+ * @returns True if conductor current reaches thermal stress limit
  * 
  * Time Complexity: O(1)
  */
 export function isTransmissionLineOverheated(
   lineCurrentAmperes: number,
-  transmissionVoltage: number = LOW_VOLTAGE_NOMINAL,
+  _transmissionVoltage: number = LOW_VOLTAGE_NOMINAL,
   thresholdAmperes: number = THERMAL_STRESS_CURRENT_THRESHOLD
 ): boolean {
-  const current = Math.abs(lineCurrentAmperes);
-  const isLowVoltage = transmissionVoltage <= LOW_VOLTAGE_NOMINAL + 0.1;
-  return isLowVoltage && current >= thresholdAmperes;
+  if (!Number.isFinite(lineCurrentAmperes) || !Number.isFinite(thresholdAmperes)) {
+    return false;
+  }
+  return Math.abs(lineCurrentAmperes) >= thresholdAmperes;
 }
 
 /**

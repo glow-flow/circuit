@@ -340,3 +340,23 @@ body.driver-active nav.tour-mobile-nav {
   animation: waterExplodeParticle 0.85s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* ============================================================================
+   Physics X-Ray Lens & Touch Probe Canvas Modes
+   ============================================================================ */
+.react-flow[data-physics-lens="thermal"] .react-flow__nodes {
+  filter: saturate(0.75) brightness(0.88);
+  transition: filter 0.2s ease;
+}
+
+.react-flow[data-physics-lens="probe"] .react-flow__pane {
+  cursor: crosshair;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-wire-flow,
+  .animate-water-explode-core,
+  .animate-water-explode-particle {
+    animation: none !important;
+  }
+}
+

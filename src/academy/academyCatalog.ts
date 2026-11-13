@@ -857,11 +857,11 @@ export const ACADEMY_LESSONS: AcademyLesson[] = [
       'Balance intermittent renewables using BESS battery substations',
     ],
     theoryContentId: [
-      'Di halaman Alam EBT, kuas "Ubah Tanah/Air" menciptakan sungai biru untuk memutar Turbin Mikro-Hidro 15V secara kontinyu.',
+      'Di halaman Alam EBT, kuas "Ubah Tanah/Air" menciptakan sungai biru untuk memutar Turbin Mikro-Hidro 12V–13.8V secara kontinyu.',
       'Saat sumber Surya, Angin, dan Hidro digabung ke SUTET + Gardu BESS, kapasitas suplai ke Panel Lab meningkat drastis.',
     ],
     theoryContentEn: [
-      'Painting water cells in Outdoor mode powers continuous 15V Micro-Hydro generation.',
+      'Painting water cells in Outdoor mode powers continuous 12V–13.8V Micro-Hydro generation.',
       'Stacking Solar, Wind, Hydro, and BESS delivers steady surplus power into your Lab station.',
     ],
     equations: [

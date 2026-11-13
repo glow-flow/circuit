@@ -20,6 +20,8 @@ export const SwitchNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, 
   const toggleSwitch = useCircuitStore((state) => state.toggleSwitch);
   const simulation = useCircuitStore((state) => state.simulation);
   const language = useCircuitStore((state) => state.language);
+  const physicsLensMode = useCircuitStore((state) => state.physicsLensMode);
+  const selectProbeTarget = useCircuitStore((state) => state.selectProbeTarget);
   const t = TRANSLATIONS[language].nodes.switch;
 
   const isOpen = Boolean(data?.isOpen ?? false);
@@ -29,6 +31,10 @@ export const SwitchNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, 
 
   const handleToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (physicsLensMode === 'probe') {
+      selectProbeTarget({ kind: 'node', id });
+      return;
+    }
     try {
       toggleSwitch(id);
     } catch (error) {

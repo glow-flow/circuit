@@ -72,7 +72,7 @@ export const OutdoorGridReadyPopup: React.FC = () => {
           role="status"
           aria-live="polite"
           onPointerDown={(e) => e.stopPropagation()}
-          className="absolute bottom-[70px] right-3 sm:bottom-5 sm:right-5 z-30 w-[min(90vw,312px)] pointer-events-auto animate-fade-in"
+          className="absolute bottom-[128px] right-3 lg:bottom-5 lg:right-5 z-30 w-[min(90vw,312px)] pointer-events-auto animate-fade-in"
         >
           <div className="relative rounded-2xl bg-void-950/95 backdrop-blur-xl border border-emerald-500/55 shadow-[0_14px_34px_rgba(16,185,129,0.28)] p-3 text-slate-100">
             {/* Close Button */}

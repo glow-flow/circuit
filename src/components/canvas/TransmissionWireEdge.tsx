@@ -12,6 +12,7 @@ import {
   resolveWirePolarity,
 } from './WireEdge';
 import { THERMAL_STRESS_CURRENT_THRESHOLD } from '../../physics/transmissionPhysics';
+import { resolveWireLensPresentation } from '../../physics/physicsLensEngine';
 
 /**
  * Computes natural tangent orientation for Waypoint anchor nodes so wires
@@ -91,6 +92,13 @@ export const TransmissionWireEdge: React.FC<EdgeProps> = memo(({
   const selectEdge = useCircuitStore((state) => state.selectEdge);
   const splitEdgeWithWaypoint = useCircuitStore((state) => state.splitEdgeWithWaypoint);
   const language = useCircuitStore((state) => state.language);
+  const theme = useCircuitStore((state) => state.theme);
+  const physicsLensMode = useCircuitStore((state) => state.physicsLensMode);
+  const probeTargetA = useCircuitStore((state) => state.probeTargetA);
+  const probeTargetB = useCircuitStore((state) => state.probeTargetB);
+  const hoveredProbeTarget = useCircuitStore((state) => state.hoveredProbeTarget);
+  const selectProbeTarget = useCircuitStore((state) => state.selectProbeTarget);
+  const setHoveredProbeTarget = useCircuitStore((state) => state.setHoveredProbeTarget);
   const reactFlow = useReactFlow();
 
   const [isHovered, setIsHovered] = useState<boolean>(false);
@@ -229,9 +237,13 @@ export const TransmissionWireEdge: React.FC<EdgeProps> = memo(({
     }
   }
 
-  // Handle single-tap to select this wire
+  // Handle single-tap to select wire or pin Probe in Probe lens mode
   const handleClick = (event: React.MouseEvent) => {
     event.stopPropagation();
+    if (physicsLensMode === 'probe') {
+      selectProbeTarget({ kind: 'wire', id });
+      return;
+    }
     selectEdge(id);
   };
 
@@ -239,6 +251,10 @@ export const TransmissionWireEdge: React.FC<EdgeProps> = memo(({
   const handleDoubleClick = (event: React.MouseEvent) => {
     event.stopPropagation();
     event.preventDefault();
+    if (physicsLensMode === 'probe') {
+      selectProbeTarget({ kind: 'wire', id });
+      return;
+    }
     const clickPosition = reactFlow.screenToFlowPosition({
       x: event.clientX,
       y: event.clientY,
@@ -251,6 +267,22 @@ export const TransmissionWireEdge: React.FC<EdgeProps> = memo(({
   const transmittedCurrent = isStepUp ? wireCurrent / 20 : wireCurrent;
   const jouleLoss = transmittedCurrent * transmittedCurrent * lineResistance;
 
+  const lensVisual = resolveWireLensPresentation({
+    edgeId: id,
+    physicsLensMode,
+    wireCurrent,
+    isBranchShortCircuit,
+    isStepUp,
+    lineResistanceOhms: lineResistance,
+    isTransmissionWire,
+    theme,
+    probeTargetA,
+    probeTargetB,
+    hoveredProbeTarget,
+    defaultStrokeColor: strokeColor,
+    defaultStrokeWidth: strokeWidth,
+  });
+
   return (
     <>
       {/* Official React Flow BaseEdge */}
@@ -260,12 +292,25 @@ export const TransmissionWireEdge: React.FC<EdgeProps> = memo(({
         markerEnd={markerEnd}
         style={{
           ...style,
-          stroke: strokeColor,
-          strokeWidth,
+          stroke: lensVisual.strokeColor,
+          strokeWidth: lensVisual.strokeWidth,
           strokeLinecap: 'round',
           strokeLinejoin: 'round',
         }}
       />
+
+      {/* Physics Lens FLIR thermal halo or Probe ring highlight */}
+      {lensVisual.haloColor && (
+        <path
+          d={edgePath}
+          fill="none"
+          stroke={lensVisual.haloColor}
+          strokeWidth={lensVisual.haloWidth}
+          strokeOpacity={lensVisual.haloOpacity}
+          strokeLinecap="round"
+          className="pointer-events-none"
+        />
+      )}
 
       {/* Focus outline when wire is actively selected */}
       {isWireSelected && (
@@ -343,8 +388,18 @@ export const TransmissionWireEdge: React.FC<EdgeProps> = memo(({
         className="cursor-pointer pointer-events-auto"
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
+        onMouseEnter={() => {
+          setIsHovered(true);
+          if (physicsLensMode === 'probe') {
+            setHoveredProbeTarget({ kind: 'wire', id });
+          }
+        }}
+        onMouseLeave={() => {
+          setIsHovered(false);
+          if (physicsLensMode === 'probe') {
+            setHoveredProbeTarget(null);
+          }
+        }}
       />
 
       {/* Real-Time Electrical Telemetry Badge & Tooltip */}
@@ -357,7 +412,29 @@ export const TransmissionWireEdge: React.FC<EdgeProps> = memo(({
       >
         <div className="flex flex-col items-center justify-center h-full select-none">
           {/* Main Telemetry Badge */}
-          {hasCurrent || isWireSelected || isHovered ? (
+          {physicsLensMode === 'thermal' && lensVisual.thermalBadgeText ? (
+            <div
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border shadow-md whitespace-nowrap font-mono text-[10px] font-bold ${
+                lensVisual.thermal?.heatBand === 'critical'
+                  ? 'bg-red-950/95 border-red-400 text-red-100'
+                  : lensVisual.thermal?.heatBand === 'hot'
+                  ? 'bg-amber-950/95 border-amber-400 text-amber-100'
+                  : 'bg-slate-950/95 border-teal-400/60 text-teal-200'
+              }`}
+            >
+              <span>{lensVisual.thermalBadgeText}</span>
+            </div>
+          ) : physicsLensMode === 'probe' && (lensVisual.probeRole === 'A' || lensVisual.probeRole === 'B') ? (
+            <div
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border shadow-md whitespace-nowrap font-mono text-[10px] font-bold ${
+                lensVisual.probeRole === 'A'
+                  ? 'bg-cyan-950/95 border-cyan-400 text-cyan-100'
+                  : 'bg-amber-950/95 border-amber-400 text-amber-100'
+              }`}
+            >
+              <span>Probe {lensVisual.probeRole}</span>
+            </div>
+          ) : hasCurrent || isWireSelected || isHovered ? (
             <div
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border shadow-lg backdrop-blur-md transition-all ${
                 isBranchShortCircuit
@@ -409,7 +486,7 @@ export const TransmissionWireEdge: React.FC<EdgeProps> = memo(({
           ) : null}
 
           {/* Hover Tooltip with Physics Details */}
-          {(isWireSelected || isHovered) && isTransmissionWire && (
+          {physicsLensMode === 'normal' && (isWireSelected || isHovered) && isTransmissionWire && (
             <div className="mt-1 px-2.5 py-1 rounded-md bg-slate-950/95 border border-white/20 text-[9px] font-sans text-slate-200 shadow-2xl whitespace-nowrap">
               {isOverheated ? (
                 <span className="text-red-300 font-semibold">

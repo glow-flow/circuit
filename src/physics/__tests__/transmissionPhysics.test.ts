@@ -110,16 +110,20 @@ describe('Nature Mode Transmission Physics & Gardu Trafo Substation', () => {
       expect(calculateTransmissionEfficiency(0, 0)).toBe(100.0);
     });
 
-    it('flags line thermal stress when current exceeds threshold under low voltage (12V)', () => {
-      // Overheated: I >= 0.4A and V <= 12V
+    it('flags line thermal stress whenever conductor current reaches ampacity threshold regardless of line voltage', () => {
+      // Joule heating I^2 * R depends on conductor current, not voltage
       expect(isTransmissionLineOverheated(0.8, 12)).toBe(true);
       expect(isTransmissionLineOverheated(THERMAL_STRESS_CURRENT_THRESHOLD, 12)).toBe(true);
+      expect(isTransmissionLineOverheated(0.8, 240)).toBe(true);
 
-      // Cool: I < 0.4A at 12V
+      // Cool: current below ampacity threshold
       expect(isTransmissionLineOverheated(0.2, 12)).toBe(false);
+      expect(isTransmissionLineOverheated(0.2, 240)).toBe(false);
 
-      // Cool: High Voltage 240V is active (even if numeric value equals threshold)
-      expect(isTransmissionLineOverheated(0.8, 240)).toBe(false);
+      // Stepped-up 240V transmission cools the line because it drops line current for the same power
+      const steppedUp = computeTransmissionTelemetry({ loadCurrent: 1.0, voltageMode: 'step_up' });
+      expect(steppedUp.lineCurrentAmperes).toBeCloseTo(0.05, 4);
+      expect(steppedUp.isOverheated).toBe(false);
     });
   });
 

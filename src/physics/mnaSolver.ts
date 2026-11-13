@@ -113,6 +113,39 @@ export function isSocketWithUnidirectionalLed(component: CircuitElementData): bo
 }
 
 /**
+ * Resolves the semiconductor forward junction voltage threshold (Vf) for diode bulbs
+ * (e.g., 2.0V for discrete indicator LEDs, 0V for driver-regulated E27 retrofits or filaments).
+ * Time Complexity: O(1).
+ */
+export function getSocketForwardThreshold(component: CircuitElementData): number {
+  if (!isSocketWithUnidirectionalLed(component) || !component.installedBulb) {
+    return 0;
+  }
+  const bulbType =
+    typeof component.installedBulb === 'object'
+      ? component.installedBulb.bulbType
+      : component.installedBulb;
+  return getBulbSpec(bulbType).forwardVoltage ?? 0;
+}
+
+/**
+ * Computes active positive EMF power delivered by a voltage source into the circuit.
+ * In MNA sign convention, j < 0 denotes current flowing out of (+) (delivering),
+ * while j > 0 denotes current absorption (charging). Only supplying sources contribute
+ * to generated power, preventing double-counting when charging secondary batteries.
+ * Time Complexity: O(1).
+ */
+export function computeDeliveredEmfPowerWatts(
+  nominalVoltage: number,
+  sourceCurrent: number
+): number {
+  if (!Number.isFinite(nominalVoltage) || !Number.isFinite(sourceCurrent)) {
+    return 0;
+  }
+  return Math.max(0, -nominalVoltage * sourceCurrent);
+}
+
+/**
  * Checks whether a circuit element is an electrochemical battery.
  * Time Complexity: O(1).
  * 
@@ -392,6 +425,138 @@ export function solveLinearSystem(
   return solutionVector;
 }
 
+export interface CircuitPinNetResolution {
+  pinToNetMap: Map<string, string>;
+  activeTransmissionTowers: CircuitElementData[];
+  gridReferredResistance: number;
+  outdoorGridPosNet: string | undefined;
+  labGridPosNet: string | undefined;
+  hasSplitTransmissionLine: boolean;
+}
+
+/**
+ * Resolves Union-Find electrical pin nets across components, waypoints, virtual
+ * transmission towers/panels (supporting split high/low voltage spans), and wires.
+ * Time Complexity: O(P * α(P) + W) where P is pin count and W is wire count.
+ *
+ * @param components - Circuit components on the canvas
+ * @param wires - Wire connections joining component terminals
+ * @returns Canonical net map and virtual transmission grid metadata
+ */
+export function resolveCircuitPinNets(
+  components: ReadonlyArray<CircuitElementData>,
+  wires: ReadonlyArray<WireConnection>
+): CircuitPinNetResolution {
+  const netUnionFind = new UnionFind();
+
+  for (const component of components) {
+    const pinIdentifiers = getComponentPinIdentifiers(component);
+    for (const pinId of pinIdentifiers) {
+      netUnionFind.makeSet(pinId);
+    }
+    if (component.type === 'waypoint') {
+      netUnionFind.union(`${component.id}:p1`, `${component.id}:p2`);
+    }
+  }
+
+  const activeTransmissionTowers = components.filter((c) => isTransmissionNodeActive(c));
+  const configuredLineTowers = activeTransmissionTowers.filter(
+    (t) =>
+      t.hasTransformer ||
+      (t.stepUpVoltage !== undefined && t.stepUpVoltage !== null) ||
+      (t.lineResistance !== undefined && t.lineResistance > 0)
+  );
+
+  let gridReferredResistance = 0;
+  if (activeTransmissionTowers.length > 1 && configuredLineTowers.length > 0) {
+    const primarySpan =
+      configuredLineTowers.find((t) => t.worldMode === 'outside') ?? configuredLineTowers[0];
+    const actualLineResistance = primarySpan.lineResistance ?? DEFAULT_LINE_RESISTANCE_OHMS;
+    const stepUpVoltage =
+      primarySpan.stepUpVoltage ??
+      (primarySpan.transmissionVoltageMode === 'step_up' ? 240 : 12);
+    gridReferredResistance = calculateReferredLineResistance(
+      actualLineResistance,
+      12.0,
+      stepUpVoltage
+    );
+  }
+
+  const outdoorTowers = activeTransmissionTowers.filter((t) => t.worldMode === 'outside');
+  const labTowers = activeTransmissionTowers.filter((t) => t.worldMode !== 'outside');
+  const splitOutdoorTowers =
+    gridReferredResistance > 0 && activeTransmissionTowers.length > 1
+      ? outdoorTowers.length > 0 && labTowers.length > 0
+        ? outdoorTowers
+        : [configuredLineTowers[0]]
+      : [];
+  const splitLabTowers =
+    gridReferredResistance > 0 && activeTransmissionTowers.length > 1
+      ? outdoorTowers.length > 0 && labTowers.length > 0
+        ? labTowers
+        : activeTransmissionTowers.filter((t) => t.id !== configuredLineTowers[0].id)
+      : [];
+
+  if (splitOutdoorTowers.length > 0 && splitLabTowers.length > 0) {
+    const primaryOut = splitOutdoorTowers[0];
+    for (let i = 1; i < splitOutdoorTowers.length; i++) {
+      netUnionFind.union(`${primaryOut.id}:pos`, `${splitOutdoorTowers[i].id}:pos`);
+    }
+    const primaryLab = splitLabTowers[0];
+    for (let i = 1; i < splitLabTowers.length; i++) {
+      netUnionFind.union(`${primaryLab.id}:pos`, `${splitLabTowers[i].id}:pos`);
+    }
+    const primaryReturnTower = activeTransmissionTowers[0];
+    for (let i = 1; i < activeTransmissionTowers.length; i++) {
+      netUnionFind.union(`${primaryReturnTower.id}:neg`, `${activeTransmissionTowers[i].id}:neg`);
+    }
+  } else if (activeTransmissionTowers.length > 1) {
+    const primaryTower = activeTransmissionTowers[0];
+    for (let i = 1; i < activeTransmissionTowers.length; i++) {
+      const peerTower = activeTransmissionTowers[i];
+      netUnionFind.union(`${primaryTower.id}:pos`, `${peerTower.id}:pos`);
+      netUnionFind.union(`${primaryTower.id}:neg`, `${peerTower.id}:neg`);
+    }
+  }
+
+  for (const wire of wires) {
+    const sourcePinKey = `${wire.source}:${wire.sourceHandle}`;
+    const targetPinKey = `${wire.target}:${wire.targetHandle}`;
+    netUnionFind.union(sourcePinKey, targetPinKey);
+  }
+
+  const pinToNetMap = new Map<string, string>();
+  for (const component of components) {
+    const pinIdentifiers = getComponentPinIdentifiers(component);
+    for (const pinId of pinIdentifiers) {
+      pinToNetMap.set(pinId, netUnionFind.find(pinId));
+    }
+  }
+
+  const outdoorGridPosNet =
+    splitOutdoorTowers.length > 0
+      ? pinToNetMap.get(`${splitOutdoorTowers[0].id}:pos`)
+      : undefined;
+  const labGridPosNet =
+    splitLabTowers.length > 0
+      ? pinToNetMap.get(`${splitLabTowers[0].id}:pos`)
+      : undefined;
+  const hasSplitTransmissionLine =
+    gridReferredResistance > 0 &&
+    outdoorGridPosNet !== undefined &&
+    labGridPosNet !== undefined &&
+    outdoorGridPosNet !== labGridPosNet;
+
+  return {
+    pinToNetMap,
+    activeTransmissionTowers,
+    gridReferredResistance,
+    outdoorGridPosNet,
+    labGridPosNet,
+    hasSplitTransmissionLine,
+  };
+}
+
 /**
  * Executes Modified Nodal Analysis on the provided electrical components and wire connections.
  * 
@@ -414,48 +579,15 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
   }
 
   try {
-    // 1. Build Disjoint Set (Union-Find) of connected pins to find electrical nets
-    const netUnionFind = new UnionFind();
-
-    // Register all component pins
-    for (const component of components) {
-      const pinIdentifiers = getComponentPinIdentifiers(component);
-      for (const pinId of pinIdentifiers) {
-        netUnionFind.makeSet(pinId);
-      }
-      // Waypoint: transparent zero-impedance bridge uniting p1 and p2 into the exact same electrical net
-      if (component.type === 'waypoint') {
-        netUnionFind.union(`${component.id}:p1`, `${component.id}:p2`);
-      }
-    }
-
-    // Virtual Transmission Grid: Unify all ACTIVE Transmission Towers / Lab Distribution Panels
-    // (where MCB breaker is ON and not tripped) across the canvas into a lossless common bus.
-    const activeTransmissionTowers = components.filter((c) => isTransmissionNodeActive(c));
-    if (activeTransmissionTowers.length > 1) {
-      const primaryTower = activeTransmissionTowers[0];
-      for (let i = 1; i < activeTransmissionTowers.length; i++) {
-        const peerTower = activeTransmissionTowers[i];
-        netUnionFind.union(`${primaryTower.id}:pos`, `${peerTower.id}:pos`);
-        netUnionFind.union(`${primaryTower.id}:neg`, `${peerTower.id}:neg`);
-      }
-    }
-
-    // Merge pins connected by wires
-    for (const wire of wires) {
-      const sourcePinKey = `${wire.source}:${wire.sourceHandle}`;
-      const targetPinKey = `${wire.target}:${wire.targetHandle}`;
-      netUnionFind.union(sourcePinKey, targetPinKey);
-    }
-
-    // Map each pin to its root representative net
-    const pinToNetMap = new Map<string, string>();
-    for (const component of components) {
-      const pinIdentifiers = getComponentPinIdentifiers(component);
-      for (const pinId of pinIdentifiers) {
-        pinToNetMap.set(pinId, netUnionFind.find(pinId));
-      }
-    }
+    // 1. Resolve Union-Find pin nets across components, waypoints, virtual grid, and wires
+    const {
+      pinToNetMap,
+      activeTransmissionTowers,
+      gridReferredResistance,
+      outdoorGridPosNet,
+      labGridPosNet,
+      hasSplitTransmissionLine,
+    } = resolveCircuitPinNets(components, wires);
 
     // Determine optional Step-Down DC voltage ceiling from any active Lab Distribution Panel on the grid
     const gridPositiveNet =
@@ -492,12 +624,12 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
           if (comp.type === 'hydro-turbine' || comp.type === 'hydro_turbine') {
             genV = Math.min(genV, 12.0);
           }
-          if (
-            gridStepDownCeiling !== null &&
-            gridPositiveNet !== undefined &&
-            gridNegativeNet !== undefined &&
-            (compPos === gridPositiveNet || compNeg === gridNegativeNet)
-          ) {
+          const isOnTransmissionGrid =
+            compPos === gridPositiveNet ||
+            compPos === outdoorGridPosNet ||
+            compPos === labGridPosNet ||
+            compNeg === gridNegativeNet;
+          if (gridStepDownCeiling !== null && isOnTransmissionGrid) {
             genV = Math.min(genV, gridStepDownCeiling);
           }
           if (genV > maxRenewableV) {
@@ -645,6 +777,7 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
     const allVoltageSourceComponents = components.filter((c) => isActiveVoltageSource(c, components));
     const blockedGeneratorSet = new Set<string>();
     const reverseBiasedSocketSet = new Set<string>();
+    const belowThresholdSocketSet = new Set<string>();
 
     // BMS Full-Charge Protection: if BESS is at 100% SoC and active renewable generators (>= 4.0V)
     // are already supplying the same net, place BESS in Standby (0A float cut-off) so it neither
@@ -664,28 +797,6 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
       }
     }
 
-    // Calculate referred transmission line resistance across active grid towers
-    let gridReferredResistance = 0;
-    if (activeTransmissionTowers.length > 1) {
-      const towerWithTransformer = activeTransmissionTowers.find(
-        (t) =>
-          t.hasTransformer ||
-          (t.stepUpVoltage !== undefined && t.stepUpVoltage !== null) ||
-          (t.lineResistance !== undefined && t.lineResistance > 0)
-      );
-      if (towerWithTransformer) {
-        const actualLineResistance = towerWithTransformer.lineResistance ?? DEFAULT_LINE_RESISTANCE_OHMS;
-        const stepUpVoltage =
-          towerWithTransformer.stepUpVoltage ??
-          (towerWithTransformer.transmissionVoltageMode === 'step_up' ? 240 : 12);
-        gridReferredResistance = calculateReferredLineResistance(
-          actualLineResistance,
-          12.0,
-          stepUpVoltage
-        );
-      }
-    }
-
     const sourceResistanceMap = new Map<string, number>();
     for (const sourceComp of allVoltageSourceComponents) {
       let baseResistance = getSourceDischargeResistance(sourceComp);
@@ -700,7 +811,9 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
           baseResistance = getBatteryChargingParameters(sourceComp).baseResistance;
         }
       }
+      // Fallback: if outdoor/lab positive buses are externally bridged (not split), apply line impedance per span
       if (
+        !hasSplitTransmissionLine &&
         gridReferredResistance > 0 &&
         (isRenewableWithBlockingDiode(sourceComp) ||
           sourceComp.type === 'distribution-panel' ||
@@ -740,6 +853,33 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
       );
       const constantVector: number[] = new Array(matrixDimension).fill(0);
 
+      const stampConductance = (
+        positiveIndex: number | undefined,
+        negativeIndex: number | undefined,
+        conductanceValue: number
+      ) => {
+        if (positiveIndex !== undefined) {
+          coefficientMatrix[positiveIndex][positiveIndex] += conductanceValue;
+        }
+        if (negativeIndex !== undefined) {
+          coefficientMatrix[negativeIndex][negativeIndex] += conductanceValue;
+        }
+        if (positiveIndex !== undefined && negativeIndex !== undefined) {
+          coefficientMatrix[positiveIndex][negativeIndex] -= conductanceValue;
+          coefficientMatrix[negativeIndex][positiveIndex] -= conductanceValue;
+        }
+      };
+
+      // Stamp referred transmission line impedance as a single shared series resistor
+      // between outdoor generation bus and indoor Lab distribution bus.
+      if (hasSplitTransmissionLine && outdoorGridPosNet && labGridPosNet) {
+        stampConductance(
+          netToIndexMap.get(outdoorGridPosNet),
+          netToIndexMap.get(labGridPosNet),
+          1 / gridReferredResistance
+        );
+      }
+
       // 4. Populate Conductance Submatrix G (Passive Components Only)
       for (const component of components) {
         if (
@@ -764,8 +904,8 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
           continue;
         }
 
-        // Reverse-biased LED sockets act as open-circuit diodes (0 conductance)
-        if (reverseBiasedSocketSet.has(component.id)) {
+        // Reverse-biased or sub-threshold LED sockets act as open-circuit diodes (0 conductance)
+        if (reverseBiasedSocketSet.has(component.id) || belowThresholdSocketSet.has(component.id)) {
           continue;
         }
 
@@ -783,15 +923,19 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
         const positiveIndex = netToIndexMap.get(netPositive);
         const negativeIndex = netToIndexMap.get(netNegative);
 
-        if (positiveIndex !== undefined) {
-          coefficientMatrix[positiveIndex][positiveIndex] += conductanceValue;
-        }
-        if (negativeIndex !== undefined) {
-          coefficientMatrix[negativeIndex][negativeIndex] += conductanceValue;
-        }
-        if (positiveIndex !== undefined && negativeIndex !== undefined) {
-          coefficientMatrix[positiveIndex][negativeIndex] -= conductanceValue;
-          coefficientMatrix[negativeIndex][positiveIndex] -= conductanceValue;
+        stampConductance(positiveIndex, negativeIndex, conductanceValue);
+
+        // Piecewise-linear semiconductor diode Norton equivalent for Vf threshold:
+        // I_ak = g * (V_a - V_k - Vf) => g*(V_a - V_k) stamped in G, +/- g*Vf stamped in constantVector
+        const forwardThreshold = getSocketForwardThreshold(component);
+        if (forwardThreshold > 0) {
+          const nortonOffsetCurrent = conductanceValue * forwardThreshold;
+          if (positiveIndex !== undefined) {
+            constantVector[positiveIndex] += nortonOffsetCurrent;
+          }
+          if (negativeIndex !== undefined) {
+            constantVector[negativeIndex] -= nortonOffsetCurrent;
+          }
         }
       }
 
@@ -846,7 +990,6 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
 
       for (const component of components) {
         if (!isSocketWithUnidirectionalLed(component)) continue;
-        if (reverseBiasedSocketSet.has(component.id)) continue;
 
         const pinKeys = getComponentPinIdentifiers(component);
         if (pinKeys.length < 2) continue;
@@ -855,11 +998,23 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
         const netCathode = pinToNetMap.get(pinKeys[1])!;
         const vAnode = nodeVoltageMap[netAnode] ?? 0;
         const vCathode = nodeVoltageMap[netCathode] ?? 0;
+        const forwardBiasDrop = vAnode - vCathode;
+        const forwardThreshold = getSocketForwardThreshold(component);
 
-        // If Anode (p1) is at a lower potential than Cathode (p2), the LED diode is reverse-biased
-        if (vAnode - vCathode < -1e-4) {
-          reverseBiasedSocketSet.add(component.id);
-          stateChanged = true;
+        if (forwardBiasDrop < -1e-4) {
+          if (!reverseBiasedSocketSet.has(component.id)) {
+            reverseBiasedSocketSet.add(component.id);
+            belowThresholdSocketSet.delete(component.id);
+            stateChanged = true;
+          }
+        } else if (forwardThreshold > 0 && forwardBiasDrop <= forwardThreshold + 1e-4) {
+          if (
+            !belowThresholdSocketSet.has(component.id) &&
+            !reverseBiasedSocketSet.has(component.id)
+          ) {
+            belowThresholdSocketSet.add(component.id);
+            stateChanged = true;
+          }
         }
       }
 
@@ -965,7 +1120,7 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
       }
 
       const nominalVoltage = getRegulatedSourceVoltage(sourceComp);
-      totalPowerDrawn += nominalVoltage * absoluteCurrent;
+      totalPowerDrawn += computeDeliveredEmfPowerWatts(nominalVoltage, sourceCurrent);
     });
 
     // Passive component currents and voltages
@@ -1002,10 +1157,14 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
       const voltageB = nodeVoltageMap[netNegative] ?? 0;
       const voltageDrop = voltageA - voltageB;
 
-      const resistance = reverseBiasedSocketSet.has(component.id)
+      const isDiodeBlocked =
+        reverseBiasedSocketSet.has(component.id) || belowThresholdSocketSet.has(component.id);
+      const resistance = isDiodeBlocked
         ? 1e9
         : getComponentEffectiveResistance(component);
-      const branchCurrent = resistance > 0 && resistance < 1e8 ? voltageDrop / resistance : 0;
+      const forwardThreshold = isDiodeBlocked ? 0 : getSocketForwardThreshold(component);
+      const branchCurrent =
+        resistance > 0 && resistance < 1e8 ? (voltageDrop - forwardThreshold) / resistance : 0;
       branchCurrentMap[component.id] = branchCurrent;
 
       // If socket has installed bulb, propagate current to the bulb's id as well
@@ -1057,6 +1216,14 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
       }
 
       if (isTower && activeVoltageSources.some((s) => s.id === component.id)) {
+        continue;
+      }
+
+      if (isTower && hasSplitTransmissionLine && outdoorGridPosNet && labGridPosNet) {
+        const outdoorBusVoltage = nodeVoltageMap[outdoorGridPosNet] ?? 0;
+        const labBusVoltage = nodeVoltageMap[labGridPosNet] ?? 0;
+        branchCurrentMap[component.id] =
+          (outdoorBusVoltage - labBusVoltage) / gridReferredResistance;
         continue;
       }
 
