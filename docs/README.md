@@ -31,13 +31,14 @@ The graph is organized into **7 color-coded engineering clusters**:
 - [[DEVLOG_ANTISLOP_MODAL_AND_ASSET_OVERHAUL|Anti-Slop 5-Screen Modal & Hardware Asset Overhaul Devlog]]
 - [[ARCHITECTURE_OUTDOOR_AND_LAB_QUARANTINE|Dual-World Quarantine & Virtual Grid Bus Architecture]]
 - [[CIRCUIT_SANDBOX_4.0_ARCHITECTURE.canvas|Visual System Architecture Canvas (.canvas)]]
-- [[TESTING_AND_VERIFICATION_MATRIX|Deterministic Vitest Verification Matrix (314 Tests)]]
+- [[TESTING_AND_VERIFICATION_MATRIX|Deterministic Vitest Verification Matrix (360 Tests)]]
 
 ---
 
 ## 2. Physics & Numerical Simulation Engines (`#physics-engine`)
 
 - [[PHYSICS_MNA_SOLVER_AND_TRANSMISSION_GRID|Modified Nodal Analysis (MNA) Solver & Virtual Grid Bus]]
+- [[PHYSICS_LENS_XRAY_AND_SCIENTIFIC_AUDIT|Physics X-Ray Lens (Thermal FLIR / Probe), Mobile Zoom Lock & Scientific Audit]]
 - [[PHYSICS_TERRAIN_CELLULAR_AUTOMATA|2D Cellular Automata Terrain & Hydrological Spring Engine (40x20)]]
 - [[PHYSICS_SOLAR_AND_OROGRAPHIC_WIND|1D Topographic Ray-Casting & Hellmann Orographic Wind Shear]]
 - [[PHYSICS_MICROHYDRO_AND_BESS_STORAGE|Pelton Micro-Hydro Electromechanics & LFP BESS Storage (1.0 kWh)]]
