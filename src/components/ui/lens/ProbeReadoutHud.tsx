@@ -7,6 +7,7 @@ import {
   Crosshair,
   Flame,
   GitCompareArrows,
+  ListFilter,
   X,
 } from 'lucide-react';
 import { useCircuitStore } from '../../../store/useCircuitStore';
@@ -32,19 +33,19 @@ function formatCurrentDisplay(amps: number): string {
 
 /**
  * Generates deterministic 18-point SVG polyline coordinates representing live signal stability
- * or thermal load ripple without requiring heavy charting dependencies.
- * Time Complexity: O(1) (fixed 18 samples).
+ * or thermal load ripple without heavy charting dependencies.
+ * Time Complexity: O(1).
  */
 function buildSparklinePoints(
   potentialVolts: number,
   currentAmps: number,
   isShorted: boolean
 ): string {
-  const width = 160;
-  const height = 28;
+  const width = 140;
+  const height = 24;
   const normalizedLevel = Math.min(1, Math.max(0.08, Math.abs(potentialVolts) / 14));
-  const baseY = height - 4 - normalizedLevel * (height - 10);
-  const rippleAmp = isShorted ? 5.5 : Math.min(3.5, currentAmps * 0.45);
+  const baseY = height - 4 - normalizedLevel * (height - 8);
+  const rippleAmp = isShorted ? 4.5 : Math.min(3.0, currentAmps * 0.45);
 
   const pts: string[] = [];
   for (let i = 0; i < 18; i++) {
@@ -63,12 +64,13 @@ export interface ProbeReadoutHudProps {
 }
 
 /**
- * Live Physics X-Ray HUD rendered alongside the canvas when `Thermal` or `Probe` lens is active.
+ * Compact, non-intrusive Physics X-Ray HUD rendered near the top edge of the canvas
+ * so mobile and desktop circuits remain unobstructed while zooming, panning, or tapping.
  *
- * Implements three explicit UI states (Empty Prompt, Live Telemetry, Fault/Alert) plus keyboard-accessible
- * quick target chips so users on phones or keyboards can inspect every component and wire effortlessly.
+ * Uses progressive disclosure: defaults to a sleek compact metric bar with expand-on-demand
+ * details, DC sparkline, Dual-Probe ΔV comparison, and keyboard-accessible quick-pick chips.
  *
- * Time Complexity: O(P * α(P) + W) when recalculating pin potentials per simulation frame.
+ * Time Complexity: O(P * α(P) + W) per simulation update.
  */
 export const ProbeReadoutHud: React.FC<ProbeReadoutHudProps> = ({ isHidden = false }) => {
   const nodes = useCircuitStore((state) => state.nodes);
@@ -87,7 +89,7 @@ export const ProbeReadoutHud: React.FC<ProbeReadoutHudProps> = ({ isHidden = fal
   const setIsPickingProbeB = useCircuitStore((state) => state.setIsPickingProbeB);
   const clearProbeTargets = useCircuitStore((state) => state.clearProbeTargets);
 
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
 
   const isId = language === 'id';
   const isLight = theme === 'light';
@@ -134,14 +136,9 @@ export const ProbeReadoutHud: React.FC<ProbeReadoutHudProps> = ({ isHidden = fal
     const thermals = computeAllNodeThermals(scopedNodes, simulation, theme);
     const hottest = findHottestThermalNode(scopedNodes, thermals);
     const hottestNode = hottest ? scopedNodes.find((n) => n.id === hottest.nodeId) : null;
-    let totalHeatWatts = 0;
-    thermals.forEach((m) => {
-      totalHeatWatts += m.powerWatts;
-    });
     return {
       hottest,
       hottestLabel: hottestNode?.data.label ?? null,
-      totalHeatWatts: Number(totalHeatWatts.toFixed(2)),
     };
   }, [physicsLensMode, scopedNodes, simulation, theme]);
 
@@ -149,46 +146,51 @@ export const ProbeReadoutHud: React.FC<ProbeReadoutHudProps> = ({ isHidden = fal
     return null;
   }
 
+  // Anchor near top so bottom dock and main central circuit stay unobstructed on phones
   const cardAnchorClass =
     worldMode === 'outside'
-      ? 'top-[64px] left-1/2 -translate-x-1/2 w-[min(94vw,356px)] md:left-auto md:translate-x-0 md:top-[68px] md:right-3 md:w-[336px]'
-      : 'bottom-[62px] left-1/2 -translate-x-1/2 w-[min(94vw,356px)] md:left-auto md:translate-x-0 md:top-3 md:right-3 md:bottom-auto md:w-[336px]';
+      ? 'top-[62px] left-1/2 -translate-x-1/2 w-[min(94vw,360px)] md:left-auto md:translate-x-0 md:top-[68px] md:right-3 md:w-[312px]'
+      : 'top-2.5 left-1/2 -translate-x-1/2 w-[min(94vw,360px)] md:left-auto md:translate-x-0 md:top-3 md:right-3 md:w-[312px]';
 
   const surfaceClass = isLight
     ? 'bg-white/95 border-slate-300 text-slate-900 shadow-lg'
     : 'bg-slate-950/95 border-white/15 text-slate-50 shadow-lg';
 
   const mutedTextClass = isLight ? 'text-slate-600' : 'text-slate-300';
-  const metricCellClass = isLight
+  const subtleCellClass = isLight
     ? 'bg-slate-100 border-slate-200 text-slate-900'
     : 'bg-slate-900 border-white/10 text-slate-100';
 
-  // THERMAL MODE HUD CARD
+  const iconBtnClass = isLight
+    ? 'border-slate-300 bg-slate-100 text-slate-800 hover:bg-slate-200'
+    : 'border-white/15 bg-slate-900 text-slate-200 hover:bg-slate-800';
+
+  // THERMAL MODE COMPACT HUD BAR
   if (physicsLensMode === 'thermal') {
     return (
       <section
         id="physics-thermal-hud"
         aria-label={isId ? 'Monitor Termal FLIR' : 'FLIR Thermal Monitor'}
         onPointerDown={(event) => event.stopPropagation()}
-        className={`absolute ${cardAnchorClass} z-30 pointer-events-auto rounded-2xl border p-3 ${surfaceClass}`}
+        className={`absolute ${cardAnchorClass} z-30 pointer-events-auto touch-none rounded-2xl border px-2.5 py-2 ${surfaceClass}`}
       >
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-amber-400 text-slate-950 shrink-0">
-              <Flame className="w-4 h-4" />
+            <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-amber-400 text-slate-950 shrink-0">
+              <Flame className="w-3.5 h-3.5" />
             </span>
             <div className="min-w-0">
-              <h2 className="text-xs font-bold leading-tight truncate">
-                {isId ? 'Lensa Termal FLIR (P = I²R)' : 'FLIR Thermal Lens (P = I²R)'}
+              <h2 className="text-[11px] font-bold leading-tight truncate">
+                {isId ? 'Termal FLIR (P = I²R)' : 'FLIR Thermal (P = I²R)'}
               </h2>
-              <p className={`text-[11px] leading-tight truncate ${mutedTextClass}`}>
+              <p className={`text-[10px] leading-tight truncate ${mutedTextClass}`}>
                 {thermalSummary?.hottest
                   ? isId
                     ? `Terpanas: ${thermalSummary.hottestLabel} (${thermalSummary.hottest.temperatureCelsius}°C)`
                     : `Hottest: ${thermalSummary.hottestLabel} (${thermalSummary.hottest.temperatureCelsius}°C)`
                   : isId
-                  ? 'Semua jalur dalam kondisi dingin (~26°C)'
-                  : 'All paths remain cool (~26°C ambient)'}
+                  ? 'Semua jalur dingin (~26°C)'
+                  : 'All paths cool (~26°C)'}
               </p>
             </div>
           </div>
@@ -197,98 +199,140 @@ export const ProbeReadoutHud: React.FC<ProbeReadoutHudProps> = ({ isHidden = fal
             type="button"
             onClick={() => setPhysicsLensMode('normal')}
             aria-label={isId ? 'Tutup mode termal' : 'Exit thermal lens'}
-            className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl border cursor-pointer active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
-              isLight
-                ? 'border-slate-300 bg-slate-100 text-slate-800 hover:bg-slate-200'
-                : 'border-white/15 bg-slate-900 text-slate-200 hover:bg-slate-800'
-            }`}
+            className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl border cursor-pointer active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${iconBtnClass}`}
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Thermal Scale Legend with Explicit Text Bands */}
-        <div className="mt-2.5 grid grid-cols-4 gap-1.5 text-center text-[10px] font-mono font-bold">
-          <div className="rounded-lg py-1 px-1 bg-slate-800 text-slate-100 border border-slate-600">
-            26°C {isId ? 'Dingin' : 'Cool'}
+        <div className="mt-1.5 grid grid-cols-4 gap-1 text-center text-[9px] font-mono font-bold">
+          <div className="rounded-md py-0.5 bg-slate-800 text-slate-100 border border-slate-600">
+            26° Dingin
           </div>
-          <div className="rounded-lg py-1 px-1 bg-teal-900 text-teal-100 border border-teal-500/60">
-            45°C {isId ? 'Hangat' : 'Warm'}
+          <div className="rounded-md py-0.5 bg-teal-900 text-teal-100 border border-teal-500/60">
+            45° Hangat
           </div>
-          <div className="rounded-lg py-1 px-1 bg-amber-400 text-slate-950 border border-amber-500">
-            70°C {isId ? 'Panas' : 'Hot'}
+          <div className="rounded-md py-0.5 bg-amber-400 text-slate-950 border border-amber-500">
+            70° Panas
           </div>
-          <div className="rounded-lg py-1 px-1 bg-red-600 text-white border border-red-400">
-            95°C+ {isId ? 'Kritis' : 'Crit'}
+          <div className="rounded-md py-0.5 bg-red-600 text-white border border-red-400">
+            95°+ Kritis
           </div>
         </div>
       </section>
     );
   }
 
-  // PROBE MODE HUD CARD
+  // PROBE MODE COMPACT HUD
   const quickTargetNodes = scopedNodes.filter((n) => n.data.type !== 'waypoint').slice(0, 8);
   const isFaultState = Boolean(
     primaryReading &&
-      (primaryReading.isShorted || primaryReading.isOpenCircuit || primaryReading.polarity === 'reverse')
+      (primaryReading.isShorted ||
+        primaryReading.isOpenCircuit ||
+        primaryReading.polarity === 'reverse')
   );
+
+  const hasComponentTerminals = Boolean(
+    primaryReading && primaryReading.secondaryPotentialVolts !== undefined
+  );
+  const headlineVoltage = primaryReading
+    ? hasComponentTerminals
+      ? primaryReading.deltaVoltageVolts
+      : primaryReading.potentialVolts
+    : 0;
 
   return (
     <section
       id="physics-probe-hud"
       aria-label={isId ? 'Probe Multimeter Langsung' : 'Live Finger Probe HUD'}
       onPointerDown={(event) => event.stopPropagation()}
-      className={`absolute ${cardAnchorClass} z-30 pointer-events-auto rounded-2xl border p-3 ${surfaceClass}`}
+      className={`absolute ${cardAnchorClass} z-30 pointer-events-auto touch-none rounded-2xl border px-2.5 py-2 ${surfaceClass}`}
     >
-      {/* Top Header Bar */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
+      {/* Row 1: Compact Single-Line Header + Inline Actions */}
+      <div className="flex items-center justify-between gap-1.5">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           <span
-            className={`inline-flex items-center justify-center w-7 h-7 rounded-lg shrink-0 ${
+            className={`inline-flex items-center justify-center w-6 h-6 rounded-lg shrink-0 ${
               isLight ? 'bg-sky-700 text-white' : 'bg-cyan-400 text-slate-950'
             }`}
           >
-            <Crosshair className="w-4 h-4" />
+            <Crosshair className="w-3.5 h-3.5" />
           </span>
           <div className="min-w-0">
-            <h2 className="text-xs font-bold leading-tight truncate">
+            <h2 className="text-[11px] font-bold leading-tight truncate">
               {primaryReading
                 ? primaryReading.label
                 : isId
-                ? 'Probe Jari Multimeter'
-                : 'Touch Probe Multimeter'}
+                ? 'Probe Jari'
+                : 'Touch Probe'}
             </h2>
-            <p className={`text-[11px] leading-tight truncate ${mutedTextClass}`}>
+            <p className={`text-[10px] leading-tight truncate ${mutedTextClass}`}>
               {isPickingProbeB
                 ? isId
-                  ? 'Ketuk titik kedua untuk ukur ΔV...'
-                  : 'Tap second point for ΔV...'
-                : probeTargetA
-                ? isId
-                  ? 'Probe A terkunci (ketuk elemen lain untuk pindah)'
-                  : 'Probe A pinned (tap any item to move)'
+                  ? 'Ketuk titik B untuk ukur ΔV...'
+                  : 'Tap Point B for ΔV...'
+                : primaryReading
+                ? probeTargetA
+                  ? isId
+                    ? 'Terkunci · ketuk komponen lain / kabel'
+                    : 'Pinned · tap part / wire'
+                  : isId
+                  ? 'Pratinjau · ketuk untuk kunci'
+                  : 'Preview · tap to pin'
                 : isId
-                ? 'Arahkan atau ketuk komponen / kabel'
-                : 'Hover or tap any part / wire'}
+                ? 'Ketuk komponen / kabel di kanvas'
+                : 'Tap any part or wire'}
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
+          {/* Compact Inline +B Toggle when Primary Probe A exists */}
+          {probeTargetA && (
+            <button
+              type="button"
+              data-testid="probe-compare-b-btn"
+              onClick={() => setIsPickingProbeB(!isPickingProbeB)}
+              title={isId ? 'Bandingkan dengan titik B (ΔV)' : 'Compare with Point B (ΔV)'}
+              className={`min-h-[44px] px-2 rounded-xl border text-[11px] font-bold flex items-center gap-1 cursor-pointer active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
+                isPickingProbeB
+                  ? 'bg-amber-400 text-slate-950 border-amber-500'
+                  : isLight
+                  ? 'bg-slate-100 hover:bg-slate-200 text-slate-900 border-slate-300'
+                  : 'bg-slate-900 hover:bg-slate-800 text-amber-300 border-amber-400/50'
+              }`}
+            >
+              <GitCompareArrows className="w-3.5 h-3.5 shrink-0" />
+              <span>{isPickingProbeB ? (isId ? 'Batal' : 'Cancel') : 'ΔV'}</span>
+            </button>
+          )}
+
+          {/* Expand/Collapse Quick-Pick & Trace Details */}
           <button
             type="button"
-            onClick={() => setIsCollapsed((prev) => !prev)}
-            aria-expanded={!isCollapsed}
-            aria-label={isId ? 'Ciutkan panel probe' : 'Toggle probe details'}
-            className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl border cursor-pointer active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${
-              isLight
-                ? 'border-slate-300 bg-slate-100 text-slate-800 hover:bg-slate-200'
-                : 'border-white/15 bg-slate-900 text-slate-200 hover:bg-slate-800'
-            }`}
+            onClick={() => setShowDetails((prev) => !prev)}
+            aria-expanded={showDetails}
+            aria-label={
+              primaryReading
+                ? isId
+                  ? 'Detail telemetri & pilih komponen'
+                  : 'Telemetry details & quick-pick'
+                : isId
+                ? 'Pilih cepat komponen'
+                : 'Quick-pick components'
+            }
+            className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl border cursor-pointer active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${iconBtnClass}`}
           >
-            {isCollapsed ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            {!primaryReading ? (
+              <ListFilter className="w-4 h-4" />
+            ) : showDetails ? (
+              <ChevronUp className="w-4 h-4" />
+            ) : (
+              <ChevronDown className="w-4 h-4" />
+            )}
           </button>
 
+          {/* Clear Pin or Exit Probe Lens */}
           <button
             type="button"
             onClick={() => {
@@ -307,101 +351,146 @@ export const ProbeReadoutHud: React.FC<ProbeReadoutHudProps> = ({ isHidden = fal
                 ? 'Tutup mode probe'
                 : 'Close probe lens'
             }
-            className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl border cursor-pointer active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${
-              isLight
-                ? 'border-slate-300 bg-slate-100 text-slate-800 hover:bg-slate-200'
-                : 'border-white/15 bg-slate-900 text-slate-200 hover:bg-slate-800'
-            }`}
+            className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl border cursor-pointer active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${iconBtnClass}`}
           >
             <X className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      {!isCollapsed && (
-        <div className="mt-2.5 space-y-2.5">
-          {/* STATE 1: EMPTY PROMPT STATE */}
-          {!primaryReading ? (
-            <div className={`rounded-xl border p-2.5 text-xs ${metricCellClass}`}>
-              <p className="font-semibold">
-                {isId
-                  ? 'Sentuh komponen atau kabel mana saja untuk membedah tegangan simpul dan arusnya.'
-                  : 'Tap any circuit element or wire to inspect live nodal potential and branch current.'}
-              </p>
+      {/* Row 2: Slim 1-Row Live Telemetry Strip (Only when active target exists) */}
+      {primaryReading && (
+        <div className={`mt-1.5 grid grid-cols-3 gap-1.5 rounded-xl border p-1.5 ${subtleCellClass}`}>
+          <div className="min-w-0">
+            <div className={`text-[9px] font-medium truncate ${mutedTextClass}`}>
+              {hasComponentTerminals
+                ? isId
+                  ? 'Beda V'
+                  : 'Drop ΔV'
+                : isId
+                ? 'Potensial'
+                : 'Potential'}
             </div>
-          ) : (
-            <>
-              {/* STATE 2 & 3: LIVE TELEMETRY OR FAULT DIAGNOSTIC */}
-              <div className="grid grid-cols-3 gap-1.5">
-                <div className={`rounded-xl border p-2 ${metricCellClass}`}>
-                  <div className={`text-[10px] font-medium ${mutedTextClass}`}>
-                    {primaryReading.secondaryPotentialVolts !== undefined
-                      ? 'V1 -> V2'
-                      : isId
-                      ? 'Potensial'
-                      : 'Potential'}
-                  </div>
-                  <div className="font-mono text-sm font-bold leading-tight mt-0.5">
-                    {primaryReading.potentialVolts.toFixed(2)}V
-                  </div>
-                  {primaryReading.secondaryPotentialVolts !== undefined && (
-                    <div className={`font-mono text-[10px] ${mutedTextClass}`}>
-                      ΔV {primaryReading.deltaVoltageVolts.toFixed(2)}V
-                    </div>
-                  )}
-                </div>
-
-                <div className={`rounded-xl border p-2 ${metricCellClass}`}>
-                  <div className={`text-[10px] font-medium ${mutedTextClass}`}>
-                    {isId ? 'Arus (I)' : 'Current (I)'}
-                  </div>
-                  <div className="font-mono text-sm font-bold leading-tight mt-0.5">
-                    {formatCurrentDisplay(primaryReading.currentAmps)}
-                  </div>
-                  <div className={`font-mono text-[10px] ${mutedTextClass}`}>
-                    {primaryReading.resistanceOhms !== null
-                      ? `${primaryReading.resistanceOhms} Ω`
-                      : primaryReading.kind === 'wire'
-                      ? isId
-                        ? 'Kawat'
-                        : 'Wire'
-                      : isId
-                      ? 'Sumber'
-                      : 'Source'}
-                  </div>
-                </div>
-
-                <div className={`rounded-xl border p-2 ${metricCellClass}`}>
-                  <div className={`text-[10px] font-medium ${mutedTextClass}`}>
-                    {isId ? 'Daya (P)' : 'Power (P)'}
-                  </div>
-                  <div className="font-mono text-sm font-bold leading-tight mt-0.5">
-                    {primaryReading.powerWatts.toFixed(2)}W
-                  </div>
-                  <div className={`font-mono text-[10px] ${mutedTextClass}`}>
-                    {primaryReading.polarity}
-                  </div>
-                </div>
+            <div className="font-mono text-xs font-bold leading-tight truncate">
+              {headlineVoltage.toFixed(2)}V
+            </div>
+            {hasComponentTerminals && (
+              <div className={`font-mono text-[9px] truncate ${mutedTextClass}`}>
+                {primaryReading.potentialVolts.toFixed(1)}V /{' '}
+                {primaryReading.secondaryPotentialVolts!.toFixed(1)}V
               </div>
+            )}
+          </div>
 
-              {/* Compact SVG Signal Sparkline */}
+          <div className="min-w-0">
+            <div className={`text-[9px] font-medium truncate ${mutedTextClass}`}>
+              {isId ? 'Arus (I)' : 'Current'}
+            </div>
+            <div className="font-mono text-xs font-bold leading-tight truncate">
+              {formatCurrentDisplay(primaryReading.currentAmps)}
+            </div>
+            <div className={`font-mono text-[9px] truncate ${mutedTextClass}`}>
+              {primaryReading.resistanceOhms !== null
+                ? `${primaryReading.resistanceOhms}Ω`
+                : primaryReading.kind === 'wire'
+                ? isId
+                  ? 'Kawat'
+                  : 'Wire'
+                : isId
+                ? 'Sumber'
+                : 'Source'}
+            </div>
+          </div>
+
+          <div className="min-w-0">
+            <div className={`text-[9px] font-medium truncate ${mutedTextClass}`}>
+              {isId ? 'Daya (P)' : 'Power'}
+            </div>
+            <div className="font-mono text-xs font-bold leading-tight truncate">
+              {primaryReading.powerWatts.toFixed(2)}W
+            </div>
+            <div
+              className={`font-mono text-[9px] truncate font-semibold ${
+                primaryReading.isShorted
+                  ? 'text-red-400'
+                  : isFaultState
+                  ? isLight
+                    ? 'text-amber-700'
+                    : 'text-amber-300'
+                  : mutedTextClass
+              }`}
+            >
+              {primaryReading.isShorted
+                ? isId
+                  ? 'KORSLET'
+                  : 'SHORT'
+                : primaryReading.polarity}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Slim Dual-Probe Result Bar */}
+      {dualComparison && (
+        <div
+          className={`mt-1.5 rounded-xl border px-2 py-1 text-[10px] font-mono font-bold flex items-center justify-between gap-2 ${
+            isLight
+              ? 'bg-amber-50 border-amber-400 text-amber-950'
+              : 'bg-amber-950/85 border-amber-400/70 text-amber-100'
+          }`}
+        >
+          <span className="truncate">
+            A ({dualComparison.pointA.potentialVolts.toFixed(1)}V) - B (
+            {dualComparison.pointB.potentialVolts.toFixed(1)}V)
+          </span>
+          <span className="shrink-0 font-black">
+            ΔV = {dualComparison.voltageDiffVolts >= 0 ? '+' : ''}
+            {dualComparison.voltageDiffVolts.toFixed(2)}V
+          </span>
+        </div>
+      )}
+
+      {/* Slim Fault Alert Strip (Shown automatically on Short/Open/Reverse) */}
+      {primaryReading && isFaultState && (
+        <div
+          role="status"
+          className={`mt-1.5 rounded-xl border px-2 py-1 text-[10px] leading-snug flex items-center gap-1.5 ${
+            primaryReading.isShorted
+              ? 'bg-red-950/90 border-red-400 text-red-100'
+              : isLight
+              ? 'bg-amber-50 border-amber-400 text-amber-950'
+              : 'bg-amber-950/85 border-amber-400/70 text-amber-100'
+          }`}
+        >
+          <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+          <span className="line-clamp-2">
+            {isId ? primaryReading.statusNoteId : primaryReading.statusNoteEn}
+          </span>
+        </div>
+      )}
+
+      {/* Progressive Disclosure Details Drawer (Closed by default to keep canvas clear!) */}
+      {showDetails && (
+        <div className="mt-2 space-y-2">
+          {primaryReading && (
+            <>
               <div
-                className={`rounded-xl border px-2.5 py-1.5 flex items-center justify-between gap-2 ${metricCellClass}`}
+                className={`rounded-xl border px-2 py-1 flex items-center justify-between gap-2 ${subtleCellClass}`}
               >
                 <div className="flex items-center gap-1.5 text-[10px] font-mono shrink-0">
                   <Activity className="w-3.5 h-3.5 text-cyan-500" />
                   <span>{isId ? 'Jejak DC' : 'DC Trace'}</span>
                 </div>
                 <svg
-                  viewBox="0 0 160 28"
-                  className="w-36 h-7 overflow-visible"
+                  viewBox="0 0 140 24"
+                  className="w-32 h-6 overflow-visible"
                   aria-hidden="true"
                 >
                   <line
                     x1="0"
-                    y1="25"
-                    x2="160"
-                    y2="25"
+                    y1="21"
+                    x2="140"
+                    y2="21"
                     stroke={isLight ? '#CBD5E1' : '#334155'}
                     strokeWidth="1"
                   />
@@ -418,7 +507,7 @@ export const ProbeReadoutHud: React.FC<ProbeReadoutHudProps> = ({ isHidden = fal
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     points={buildSparklinePoints(
-                      primaryReading.potentialVolts,
+                      headlineVoltage,
                       primaryReading.currentAmps,
                       primaryReading.isShorted
                     )}
@@ -426,95 +515,23 @@ export const ProbeReadoutHud: React.FC<ProbeReadoutHudProps> = ({ isHidden = fal
                 </svg>
               </div>
 
-              {/* Explicit Fault vs Normal Diagnosis Callout */}
-              <div
-                role="status"
-                className={`rounded-xl border px-2.5 py-2 text-[11px] leading-snug flex items-start gap-2 ${
-                  primaryReading.isShorted
-                    ? 'bg-red-950/90 border-red-400 text-red-100'
-                    : isFaultState
-                    ? isLight
-                      ? 'bg-amber-50 border-amber-400 text-amber-950'
-                      : 'bg-amber-950/85 border-amber-400/70 text-amber-100'
-                    : isLight
-                    ? 'bg-sky-50 border-sky-300 text-slate-900'
-                    : 'bg-slate-900 border-cyan-400/40 text-slate-100'
-                }`}
-              >
-                {isFaultState && <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-400" />}
-                <span>{isId ? primaryReading.statusNoteId : primaryReading.statusNoteEn}</span>
-              </div>
-
-              {/* Dual-Probe ΔV Comparator Action & Readout */}
-              {probeTargetA && (
-                <div className="space-y-1.5">
-                  <button
-                    type="button"
-                    data-testid="probe-compare-b-btn"
-                    onClick={() => setIsPickingProbeB(!isPickingProbeB)}
-                    className={`w-full min-h-[44px] px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
-                      isPickingProbeB
-                        ? 'bg-amber-400 text-slate-950 border-amber-500'
-                        : isLight
-                        ? 'bg-slate-100 hover:bg-slate-200 text-slate-900 border-slate-300'
-                        : 'bg-slate-900 hover:bg-slate-800 text-amber-200 border-amber-400/50'
-                    }`}
-                  >
-                    <GitCompareArrows className="w-4 h-4 shrink-0" />
-                    <span>
-                      {isPickingProbeB
-                        ? isId
-                          ? 'Batal Pilih Titik B'
-                          : 'Cancel Point B Pick'
-                        : secondaryReading
-                        ? isId
-                          ? 'Ganti Titik Referensi B'
-                          : 'Change Reference Point B'
-                        : isId
-                        ? '+ Bandingkan Titik B (ΔV)'
-                        : '+ Compare Point B (ΔV)'}
-                    </span>
-                  </button>
-
-                  {dualComparison && (
-                    <div className={`rounded-xl border p-2.5 text-[11px] space-y-1 ${metricCellClass}`}>
-                      <div className="flex items-center justify-between font-mono font-bold">
-                        <span>
-                          A ({dualComparison.pointA.potentialVolts.toFixed(2)}V) vs B (
-                          {dualComparison.pointB.potentialVolts.toFixed(2)}V)
-                        </span>
-                        <span
-                          className={
-                            isLight ? 'text-amber-700 font-black' : 'text-amber-300 font-black'
-                          }
-                        >
-                          ΔV = {dualComparison.voltageDiffVolts >= 0 ? '+' : ''}
-                          {dualComparison.voltageDiffVolts.toFixed(2)}V
-                        </span>
-                      </div>
-                      <p className={`leading-snug ${mutedTextClass}`}>
-                        {isId ? dualComparison.explanationId : dualComparison.explanationEn}
-                      </p>
-                    </div>
-                  )}
-                </div>
+              {!isFaultState && (
+                <p className={`text-[10px] leading-snug px-0.5 ${mutedTextClass}`}>
+                  {dualComparison
+                    ? isId
+                      ? dualComparison.explanationId
+                      : dualComparison.explanationEn
+                    : isId
+                    ? primaryReading.statusNoteId
+                    : primaryReading.statusNoteEn}
+                </p>
               )}
             </>
           )}
 
-          {/* Keyboard & Mobile Thumb Quick-Pick Component Bar */}
           {quickTargetNodes.length > 0 && (
             <div className={`pt-1.5 border-t ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
-              <div className={`text-[10px] font-semibold mb-1.5 ${mutedTextClass}`}>
-                {isPickingProbeB
-                  ? isId
-                    ? 'Pilih Target B:'
-                    : 'Pick Target B:'
-                  : isId
-                  ? 'Pilih Cepat Komponen:'
-                  : 'Quick-Pick Part:'}
-              </div>
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
                 {quickTargetNodes.map((node) => {
                   const isA = probeTargetA?.kind === 'node' && probeTargetA.id === node.id;
                   const isB = probeTargetB?.kind === 'node' && probeTargetB.id === node.id;

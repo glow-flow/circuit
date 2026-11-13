@@ -19,7 +19,15 @@ html, body, #root {
   background-color: #09090b;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   overflow: hidden !important;
-  touch-action: manipulation;
+  touch-action: pan-x pan-y;
+  overscroll-behavior: none;
+}
+
+/* Prevent browser pinch-zoom inside Lab ReactFlow canvas so multi-touch routes strictly to circuit zoom */
+.circuit-lab-canvas,
+.circuit-lab-canvas .react-flow,
+.circuit-lab-canvas .react-flow * {
+  touch-action: none !important;
 }
 
 /* React Flow customizations */

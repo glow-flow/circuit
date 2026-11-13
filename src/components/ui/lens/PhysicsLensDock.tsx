@@ -125,7 +125,7 @@ export const PhysicsLensDock: React.FC<PhysicsLensDockProps> = ({ isHidden = fal
       aria-label={isId ? 'Lensa Fisika X-Ray' : 'Physics X-Ray Lens'}
       onPointerDown={(event) => event.stopPropagation()}
       onKeyDown={handleKeyDownGroup}
-      className={`absolute ${positionClass} z-30 pointer-events-auto`}
+      className={`absolute ${positionClass} z-30 pointer-events-auto touch-none`}
     >
       <div
         role="group"

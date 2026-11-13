@@ -162,7 +162,7 @@ export const PhysicsCanvasOverlay: React.FC<PhysicsCanvasOverlayProps> = ({ worl
       data-physics-overlay={physicsLensMode}
       data-world-scope={worldScope}
       aria-hidden="true"
-      className="pointer-events-none absolute inset-0 overflow-hidden z-[15]"
+      className="pointer-events-none touch-none absolute inset-0 overflow-hidden z-[15]"
     >
       <div
         style={{

@@ -748,8 +748,16 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
     }
 
     if (!selectedGroundNet) {
-      // Fallback: pick the negative terminal of the first active voltage source
-      const firstActiveSource = components.find((c) => isActiveVoltageSource(c));
+      // Fallback: prefer the negative terminal of the first WIRED active voltage source so
+      // disconnected spare batteries never float an entire active circuit relative to them
+      const wiredNodeIds = new Set<string>();
+      for (const wire of wires) {
+        wiredNodeIds.add(wire.source);
+        wiredNodeIds.add(wire.target);
+      }
+      const firstActiveSource =
+        components.find((c) => isActiveVoltageSource(c) && wiredNodeIds.has(c.id)) ??
+        components.find((c) => isActiveVoltageSource(c));
       if (firstActiveSource) {
         selectedGroundNet = pinToNetMap.get(`${firstActiveSource.id}:neg`);
       }

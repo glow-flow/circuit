@@ -223,4 +223,49 @@ describe('physicsLensEngine - FLIR Thermal & Finger Probe Calculations', () => {
     expect(probeView.probeRole).toBe('A');
     expect(probeView.strokeWidth).toBeGreaterThanOrEqual(4.5);
   });
+
+  it('anchors 0V reference on wired active source rather than unwired spare batteries', () => {
+    const spare = makeNode({
+      id: 'bat_spare',
+      type: 'battery',
+      label: 'Baterai Cadangan',
+      voltage: 1.5,
+    });
+    const holder = makeNode({
+      id: 'holder_main',
+      type: 'battery-holder',
+      label: 'Wadah AA (3.0V)',
+      hasBattery: true,
+      batteryCount: 2,
+      voltage: 3.0,
+    });
+    const bulb = makeNode({
+      id: 'bulb_main',
+      type: 'socket',
+      label: 'Lampu',
+      installedBulb: 'incandescent',
+    });
+
+    const nodes = [spare, holder, bulb];
+    const edges: Edge[] = [
+      makeWire('e1', 'holder_main', 'pos', 'bulb_main', 'p1'),
+      makeWire('e2', 'bulb_main', 'p2', 'holder_main', 'neg'),
+    ];
+    const wires: WireConnection[] = edges.map((e) => ({
+      id: e.id,
+      source: e.source,
+      sourceHandle: e.sourceHandle ?? 'p1',
+      target: e.target,
+      targetHandle: e.targetHandle ?? 'p2',
+    }));
+
+    const sim = solveCircuitMNA({ components: nodes.map((n) => n.data), wires });
+    const pinMap = buildPinPotentialLookup(nodes, edges, sim.nodeVoltages);
+    const readHolder = computeProbeReading({ kind: 'node', id: 'holder_main' }, nodes, edges, sim, pinMap);
+
+    expect(readHolder).not.toBeNull();
+    expect(readHolder!.potentialVolts).toBeCloseTo(3.0, 1);
+    expect(readHolder!.secondaryPotentialVolts).toBeCloseTo(0.0, 1);
+    expect(readHolder!.deltaVoltageVolts).toBeCloseTo(3.0, 1);
+  });
 });

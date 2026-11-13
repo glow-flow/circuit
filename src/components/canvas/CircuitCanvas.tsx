@@ -234,7 +234,7 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
 
   return (
     <div
-      className={`w-full h-full absolute inset-0 overflow-hidden transition-colors duration-300 ${
+      className={`circuit-lab-canvas touch-none w-full h-full absolute inset-0 overflow-hidden transition-colors duration-300 ${
         theme === 'light' ? 'bg-[#F8FAFC]' : 'bg-void-950'
       }`}
       ref={reactFlowWrapper}
@@ -275,9 +275,11 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
         maxZoom={2.5}
         snapToGrid
         snapGrid={[15, 15]}
+        zoomOnPinch
+        panOnDrag
         deleteKeyCode={['Backspace', 'Delete']}
         proOptions={{ hideAttribution: true }}
-        className="bg-transparent relative z-10"
+        className="bg-transparent relative z-10 touch-none"
       >
         <PhysicsCanvasOverlay worldScope="lab" />
         <Background
