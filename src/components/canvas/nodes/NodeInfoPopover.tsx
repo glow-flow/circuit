@@ -1,4 +1,5 @@
 import React from 'react';
+import { useCircuitStore } from '../../../store/useCircuitStore';
 
 interface NodeInfoPopoverProps {
   children: React.ReactNode;
@@ -12,6 +13,7 @@ interface NodeInfoPopoverProps {
  * Floating info panel shown next to a minimal (image-only) canvas node, only while
  * that node is selected. Absolutely positioned so it never changes the node's
  * measured size (wire handles stay glued to the artwork).
+ * Automatically suppressed in 'probe' mode so probing taps never open popovers.
  *
  * Time Complexity: O(1) render.
  */
@@ -20,6 +22,11 @@ export const NodeInfoPopover: React.FC<NodeInfoPopoverProps> = ({
   width = 190,
   placement = 'bottom',
 }) => {
+  const physicsLensMode = useCircuitStore((state) => state.physicsLensMode);
+  if (physicsLensMode === 'probe') {
+    return null;
+  }
+
   let placementClass = 'left-1/2 top-full mt-3 -translate-x-1/2';
   if (placement === 'top') {
     placementClass = 'left-1/2 bottom-full mb-3 -translate-x-1/2';

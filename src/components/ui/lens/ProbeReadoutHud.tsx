@@ -7,7 +7,9 @@ import {
   Crosshair,
   Flame,
   GitCompareArrows,
+  Info,
   ListFilter,
+  Power,
   X,
 } from 'lucide-react';
 import { useCircuitStore } from '../../../store/useCircuitStore';
@@ -88,6 +90,7 @@ export const ProbeReadoutHud: React.FC<ProbeReadoutHudProps> = ({ isHidden = fal
   const selectProbeTarget = useCircuitStore((state) => state.selectProbeTarget);
   const setIsPickingProbeB = useCircuitStore((state) => state.setIsPickingProbeB);
   const clearProbeTargets = useCircuitStore((state) => state.clearProbeTargets);
+  const toggleSwitch = useCircuitStore((state) => state.toggleSwitch);
 
   const [showDetails, setShowDetails] = useState(false);
 
@@ -225,6 +228,13 @@ export const ProbeReadoutHud: React.FC<ProbeReadoutHudProps> = ({ isHidden = fal
 
   // PROBE MODE COMPACT HUD
   const quickTargetNodes = scopedNodes.filter((n) => n.data.type !== 'waypoint').slice(0, 8);
+  const probedNode =
+    probeTargetA?.kind === 'node'
+      ? scopedNodes.find((n) => n.id === probeTargetA.id) ?? null
+      : null;
+  const isProbedSwitch = probedNode?.data.type === 'switch';
+  const isProbedSwitchOpen = Boolean(probedNode?.data.isOpen);
+
   const isFaultState = Boolean(
     primaryReading &&
       (primaryReading.isShorted ||
@@ -450,19 +460,65 @@ export const ProbeReadoutHud: React.FC<ProbeReadoutHudProps> = ({ isHidden = fal
         </div>
       )}
 
-      {/* Slim Fault Alert Strip (Shown automatically on Short/Open/Reverse) */}
-      {primaryReading && isFaultState && (
+      {/* Inline Live Switch Tester (only when a switch is actively pinned in Probe mode) */}
+      {isProbedSwitch && probedNode && (
+        <button
+          type="button"
+          data-testid="probe-switch-toggle-btn"
+          onClick={() => toggleSwitch(probedNode.id)}
+          className={`mt-1.5 w-full min-h-[44px] rounded-xl border px-3 py-1.5 text-[11px] font-bold flex items-center justify-between gap-2 cursor-pointer active:scale-[0.98] transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${
+            isProbedSwitchOpen
+              ? isLight
+                ? 'bg-amber-100 hover:bg-amber-200 border-amber-500 text-amber-950'
+                : 'bg-amber-950/80 hover:bg-amber-900/90 border-amber-400/70 text-amber-100'
+              : isLight
+              ? 'bg-emerald-100 hover:bg-emerald-200 border-emerald-600 text-emerald-950'
+              : 'bg-emerald-950/80 hover:bg-emerald-900/90 border-emerald-400/70 text-emerald-100'
+          }`}
+        >
+          <span className="flex items-center gap-1.5 truncate">
+            <Power className="w-3.5 h-3.5 shrink-0" />
+            <span>
+              {isProbedSwitchOpen
+                ? isId
+                  ? 'Status: Sakelar Terbuka (OFF)'
+                  : 'State: Switch Open (OFF)'
+                : isId
+                ? 'Status: Sakelar Tertutup (ON)'
+                : 'State: Switch Closed (ON)'}
+            </span>
+          </span>
+          <span className="shrink-0 font-mono text-[10px] underline">
+            {isProbedSwitchOpen
+              ? isId
+                ? 'Tutup (ON)'
+                : 'Close (ON)'
+              : isId
+              ? 'Buka (OFF)'
+              : 'Open (OFF)'}
+          </span>
+        </button>
+      )}
+
+      {/* Slim Contextual Status & Fault Insight Strip */}
+      {primaryReading && (
         <div
-          role="status"
+          role={isFaultState ? 'status' : undefined}
           className={`mt-1.5 rounded-xl border px-2 py-1 text-[10px] leading-snug flex items-center gap-1.5 ${
             primaryReading.isShorted
               ? 'bg-red-950/90 border-red-400 text-red-100'
-              : isLight
-              ? 'bg-amber-50 border-amber-400 text-amber-950'
-              : 'bg-amber-950/85 border-amber-400/70 text-amber-100'
+              : isFaultState
+              ? isLight
+                ? 'bg-amber-50 border-amber-400 text-amber-950'
+                : 'bg-amber-950/85 border-amber-400/70 text-amber-100'
+              : subtleCellClass
           }`}
         >
-          <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+          {isFaultState ? (
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+          ) : (
+            <Info className={`w-3.5 h-3.5 shrink-0 ${isLight ? 'text-sky-700' : 'text-cyan-400'}`} />
+          )}
           <span className="line-clamp-2">
             {isId ? primaryReading.statusNoteId : primaryReading.statusNoteEn}
           </span>
@@ -515,15 +571,9 @@ export const ProbeReadoutHud: React.FC<ProbeReadoutHudProps> = ({ isHidden = fal
                 </svg>
               </div>
 
-              {!isFaultState && (
+              {dualComparison && (
                 <p className={`text-[10px] leading-snug px-0.5 ${mutedTextClass}`}>
-                  {dualComparison
-                    ? isId
-                      ? dualComparison.explanationId
-                      : dualComparison.explanationEn
-                    : isId
-                    ? primaryReading.statusNoteId
-                    : primaryReading.statusNoteEn}
+                  {isId ? dualComparison.explanationId : dualComparison.explanationEn}
                 </p>
               )}
             </>

@@ -2,10 +2,17 @@ import { Edge, Node } from 'reactflow';
 import {
   BULB_CATALOG,
   BulbType,
+  canBulbFitPinSocket,
+  canBulbFitSocket,
   computeBulbPhotometrics,
   getBulbSpec,
 } from '../constants/bulbCatalog';
 import { CircuitElementData, SimulationResult, WireConnection } from '../types/circuit';
+import {
+  PIN_SOCKET_NODE_SIZE,
+  SOCKET_NODE_SIZE,
+  getInstalledBulbTopOffset,
+} from '../utils/socketSnap';
 import {
   getComponentEffectiveResistance,
   getComponentPinIdentifiers,
@@ -100,6 +107,98 @@ const SOURCE_TYPES_SET = new Set<string>([
   'bess-substation',
   'bess_substation',
 ]);
+
+/** Visual bounding box (Flow-space center & dimensions) for lens highlights and chips. */
+export interface LensNodeAnchorBox {
+  cx: number;
+  cy: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Resolves the compatible bulb catalog specification currently mounted inside a socket node.
+ * Time Complexity: O(1).
+ */
+export function resolveInstalledSocketBulbSpec(data: CircuitElementData) {
+  const rawInstalledBulb = data.installedBulb;
+  const installedBulbType: BulbType | undefined =
+    rawInstalledBulb && typeof rawInstalledBulb === 'object'
+      ? rawInstalledBulb.bulbType
+      : typeof rawInstalledBulb === 'string'
+      ? (rawInstalledBulb as BulbType)
+      : undefined;
+
+  if (!installedBulbType) return undefined;
+  const spec = getBulbSpec(installedBulbType);
+  if (!spec) return undefined;
+
+  const isPinSocket = data.type === 'pin-socket';
+  const fits = isPinSocket
+    ? spec.baseType === 'pin' || canBulbFitPinSocket(spec.type)
+    : canBulbFitSocket(spec.type);
+  return fits ? spec : undefined;
+}
+
+/**
+ * Computes the true Flow-space visual bounding box of a node for Thermal/Probe overlays.
+ * Accounts for protruding bulbs snapped inside E27 and bi-pin sockets so probe highlights
+ * and potential badges wrap the entire lamp + socket assembly cleanly.
+ *
+ * Time Complexity: O(1).
+ */
+export function resolveLensNodeAnchorBox(node: Node<CircuitElementData>): LensNodeAnchorBox {
+  const isSocket = node.data.type === 'socket';
+  const isPinSocket = node.data.type === 'pin-socket';
+  const fallbackWidth = isSocket
+    ? SOCKET_NODE_SIZE.width
+    : isPinSocket
+    ? PIN_SOCKET_NODE_SIZE.width
+    : node.data.type === 'switch'
+    ? 108
+    : 112;
+  const fallbackHeight = isSocket
+    ? SOCKET_NODE_SIZE.height
+    : isPinSocket
+    ? PIN_SOCKET_NODE_SIZE.height
+    : node.data.type === 'switch'
+    ? 82
+    : 84;
+
+  const baseWidth =
+    typeof node.width === 'number' && node.width > 0 ? node.width : fallbackWidth;
+  const baseHeight =
+    typeof node.height === 'number' && node.height > 0 ? node.height : fallbackHeight;
+  const centerX = node.position.x + baseWidth / 2;
+
+  if (isSocket || isPinSocket) {
+    const installedSpec = resolveInstalledSocketBulbSpec(node.data);
+    if (installedSpec) {
+      const topOffset = getInstalledBulbTopOffset(installedSpec.type);
+      const topInset = installedSpec.type === 'led_green' ? 4 : 6;
+      const visualTop = node.position.y + topOffset + topInset;
+      const visualBottom = node.position.y + baseHeight;
+      const combinedHeight = Math.max(baseHeight, visualBottom - visualTop);
+      const combinedWidth = Math.max(
+        baseWidth,
+        installedSpec.type === 'led_green' ? 56 : 74
+      );
+      return {
+        cx: centerX,
+        cy: visualTop + combinedHeight / 2,
+        width: combinedWidth,
+        height: combinedHeight,
+      };
+    }
+  }
+
+  return {
+    cx: centerX,
+    cy: node.position.y + baseHeight / 2,
+    width: baseWidth,
+    height: baseHeight,
+  };
+}
 
 /**
  * Classifies a normalized 0..1 thermal intensity into a discrete physical heat band.
@@ -528,6 +627,9 @@ export function computeProbeReading(
     scopeSample.current >= SHORT_CIRCUIT_CURRENT_THRESHOLD;
 
   const isSwitchOpen = node.data.type === 'switch' && Boolean(node.data.isOpen);
+  const isSwitchClosed = node.data.type === 'switch' && !isSwitchOpen;
+  const isEmptySocket =
+    (node.data.type === 'socket' || node.data.type === 'pin-socket') && !node.data.installedBulb;
   const isMcbOff =
     (node.data.type === 'distribution-panel' ||
       node.data.type === 'distribution_panel' ||
@@ -561,6 +663,18 @@ export function computeProbeReading(
   } else if (isSwitchOpen) {
     statusNoteId = `Sakelar terbuka: beda potensial ${Math.abs(deltaV).toFixed(2)}V menumpuk di celah kontak.`;
     statusNoteEn = `Open switch: ${Math.abs(deltaV).toFixed(2)}V waits across open contacts.`;
+  } else if (isSwitchClosed) {
+    if (scopeSample.current >= 1e-4) {
+      const formattedI =
+        scopeSample.current < 1
+          ? `${(scopeSample.current * 1000).toFixed(1)} mA`
+          : `${scopeSample.current.toFixed(2)} A`;
+      statusNoteId = `Sakelar tertutup (ON): menghantarkan ${formattedI} dengan drop 0.00V (${vPos.toFixed(1)}V).`;
+      statusNoteEn = `Closed switch (ON): conducting ${formattedI} across ${vPos.toFixed(1)}V bus (~0V drop).`;
+    } else {
+      statusNoteId = 'Sakelar tertutup (ON), menanti jalur rangkaian tertutup lengkap agar arus mengalir.';
+      statusNoteEn = 'Closed switch (ON), awaiting a complete circuit loop for current to flow.';
+    }
   } else if (isReverseLed) {
     statusNoteId = 'LED terpasang terbalik (Anoda < Katoda): dioda memblokir arus.';
     statusNoteEn = 'LED is reverse biased (Anode < Cathode): diode blocks current.';
@@ -573,6 +687,9 @@ export function computeProbeReading(
   } else if (scopeSample.polarity === 'supplying') {
     statusNoteId = `Sumber aktif menyuplai daya ${scopeSample.power.toFixed(2)}W pada ${Math.abs(deltaV).toFixed(2)}V.`;
     statusNoteEn = `Active source delivering ${scopeSample.power.toFixed(2)}W at ${Math.abs(deltaV).toFixed(2)}V.`;
+  } else if (isEmptySocket) {
+    statusNoteId = 'Fiting kosong: pasang lampu yang sesuai pada fiting untuk menutup rangkaian.';
+    statusNoteEn = 'Empty socket: snap a compatible bulb into this holder to close the branch.';
   } else if (scopeSample.current < 1e-5) {
     statusNoteId = 'Belum ada arus mengalir pada komponen ini (rangkaian terbuka/kosong).';
     statusNoteEn = 'No current flowing yet (open loop or unloaded component).';

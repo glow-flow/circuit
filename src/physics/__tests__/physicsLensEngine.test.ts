@@ -10,6 +10,7 @@ import {
   computeProbeReading,
   computeWireThermalMetrics,
   findHottestThermalNode,
+  resolveLensNodeAnchorBox,
   resolveWireLensPresentation,
 } from '../physicsLensEngine';
 
@@ -267,5 +268,100 @@ describe('physicsLensEngine - FLIR Thermal & Finger Probe Calculations', () => {
     expect(readHolder!.potentialVolts).toBeCloseTo(3.0, 1);
     expect(readHolder!.secondaryPotentialVolts).toBeCloseTo(0.0, 1);
     expect(readHolder!.deltaVoltageVolts).toBeCloseTo(3.0, 1);
+  });
+
+  it('expands socket and pin-socket bounding boxes upward to enclose protruding installed bulbs', () => {
+    const emptySocket = makeNode(
+      { id: 's_empty', type: 'socket', label: 'Fiting Kosong' },
+      100,
+      200
+    );
+    emptySocket.width = 38;
+    emptySocket.height = 56;
+
+    const fittedSocket = makeNode(
+      { id: 's_bulb', type: 'socket', label: 'Fiting Pijar', installedBulb: 'incandescent' },
+      100,
+      200
+    );
+    fittedSocket.width = 38;
+    fittedSocket.height = 56;
+
+    const fittedPinSocket = makeNode(
+      { id: 'p_halogen', type: 'pin-socket', label: 'Fiting Pin', installedBulb: 'halogen' },
+      300,
+      200
+    );
+    fittedPinSocket.width = 38;
+    fittedPinSocket.height = 58;
+
+    const emptyBox = resolveLensNodeAnchorBox(emptySocket);
+    const bulbBox = resolveLensNodeAnchorBox(fittedSocket);
+    const pinBox = resolveLensNodeAnchorBox(fittedPinSocket);
+
+    expect(emptyBox.width).toBe(38);
+    expect(emptyBox.height).toBe(56);
+
+    // Installed bulb extends upward above node.position.y (200) and widens to hug globe cleanly
+    expect(bulbBox.width).toBeGreaterThanOrEqual(70);
+    expect(bulbBox.height).toBeGreaterThan(100);
+    expect(bulbBox.cy - bulbBox.height / 2).toBeLessThan(150);
+    expect(bulbBox.cy + bulbBox.height / 2).toBeCloseTo(256, 1);
+
+    expect(pinBox.height).toBeGreaterThan(120);
+    expect(pinBox.cy - pinBox.height / 2).toBeLessThan(130);
+    expect(pinBox.cy + pinBox.height / 2).toBeCloseTo(258, 1);
+  });
+
+  it('provides clear diagnostics for closed conducting switches and empty sockets', () => {
+    const closedSwitch = makeNode({
+      id: 'sw_closed',
+      type: 'switch',
+      label: 'Saklar Utama',
+      isOpen: false,
+    });
+    const emptySocket = makeNode({
+      id: 'sock_empty',
+      type: 'socket',
+      label: 'Fiting Lampu',
+    });
+
+    const sim = {
+      isValid: true,
+      totalVoltage: 3,
+      totalCurrent: 0.0037,
+      totalPower: 0.011,
+      nodeVoltages: { 'sw_closed:p1': 3.0, 'sw_closed:p2': 3.0 },
+      branchCurrents: { sw_closed: 0.0037, sock_empty: 0 },
+      totalPowerDrawn: 0.011,
+      isShortCircuit: false,
+      shortCircuitBranches: [] as string[],
+      reverseBiasedBranches: [] as string[],
+      timestamp: Date.now(),
+    };
+    const pinMap = new Map<string, number>([
+      ['sw_closed:p1', 3.0],
+      ['sw_closed:p2', 3.0],
+    ]);
+
+    const swRead = computeProbeReading(
+      { kind: 'node', id: 'sw_closed' },
+      [closedSwitch, emptySocket],
+      [],
+      sim,
+      pinMap
+    );
+    const sockRead = computeProbeReading(
+      { kind: 'node', id: 'sock_empty' },
+      [closedSwitch, emptySocket],
+      [],
+      sim,
+      pinMap
+    );
+
+    expect(swRead?.statusNoteEn).toContain('Closed switch (ON): conducting');
+    expect(swRead?.statusNoteId).toContain('Sakelar tertutup (ON): menghantarkan');
+    expect(sockRead?.statusNoteEn).toContain('Empty socket');
+    expect(sockRead?.statusNoteId).toContain('Fiting kosong');
   });
 });

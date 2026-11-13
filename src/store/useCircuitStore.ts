@@ -693,12 +693,20 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     const validMode: PhysicsLensMode =
       mode === 'thermal' || mode === 'probe' ? mode : 'normal';
     if (validMode === 'probe') {
+      const currentNodes = get().nodes;
+      const currentEdges = get().edges;
       set({
         physicsLensMode: validMode,
         selectedNodeId: null,
         selectedEdgeId: null,
         hoveredProbeTarget: null,
         isPickingProbeB: false,
+        nodes: currentNodes.some((n) => n.selected)
+          ? currentNodes.map((n) => (n.selected ? { ...n, selected: false } : n))
+          : currentNodes,
+        edges: currentEdges.some((e) => e.selected)
+          ? currentEdges.map((e) => (e.selected ? { ...e, selected: false } : e))
+          : currentEdges,
       });
       return;
     }
@@ -1214,8 +1222,13 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     getLabCanvasSpawnPosition(get().reactFlowInstance, componentType),
 
   onNodesChange: (changes: NodeChange[]) => {
+    const filteredChanges =
+      get().physicsLensMode === 'probe'
+        ? changes.filter((change) => change.type !== 'select')
+        : changes;
+    if (filteredChanges.length === 0) return;
     set({
-      nodes: applyNodeChanges(changes, get().nodes),
+      nodes: applyNodeChanges(filteredChanges, get().nodes),
     });
   },
 
@@ -1230,7 +1243,12 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   },
 
   onEdgesChange: (changes: EdgeChange[]) => {
-    const nextEdges = applyEdgeChanges(changes, get().edges);
+    const filteredChanges =
+      get().physicsLensMode === 'probe'
+        ? changes.filter((change) => change.type !== 'select')
+        : changes;
+    if (filteredChanges.length === 0) return;
+    const nextEdges = applyEdgeChanges(filteredChanges, get().edges);
     const { simulation, updatedNodes } = recalculateCircuit(get().nodes, nextEdges);
     const isSelectedEdgeStillPresent = nextEdges.some((e) => e.id === get().selectedEdgeId);
     set({

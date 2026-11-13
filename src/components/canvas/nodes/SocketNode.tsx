@@ -61,6 +61,7 @@ function formatPower(watts: number): string {
 export const SocketNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, selected }) => {
   const simulation = useCircuitStore((state) => state.simulation);
   const language = useCircuitStore((state) => state.language);
+  const physicsLensMode = useCircuitStore((state) => state.physicsLensMode);
   const detachBulbFromSocket = useCircuitStore((state) => state.detachBulbFromSocket);
   const updateComponentData = useCircuitStore((state) => state.updateComponentData);
 
@@ -225,7 +226,9 @@ export const SocketNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, 
       {/* LAYER 2 (zIndex: 20): Installed Bulb Artwork (Fixed 92x112 size — never shrinks or collapses) */}
       {installedSpec && (
         <div
-          className="pointer-events-none absolute left-1/2 flex items-center justify-center select-none"
+          className={`absolute left-1/2 flex items-center justify-center select-none ${
+            physicsLensMode === 'probe' ? 'pointer-events-auto cursor-pointer' : 'pointer-events-none'
+          }`}
           style={{
             width: BULB_NODE_SIZE.width,
             height: BULB_NODE_SIZE.height,

@@ -71,4 +71,47 @@ describe('useCircuitStore - Physics X-Ray Lens & Touch Probe State', () => {
     store.clearCanvas();
     expect(useCircuitStore.getState().probeTargetA).toBeNull();
   });
+
+  it('strips node/edge selected flags and blocks ReactFlow select mutations during Probe mode', () => {
+    useCircuitStore.setState({
+      nodes: [
+        {
+          id: 'sw_1',
+          type: 'switch',
+          position: { x: 0, y: 0 },
+          selected: true,
+          data: { id: 'sw_1', type: 'switch', label: 'Saklar', isOpen: false },
+        },
+      ],
+      edges: [
+        {
+          id: 'e_1',
+          source: 'sw_1',
+          sourceHandle: 'p1',
+          target: 'sw_1',
+          targetHandle: 'p2',
+          selected: true,
+        },
+      ],
+      selectedNodeId: 'sw_1',
+      selectedEdgeId: 'e_1',
+    });
+
+    const store = useCircuitStore.getState();
+    store.setPhysicsLensMode('probe');
+
+    expect(useCircuitStore.getState().nodes[0]?.selected).toBe(false);
+    expect(useCircuitStore.getState().edges[0]?.selected).toBe(false);
+
+    // Simulated ReactFlow internal tap-select should be ignored while probing
+    store.onNodesChange([{ id: 'sw_1', type: 'select', selected: true }]);
+    store.onEdgesChange([{ id: 'e_1', type: 'select', selected: true }]);
+    expect(useCircuitStore.getState().nodes[0]?.selected).toBe(false);
+    expect(useCircuitStore.getState().edges[0]?.selected).toBe(false);
+
+    // Returning to Normal mode restores normal ReactFlow selection mutations
+    store.setPhysicsLensMode('normal');
+    store.onNodesChange([{ id: 'sw_1', type: 'select', selected: true }]);
+    expect(useCircuitStore.getState().nodes[0]?.selected).toBe(true);
+  });
 });

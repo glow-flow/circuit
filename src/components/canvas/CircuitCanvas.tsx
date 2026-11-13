@@ -262,6 +262,8 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
         connectionRadius={40}
         connectionLineStyle={connectionLineStyle}
         data-physics-lens={lensHandlers.physicsLensMode}
+        elementsSelectable={lensHandlers.physicsLensMode !== 'probe'}
+        nodesConnectable={lensHandlers.physicsLensMode !== 'probe'}
         onNodeClick={lensHandlers.handleNodeClick}
         onNodeMouseEnter={lensHandlers.handleNodeMouseEnter}
         onNodeMouseLeave={lensHandlers.handleNodeMouseLeave}
