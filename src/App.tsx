@@ -17,6 +17,7 @@ import { MobileBottomSheet, BottomSheetSnapState } from './components/ui/mobile/
 import { MobileBottomNav } from './components/ui/mobile/MobileBottomNav';
 import { MobileHubModal } from './components/ui/mobile/MobileHubModal';
 import { InteractiveTutorialBanner } from './components/ui/tutorial/InteractiveTutorialBanner';
+import { ShortCircuitZeroVoltPopup } from './components/ui/diagnostics/ShortCircuitZeroVoltPopup';
 import { useCircuitStore } from './store/useCircuitStore';
 import { TRANSLATIONS } from './i18n/translations';
 import { hasSeenTutorial } from './utils/presetStorage';
@@ -222,7 +223,11 @@ export const App: React.FC = () => {
           id="tour-canvas-area"
           className="flex-1 relative h-full w-full min-w-0 min-h-0"
         >
-          {worldMode === 'outside' ? <OutdoorSandbox /> : <CircuitCanvas />}
+          {worldMode === 'outside' ? (
+            <OutdoorSandbox isTutorialActive={isInteractiveCoachOpen} />
+          ) : (
+            <CircuitCanvas />
+          )}
           <OutdoorGenerationMiniHud />
 
           {/* Interactive Hands-On Practice Coach Banner */}
@@ -231,6 +236,9 @@ export const App: React.FC = () => {
             onClose={() => setIsInteractiveCoachOpen(false)}
             onOpenFullGuide={() => setIsWelcomeOpen(true)}
           />
+
+          {/* Floating Bottom-Right Short-Circuit 0V Battery Pop-Up & Visual Explainer */}
+          <ShortCircuitZeroVoltPopup />
 
           {/* Floating Quick-Edit & Disconnect Wires Bar on Mobile when a component is selected */}
           {selectedNode && activeMobileSheet === 'none' && !isInteractiveCoachOpen && (

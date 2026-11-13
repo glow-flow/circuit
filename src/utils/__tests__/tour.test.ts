@@ -5,6 +5,7 @@ import {
   prepareViewportForTourStep,
   prepareOutdoorViewportForTourStep,
   registerTourMobileSheetController,
+  resolveTourStepsForViewport,
   TourMobileSheetState,
 } from '../tour';
 import {
@@ -152,5 +153,29 @@ describe('Interactive Spotlight Tour (driver.js) & Welcome Persistence', () => {
     } finally {
       (globalThis as any).window = originalWindow;
     }
+  });
+
+  it('resolves mobile-visible selectors so Step 1 and Step 8 never highlight display:none header buttons on phones', () => {
+    const mobileSteps = resolveTourStepsForViewport(TOUR_STEPS, 390);
+    expect(mobileSteps).toHaveLength(10);
+
+    // Step 1 (#tour-dropdown-contoh is hidden on <1024px) -> maps to visible #tour-btn-galeri on mobile
+    expect(mobileSteps[0].element).toBe('#tour-btn-galeri');
+    expect(mobileSteps[0].popover?.side).toBe('top');
+
+    // Step 2 (#tour-btn-tambah) and Step 5 (#tour-btn-info) stay on mobile bottom nav
+    expect(mobileSteps[1].element).toBe('#tour-btn-tambah');
+    expect(mobileSteps[4].element).toBe('#tour-btn-info');
+
+    // Step 8 (#tour-btn-save is hidden on <1024px) -> maps to visible #tour-btn-menu on mobile
+    expect(mobileSteps[7].element).toBe('#tour-btn-menu');
+    expect(mobileSteps[7].popover?.side).toBe('top');
+
+    // Desktop viewport (1280px) maps mobile-only bottom buttons to visible desktop panels
+    const desktopSteps = resolveTourStepsForViewport(TOUR_STEPS, 1280);
+    expect(desktopSteps[0].element).toBe('#tour-dropdown-contoh');
+    expect(desktopSteps[1].element).toBe('#tour-panel-komponen');
+    expect(desktopSteps[4].element).toBe('#tour-panel-inspector');
+    expect(desktopSteps[7].element).toBe('#tour-btn-save');
   });
 });

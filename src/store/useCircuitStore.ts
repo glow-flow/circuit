@@ -615,7 +615,7 @@ function recalculateCircuit(
           capacity,
           chargeState,
           calculatedCurrent: branchCurrent,
-          calculatedVoltage: effectiveVoltage,
+          calculatedVoltage: isShortCircuit ? 0 : effectiveVoltage,
           isShortCircuit,
         },
       };

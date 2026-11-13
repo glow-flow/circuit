@@ -15,7 +15,10 @@ import {
   executeTeacherQuickCardAction,
   prepareCanvasForInteractiveMissionOne,
 } from '../../tutorial/interactiveTutorialConfig';
-import { KnifeSwitchGraphic } from './common/KnifeSwitchGraphic';
+import {
+  WelcomeMiniCircuitDemo,
+  WelcomeQuickCardVisual,
+} from './welcome/WelcomeQuickCardVisual';
 
 export interface WelcomeModalProps {
   isOpen: boolean;
@@ -157,67 +160,28 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
             </button>
           </div>
 
-          {/* Interactive Mini Demo: Tap the Pure-Code Saklar right here! */}
-          <div
-            onClick={() => setPreviewSwitchOpen((prev) => !prev)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                setPreviewSwitchOpen((prev) => !prev);
-              }
-            }}
-            className="flex items-center justify-between gap-3 px-3.5 py-2 rounded-xl bg-void-900 hover:bg-void-850 border border-white/10 cursor-pointer transition-all active:scale-98"
-          >
-            <div className="w-20 h-14 shrink-0 flex items-center justify-center">
-              <KnifeSwitchGraphic
-                isOpen={previewSwitchOpen}
-                isCurrentFlowing={!previewSwitchOpen}
-              />
-            </div>
-
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5">
-                <span
-                  className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold ${
-                    previewSwitchOpen
-                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                      : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                  }`}
-                >
-                  {previewSwitchOpen
-                    ? isId
-                      ? 'SAKLAR: TERBUKA (OFF)'
-                      : 'SWITCH: OPEN (OFF)'
-                    : isId
-                    ? 'SAKLAR: TERTUTUP (ON)'
-                    : 'SWITCH: CLOSED (ON)'}
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-300 mt-1 leading-snug">
-                {isId
-                  ? 'Coba ketuk saklar pisau di samping! Di aplikasi ini, semua alat bisa disentuh langsung.'
-                  : 'Tap the knife switch on the left! Every part on the canvas is directly interactive.'}
-              </p>
-            </div>
-          </div>
+          {/* Interactive Mini Demo: Tap the Pure-Code Saklar + Lamp right here! */}
+          <WelcomeMiniCircuitDemo
+            isOpen={previewSwitchOpen}
+            onToggle={() => setPreviewSwitchOpen((prev) => !prev)}
+            isId={isId}
+          />
         </div>
 
-        {/* Scrollable Content: Primary Tutorial Actions + 4 Teacher 1-Click Cards */}
-        <div className="p-4 sm:p-5 space-y-4 overflow-y-auto">
+        {/* Scrollable Content: Primary Tutorial Actions + 2x2 Visual Quick Cards */}
+        <div className="p-3.5 sm:p-4 space-y-3 overflow-y-auto">
           {/* Primary Action: 3-Step Hands-On Practice */}
           <div className="space-y-2">
             <button
               type="button"
               onClick={handleStartHandsOnPractice}
-              className="w-full min-h-[46px] flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-electric-600 hover:bg-electric-500 text-white text-xs sm:text-sm font-bold transition-all active:scale-95 cursor-pointer shadow-sm"
+              className="w-full min-h-[44px] flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl bg-electric-600 hover:bg-electric-500 text-white text-xs sm:text-sm font-bold transition-all active:scale-95 cursor-pointer shadow-sm"
             >
               <Hand className="w-4 h-4 shrink-0" />
               <span>
                 {isId
-                  ? 'Mulai Praktikum Terpadu (3 Langkah Langsung Coba)'
-                  : 'Start Hands-On Practice (3 Interactive Steps)'}
+                  ? 'Praktikum 3 Langkah (Langsung Coba)'
+                  : '3-Step Interactive Practice'}
               </span>
             </button>
 
@@ -225,7 +189,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
               <button
                 type="button"
                 onClick={handleStartSpotlightTour}
-                className="min-h-[42px] px-3 py-2 rounded-xl bg-void-950 hover:bg-void-850 border border-white/10 text-slate-200 hover:text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                className="min-h-[40px] px-3 py-1.5 rounded-xl bg-void-950 hover:bg-void-850 border border-white/10 text-slate-200 hover:text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer"
               >
                 <Compass className="w-3.5 h-3.5 text-electric-400 shrink-0" />
                 <span>{isId ? 'Tur Sorot Tombol' : 'Button Spotlight'}</span>
@@ -234,62 +198,66 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
               <button
                 type="button"
                 onClick={handleSkip}
-                className="min-h-[42px] px-3 py-2 rounded-xl bg-void-950 hover:bg-void-850 border border-white/10 text-slate-300 hover:text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                className="min-h-[40px] px-3 py-1.5 rounded-xl bg-void-950 hover:bg-void-850 border border-white/10 text-slate-300 hover:text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer"
               >
-                <span>{isId ? 'Langsung ke Kanvas' : 'Skip to Canvas'}</span>
+                <span>{isId ? 'Langsung Rakit' : 'Skip to Canvas'}</span>
               </button>
             </div>
           </div>
 
-          {/* Teacher 1-Click Classroom Setup Cards */}
+          {/* 2x2 Visual Schematic Quick-Start Grid */}
           <div className="space-y-2 pt-1 border-t border-white/10">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-mono uppercase tracking-wider text-slate-300 font-bold flex items-center gap-1.5">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-slate-300 font-bold flex items-center gap-1.5">
                 <BookOpen className="w-3.5 h-3.5 text-electric-400" />
                 {isId
-                  ? 'Kartu Contekan Guru (1-Klik Siap Ajar di Kelas)'
-                  : '1-Click Classroom Setup Cards'}
+                  ? 'Pilih Skema 1-Klik (Siap Pakai)'
+                  : '1-Click Visual Circuit Presets'}
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {TEACHER_QUICK_CARDS.map((card) => (
                 <button
                   key={card.id}
                   type="button"
                   onClick={() => handleSelectTeacherCard(card.id)}
-                  className={`text-left p-3 rounded-xl bg-void-950 hover:bg-void-850 border transition-all active:scale-95 cursor-pointer flex flex-col justify-between gap-2 ${getAccentBorderClass(
+                  className={`text-left p-2.5 rounded-xl bg-void-950 hover:bg-void-850 border transition-all active:scale-95 cursor-pointer flex flex-col justify-between gap-1.5 ${getAccentBorderClass(
                     card.accentColor
                   )}`}
                 >
-                  <div className="space-y-1">
-                    <span
-                      className={`text-[9px] font-mono font-bold uppercase tracking-wider ${getAccentTextClass(
-                        card.accentColor
-                      )}`}
-                    >
-                      {isId ? card.badgeId : card.badgeEn}
-                    </span>
-                    <div className="text-xs font-bold text-white leading-snug">
-                      {isId ? card.titleId : card.titleEn}
+                  <div className="space-y-1.5">
+                    <WelcomeQuickCardVisual cardId={card.id} />
+
+                    <div>
+                      <span
+                        className={`block text-[8px] font-mono font-bold uppercase tracking-wider truncate ${getAccentTextClass(
+                          card.accentColor
+                        )}`}
+                      >
+                        {isId ? card.badgeId : card.badgeEn}
+                      </span>
+                      <div className="text-[11px] sm:text-xs font-bold text-white leading-tight mt-0.5">
+                        {isId ? card.titleId : card.titleEn}
+                      </div>
+                      <p className="text-[10px] text-slate-400 leading-tight mt-0.5 line-clamp-2">
+                        {isId ? card.descriptionId : card.descriptionEn}
+                      </p>
                     </div>
-                    <p className="text-[11px] text-slate-400 leading-snug">
-                      {isId ? card.descriptionId : card.descriptionEn}
-                    </p>
                   </div>
 
-                  <div className="pt-1 flex items-center justify-between text-[11px] font-bold text-slate-200">
-                    <span className={getAccentTextClass(card.accentColor)}>
+                  <div className="pt-1 border-t border-white/5 flex items-center justify-between text-[10px] font-bold text-slate-200">
+                    <span className={`truncate ${getAccentTextClass(card.accentColor)}`}>
                       {isId ? card.actionLabelId : card.actionLabelEn}
                     </span>
-                    <Play className="w-3 h-3 fill-current opacity-80" />
+                    <Play className="w-2.5 h-2.5 fill-current opacity-80 shrink-0" />
                   </div>
                 </button>
               ))}
             </div>
           </div>
 
-          <div className="pt-2 border-t border-white/10 flex items-center justify-between gap-2 text-[10px] font-mono text-slate-400">
+          <div className="pt-1.5 border-t border-white/10 flex items-center justify-between gap-2 text-[10px] font-mono text-slate-400">
             <span>
               {isId
                 ? 'Karya Orisinal: Kenzie Raka Romero (SMPN 12 Surabaya)'

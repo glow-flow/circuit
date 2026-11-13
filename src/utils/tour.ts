@@ -51,7 +51,7 @@ export const TOUR_STEPS: DriveStep[] = [
     popover: {
       title: 'Template Rangkaian',
       description:
-        'Bingung mulai dari mana? Pilih contoh rangkaian Seri, Paralel, atau buka rangkaian buatanmu sendiri yang sudah disimpan di sini.',
+        'Pilih contoh rangkaian siap pakai (Seri, Paralel, Korsleting) atau buka karya yang sudah disimpan.',
       side: 'bottom',
       align: 'start',
     },
@@ -61,7 +61,7 @@ export const TOUR_STEPS: DriveStep[] = [
     popover: {
       title: 'Tambah Komponen',
       description:
-        'Klik di sini untuk membuka kotak komponen Lab (Baterai, 7 jenis Lampu, Saklar, Resistor, dan Alat Ukur).',
+        'Ketuk tombol ini untuk membuka kotak komponen Lab (Baterai, Saklar Pisau, Lampu, Resistor, Alat Ukur).',
       side: 'top',
       align: 'start',
     },
@@ -71,7 +71,7 @@ export const TOUR_STEPS: DriveStep[] = [
     popover: {
       title: 'Pilih Alat',
       description:
-        "Pilih komponen lalu tekan 'Taruh di kanvas' (atau seret langsung). 💡 PENTING: Bola lampu harus dipasang ke dudukan 'Fiting Lampu (Socket)' terlebih dahulu sebelum bisa disambungkan kabel!",
+        'Ketuk komponen lalu tekan "Taruh di Kanvas". Tips: Bola lampu dipasang ke Fiting Lampu (Socket) terlebih dulu.',
       side: 'top',
       align: 'center',
     },
@@ -81,7 +81,7 @@ export const TOUR_STEPS: DriveStep[] = [
     popover: {
       title: 'Ubah Properti Komponen',
       description:
-        'Klik komponen di kanvas (di HP, ketuk tombol "Atur" yang muncul di atas), lalu ubah Jenis Lampu (7 tipe), Hambatan (Ω), atau Tegangan Baterai (V). Kamu juga bisa mengecas baterai kosong lewat Panel Distribusi Lab!',
+        'Ubah tegangan baterai (V), hambatan resistor (Ω), tipe lampu, atau isi ulang baterai yang habis di panel ini.',
       side: 'top',
       align: 'center',
     },
@@ -91,7 +91,7 @@ export const TOUR_STEPS: DriveStep[] = [
     popover: {
       title: 'Info & Rumus',
       description:
-        'Klik di sini untuk melihat detail perhitungan (V, I, R, P) sekaligus Kalkulator Tagihan Listrik PLN (Rupiah & kWh) dari rangkaianmu!',
+        'Buka panel Rumus (V, I, R, P), langkah penyelesaian Hukum Ohm, dan Kalkulator Tagihan Listrik PLN.',
       side: 'top',
       align: 'end',
     },
@@ -101,7 +101,7 @@ export const TOUR_STEPS: DriveStep[] = [
     popover: {
       title: 'Klik Salah Satu Kabel',
       description:
-        'Tarik kabel dari kutub merah (+) baterai/panel ke terminal fiting lampu (p1), lalu dari p2 kembali ke kutub (-). Klik salah satu garis kabel di kanvas untuk memunculkan tombol aksi kabel di atas.',
+        'Hubungkan kutub (+) ke komponen lalu kembali ke (-). Ketuk garis kabel di kanvas untuk memunculkan menu kabel.',
       side: 'bottom',
       align: 'center',
     },
@@ -111,7 +111,7 @@ export const TOUR_STEPS: DriveStep[] = [
     popover: {
       title: 'Pin Kabel & Putus Kabel',
       description:
-        "Setelah kabel diklik, tekan 'Tambah Tekukan' (atau ketuk 2x pada kabel) untuk membuat pin belokan rapi, atau 'Potong Kabel' untuk memutus. Jika MCB Panel Trip, tekan tombol merah TRIP untuk me-reset kabel.",
+        'Gunakan "Tambah Tekukan" untuk merapikan jalur kabel, atau "Potong Kabel" untuk memutus sambungan.',
       side: 'bottom',
       align: 'center',
     },
@@ -121,7 +121,7 @@ export const TOUR_STEPS: DriveStep[] = [
     popover: {
       title: 'Simpan Karya',
       description:
-        'Sudah diperbarui! Klik tombol Simpan ini (atau pilih "+ Simpan Rangkaian..." di menu Contoh) untuk menyimpan rangkaianmu ke memori browser agar tidak hilang. Kamu juga bisa klik tombol "Keluar ke Alam" di kanan atas untuk membangun Pembangkit Listrik Tenaga Surya & Angin!',
+        'Simpan rangkaianmu ke memori browser atau bagikan lewat tautan URL dan kode QR ke siswa/guru.',
       side: 'bottom',
       align: 'center',
     },
@@ -131,7 +131,7 @@ export const TOUR_STEPS: DriveStep[] = [
     popover: {
       title: 'Bersihkan Kanvas',
       description:
-        'Gunakan tombol sampah di atas untuk menghapus semua dan mulai dari awal.',
+        'Hapus seluruh komponen di kanvas untuk merakit rangkaian baru dari nol.',
       side: 'bottom',
       align: 'end',
     },
@@ -141,7 +141,7 @@ export const TOUR_STEPS: DriveStep[] = [
     popover: {
       title: 'Panduan Ulang',
       description:
-        'Kamu bisa memutar ulang tutorial ini kapan saja (baik di mode Lab maupun saat berada di Zona Alam Terbuka) dengan menekan tombol ini.',
+        'Buka kembali panduan praktikum atau contekan cepat guru kapan saja dari tombol ini.',
       side: 'bottom',
       align: 'end',
     },
@@ -157,7 +157,7 @@ export const OUTDOOR_TOUR_STEPS: DriveStep[] = [
     popover: {
       title: 'Kuas Medan Alam 40×20',
       description:
-        'Ubah lanskap alam secara bebas! Gunakan "+ Tanah (Gravity)" untuk menimbun bukit (tanah yang terkena udara otomatis tumbuh rumput dalam 3 detik), "+ Air (Bahaya!)" untuk membuat aliran air, atau "Geser & Kabel" untuk menyambung kabel dan menggeser kamera.',
+        'Gunakan mode "Rangkai" untuk menyambung kabel, ubah waktu matahari (Pagi/Siang/Sore), atau klik "Tanah/Air" untuk membentuk bukit dan sungai.',
       side: 'bottom',
       align: 'start',
     },
@@ -167,7 +167,7 @@ export const OUTDOOR_TOUR_STEPS: DriveStep[] = [
     popover: {
       title: 'Pasang Pembangkit Alam (12V)',
       description:
-        'Ingin langsung mencoba? Klik tombol ini untuk menerjunkan paket Pembangkit Listrik Alam (Panel Surya 12V, Turbin Angin 12V, dan Menara Transmisi SUTET) lengkap dengan kabelnya di atas bukit rumput!',
+        'Ketuk tombol ini untuk menerjunkan paket Panel Surya 12V, Turbin Angin 12V, dan Menara Transmisi SUTET siap pakai!',
       side: 'bottom',
       align: 'end',
     },
@@ -177,7 +177,7 @@ export const OUTDOOR_TOUR_STEPS: DriveStep[] = [
     popover: {
       title: 'Gravitasi & Bahaya Air Sungai',
       description:
-        'Setiap pembangkit yang ditaruh di alam otomatis turun menapak tanah karena gravitasi. Hati-hati: jangan menjatuhkan komponen dari langit yang terlalu tinggi (> 6 blok) atau di atas air sungai, karena komponen akan meledak korsleting!',
+        'Komponen otomatis menapak tanah karena gravitasi. Jangan menjatuhkan alat ke sungai karena akan meledak korsleting!',
       side: 'bottom',
       align: 'center',
     },
@@ -187,7 +187,7 @@ export const OUTDOOR_TOUR_STEPS: DriveStep[] = [
     popover: {
       title: 'Kotak Pembangkit Energi Hijau',
       description:
-        'Di Zona Alam Terbuka, kotak komponen khusus menampilkan pembangkit energi bersih: Panel Surya (0–12V), Turbin Angin (0–12V), dan Menara Transmisi (Jaringan Virtual SUTET).',
+        'Pilih pembangkit energi bersih: Panel Surya, Turbin Angin, Turbin Air (PLTA), Penyimpan BESS, dan Menara SUTET.',
       side: 'top',
       align: 'center',
     },
@@ -197,7 +197,7 @@ export const OUTDOOR_TOUR_STEPS: DriveStep[] = [
     popover: {
       title: 'Cuaca & Penghematan Tagihan PLN',
       description:
-        'Klik Panel Surya atau Turbin Angin untuk mengatur terik matahari dan kecepatan angin, atau cek Kalkulator Tagihan Listrik PLN untuk melihat berapa Rupiah biaya listrik yang dihemat hingga Rp 0 (Gratis dari Alam)!',
+        'Atur cuaca (matahari & angin) serta pantau penghematan biaya listrik PLN hingga Rp 0 (Gratis dari Alam).',
       side: 'top',
       align: 'center',
     },
@@ -207,12 +207,187 @@ export const OUTDOOR_TOUR_STEPS: DriveStep[] = [
     popover: {
       title: 'Salurkan Listrik ke Laboratorium',
       description:
-        'Setelah Panel Surya atau Turbin Angin disambungkan ke isolator atas Menara Transmisi, klik "Masuk ke Lab" dan pasang Panel Distribusi Lab (Box MCB + Step-Down) untuk menyalakan lampu-lampu dengan energi ramah lingkungan!',
+        'Setelah pembangkit tersambung ke Menara SUTET, ketuk "Lab Rangkaian" untuk menyalakan lampu Lab dengan listrik hijau!',
       side: 'bottom',
       align: 'end',
     },
   },
 ];
+
+interface ResponsiveSelectorFallback {
+  readonly mobileSelector: string;
+  readonly mobileSide: 'top' | 'bottom' | 'left' | 'right';
+  readonly mobileAlign: 'start' | 'center' | 'end';
+  readonly mobileDescription: string;
+  readonly desktopSelector: string;
+  readonly desktopSide: 'top' | 'bottom' | 'left' | 'right';
+  readonly desktopAlign: 'start' | 'center' | 'end';
+  readonly desktopDescription: string;
+}
+
+const RESPONSIVE_STEP_FALLBACKS: Readonly<Record<string, ResponsiveSelectorFallback>> = {
+  '#tour-dropdown-contoh': {
+    mobileSelector: '#tour-btn-galeri',
+    mobileSide: 'top',
+    mobileAlign: 'center',
+    mobileDescription:
+      'Ketuk tombol "Contoh" yang disorot di bawah untuk memuat rangkaian Seri, Paralel, atau Korsleting.',
+    desktopSelector: '#tour-dropdown-contoh',
+    desktopSide: 'bottom',
+    desktopAlign: 'start',
+    desktopDescription:
+      'Pilih contoh rangkaian siap pakai (Seri, Paralel, Korsleting) atau buka karya yang sudah disimpan.',
+  },
+  '#tour-btn-tambah': {
+    mobileSelector: '#tour-btn-tambah',
+    mobileSide: 'top',
+    mobileAlign: 'start',
+    mobileDescription:
+      'Ketuk "+ Alat" di kiri bawah untuk membuka kotak komponen Lab (Baterai, Saklar Pisau, Lampu, Resistor).',
+    desktopSelector: '#tour-panel-komponen',
+    desktopSide: 'right',
+    desktopAlign: 'start',
+    desktopDescription:
+      'Gunakan kotak komponen di sisi kiri untuk memilih Baterai, Saklar Pisau, Lampu, Resistor, dan Alat Ukur.',
+  },
+  '#tour-btn-info': {
+    mobileSelector: '#tour-btn-info',
+    mobileSide: 'top',
+    mobileAlign: 'center',
+    mobileDescription:
+      'Ketuk "Rumus" di bawah untuk melihat perhitungan (V, I, R, P) dan Kalkulator Tagihan Listrik PLN.',
+    desktopSelector: '#tour-panel-inspector',
+    desktopSide: 'left',
+    desktopAlign: 'start',
+    desktopDescription:
+      'Panel kanan menampilkan perhitungan (V, I, R, P), Hukum Ohm, dan Kalkulator Tagihan Listrik PLN.',
+  },
+  '#tour-btn-save': {
+    mobileSelector: '#tour-btn-menu',
+    mobileSide: 'top',
+    mobileAlign: 'end',
+    mobileDescription:
+      'Ketuk "Menu Lab" yang disorot di kanan bawah untuk Simpan Rangkaian, Bagikan Link/QR, atau buka Kuis.',
+    desktopSelector: '#tour-btn-save',
+    desktopSide: 'bottom',
+    desktopAlign: 'center',
+    desktopDescription:
+      'Simpan rangkaianmu ke memori browser atau bagikan lewat tautan URL dan kode QR ke siswa/guru.',
+  },
+};
+
+/**
+ * Checks whether a CSS selector matches an element that is currently visible
+ * (non-zero bounding box and not `display: none`) in the active browser viewport.
+ *
+ * Time Complexity: O(1) DOM lookup and bounding-rect check.
+ *
+ * @param selector CSS selector string (e.g. `'#tour-dropdown-contoh'`)
+ * @returns True if the element exists in the document and has visible dimensions
+ */
+export function isElementVisibleInViewport(selector: string): boolean {
+  try {
+    if (typeof document === 'undefined' || !selector) return false;
+    const targetElement = document.querySelector(selector) as HTMLElement | null;
+    if (!targetElement) return false;
+
+    if (typeof window !== 'undefined' && typeof window.getComputedStyle === 'function') {
+      const style = window.getComputedStyle(targetElement);
+      if (style.display === 'none' || style.visibility === 'hidden') {
+        return false;
+      }
+    }
+
+    if (typeof targetElement.getBoundingClientRect === 'function') {
+      const rect = targetElement.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        return true;
+      }
+    }
+
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Resolves tour steps against the active viewport width and live DOM visibility
+ * so `driver.js` never highlights a `display: none` element (such as `#tour-dropdown-contoh`
+ * or `#tour-btn-save` on mobile `< 1024px`, or `#tour-btn-tambah` on desktop `>= 768px`).
+ *
+ * Time Complexity: O(S) where S is the number of tour steps (S <= 10), zero nested loops.
+ *
+ * @param steps Base tour step definitions (`TOUR_STEPS` or `OUTDOOR_TOUR_STEPS`)
+ * @param explicitViewportWidth Optional viewport width override for deterministic unit testing
+ * @returns New array of resolved `DriveStep` objects with visible target selectors
+ */
+export function resolveTourStepsForViewport(
+  steps: readonly DriveStep[],
+  explicitViewportWidth?: number
+): DriveStep[] {
+  try {
+    if (!Array.isArray(steps) || steps.length === 0) return [];
+
+    const currentWidth =
+      typeof explicitViewportWidth === 'number' && Number.isFinite(explicitViewportWidth)
+        ? explicitViewportWidth
+        : typeof window !== 'undefined'
+        ? window.innerWidth
+        : 1280;
+
+    const isMobileOrTabletHeaderCompact = currentWidth < 1024;
+    const isMobileBottomNavVisible = currentWidth < 768;
+
+    return steps.map((step) => {
+      const selectorKey = typeof step.element === 'string' ? step.element : '';
+      const fallbackRule = RESPONSIVE_STEP_FALLBACKS[selectorKey];
+      if (!fallbackRule || !step.popover) {
+        return {
+          ...step,
+          popover: step.popover ? { ...step.popover } : undefined,
+        };
+      }
+
+      // First check real DOM visibility if rendered in browser
+      const isPrimaryVisible = isElementVisibleInViewport(selectorKey);
+      if (isPrimaryVisible) {
+        return {
+          ...step,
+          popover: { ...step.popover },
+        };
+      }
+
+      // Determine whether this step should use the mobile bottom-nav selector or desktop selector
+      const shouldUseMobileTarget =
+        selectorKey === '#tour-dropdown-contoh' || selectorKey === '#tour-btn-save'
+          ? isMobileBottomNavVisible ||
+            isElementVisibleInViewport(fallbackRule.mobileSelector) ||
+            isMobileOrTabletHeaderCompact
+          : isMobileBottomNavVisible;
+
+      const resolvedSelector = shouldUseMobileTarget
+        ? fallbackRule.mobileSelector
+        : fallbackRule.desktopSelector;
+
+      return {
+        ...step,
+        element: resolvedSelector,
+        popover: {
+          ...step.popover,
+          side: shouldUseMobileTarget ? fallbackRule.mobileSide : fallbackRule.desktopSide,
+          align: shouldUseMobileTarget ? fallbackRule.mobileAlign : fallbackRule.desktopAlign,
+          description: shouldUseMobileTarget
+            ? fallbackRule.mobileDescription
+            : fallbackRule.desktopDescription,
+        },
+      };
+    });
+  } catch (error) {
+    console.warn('Failed to resolve responsive tour steps:', error);
+    return [...steps];
+  }
+}
 
 /**
  * Prepares the UI viewport (mobile drawers, selected component node, and selected
@@ -350,12 +525,13 @@ export function startTour(): void {
     }
 
     const isOutdoorMode = useCircuitStore.getState().worldMode === 'outside';
-    const activeSteps = isOutdoorMode ? OUTDOOR_TOUR_STEPS : TOUR_STEPS;
+    const baseSteps = isOutdoorMode ? OUTDOOR_TOUR_STEPS : TOUR_STEPS;
     const prepareStepFn = isOutdoorMode
       ? prepareOutdoorViewportForTourStep
       : prepareViewportForTourStep;
 
     prepareStepFn(0);
+    const activeSteps = resolveTourStepsForViewport(baseSteps);
 
     const resetWindowScroll = () => {
       try {

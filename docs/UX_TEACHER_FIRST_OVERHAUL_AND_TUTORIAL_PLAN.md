@@ -112,3 +112,11 @@ Following user approval of **Option A ("Clean Classroom Dock")**, the architectu
   - Implements the 3-step hands-on interactive practice missions with $O(N)$ live state completion detection, 1-click assist actions, and 4 Teacher 1-Click Classroom Setup Cards (`TEACHER_QUICK_CARDS`).
 - **`src/tutorial/__tests__/interactiveTutorialConfig.test.ts`**:
   - Unit test suite verifying $O(1)$ mission lookup, $O(N)$ reactive completion detection, 1-click assist actions, Teacher Quick-Cards, and asset-free `switch` catalog configuration.
+- `src/components/ui/welcome/WelcomeQuickCardVisual.tsx`
+  - Pure-SVG visual schematic cards (`basic-switch`, `series-parallel`, `nature-ebt`, `short-circuit`) and the interactive `WelcomeMiniCircuitDemo` header (`9V Battery + KnifeSwitchGraphic + Reactive Bulb`) inside a 2×2 grid in `WelcomeModal.tsx`.
+- `src/physics/shortCircuitZeroVoltAdvisor.ts` & `src/components/ui/diagnostics/ShortCircuitZeroVoltPopup.tsx`
+  - $O(N + E)$ single-pass detector for short-circuit `0.0V` battery states (`V_kutub = E - I * r_dalam = 0V`) + floating bottom-right callout (*"Baterai mu jadi 0V tuh, pengen tahu? Klik aku!"*) + interactive X-Ray internal resistance explainer modal.
+- `src/utils/tour.ts` (`resolveTourStepsForViewport`)
+  - $O(S)$ viewport-aware step resolver that maps hidden desktop header selectors (`#tour-dropdown-contoh`, `#tour-btn-save`) to visible mobile bottom navigation buttons (`#tour-btn-galeri`, `#tour-btn-menu`) so `driver.js` never highlights an invisible element on `< 1024px` screens.
+- `src/components/canvas/OutdoorSandbox.tsx`
+  - Single-row compact Nature Mode control dock (`[Rangkai | Tanah/Air]`, 1-tap `Pagi/Siang/Sore` sun cycler, `[PLTS 12V]`, `[EyeOff]`) and automatic toolbar mutual exclusion (`!isTutorialActive`) when `InteractiveTutorialBanner` is active on Mission 3.
