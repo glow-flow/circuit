@@ -39,6 +39,8 @@ Unlike generic LLM chatbots that hallucinate equations, the **Explainable Circui
 ## 3. Connected Knowledge Nodes
 
 - [[README]]
+- [[MASCOT_AND_DUOLINGO_ACADEMY_DESIGN]]
+- [[OUTDOOR_TO_LAB_CHARGING_BRIDGE]]
 - [[PHYSICS_MNA_SOLVER_AND_TRANSMISSION_GRID]]
 - [[HARDWARE_COMPONENTS_AND_PROTECTION]]
 - [[HARDWARE_TRANSMISSION_AND_TRAFO_SUTET]]

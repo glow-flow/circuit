@@ -1,143 +1,259 @@
 import React, { useState } from 'react';
-import { Zap, Gauge } from 'lucide-react';
 import { useCircuitStore } from '../../../../store/useCircuitStore';
+import { MiniLabFrame, MiniSliderControl } from './MiniLabFrame';
 
 /**
- * Interactive Ohm's Law Calculator & Live Visual Demonstration.
- * Demonstrates V = I * R with real-time sliders and tactile feedback.
- * 
- * Time Complexity: O(1) calculations.
+ * Computes normalized SVG animation speed and bulb luminance metrics from Ohm's Law state.
+ * Time Complexity: O(1).
+ */
+function computeOhmVisualMetrics(voltage: number, resistance: number) {
+  const currentAmperes = resistance > 0 ? voltage / resistance : 0;
+  const currentMa = currentAmperes * 1000;
+  const powerWatts = voltage * currentAmperes;
+  // Electron speed animation duration in seconds (shorter = faster flow)
+  const animDurationSec =
+    currentMa <= 1 ? 0 : Math.max(0.45, Math.min(3.5, 110 / Math.max(20, currentMa)));
+  const glowOpacity = Math.min(0.95, Math.max(0.08, currentMa / 120));
+  const isOptimalRange = currentMa >= 40 && currentMa <= 60;
+  const isOverheated = currentMa > 150;
+
+  return {
+    currentAmperes,
+    currentMa,
+    powerWatts,
+    animDurationSec,
+    glowOpacity,
+    isOptimalRange,
+    isOverheated,
+  };
+}
+
+/**
+ * Interactive Ohm's Law Visual SVG Micro-Lab.
+ * Visualizes electron flow velocity, filament brightness, and V = I * R live.
+ *
+ * Time Complexity: O(1).
  */
 export const OhmsLawInteractiveDemo: React.FC = () => {
   const language = useCircuitStore((state) => state.language);
   const isId = language === 'id';
 
   const [voltage, setVoltage] = useState<number>(9.0);
-  const [resistance, setResistance] = useState<number>(100.0);
+  const [resistance, setResistance] = useState<number>(150);
 
-  const currentAmperes = resistance > 0 ? voltage / resistance : 0;
-  const currentMilliamperes = currentAmperes * 1000;
-  const powerWatts = voltage * currentAmperes;
-
-  // Normalized current ratio for visual bar (capped at 500 mA)
-  const currentPercent = Math.min(100, (currentMilliamperes / 200) * 100);
+  const metrics = computeOhmVisualMetrics(voltage, resistance);
 
   return (
-    <div className="p-4 rounded-2xl bg-void-950 border border-electric-500/30 space-y-4 text-xs font-sans">
-      <div className="flex items-center justify-between border-b border-white/10 pb-2">
-        <div className="flex items-center gap-2">
-          <Zap className="w-4 h-4 text-electric-400" />
-          <span className="font-bold text-slate-100 text-sm tracking-tight">
-            {isId ? 'Laboratorium Interaktif: Hukum Ohm' : 'Interactive Lab: Ohm\'s Law'}
-          </span>
-        </div>
-        <span className="px-2 py-0.5 rounded-full bg-electric-500/20 text-electric-300 font-mono text-[11px] font-bold">
-          V = I × R
-        </span>
-      </div>
-
-      {/* Sliders Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Voltage Slider */}
-        <div className="p-3 rounded-xl bg-void-900 border border-white/5 space-y-2">
-          <div className="flex justify-between items-center">
-            <span className="text-slate-300 font-medium">
-              {isId ? 'Tegangan Baterai (V)' : 'Battery Voltage (V)'}
-            </span>
-            <span className="font-mono text-sky-400 font-bold text-sm">
-              {voltage.toFixed(1)} V
-            </span>
-          </div>
-          <input
-            type="range"
-            min="1.0"
-            max="24.0"
-            step="0.5"
-            value={voltage}
-            onChange={(e) => setVoltage(parseFloat(e.target.value))}
-            className="w-full accent-sky-500 cursor-pointer"
+    <MiniLabFrame
+      title={isId ? 'Lab Visual: Hukum Ohm' : 'Visual Lab: Ohm\'s Law'}
+      formula="V = I × R"
+      challengeText={
+        metrics.isOptimalRange
+          ? isId
+            ? `Mantap! Arus ${metrics.currentMa.toFixed(1)} mA masuk zona aman LED (40 - 60 mA).`
+            : `Nice! Current ${metrics.currentMa.toFixed(1)} mA is in the optimal 40 - 60 mA LED zone.`
+          : isId
+          ? 'Misi Mini: Atur V dan R agar arus tepat di 40 - 60 mA.'
+          : 'Mini Goal: Tune V and R so current lands between 40 - 60 mA.'
+      }
+      isChallengeMet={metrics.isOptimalRange}
+    >
+      {/* Interactive SVG Circuit Stage */}
+      <div className="rounded-xl bg-void-900 border border-white/10 p-2.5 overflow-hidden">
+        <svg
+          viewBox="0 0 360 150"
+          className="w-full h-auto max-h-44 select-none"
+          role="img"
+          aria-label={isId ? 'Diagram interaktif Hukum Ohm' : 'Interactive Ohm Law circuit'}
+        >
+          {/* Closed Wire Loop */}
+          <path
+            id="ohmLoopPath"
+            d="M 55 40 L 295 40 L 295 112 L 55 112 Z"
+            fill="none"
+            stroke={metrics.isOverheated ? '#f43f5e' : '#38bdf8'}
+            strokeWidth="3"
+            strokeOpacity="0.45"
           />
-          <div className="flex justify-between text-[10px] text-slate-500 font-mono">
-            <span>1.0 V</span>
-            <span>12.0 V</span>
-            <span>24.0 V</span>
-          </div>
-        </div>
 
-        {/* Resistance Slider */}
-        <div className="p-3 rounded-xl bg-void-900 border border-white/5 space-y-2">
-          <div className="flex justify-between items-center">
-            <span className="text-slate-300 font-medium">
-              {isId ? 'Hambatan Resistor (R)' : 'Resistor Value (R)'}
-            </span>
-            <span className="font-mono text-amber-400 font-bold text-sm">
+          {/* Animated Electron Flow Dots */}
+          {metrics.animDurationSec > 0 &&
+            [0, 0.25, 0.5, 0.75].map((offsetFraction) => (
+              <circle
+                key={offsetFraction}
+                r="4"
+                fill={metrics.isOverheated ? '#fb7185' : '#38bdf8'}
+              >
+                <animateMotion
+                  dur={`${metrics.animDurationSec.toFixed(2)}s`}
+                  repeatCount="indefinite"
+                  begin={`${-(offsetFraction * metrics.animDurationSec).toFixed(2)}s`}
+                >
+                  <mpath href="#ohmLoopPath" />
+                </animateMotion>
+              </circle>
+            ))}
+
+          {/* Left: Battery Block */}
+          <g transform="translate(22, 48)">
+            <rect
+              x="0"
+              y="0"
+              width="66"
+              height="56"
+              rx="10"
+              fill="#0f172a"
+              stroke="#38bdf8"
+              strokeWidth="1.5"
+            />
+            <line x1="20" y1="20" x2="46" y2="20" stroke="#38bdf8" strokeWidth="3" />
+            <line x1="27" y1="30" x2="39" y2="30" stroke="#94a3b8" strokeWidth="2.5" />
+            <text
+              x="33"
+              y="47"
+              textAnchor="middle"
+              fill="#7dd3fc"
+              fontSize="11"
+              fontWeight="700"
+              fontFamily="JetBrains Mono, monospace"
+            >
+              {voltage.toFixed(1)}V
+            </text>
+          </g>
+
+          {/* Right: Live Glowing Load Bulb */}
+          <g transform="translate(263, 42)">
+            <circle
+              cx="32"
+              cy="34"
+              r={18 + metrics.glowOpacity * 16}
+              fill={metrics.isOverheated ? '#f43f5e' : '#facc15'}
+              fillOpacity={metrics.glowOpacity * 0.35}
+            />
+            <circle
+              cx="32"
+              cy="34"
+              r="18"
+              fill="#0f172a"
+              stroke={metrics.isOverheated ? '#fb7185' : '#fbbf24'}
+              strokeWidth="1.8"
+            />
+            <path
+              d="M 24 38 L 28 28 L 32 36 L 36 28 L 40 38"
+              fill="none"
+              stroke={metrics.isOverheated ? '#fda4af' : '#fde047'}
+              strokeWidth="2.2"
+              strokeOpacity={Math.max(0.25, metrics.glowOpacity)}
+            />
+            <text
+              x="32"
+              y="66"
+              textAnchor="middle"
+              fill="#cbd5e1"
+              fontSize="10"
+              fontFamily="JetBrains Mono, monospace"
+            >
+              {metrics.powerWatts.toFixed(2)}W
+            </text>
+          </g>
+
+          {/* Bottom: Variable Resistor */}
+          <g transform="translate(125, 96)">
+            <rect
+              x="0"
+              y="0"
+              width="110"
+              height="32"
+              rx="8"
+              fill="#0f172a"
+              stroke="#fbbf24"
+              strokeWidth="1.5"
+            />
+            <path
+              d="M 10 16 L 18 9 L 26 23 L 34 9 L 42 23 L 50 16"
+              fill="none"
+              stroke="#fbbf24"
+              strokeWidth="2"
+            />
+            <text
+              x="80"
+              y="20"
+              textAnchor="middle"
+              fill="#fde68a"
+              fontSize="11"
+              fontWeight="700"
+              fontFamily="JetBrains Mono, monospace"
+            >
               {resistance.toFixed(0)} Ω
-            </span>
-          </div>
-          <input
-            type="range"
-            min="10"
-            max="500"
-            step="5"
-            value={resistance}
-            onChange={(e) => setResistance(parseFloat(e.target.value))}
-            className="w-full accent-amber-500 cursor-pointer"
-          />
-          <div className="flex justify-between text-[10px] text-slate-500 font-mono">
-            <span>10 Ω</span>
-            <span>250 Ω</span>
-            <span>500 Ω</span>
-          </div>
-        </div>
+            </text>
+          </g>
+
+          {/* Center Ammeter Readout */}
+          <g transform="translate(132, 22)">
+            <rect
+              x="0"
+              y="0"
+              width="96"
+              height="36"
+              rx="9"
+              fill="#090d16"
+              stroke={metrics.isOptimalRange ? '#10b981' : '#475569'}
+              strokeWidth="1.5"
+            />
+            <text
+              x="48"
+              y="14"
+              textAnchor="middle"
+              fill="#94a3b8"
+              fontSize="9"
+              fontWeight="600"
+            >
+              {isId ? 'ARUS (I)' : 'CURRENT (I)'}
+            </text>
+            <text
+              x="48"
+              y="29"
+              textAnchor="middle"
+              fill={
+                metrics.isOptimalRange
+                  ? '#34d399'
+                  : metrics.isOverheated
+                  ? '#fb7185'
+                  : '#38bdf8'
+              }
+              fontSize="12"
+              fontWeight="700"
+              fontFamily="JetBrains Mono, monospace"
+            >
+              {metrics.currentMa.toFixed(1)} mA
+            </text>
+          </g>
+        </svg>
       </div>
 
-      {/* Live Calculated Output Cards */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="p-3 rounded-xl bg-void-900 border border-electric-500/20 space-y-1">
-          <div className="flex items-center justify-between text-slate-400 text-[11px]">
-            <span>{isId ? 'Kuat Arus Terhitung (I)' : 'Calculated Current (I)'}</span>
-            <Gauge className="w-3.5 h-3.5 text-electric-400" />
-          </div>
-          <div className="text-lg font-mono font-bold text-electric-300">
-            {currentMilliamperes.toFixed(1)} <span className="text-xs font-sans text-electric-400">mA</span>
-          </div>
-          <div className="font-mono text-[10px] text-slate-500">
-            I = {voltage.toFixed(1)}V / {resistance.toFixed(0)}Ω = {currentAmperes.toFixed(4)} A
-          </div>
-        </div>
-
-        <div className="p-3 rounded-xl bg-void-900 border border-emerald-500/20 space-y-1">
-          <div className="flex items-center justify-between text-slate-400 text-[11px]">
-            <span>{isId ? 'Daya Diserap (P)' : 'Power Dissipated (P)'}</span>
-            <Zap className="w-3.5 h-3.5 text-emerald-400" />
-          </div>
-          <div className="text-lg font-mono font-bold text-emerald-300">
-            {powerWatts.toFixed(2)} <span className="text-xs font-sans text-emerald-400">Watt</span>
-          </div>
-          <div className="font-mono text-[10px] text-slate-500">
-            P = V × I = {voltage.toFixed(1)}V × {currentAmperes.toFixed(3)}A
-          </div>
-        </div>
+      {/* Controls */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+        <MiniSliderControl
+          label={isId ? 'Dorongan Baterai (V)' : 'Battery Push (V)'}
+          valueDisplay={`${voltage.toFixed(1)} V`}
+          value={voltage}
+          min={1}
+          max={24}
+          step={0.5}
+          accentClass="sky"
+          onChange={setVoltage}
+        />
+        <MiniSliderControl
+          label={isId ? 'Rem Resistor (R)' : 'Resistor Brake (R)'}
+          valueDisplay={`${resistance.toFixed(0)} Ω`}
+          value={resistance}
+          min={20}
+          max={500}
+          step={5}
+          accentClass="amber"
+          onChange={setResistance}
+        />
       </div>
-
-      {/* Dynamic Electron Flow / Current Visualization */}
-      <div className="space-y-1.5 p-3 rounded-xl bg-void-900 border border-white/5">
-        <div className="flex justify-between items-center text-[11px] text-slate-400">
-          <span>{isId ? 'Visualisasi Aliran Muatan (Laju Arus)' : 'Current Flow Velocity'}</span>
-          <span className="font-mono text-slate-300 font-semibold">{currentPercent.toFixed(0)}%</span>
-        </div>
-        <div className="w-full h-2 rounded-full bg-void-950 overflow-hidden border border-white/10">
-          <div
-            className="h-full bg-gradient-to-r from-sky-500 to-electric-400 transition-all duration-150"
-            style={{ width: `${currentPercent}%` }}
-          />
-        </div>
-        <p className="text-[11px] text-slate-400 italic pt-1">
-          {isId
-            ? '💡 Perhatikan: Saat hambatan (R) diperbesar dengan tegangan tetap, kuat arus (I) menurun secara proporsional.'
-            : '💡 Notice: When resistance (R) increases with constant voltage, current (I) decreases proportionally.'}
-        </p>
-      </div>
-    </div>
+    </MiniLabFrame>
   );
 };

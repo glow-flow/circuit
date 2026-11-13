@@ -1,10 +1,20 @@
 /**
  * Type definitions for Circuit Academy (Akademi Kelistrikan).
- * Structured 6-Level Curriculum, interactive lessons, progress tracking,
+ * Structured 6-Level Curriculum, interactive SVG micro-labs, progress tracking,
  * XP calculation, and achievement badges.
  */
 
 export type AcademyDifficulty = 'beginner' | 'intermediate' | 'advanced';
+
+export type AcademyDemoType =
+  | 'ohms_law'
+  | 'joule_power'
+  | 'voltage_divider'
+  | 'led_polarity'
+  | 'short_circuit_mcb'
+  | 'sutet_loss'
+  | 'mna_matrix'
+  | 'kcl_junction';
 
 export interface AcademyEquation {
   formula: string; // e.g. "V = I × R"
@@ -38,6 +48,9 @@ export interface AcademyLesson {
   titleEn: string;
   summaryId: string;
   summaryEn: string;
+  /** Punchy 1-sentence real-world analogy delivered by Watt Mascot */
+  analogyId?: string;
+  analogyEn?: string;
   estimatedMinutes: number;
   difficulty: AcademyDifficulty;
   xpReward: number;
@@ -46,7 +59,7 @@ export interface AcademyLesson {
   theoryContentId: string[];
   theoryContentEn: string[];
   equations: AcademyEquation[];
-  interactiveDemoType?: 'ohms_law' | 'voltage_divider' | 'joule_power' | 'kcl_junction';
+  interactiveDemoType?: AcademyDemoType;
   starterPresetId?: string; // Preset to load when user clicks "TRY IN CIRCUIT LAB"
   quiz: AcademyQuizQuestion[];
 }

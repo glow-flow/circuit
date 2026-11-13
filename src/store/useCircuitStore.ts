@@ -55,6 +55,7 @@ import {
   SHORT_CIRCUIT_CURRENT_THRESHOLD,
   solveCircuitMNA,
 } from '../physics/mnaSolver';
+import { buildLabChargingStationMerge } from '../utils/labChargingStationUtils';
 import {
   computeEffectiveBatteryVoltage,
   determineBatteryChargeState,
@@ -211,6 +212,7 @@ interface CircuitState {
   rechargeBattery: (nodeId: string) => void;
   rechargeAllBatteries: () => void;
   startBatteryInterval: () => () => void;
+  deployOutdoorChargingStationInLab: () => void;
 }
 
 const DEFAULT_SIMULATION: SimulationResult = {
@@ -2348,6 +2350,64 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     return () => {
       window.clearInterval(intervalId);
     };
+  },
+
+  /**
+   * Switches to Indoor Lab Mode and non-destructively deploys a wired Green Grid
+   * battery charging station (`Panel Distribusi Lab` + depleted `9V` battery at 15% SoC)
+   * so students immediately see outdoor SUTET electricity recharging a Lab battery.
+   *
+   * Time Complexity: O(N + M^3) for workspace merge and MNA physics solve.
+   */
+  deployOutdoorChargingStationInLab: () => {
+    try {
+      const currentState = get();
+      const merged = buildLabChargingStationMerge(
+        currentState.nodes,
+        currentState.edges,
+        currentState.language
+      );
+
+      const { simulation, updatedNodes } = recalculateCircuit(
+        merged.nodes,
+        merged.edges,
+        currentState.terrainGrid,
+        currentState.sunTimeOfDay
+      );
+
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('circuit_world_mode', 'lab');
+        } catch {
+          // Ignore localStorage quota errors
+        }
+      }
+
+      const isId = currentState.language === 'id';
+      set({
+        nodes: updatedNodes,
+        edges: merged.edges,
+        simulation,
+        worldMode: 'lab',
+        selectedNodeId: merged.batteryId ?? merged.panelId ?? null,
+        selectedEdgeId: null,
+        fitViewTrigger: currentState.fitViewTrigger + 1,
+      });
+
+      saveWorkspaceAutosaveImmediate(updatedNodes, merged.edges, undefined, 'lab');
+
+      get().notify(
+        merged.spawnedNewStation
+          ? isId
+            ? '⚡ Listrik Alam tersambung! Lihat Panel Distribusi sedang mengecas baterai 9V di Lab.'
+            : '⚡ Outdoor power connected! Watch the Distribution Panel recharge the 9V Lab battery.'
+          : isId
+          ? '⚡ Panel Distribusi Lab sudah aktif mengisi daya baterai dari pembangkit alammu.'
+          : '⚡ Lab Distribution Panel is actively charging your Lab battery from the outdoor grid.'
+      );
+    } catch (error) {
+      console.warn('[useCircuitStore] Failed to deploy outdoor charging station in Lab:', error);
+    }
   },
 
   loadPreset: (presetName) => {

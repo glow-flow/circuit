@@ -131,7 +131,7 @@ const OutdoorTowerView: React.FC<NodeProps<CircuitElementData>> = memo(({ id, da
             <>
               <Radio className="w-3 h-3 text-cyan-400 shrink-0" />
               <span>
-                {isId ? 'Standby (Pasang Panel di Lab)' : 'Standby (Place Panel in Lab)'}
+                {isId ? 'Siap Salur ke Lab (Cas Baterai)' : 'Ready for Lab (Battery Charge)'}
               </span>
             </>
           )}

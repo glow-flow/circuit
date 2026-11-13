@@ -18,6 +18,7 @@ import { MobileBottomNav } from './components/ui/mobile/MobileBottomNav';
 import { MobileHubModal } from './components/ui/mobile/MobileHubModal';
 import { InteractiveTutorialBanner } from './components/ui/tutorial/InteractiveTutorialBanner';
 import { ShortCircuitZeroVoltPopup } from './components/ui/diagnostics/ShortCircuitZeroVoltPopup';
+import { OutdoorGridReadyPopup } from './components/ui/diagnostics/OutdoorGridReadyPopup';
 import { useCircuitStore } from './store/useCircuitStore';
 import { TRANSLATIONS } from './i18n/translations';
 import { hasSeenTutorial } from './utils/presetStorage';
@@ -239,6 +240,9 @@ export const App: React.FC = () => {
 
           {/* Floating Bottom-Right Short-Circuit 0V Battery Pop-Up & Visual Explainer */}
           <ShortCircuitZeroVoltPopup />
+
+          {/* Floating Bottom-Right Outdoor Power Plant -> Lab Battery Charging Pop-Up */}
+          <OutdoorGridReadyPopup />
 
           {/* Floating Quick-Edit & Disconnect Wires Bar on Mobile when a component is selected */}
           {selectedNode && activeMobileSheet === 'none' && !isInteractiveCoachOpen && (

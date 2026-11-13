@@ -55,6 +55,8 @@ The graph is organized into **7 color-coded engineering clusters**:
 ## 4. Pedagogy, Diagnostics & UI Engineering (`#pedagogy` / `#ui-antislop`)
 
 - [[PEDAGOGY_ACADEMY_AND_EXPLAINABLE_TUTOR|Explainable Circuit Physics Tutor, Academy & Troubleshooting Lab]]
+- [[MASCOT_AND_DUOLINGO_ACADEMY_DESIGN|Watt Mascot Engineering, 14-Lesson Duolingo Academy & Simplified Missions]]
+- [[OUTDOOR_TO_LAB_CHARGING_BRIDGE|Outdoor Power Plant + SUTET to Lab Battery Charging Bridge]]
 - [[UI_UX_ANTISLOP_AND_MOBILE_ENGINE|Anti-Slop Industrial UI Design System & Mobile 60fps Engine]]
 - [[UX_TEACHER_FIRST_OVERHAUL_AND_TUTORIAL_PLAN|Teacher-First Mobile UI Overhaul, Creative Interactive Tutorial & Code-Rendered Switch Plan]]
 

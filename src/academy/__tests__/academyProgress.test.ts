@@ -19,6 +19,11 @@ import {
   ACADEMY_STORAGE_KEY,
   ACADEMY_BADGES,
 } from '../academyPersistence';
+import {
+  ACADEMY_LESSONS,
+  ACADEMY_LEVELS,
+  getLessonsByLevel,
+} from '../academyCatalog';
 import { AcademyProgress } from '../../types/academy';
 
 class MockStorage implements Storage {
@@ -122,5 +127,45 @@ describe('Circuit Academy Progress & Gamification Engine', () => {
 
     // Verify workspace keys are untouched
     expect(mockStorage.getItem('circuit_sandbox_autosave_v2')).toBeNull();
+  });
+
+  it('provides 14 unique lessons >= 2000 XP unlocking all 6 levels & badges', () => {
+    expect(ACADEMY_LESSONS.length).toBeGreaterThanOrEqual(14);
+    const ids = new Set(ACADEMY_LESSONS.map((l) => l.id));
+    expect(ids.size).toBe(ACADEMY_LESSONS.length);
+
+    // Preserve legacy lesson IDs for stored student compatibility
+    for (const legacyId of [
+      'l1_ohms_law',
+      'l1_power_joule',
+      'l2_series_parallel',
+      'l3_semiconductor_led',
+      'l4_short_circuit_mcb',
+      'l5_solar_microgrid',
+      'l6_modified_nodal_analysis',
+    ]) {
+      expect(ids.has(legacyId)).toBe(true);
+    }
+
+    const totalPossibleXp = ACADEMY_LESSONS.reduce((acc, l) => acc + l.xpReward, 0);
+    expect(totalPossibleXp).toBeGreaterThanOrEqual(2000);
+    expect(calculateLevelFromXp(totalPossibleXp)).toBe(6);
+
+    for (const lvl of ACADEMY_LEVELS) {
+      expect(getLessonsByLevel(lvl.level).length).toBeGreaterThanOrEqual(2);
+    }
+
+    for (const lesson of ACADEMY_LESSONS) {
+      expect(lesson.interactiveDemoType).toBeDefined();
+      expect(lesson.quiz.length).toBeGreaterThanOrEqual(2);
+      expect(lesson.quiz.every((q) => q.options.some((o) => o.isCorrect))).toBe(true);
+    }
+
+    let fullProgress = loadAcademyProgress(mockStorage);
+    for (const lesson of ACADEMY_LESSONS) {
+      fullProgress = completeAcademyLesson(lesson.id, lesson.xpReward, mockStorage);
+    }
+    expect(fullProgress.currentLevel).toBe(6);
+    expect(fullProgress.unlockedBadgeIds).toHaveLength(ACADEMY_BADGES.length);
   });
 });

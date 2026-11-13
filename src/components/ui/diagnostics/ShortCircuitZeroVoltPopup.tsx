@@ -1,15 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  BatteryWarning,
   Flame,
   Lightbulb,
   RotateCcw,
   Sparkles,
   X,
-  Zap,
 } from 'lucide-react';
 import { useCircuitStore } from '../../../store/useCircuitStore';
 import { detectShortCircuitZeroVoltState } from '../../../physics/shortCircuitZeroVoltAdvisor';
+import { MascotAvatar } from '../common/MascotAvatar';
 
 /**
  * Floating Bottom-Right Short-Circuit `0V` Battery Pop-Up & Interactive Visual Explainer
@@ -130,10 +129,10 @@ export const ShortCircuitZeroVoltPopup: React.FC = () => {
               }}
               className="flex items-center gap-2.5 text-left group cursor-pointer active:scale-95 transition-transform"
             >
-              {/* Animated 0.0V Battery Pill */}
-              <div className="w-11 h-11 rounded-xl bg-rose-500/20 border border-rose-400/60 flex flex-col items-center justify-center shrink-0 shadow-[0_0_15px_rgba(244,63,94,0.4)]">
-                <BatteryWarning className="w-4 h-4 text-rose-400 animate-pulse" />
-                <span className="font-mono text-[10px] font-extrabold text-rose-200 leading-none mt-0.5">
+              {/* Animated Watt Angry + 0.0V Pill */}
+              <div className="relative w-11 h-11 rounded-xl bg-rose-500/15 border border-rose-400/60 flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(244,63,94,0.35)]">
+                <MascotAvatar mood="angry" size="xs" alt="Watt Panics at 0V" />
+                <span className="absolute -bottom-1 -right-1 px-1 rounded bg-rose-600 text-[8px] font-mono font-extrabold text-white border border-rose-300/60 leading-tight">
                   0.0V
                 </span>
               </div>
@@ -179,10 +178,12 @@ export const ShortCircuitZeroVoltPopup: React.FC = () => {
           >
             {/* Header */}
             <div className="flex items-center justify-between gap-2 px-4 pt-3.5 pb-3 border-b border-white/10 bg-void-950">
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="w-8 h-8 rounded-xl bg-rose-500/20 border border-rose-400/50 flex items-center justify-center shrink-0">
-                  <Zap className="w-4 h-4 text-rose-400" />
-                </div>
+              <div className="flex items-center gap-2.5 min-w-0">
+                <MascotAvatar
+                  mood={visualComparisonMode === 'short' ? 'angry' : 'proud'}
+                  size="sm"
+                  alt="Watt Explainer Mood"
+                />
                 <div className="min-w-0">
                   <span className="block text-[9px] font-mono font-bold uppercase tracking-wider text-rose-300">
                     {isId
