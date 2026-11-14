@@ -26,13 +26,18 @@ $$P_{hydro} = \eta \cdot \rho \cdot g \cdot Q \cdot H$$
 - **$\rho = 1000\,\text{kg/m}^3$**: Density of freshwater (`WATER_DENSITY_KG_M3`).
 - **$g = 9.81\,\text{m/s}^2$**: Gravitational acceleration (`GRAVITY_ACCELERATION_M_S2`).
 - **$Q \in [0, 0.004]\,\text{m}^3/\text{s}$**: Volumetric flow rate scaled by `waterFlowRate` ($0\text{--}100\%$).
-- **$H \in [0.14, 5.0]\,\text{m}$**: Effective hydraulic head drop (`hydraulicHeadMeters`) distinguishes true falling vertical waterfalls (`waterfallDropRows * 0.45 m`), wide continuous river channels (`cols 24..32`), and shallow stagnant puddles (strictly lower head/flow than cascading falls).
+- **$H \in [0.11, 5.0]\,\text{m}$**: Effective hydraulic head drop (`hydraulicHeadMeters`) monotonically distinguishes terrain hydrology regimes (`flowRegime`):
+  - **Genangan (`puddle`)**: shallow stagnant pools ($H \le 0.27\,\text{m}$, $\le 35\%$ flow).
+  - **Sungai Datar (`river`)**: wide continuous river channels (`cols 24..32`, capped at $H = 0.88\,\text{m}$ / $28.32\,\text{W}$ / $<12.0\,\text{V}$ nominal) so flat rivers stay strictly weaker than overhead waterfalls.
+  - **Air Terjun (`waterfall`)**: vertical head drop above the Pelton runner plus tailrace channel support (`waterfallDropRows + channelSupportRows`), always monotonically exceeding flat rivers ($12.1\text{--}13.8\,\text{V}$ AVR).
+  - **Manual Overrides**: Inspector sliders preserve explicit `manualWaterFlowRate` and `manualHydraulicHeadMeters` until the user drags the turbine to a new location (`settleOutdoorNodeAfterDrag`).
 - **Integrated DC AVR (Automatic Voltage Regulator)**:
-  - Up to $30\,\text{W}$, open-circuit voltage scales as $12.0 \cdot \sqrt{P_{hydro} / 30}$.
-  - Above $30\,\text{W}$ (high river or waterfall head), an internal DC AVR regulates open-circuit EMF between $12.0\,\text{V}$ and $13.8\,\text{V}$, and clamps the shared microgrid bus output to $12.0\,\text{V}$ in [[PHYSICS_MNA_SOLVER_AND_TRANSMISSION_GRID|mnaSolver.ts]] so parallel $12\,\text{V}$ Solar Panels and $12\,\text{V}$ Wind Turbines are never falsely locked out by reverse-bias diodes.
+  - Up to $30\,\text{W}$, open-circuit voltage scales linearly with $P_{hydro}$.
+  - Above $30\,\text{W}$ (true waterfall head), an internal DC AVR regulates open-circuit EMF between $12.0\,\text{V}$ and $13.8\,\text{V}$, and clamps the shared microgrid bus output to $12.0\,\text{V}$ in [[PHYSICS_MNA_SOLVER_AND_TRANSMISSION_GRID|mnaSolver.ts]] so parallel $12\,\text{V}$ Solar Panels and $12\,\text{V}$ Wind Turbines are never falsely locked out by reverse-bias diodes.
 
-### Riverbed Submersion & `208x208` Structural Frame
-- **Enlarged Structural Footprint (`208x208 px`)**: The A-frame hydro turbine (`HYDRO_NODE_SIZE_PX = 208`) and its Pelton runner (`98px` diameter centered at `top: 16.5%`) are scaled to match the visual hierarchy of outdoor infrastructure (`wind-turbine`, `transmission-tower`, `bess-substation`).
+### Riverbed Submersion, Elevated Binding Posts & `208x208` Structural Frame
+- **Enlarged Structural Footprint (`208x208 px`)**: The A-frame hydro turbine (`HYDRO_NODE_SIZE_PX = 208`) and its Pelton runner (`HYDRO_RUNNER_WIDTH_RATIO = 0.47`, `98px` diameter centered at `top: 16.5%`) align both visuals and intake column scanning (`detectTurbineWaterFlow`) cleanly with the wheel rim.
+- **Dry Upper-Bridge Binding Posts (`top: 44%`)**: `+` and `-` terminals are mounted high on the dry upper A-frame junction bridge instead of underwater at the base, preventing riverbed dirt overlays, waterline tints, and mobile docks from obscuring them. Supported by **Two-Tap Pin Wiring** (`useTapToConnectHandlers` + `WireConnectAssistBar`), panoramic **Edge Auto-Pan**, and camera radar quick-jumps (`canvasWireAssist.ts`).
 - **Riverbed Gravity Settling (`waterIsSolid: false`)**: In `findTerrainSurfaceY` (`src/physics/terrainGrid.ts`), `hydro-turbine` penetrates `'WATER'` cells (`rows 15..17`) and settles directly onto the solid `'DIRT'` riverbed (`row 18`, `y = 612px`), while `evaluateComponentDropPhysics` measures drop distance against the water surface (`row 15`) so water cushions the landing without causing structural fall damage.
 - **Submerged Waterline Overlay (`measureSubmergedDepthPx`)**: Calculates the exact pixel depth of the lower A-frame submerged beneath the river surface (`~102px` in the default 3-row river basin) and renders a translucent cyan waterline shimmer across the submerged frame.
 

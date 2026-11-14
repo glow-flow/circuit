@@ -48,6 +48,12 @@ export const METERS_PER_TERRAIN_ROW = 0.45;
 /** Vertical position of the Pelton runner hub as a fraction of the turbine node height. */
 export const HYDRO_RUNNER_CENTER_RATIO = 0.165;
 
+/** Horizontal Pelton wheel diameter as a fraction of the turbine node width (shared with UI). */
+export const HYDRO_RUNNER_WIDTH_RATIO = 0.47;
+
+/** Classified terrain hydrology regime driving a micro-hydro turbine. */
+export type HydroFlowRegime = 'none' | 'puddle' | 'river' | 'waterfall';
+
 /** Default internal generator coil resistance in Ohms */
 export const HYDRO_GENERATOR_INTERNAL_RESISTANCE = 0.15;
 
@@ -209,9 +215,21 @@ export function detectTurbineWaterFlow(
   terrainGrid: TerrainCellType[][],
   canvasWidth: number = 1360,
   canvasHeight: number = 680
-): { flowPercentage: number; headMeters: number; hasWaterContact: boolean } {
-  if (!terrainGrid || terrainGrid.length === 0 || !box) {
-    return { flowPercentage: 0, headMeters: 0, hasWaterContact: false };
+): {
+  flowPercentage: number;
+  headMeters: number;
+  hasWaterContact: boolean;
+  flowRegime: HydroFlowRegime;
+} {
+  if (
+    !terrainGrid ||
+    terrainGrid.length === 0 ||
+    terrainGrid[0].length === 0 ||
+    !box ||
+    canvasWidth <= 0 ||
+    canvasHeight <= 0
+  ) {
+    return { flowPercentage: 0, headMeters: 0, hasWaterContact: false, flowRegime: 'none' };
   }
 
   const rows = terrainGrid.length;
@@ -225,7 +243,6 @@ export function detectTurbineWaterFlow(
   const runnerCenterY = box.y + box.height * HYDRO_RUNNER_CENTER_RATIO;
   const turbineBottomY = box.y + box.height;
 
-  const runnerCol = Math.max(0, Math.min(cols - 1, Math.floor(runnerCenterX / cellWidth)));
   const runnerRow = Math.max(0, Math.min(rows - 1, Math.floor(runnerCenterY / cellHeight)));
   // Include up to 2 rows below the turbine base so a turbine settled onto a river surface
   // detects the flowing river water channel directly underneath its tailrace/wheel.
@@ -234,9 +251,10 @@ export function detectTurbineWaterFlow(
     Math.min(rows - 1, Math.floor(turbineBottomY / cellHeight) + 2)
   );
 
-  // Check columns spanned by the turbine rotor: [runnerCol - 1, runnerCol, runnerCol + 1]
-  const minCol = Math.max(0, runnerCol - 1);
-  const maxCol = Math.min(cols - 1, runnerCol + 1);
+  // Align horizontal column scan strictly with the rendered Pelton wheel diameter (47% of box width)
+  const wheelHalfWidthPx = box.width * HYDRO_RUNNER_WIDTH_RATIO * 0.5;
+  const minCol = Math.max(0, Math.floor((runnerCenterX - wheelHalfWidthPx) / cellWidth));
+  const maxCol = Math.min(cols - 1, Math.floor((runnerCenterX + wheelHalfWidthPx) / cellWidth));
 
   let highestWaterRow: number | null = null;
   let lowestWaterRow: number | null = null;
@@ -257,8 +275,8 @@ export function detectTurbineWaterFlow(
         if (lowestWaterRow === null || r > lowestWaterRow) {
           lowestWaterRow = r;
         }
-        // Direct contact if water cell is inside/above the runner OR directly in the tailrace river basin
-        if (r >= runnerRow - 1 && r <= maxScanRow && Math.abs(c - runnerCol) <= 1) {
+        // Direct contact if water hits inside/above the runner OR across the tailrace channel
+        if (r >= runnerRow - 1 && r <= maxScanRow && c >= minCol && c <= maxCol) {
           directContact = true;
         }
       }
@@ -269,30 +287,38 @@ export function detectTurbineWaterFlow(
   }
 
   if (highestWaterRow === null || (!directContact && waterCellCount < 2)) {
-    return { flowPercentage: 0, headMeters: 0, hasWaterContact: false };
+    return { flowPercentage: 0, headMeters: 0, hasWaterContact: false, flowRegime: 'none' };
   }
 
-  // Calculate hydraulic head & flow physically:
-  // - Overhead waterfall (highestWaterRow < runnerRow): real gravitational vertical drop (H = waterfallDropRows * 0.45m).
-  // - Continuous river channel (riverDepthRows >= 2 across all 3 intake cols): kinetic channel head proportional to depth (< 2.2 rows so a waterfall always beats a flat river).
-  // - Shallow stagnant puddle (1 row deep or narrow basin without waterfall drop): low stagnant head & minimal flux.
+  // Strictly monotonic hydraulic head & flow regimes:
+  // None (0V) < Puddle (<1.5V) < Flat River (<12.0V rated) < Waterfall + Channel (12.1V..13.8V AVR).
   const waterfallDropRows = runnerRow - highestWaterRow;
   const riverDepthRows = lowestWaterRow !== null ? lowestWaterRow - highestWaterRow + 1 : 1;
   const isContinuousRiverChannel =
     riverDepthRows >= 2 && colsWithWaterCount >= 3 && waterCellCount >= 6;
+  const riverChannelHeadRows = Math.min(1.95, riverDepthRows * 0.65);
 
   let effectiveRowDrop: number;
   let flowPercentage: number;
+  let flowRegime: HydroFlowRegime;
 
   if (waterfallDropRows >= 1) {
-    effectiveRowDrop = waterfallDropRows;
-    flowPercentage = Math.min(100, Math.max(25, waterCellCount * 25));
+    flowRegime = 'waterfall';
+    const channelSupportRows = isContinuousRiverChannel
+      ? riverChannelHeadRows
+      : riverDepthRows >= 2
+      ? 0.85
+      : 0.4;
+    effectiveRowDrop = waterfallDropRows + channelSupportRows;
+    flowPercentage = Math.min(100, Math.max(25, Math.round(waterCellCount * 15)));
   } else if (isContinuousRiverChannel) {
-    effectiveRowDrop = Math.min(2.2, riverDepthRows * 0.65);
-    flowPercentage = Math.min(100, Math.max(25, waterCellCount * 25));
+    flowRegime = 'river';
+    effectiveRowDrop = riverChannelHeadRows;
+    flowPercentage = Math.min(100, Math.max(30, Math.round((waterCellCount / 9) * 100)));
   } else {
-    effectiveRowDrop = Math.max(0.25, riverDepthRows * 0.3);
-    flowPercentage = Math.min(35, Math.max(10, waterCellCount * 10));
+    flowRegime = 'puddle';
+    effectiveRowDrop = Math.min(0.6, Math.max(0.25, riverDepthRows * 0.25));
+    flowPercentage = Math.min(35, Math.max(12, waterCellCount * 9));
   }
 
   const headMeters = Number((effectiveRowDrop * METERS_PER_TERRAIN_ROW).toFixed(2));
@@ -301,5 +327,6 @@ export function detectTurbineWaterFlow(
     flowPercentage,
     headMeters,
     hasWaterContact: directContact || waterCellCount >= 2,
+    flowRegime,
   };
 }

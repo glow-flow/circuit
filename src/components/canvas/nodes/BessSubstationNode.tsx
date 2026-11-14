@@ -6,6 +6,7 @@ import { CircuitElementData } from '../../../types/circuit';
 import { useCircuitStore } from '../../../store/useCircuitStore';
 import { computeEffectiveBatteryVoltage } from '../../../physics/batterySoC';
 import { useModalKeyboardClose } from '../../../hooks/useModalKeyboardClose';
+import { usePendingPinHandleForNode } from '../../../hooks/useTapToConnectHandlers';
 
 /**
  * Outdoor BESS (Battery Energy Storage System) Substation Node.
@@ -29,6 +30,7 @@ export const BessSubstationNode: React.FC<NodeProps<CircuitElementData>> = ({
 
   const [isInspectOpen, setIsInspectOpen] = useState(false);
   useModalKeyboardClose(isInspectOpen, () => setIsInspectOpen(false));
+  const pendingPinHandle = usePendingPinHandleForNode(id);
   const isId = language === 'id';
 
   const soc = Math.max(0, Math.min(100, data.socPercent ?? data.currentCharge ?? 80));
@@ -163,11 +165,13 @@ export const BessSubstationNode: React.FC<NodeProps<CircuitElementData>> = ({
         type="source"
         position={Position.Bottom}
         id="pos"
-        style={{ left: '42%', bottom: '10px', transform: 'translateX(-50%)' }}
-        className="!w-5 !h-5 !bg-red-500 !border-2 !border-white !rounded-full shadow-[0_0_10px_rgba(239,68,68,0.85)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center"
+        style={{ left: '40%', bottom: '20px', transform: 'translateX(-50%)' }}
+        className={`!w-6 !h-6 md:!w-5 md:!h-5 !bg-red-500 !border-2 !border-white !rounded-full shadow-[0_0_10px_rgba(239,68,68,0.85)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center ${
+          pendingPinHandle === 'pos' ? '!ring-4 !ring-emerald-300/95 !scale-125 animate-pulse' : ''
+        }`}
         title={isId ? 'Kutub Positif BESS (+)' : 'BESS Positive (+)'}
       >
-        <span className="text-[9px] font-mono font-black text-white leading-none pointer-events-none">
+        <span className="text-[10px] font-mono font-black text-white leading-none pointer-events-none">
           +
         </span>
       </Handle>
@@ -176,11 +180,13 @@ export const BessSubstationNode: React.FC<NodeProps<CircuitElementData>> = ({
         type="source"
         position={Position.Bottom}
         id="neg"
-        style={{ left: '58%', bottom: '10px', transform: 'translateX(-50%)' }}
-        className="!w-5 !h-5 !bg-sky-500 !border-2 !border-white !rounded-full shadow-[0_0_10px_rgba(56,189,248,0.85)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center"
+        style={{ left: '60%', bottom: '20px', transform: 'translateX(-50%)' }}
+        className={`!w-6 !h-6 md:!w-5 md:!h-5 !bg-sky-500 !border-2 !border-white !rounded-full shadow-[0_0_10px_rgba(56,189,248,0.85)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center ${
+          pendingPinHandle === 'neg' ? '!ring-4 !ring-emerald-300/95 !scale-125 animate-pulse' : ''
+        }`}
         title={isId ? 'Kutub Negatif BESS (-)' : 'BESS Negative (-)'}
       >
-        <span className="text-[10px] font-mono font-black text-white leading-none pointer-events-none">
+        <span className="text-[11px] font-mono font-black text-white leading-none pointer-events-none">
           -
         </span>
       </Handle>

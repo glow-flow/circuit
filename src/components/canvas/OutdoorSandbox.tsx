@@ -68,6 +68,15 @@ import { BessSubstationNode } from './nodes/BessSubstationNode';
 import { HydroTurbineNode } from './nodes/HydroTurbineNode';
 import { PhysicsCanvasOverlay } from './PhysicsCanvasOverlay';
 import { usePhysicsLensCanvasHandlers } from '../../hooks/usePhysicsLensCanvasHandlers';
+import { WireConnectAssistBar } from './WireConnectAssistBar';
+import { useTapToConnectHandlers } from '../../hooks/useTapToConnectHandlers';
+import {
+  buildOutdoorRadarMarkers,
+  computeEdgeAutoPanVelocity,
+  extractPointerClientPoint,
+  findNearestOffscreenTowerJump,
+  scrollOutdoorViewportToX,
+} from '../../utils/canvasWireAssist';
 
 
 /**
@@ -156,10 +165,21 @@ const OutdoorSandboxInner: React.FC<OutdoorSandboxProps> = ({
   const edges = useCircuitStore((state) => state.edges);
   const onNodesChange = useCircuitStore((state) => state.onNodesChange);
   const onEdgesChange = useCircuitStore((state) => state.onEdgesChange);
-  const onConnect = useCircuitStore((state) => state.onConnect);
   const splitEdgeWithWaypoint = useCircuitStore((state) => state.splitEdgeWithWaypoint);
   const language = useCircuitStore((state) => state.language);
   const lensHandlers = usePhysicsLensCanvasHandlers();
+  const clearPendingWireStart = useCircuitStore((state) => state.clearPendingWireStart);
+  const isDraggingWireRef = useRef<boolean>(false);
+  const lastDragPointerXRef = useRef<number | null>(null);
+  const wireHandlers = useTapToConnectHandlers('outside', {
+    isProbeMode: lensHandlers.physicsLensMode === 'probe',
+    onWireDragActiveChange: (active) => {
+      isDraggingWireRef.current = active;
+      if (!active) {
+        lastDragPointerXRef.current = null;
+      }
+    },
+  });
 
   const terrainGrid = useCircuitStore((state) => state.terrainGrid);
   const dirtExposureMap = useCircuitStore((state) => state.dirtExposureMap);
@@ -369,6 +389,67 @@ const OutdoorSandboxInner: React.FC<OutdoorSandboxProps> = ({
     const vp = scrollViewportRef.current;
     if (!vp) return;
     vp.scrollBy({ left: deltaX, behavior: 'smooth' });
+  }, []);
+
+  // Auto-pan panoramic viewport horizontally when dragging a wire or component near left/right edge
+  useEffect(() => {
+    let rafId: number | null = null;
+
+    const stepEdgePan = () => {
+      const vp = scrollViewportRef.current;
+      const pointerX = lastDragPointerXRef.current;
+      const isDragActive =
+        isDraggingWireRef.current || activeDraggedNodeIdRef.current !== null;
+
+      if (vp && pointerX !== null && isDragActive) {
+        const rect = vp.getBoundingClientRect();
+        const velocity = computeEdgeAutoPanVelocity(pointerX, rect);
+        if (velocity !== 0) {
+          vp.scrollLeft += velocity;
+        }
+        rafId = window.requestAnimationFrame(stepEdgePan);
+      } else {
+        rafId = null;
+      }
+    };
+
+    const handleGlobalDragMove = (event: MouseEvent | TouchEvent) => {
+      if (!isDraggingWireRef.current && activeDraggedNodeIdRef.current === null) {
+        return;
+      }
+      const pt = extractPointerClientPoint(event);
+      if (pt) {
+        lastDragPointerXRef.current = pt.clientX;
+        if (rafId === null) {
+          rafId = window.requestAnimationFrame(stepEdgePan);
+        }
+      }
+    };
+
+    const handleGlobalDragEnd = () => {
+      lastDragPointerXRef.current = null;
+      if (rafId !== null) {
+        window.cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+    };
+
+    window.addEventListener('mousemove', handleGlobalDragMove, { passive: true });
+    window.addEventListener('touchmove', handleGlobalDragMove, { passive: true });
+    window.addEventListener('mouseup', handleGlobalDragEnd, { passive: true });
+    window.addEventListener('touchend', handleGlobalDragEnd, { passive: true });
+    window.addEventListener('touchcancel', handleGlobalDragEnd, { passive: true });
+
+    return () => {
+      if (rafId !== null) {
+        window.cancelAnimationFrame(rafId);
+      }
+      window.removeEventListener('mousemove', handleGlobalDragMove);
+      window.removeEventListener('touchmove', handleGlobalDragMove);
+      window.removeEventListener('mouseup', handleGlobalDragEnd);
+      window.removeEventListener('touchend', handleGlobalDragEnd);
+      window.removeEventListener('touchcancel', handleGlobalDragEnd);
+    };
   }, []);
 
   // Run Gravity (falling Dirt/Water + Liquid Leveling) and 3-Second Grass Growth physics loop
@@ -683,6 +764,28 @@ const OutdoorSandboxInner: React.FC<OutdoorSandboxProps> = ({
   const worldStageWidth = Math.max(OUTDOOR_WORLD_MIN_WIDTH, effectiveViewportWidth);
   const sunLeftPx = Math.round(
     (getAnchoredSunPosition(sunTimeOfDay).worldXRatio ?? 0.5) * worldStageWidth
+  );
+  const viewportWindow = useMemo(
+    () => ({
+      left: cameraScrollX,
+      right: cameraScrollX + effectiveViewportWidth,
+    }),
+    [cameraScrollX, effectiveViewportWidth]
+  );
+  const radarMarkers = useMemo(
+    () => buildOutdoorRadarMarkers(outdoorNodes, worldStageWidth),
+    [outdoorNodes, worldStageWidth]
+  );
+  const offscreenJump = useMemo(
+    () =>
+      findNearestOffscreenTowerJump(
+        outdoorNodes,
+        cameraScrollX,
+        effectiveViewportWidth,
+        worldStageWidth,
+        isId
+      ),
+    [outdoorNodes, cameraScrollX, effectiveViewportWidth, worldStageWidth, isId]
   );
 
   return (
@@ -1012,7 +1115,12 @@ const OutdoorSandboxInner: React.FC<OutdoorSandboxProps> = ({
               proOptions={{ hideAttribution: true }}
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
-              onConnect={onConnect}
+              onConnect={wireHandlers.handleConnect}
+              onConnectStart={wireHandlers.handleConnectStart}
+              onConnectEnd={wireHandlers.handleConnectEnd}
+              connectOnClick={false}
+              autoPanOnConnect={false}
+              autoPanOnNodeDrag={false}
               onInit={(instance) => {
                 setReactFlowInstance(instance);
                 instance.setViewport({ x: 0, y: 0, zoom: 1 });
@@ -1036,7 +1144,10 @@ const OutdoorSandboxInner: React.FC<OutdoorSandboxProps> = ({
               onEdgeClick={lensHandlers.handleEdgeClick}
               onEdgeMouseEnter={lensHandlers.handleEdgeMouseEnter}
               onEdgeMouseLeave={lensHandlers.handleEdgeMouseLeave}
-              onPaneClick={lensHandlers.handlePaneClick}
+              onPaneClick={() => {
+                clearPendingWireStart();
+                lensHandlers.handlePaneClick();
+              }}
               defaultViewport={{ x: 0, y: 0, zoom: 1 }}
               minZoom={1}
               maxZoom={1}
@@ -1346,6 +1457,9 @@ const OutdoorSandboxInner: React.FC<OutdoorSandboxProps> = ({
         </div>
       )}
 
+      {/* Floating 2-Tap Wiring & Off-Screen Target Assist Banner */}
+      <WireConnectAssistBar worldScope="outside" viewportWindow={viewportWindow} />
+
       {/* ====================================================================
           BOTTOM WORLD CAMERA NAVIGATION BAR (Visible when World > Viewport)
          ==================================================================== */}
@@ -1353,44 +1467,102 @@ const OutdoorSandboxInner: React.FC<OutdoorSandboxProps> = ({
         <div
           id="tour-outdoor-camera"
           onPointerDown={(e) => e.stopPropagation()}
-          className="absolute bottom-2.5 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 px-3 py-1.5 rounded-full bg-void-950/90 backdrop-blur-md border border-white/15 shadow-[0_8px_25px_rgba(0,0,0,0.65)] pointer-events-auto max-w-[92vw]"
+          className="absolute bottom-1.5 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-void-950/90 backdrop-blur-md border border-white/15 shadow-[0_8px_25px_rgba(0,0,0,0.65)] pointer-events-auto max-w-[95vw]"
         >
           <button
             type="button"
             onClick={() => scrollWorldBy(-280)}
-            className="p-1 rounded-full bg-void-850 hover:bg-void-800 text-cyan-300 border border-white/10 active:scale-95 cursor-pointer"
+            className="p-1 rounded-full bg-void-850 hover:bg-void-800 text-cyan-300 border border-white/10 active:scale-95 cursor-pointer shrink-0"
             title={isId ? 'Geser Kamera ke Kiri' : 'Pan Camera Left'}
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="w-3.5 h-3.5" />
           </button>
 
-          <div className="flex items-center gap-2 min-w-[140px] sm:min-w-[200px]">
+          <div className="relative flex items-center gap-1.5 min-w-[110px] sm:min-w-[190px]">
             <Compass className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            <input
-              type="range"
-              min={0}
-              max={maxCameraScrollX}
-              value={Math.min(cameraScrollX, maxCameraScrollX)}
-              onChange={(e) => {
-                const nextX = Number(e.target.value);
-                setCameraScrollX(nextX);
-                if (scrollViewportRef.current) {
-                  scrollViewportRef.current.scrollLeft = nextX;
-                }
-              }}
-              className="w-full h-1.5 bg-void-800 rounded-lg appearance-none cursor-pointer accent-emerald-400 touch-none"
-              aria-label={isId ? 'Geser Kamera Dunia Alam' : 'Pan Outdoor World Camera'}
-            />
+            <div className="relative w-full flex items-center">
+              <input
+                type="range"
+                min={0}
+                max={maxCameraScrollX}
+                value={Math.min(cameraScrollX, maxCameraScrollX)}
+                onChange={(e) => {
+                  const nextX = Number(e.target.value);
+                  setCameraScrollX(nextX);
+                  if (scrollViewportRef.current) {
+                    scrollViewportRef.current.scrollLeft = nextX;
+                  }
+                }}
+                className="w-full h-1.5 bg-void-800 rounded-lg appearance-none cursor-pointer accent-emerald-400 touch-none relative z-10"
+                aria-label={isId ? 'Geser Kamera Dunia Alam' : 'Pan Outdoor World Camera'}
+              />
+              {/* Mini Radar Dots showing where Tower, Hydro, Solar & Wind sit along world width */}
+              <div className="pointer-events-none absolute inset-x-0 -top-1 flex items-center h-2">
+                {radarMarkers.map((marker) => (
+                  <span
+                    key={marker.id}
+                    style={{ left: `${marker.ratioX * 100}%`, transform: 'translateX(-50%)' }}
+                    className={`absolute rounded-full ${
+                      marker.category === 'tower'
+                        ? 'w-2 h-2 bg-amber-300 ring-1 ring-white shadow-[0_0_6px_rgba(252,211,77,0.9)]'
+                        : marker.category === 'hydro'
+                        ? 'w-1.5 h-1.5 bg-cyan-400'
+                        : marker.category === 'solar'
+                        ? 'w-1.5 h-1.5 bg-yellow-300'
+                        : marker.category === 'wind'
+                        ? 'w-1.5 h-1.5 bg-emerald-400'
+                        : marker.category === 'bess'
+                        ? 'w-1.5 h-1.5 bg-lime-400'
+                        : 'w-1 h-1 bg-slate-400'
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
 
           <button
             type="button"
             onClick={() => scrollWorldBy(280)}
-            className="p-1 rounded-full bg-void-850 hover:bg-void-800 text-cyan-300 border border-white/10 active:scale-95 cursor-pointer"
+            className="p-1 rounded-full bg-void-850 hover:bg-void-800 text-cyan-300 border border-white/10 active:scale-95 cursor-pointer shrink-0"
             title={isId ? 'Geser Kamera ke Kanan (Sungai)' : 'Pan Camera Right (River)'}
           >
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className="w-3.5 h-3.5" />
           </button>
+
+          {offscreenJump && (
+            <button
+              type="button"
+              data-testid="jump-offscreen-tower-btn"
+              onClick={() => {
+                const targetMarker = radarMarkers.find((m) => m.id === offscreenJump.nodeId);
+                if (targetMarker) {
+                  scrollOutdoorViewportToX(targetMarker.centerX, 'smooth');
+                } else {
+                  scrollViewportRef.current?.scrollTo({
+                    left: offscreenJump.targetScrollLeft,
+                    behavior: 'smooth',
+                  });
+                }
+              }}
+              className={`px-2 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-0.5 active:scale-95 transition-transform cursor-pointer whitespace-nowrap shrink-0 ${
+                offscreenJump.isTower
+                  ? 'bg-amber-500/25 border-amber-400/70 text-amber-200'
+                  : 'bg-cyan-500/20 border-cyan-400/60 text-cyan-200'
+              }`}
+              title={
+                isId
+                  ? `Lompat ke ${offscreenJump.label} di luar layar`
+                  : `Jump to off-screen ${offscreenJump.label}`
+              }
+            >
+              <span>
+                {offscreenJump.direction === 'left'
+                  ? `← ${offscreenJump.label}`
+                  : `${offscreenJump.label} →`}
+              </span>
+            </button>
+          )}
         </div>
       )}
 

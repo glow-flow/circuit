@@ -4,6 +4,7 @@ import { CircuitElementData } from '../../../types/circuit';
 import { Wind, Zap, Mountain, TrendingDown, ShieldCheck } from 'lucide-react';
 import { useCircuitStore } from '../../../store/useCircuitStore';
 import { WIND_AVR_MAX_VOLTAGE } from '../../../physics/terrainClimateEngine';
+import { usePendingPinHandleForNode } from '../../../hooks/useTapToConnectHandlers';
 
 /**
  * WindTurbineNode Component.
@@ -23,6 +24,7 @@ export const WindTurbineNode: React.FC<NodeProps<CircuitElementData>> = memo(
     const updateComponentData = useCircuitStore((state) => state.updateComponentData);
     const simulation = useCircuitStore((state) => state.simulation);
     const language = useCircuitStore((state) => state.language);
+    const pendingPinHandle = usePendingPinHandleForNode(id);
     const isId = language === 'id';
 
     const baseSpeed = data.speed ?? 50;
@@ -206,8 +208,10 @@ export const WindTurbineNode: React.FC<NodeProps<CircuitElementData>> = memo(
             type="source"
             position={Position.Bottom}
             id="pos"
-            style={{ left: '34%', bottom: '22px', transform: 'translateX(-50%)' }}
-            className="!w-5 !h-5 !bg-red-500 !border-2 !border-white !rounded-full shadow-[0_0_12px_rgba(239,68,68,0.95)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center"
+            style={{ left: '34%', bottom: '30px', transform: 'translateX(-50%)' }}
+            className={`!w-6 !h-6 md:!w-5 md:!h-5 !bg-red-500 !border-2 !border-white !rounded-full shadow-[0_0_12px_rgba(239,68,68,0.95)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center ${
+              pendingPinHandle === 'pos' ? '!ring-4 !ring-emerald-300/95 !scale-125 animate-pulse' : ''
+            }`}
             title={isId ? 'Kutub Positif (+)' : 'Positive Terminal (+)'}
           >
             <span className="text-[10px] font-mono font-black text-white leading-none pointer-events-none">
@@ -218,8 +222,10 @@ export const WindTurbineNode: React.FC<NodeProps<CircuitElementData>> = memo(
             type="source"
             position={Position.Bottom}
             id="neg"
-            style={{ left: '66%', bottom: '22px', transform: 'translateX(-50%)' }}
-            className="!w-5 !h-5 !bg-sky-500 !border-2 !border-white !rounded-full shadow-[0_0_12px_rgba(56,189,248,0.95)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center"
+            style={{ left: '66%', bottom: '30px', transform: 'translateX(-50%)' }}
+            className={`!w-6 !h-6 md:!w-5 md:!h-5 !bg-sky-500 !border-2 !border-white !rounded-full shadow-[0_0_12px_rgba(56,189,248,0.95)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center ${
+              pendingPinHandle === 'neg' ? '!ring-4 !ring-emerald-300/95 !scale-125 animate-pulse' : ''
+            }`}
             title={isId ? 'Kutub Negatif (-)' : 'Negative Terminal (-)'}
           >
             <span className="text-[11px] font-mono font-black text-white leading-none pointer-events-none">

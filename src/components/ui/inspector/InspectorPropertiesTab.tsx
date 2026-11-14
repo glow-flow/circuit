@@ -554,6 +554,7 @@ export const InspectorPropertiesTab: React.FC<InspectorPropertiesTabProps> = ({
               step={0.1}
               onValueChange={([val]) =>
                 updateComponentData(nodeId, {
+                  manualHydraulicHeadMeters: val,
                   hydraulicHeadMeters: val,
                 })
               }

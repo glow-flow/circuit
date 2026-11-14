@@ -5,6 +5,7 @@ import { CircuitElementData } from '../../../types/circuit';
 import { useCircuitStore } from '../../../store/useCircuitStore';
 import { TRANSLATIONS } from '../../../i18n/translations';
 import { getSolarPanelVoltage } from '../../../physics/solarPanel';
+import { usePendingPinHandleForNode } from '../../../hooks/useTapToConnectHandlers';
 
 /**
  * Photovoltaic Solar Panel Node (`type: 'solar-panel'`).
@@ -28,6 +29,7 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
   const updateComponentData = useCircuitStore((state) => state.updateComponentData);
   const sunTimeOfDay = useCircuitStore((state) => state.sunTimeOfDay);
   const worldMode = useCircuitStore((state) => state.worldMode);
+  const pendingPinHandle = usePendingPinHandleForNode(id);
 
   const t = TRANSLATIONS[language].nodes.solarPanel;
   const isId = language === 'id';
@@ -264,8 +266,10 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
           type="source"
           position={Position.Bottom}
           id="pos"
-          style={{ left: '38%', bottom: '12px', transform: 'translateX(-50%)' }}
-          className="!w-5 !h-5 !bg-red-500 !border-2 !border-white !rounded-full shadow-[0_0_10px_rgba(239,68,68,0.85)] hover:!scale-125 active:!scale-90 transition-transform cursor-crosshair z-40 flex items-center justify-center"
+          style={{ left: '38%', bottom: '22px', transform: 'translateX(-50%)' }}
+          className={`!w-6 !h-6 md:!w-5 md:!h-5 !bg-red-500 !border-2 !border-white !rounded-full shadow-[0_0_10px_rgba(239,68,68,0.85)] hover:!scale-125 active:!scale-90 transition-transform cursor-crosshair z-40 flex items-center justify-center ${
+            pendingPinHandle === 'pos' ? '!ring-4 !ring-emerald-300/95 !scale-125 animate-pulse' : ''
+          }`}
           title={isId ? 'Kutub Positif (+)' : 'Positive Terminal (+)'}
         >
           <span className="text-[10px] font-mono font-black text-white leading-none pointer-events-none">
@@ -276,8 +280,10 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
           type="source"
           position={Position.Bottom}
           id="neg"
-          style={{ left: '62%', bottom: '12px', transform: 'translateX(-50%)' }}
-          className="!w-5 !h-5 !bg-sky-500 !border-2 !border-white !rounded-full shadow-[0_0_10px_rgba(56,189,248,0.85)] hover:!scale-125 active:!scale-90 transition-transform cursor-crosshair z-40 flex items-center justify-center"
+          style={{ left: '62%', bottom: '22px', transform: 'translateX(-50%)' }}
+          className={`!w-6 !h-6 md:!w-5 md:!h-5 !bg-sky-500 !border-2 !border-white !rounded-full shadow-[0_0_10px_rgba(56,189,248,0.85)] hover:!scale-125 active:!scale-90 transition-transform cursor-crosshair z-40 flex items-center justify-center ${
+            pendingPinHandle === 'neg' ? '!ring-4 !ring-emerald-300/95 !scale-125 animate-pulse' : ''
+          }`}
           title={`${formattedCurrent} (-)`}
         >
           <span className="text-[11px] font-mono font-black text-white leading-none pointer-events-none">

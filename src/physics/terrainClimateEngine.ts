@@ -728,17 +728,22 @@ export function applyTerrainMicroclimateToNodes(
       const box = getComponentBoundingBox(node.position, node.data.type);
       const waterFlow = detectTurbineWaterFlow(box, terrainGrid, width, height);
 
-      const hasManualOverride = typeof node.data.manualWaterFlowRate === 'number';
-      const effectiveFlow = hasManualOverride
+      const hasManualFlowOverride = typeof node.data.manualWaterFlowRate === 'number';
+      const hasManualHeadOverride = typeof node.data.manualHydraulicHeadMeters === 'number';
+      const effectiveFlow = hasManualFlowOverride
         ? Math.max(0, Math.min(100, node.data.manualWaterFlowRate!))
         : waterFlow.hasWaterContact
         ? waterFlow.flowPercentage
         : 0;
-      const effectiveHead = waterFlow.hasWaterContact
+      const effectiveHead = hasManualHeadOverride
+        ? Math.max(0.2, Math.min(5.0, node.data.manualHydraulicHeadMeters!))
+        : waterFlow.hasWaterContact
         ? waterFlow.headMeters
         : (node.data.hydraulicHeadMeters ?? 2.0);
 
       const hydroPoint = calculateHydroOperatingPoint(effectiveFlow, effectiveHead);
+      const effectiveRegime =
+        hasManualFlowOverride && !waterFlow.hasWaterContact ? 'waterfall' : waterFlow.flowRegime;
 
       return {
         ...node,
@@ -746,10 +751,11 @@ export function applyTerrainMicroclimateToNodes(
           ...node.data,
           waterFlowRate: effectiveFlow,
           hydraulicHeadMeters: effectiveHead,
+          hydroFlowRegime: effectiveRegime,
           voltage: hydroPoint.voltage,
           rpm: hydroPoint.rpm,
           submergedDepthPx: measureSubmergedDepthPx(box, terrainGrid, width, height),
-          hasWaterContact: waterFlow.hasWaterContact || (hasManualOverride && effectiveFlow > 0),
+          hasWaterContact: waterFlow.hasWaterContact || (hasManualFlowOverride && effectiveFlow > 0),
         },
       };
     }

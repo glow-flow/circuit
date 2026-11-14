@@ -152,7 +152,7 @@ export const ProbeReadoutHud: React.FC<ProbeReadoutHudProps> = ({ isHidden = fal
   // Anchor near top so bottom dock and main central circuit stay unobstructed on phones
   const cardAnchorClass =
     worldMode === 'outside'
-      ? 'top-[62px] left-1/2 -translate-x-1/2 w-[min(94vw,360px)] md:left-auto md:translate-x-0 md:top-[68px] md:right-3 md:w-[312px]'
+      ? 'top-[98px] left-1/2 -translate-x-1/2 w-[min(94vw,360px)] md:left-auto md:translate-x-0 md:top-[68px] md:right-3 md:w-[312px]'
       : 'top-2.5 left-1/2 -translate-x-1/2 w-[min(94vw,360px)] md:left-auto md:translate-x-0 md:top-3 md:right-3 md:w-[312px]';
 
   const surfaceClass = isLight

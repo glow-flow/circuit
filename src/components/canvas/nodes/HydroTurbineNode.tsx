@@ -10,6 +10,7 @@ import {
 } from '../../../physics/hydroPhysics';
 import { COMPONENT_DIMENSIONS } from '../../../physics/terrainGrid';
 import { useModalKeyboardClose } from '../../../hooks/useModalKeyboardClose';
+import { usePendingPinHandleForNode } from '../../../hooks/useTapToConnectHandlers';
 
 /** Rendered node edge length (px), kept identical to the physics footprint. */
 const HYDRO_NODE_SIZE_PX = COMPONENT_DIMENSIONS['hydro-turbine']?.width ?? 208;
@@ -37,6 +38,7 @@ export const HydroTurbineNode: React.FC<NodeProps<CircuitElementData>> = ({
 
   const [isInspectOpen, setIsInspectOpen] = useState(false);
   useModalKeyboardClose(isInspectOpen, () => setIsInspectOpen(false));
+  const pendingPinHandle = usePendingPinHandleForNode(id);
   const isId = language === 'id';
 
   // Effective flow and head
@@ -51,6 +53,20 @@ export const HydroTurbineNode: React.FC<NodeProps<CircuitElementData>> = ({
   const terminalVoltage = data.calculatedVoltage ?? Math.min(nominalVoltage, 12.0);
   const deliveredPowerWatts = Math.abs(current * terminalVoltage);
   const isGenerating = hydroPoint.isGenerating && nominalVoltage > 0;
+  const regimeLabel =
+    data.hydroFlowRegime === 'waterfall'
+      ? isId
+        ? 'Terjun'
+        : 'Fall'
+      : data.hydroFlowRegime === 'river'
+      ? isId
+        ? 'Sungai'
+        : 'River'
+      : data.hydroFlowRegime === 'puddle'
+      ? isId
+        ? 'Genangan'
+        : 'Pool'
+      : '';
   const formattedCurrent =
     current === 0
       ? '0 mA'
@@ -98,6 +114,7 @@ export const HydroTurbineNode: React.FC<NodeProps<CircuitElementData>> = ({
             <>
               <Waves className="w-3 h-3 text-cyan-400 shrink-0" />
               <span>
+                {regimeLabel ? `${regimeLabel} · ` : ''}
                 {flowPercentage}% · {nominalVoltage.toFixed(1)}V ·{' '}
                 {current > 0.001
                   ? `${deliveredPowerWatts.toFixed(1)}W`
@@ -168,16 +185,18 @@ export const HydroTurbineNode: React.FC<NodeProps<CircuitElementData>> = ({
         <Info className="w-3.5 h-3.5 text-cyan-400" />
       </button>
 
-      {/* Elevated High-Visibility Binding Post Terminals */}
+      {/* Elevated Dry Upper-Bridge Binding Post Terminals (Never Submerged or Dock-Covered!) */}
       <Handle
         type="source"
         position={Position.Bottom}
         id="pos"
-        style={{ left: '44%', bottom: '6px', transform: 'translateX(-50%)' }}
-        className="!w-5 !h-5 !bg-red-500 !border-2 !border-white !rounded-full shadow-[0_0_10px_rgba(239,68,68,0.85)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center"
+        style={{ left: '34%', top: '44%', bottom: 'auto', transform: 'translate(-50%, -50%)' }}
+        className={`!w-7 !h-7 md:!w-6 md:!h-6 !bg-red-500 !border-2 !border-white !rounded-full shadow-[0_0_12px_rgba(239,68,68,0.95)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center ${
+          pendingPinHandle === 'pos' ? '!ring-4 !ring-emerald-300/95 !scale-125 animate-pulse' : ''
+        }`}
         title={isId ? 'Kutub Positif Generator (+)' : 'Hydro Positive (+)'}
       >
-        <span className="text-[9px] font-mono font-black text-white leading-none pointer-events-none">
+        <span className="text-xs font-mono font-black text-white leading-none pointer-events-none">
           +
         </span>
       </Handle>
@@ -186,11 +205,13 @@ export const HydroTurbineNode: React.FC<NodeProps<CircuitElementData>> = ({
         type="source"
         position={Position.Bottom}
         id="neg"
-        style={{ left: '56%', bottom: '6px', transform: 'translateX(-50%)' }}
-        className="!w-5 !h-5 !bg-sky-500 !border-2 !border-white !rounded-full shadow-[0_0_10px_rgba(56,189,248,0.85)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center"
+        style={{ left: '66%', top: '44%', bottom: 'auto', transform: 'translate(-50%, -50%)' }}
+        className={`!w-7 !h-7 md:!w-6 md:!h-6 !bg-sky-500 !border-2 !border-white !rounded-full shadow-[0_0_12px_rgba(56,189,248,0.95)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center ${
+          pendingPinHandle === 'neg' ? '!ring-4 !ring-emerald-300/95 !scale-125 animate-pulse' : ''
+        }`}
         title={isId ? 'Kutub Negatif Generator (-)' : 'Hydro Negative (-)'}
       >
-        <span className="text-[10px] font-mono font-black text-white leading-none pointer-events-none">
+        <span className="text-xs font-mono font-black text-white leading-none pointer-events-none">
           -
         </span>
       </Handle>

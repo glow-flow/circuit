@@ -7,6 +7,7 @@ import {
   computeOutdoorSpawnCandidates,
   getLabCanvasSpawnPosition,
 } from '../../utils/canvasSpawnPosition';
+import { getNodeHorizontalCenter, scrollOutdoorViewportToX } from '../../utils/canvasWireAssist';
 import { evaluateComponentDropPhysics } from '../../physics/terrainGrid';
 import { CategoryTabs } from './palette/CategoryTabs';
 import { PaletteDetailBar } from './palette/PaletteDetailBar';
@@ -81,12 +82,23 @@ export const SidebarPalette: React.FC<SidebarPaletteProps> = ({
 
       const targetPosition = validCandidate ?? candidatePositions[0];
       if (targetPosition) {
+        const beforeIds = new Set(storeState.nodes.map((n) => n.id));
         placedSuccessfully = placeOutdoorComponent(
           entry.type,
           targetPosition,
           containerSize,
           entry.placement
         );
+        if (placedSuccessfully) {
+          const placedNode = useCircuitStore
+            .getState()
+            .nodes.find((n) => !beforeIds.has(n.id));
+          if (placedNode) {
+            window.requestAnimationFrame(() => {
+              scrollOutdoorViewportToX(getNodeHorizontalCenter(placedNode), 'smooth');
+            });
+          }
+        }
       }
     } else {
       const beforeCount = useCircuitStore.getState().nodes.length;

@@ -56,7 +56,7 @@ Addressed real-device mobile touch, zoom, and visual clutter bugs:
   - Computes true visual bounding boxes for `socket` and `pin-socket` assemblies using `getInstalledBulbTopOffset(spec.type)` when a bulb (`incandescent`, `edison`, `cfl`, `led_standard`, `led_rgb`, `halogen`, `led_green`) is mounted, wrapping the glass globe and socket terminals in a tight `<rect rx={14}>` frame and keeping `V` tags clear of the glowing filament.
   - `SocketNode.tsx` and `PinSocketNode.tsx` toggle `pointer-events-auto cursor-pointer` on installed bulb artwork exclusively during `probe` mode so tapping directly on the bulb glass registers the probe target reliably.
 - **Compact HUD & Inline Switch Tester (`ProbeReadoutHud.tsx`)**:
-  - Anchors cleanly near the top edge (`top-2.5` Lab, `top-[62px]` Alam EBT) with live status insights always visible below `Beda V / Arus / Daya`, an inline `Buka (OFF) / Tutup (ON)` tester whenever a `switch` is probed, and collapsible DC trace sparkline + quick-pick chips.
+  - Anchors cleanly near the top edge (`top-2.5` Lab, `top-[98px]` mobile / `md:top-[68px]` desktop Alam EBT, clearing `PhysicsLensDock`) with live status insights always visible below `Beda V / Arus / Daya`, an inline `Buka (OFF) / Tutup (ON)` tester whenever a `switch` is probed, and collapsible DC trace sparkline + quick-pick chips.
 
 ---
 

@@ -73,6 +73,10 @@ Documented in detail in [[UX_TEACHER_FIRST_OVERHAUL_AND_TUTORIAL_PLAN]]:
   - Replaces the 11-icon unlabeled strip with a 2-row labeled dock: Row 1 provides `[Mode Rangkai]` vs `[Ubah Tanah/Air]` + `[Pasang PLTS 12V]`, while Row 2 contextually displays labeled Sun Time pills (`[Pagi]`, `[Siang]`, `[Sore]`, `[Kirim ke Lab ->]`) or labeled Terrain Brush pills (`[+Tanah]`, `[+Air]`, `[+Mata Air]`, `[+Gali]`, `[Reset]`).
 - **Interactive "Learn-by-Doing" Tutorial & Teacher Quick-Cards (`src/tutorial/interactiveTutorialConfig.ts`, `src/components/ui/tutorial/InteractiveTutorialBanner.tsx`, `src/components/ui/WelcomeModal.tsx`)**:
   - Provides 3 hands-on practice missions with $O(N)$ live state completion detection and 1-click assist buttons, plus 4 Teacher 1-Click Classroom Setup Cards (`basic-switch`, `series-parallel`, `nature-ebt`, `short-circuit`).
+- **Mobile Cross-Viewport Two-Tap Wiring, Off-Screen Radar & Unobstructed Terminals (`src/utils/canvasWireAssist.ts`, `src/hooks/useTapToConnectHandlers.ts`, `src/components/canvas/WireConnectAssistBar.tsx`)**:
+  - Supports **Two-Tap Pin Wiring** (`Tap Pin A -> Pan/Jump -> Tap Pin B`) in addition to classic wire dragging, backed by a floating **Quick-Connect Assist Bar** that surfaces off-screen priority targets (such as `Menara Transmisi`) in 1 tap.
+  - Adds smooth horizontal **Edge Auto-Pan** while dragging wires or components toward the edges of `#outdoor-scroll-viewport`, color-coded radar dots + `← Menara` quick-jump pill on `#tour-outdoor-camera`, and automatic viewport glide to newly spawned off-screen components from `SidebarPalette.tsx`.
+  - Elevates `HydroTurbineNode` `+`/`-` binding posts to the dry upper stator bridge (`top: 44%`) and docks mobile Outdoor `PhysicsLensDock` into top-left sky (`top-[54px] left-2`) so ground terminals stay 100% unobstructed.
 
 ---
 

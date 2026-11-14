@@ -112,7 +112,7 @@ export const PhysicsLensDock: React.FC<PhysicsLensDockProps> = ({ isHidden = fal
 
   const positionClass =
     worldMode === 'outside'
-      ? 'bottom-[68px] left-1/2 -translate-x-1/2 md:bottom-3 md:left-4 md:translate-x-0'
+      ? 'top-[54px] left-2 md:top-auto md:bottom-3 md:left-4'
       : 'bottom-2.5 left-1/2 -translate-x-1/2';
 
   const containerSurfaceClass = isLight
@@ -165,7 +165,7 @@ export const PhysicsLensDock: React.FC<PhysicsLensDockProps> = ({ isHidden = fal
               aria-pressed={isActive}
               title={isId ? option.titleId : option.titleEn}
               onClick={() => setPhysicsLensMode(option.id)}
-              className={`min-h-[44px] px-3 sm:px-3.5 rounded-xl text-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${buttonClass}`}
+              className={`min-h-[36px] md:min-h-[44px] px-2.5 sm:px-3.5 rounded-xl text-[11px] sm:text-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${buttonClass}`}
             >
               <IconComponent className="w-4 h-4 shrink-0" />
               <span>{isId ? option.labelId : option.labelEn}</span>

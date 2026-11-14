@@ -97,6 +97,7 @@ import { getComponentDisplayName } from '../utils/nodeLocalization';
 import { getLabCanvasSpawnPosition } from '../utils/canvasSpawnPosition';
 import { computeTransmissionTelemetry } from '../physics/transmissionPhysics';
 import { PhysicsLensMode, ProbeTarget } from '../physics/physicsLensEngine';
+import { PendingWireStart, isEdgeAlreadyConnectingPins } from '../utils/canvasWireAssist';
 
 interface CircuitState {
   nodes: Node<CircuitElementData>[];
@@ -180,6 +181,10 @@ interface CircuitState {
   onNodesChange: (changes: NodeChange[]) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
   onConnect: (connection: Connection) => void;
+  pendingWireStart: PendingWireStart | null;
+  setPendingWireStart: (wireStart: PendingWireStart | null) => void;
+  clearPendingWireStart: () => void;
+  completePendingWireConnection: (targetNodeId: string, targetHandleId: string) => boolean;
   setNodes: (
     updater:
       | Node<CircuitElementData>[]
@@ -559,9 +564,9 @@ function recalculateCircuit(
       const head = node.data.hydraulicHeadMeters ?? 2.0;
       const hydroPoint = calculateHydroOperatingPoint(flow, head);
       const outVoltage = node.data.voltage ?? hydroPoint.voltage;
-      const regulatedEmf = Math.min(outVoltage, 12.0);
+      const regulatedBusFallback = Math.min(outVoltage, 12.0);
       const terminalVoltage = Math.abs(
-        getSolvedTerminalVoltage(node.data, 'pos', 'neg', regulatedEmf)
+        getSolvedTerminalVoltage(node.data, 'pos', 'neg', regulatedBusFallback)
       );
       const outputPower = Math.abs(branchCurrent * terminalVoltage);
 
@@ -572,6 +577,7 @@ function recalculateCircuit(
           worldMode: 'outside' as const,
           waterFlowRate: flow,
           hydraulicHeadMeters: head,
+          hydroFlowRegime: node.data.hydroFlowRegime ?? (flow > 0 ? 'river' : 'none'),
           voltage: outVoltage,
           rpm: hydroPoint.rpm,
           calculatedCurrent: branchCurrent,
@@ -825,6 +831,62 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       hoveredProbeTarget: null,
       isPickingProbeB: false,
     });
+  },
+  pendingWireStart: null,
+  setPendingWireStart: (wireStart: PendingWireStart | null) => {
+    set({ pendingWireStart: wireStart });
+  },
+  clearPendingWireStart: () => {
+    if (get().pendingWireStart !== null) {
+      set({ pendingWireStart: null });
+    }
+  },
+  completePendingWireConnection: (targetNodeId: string, targetHandleId: string): boolean => {
+    const pending = get().pendingWireStart;
+    if (!pending) return false;
+
+    if (pending.nodeId === targetNodeId && pending.handleId === targetHandleId) {
+      set({ pendingWireStart: null });
+      return false;
+    }
+
+    if (pending.nodeId === targetNodeId) {
+      const isId = get().language === 'id';
+      set({ pendingWireStart: null });
+      get().notify(
+        isId
+          ? 'Kabel dibatalkan: Pilih kutub pada komponen yang berbeda!'
+          : 'Wire cancelled: Select a terminal on a different component!'
+      );
+      return false;
+    }
+
+    if (
+      isEdgeAlreadyConnectingPins(
+        get().edges,
+        pending.nodeId,
+        pending.handleId,
+        targetNodeId,
+        targetHandleId
+      )
+    ) {
+      const isId = get().language === 'id';
+      set({ pendingWireStart: null });
+      get().notify(
+        isId ? 'Kedua pin ini sudah tersambung kabel.' : 'These pins are already wired together.'
+      );
+      return false;
+    }
+
+    const prevEdgeCount = get().edges.length;
+    get().onConnect({
+      source: pending.nodeId,
+      sourceHandle: pending.handleId,
+      target: targetNodeId,
+      targetHandle: targetHandleId,
+    });
+    set({ pendingWireStart: null });
+    return get().edges.length > prevEdgeCount;
   },
   notification: null,
 
@@ -1227,6 +1289,7 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
             data: {
               ...n.data,
               manualWaterFlowRate: undefined,
+              manualHydraulicHeadMeters: undefined,
             },
           }
         : n
@@ -1370,6 +1433,7 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       edges: nextEdges,
       simulation,
       nodes: updatedNodes,
+      pendingWireStart: null,
     });
   },
 
@@ -1757,6 +1821,7 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       edges: nextEdges,
       simulation,
       selectedNodeId: get().selectedNodeId === id ? null : get().selectedNodeId,
+      pendingWireStart: get().pendingWireStart?.nodeId === id ? null : get().pendingWireStart,
     });
   },
 

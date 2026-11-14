@@ -30,6 +30,8 @@ import { PanelDistribusiNode } from './nodes/PanelDistribusiNode';
 import { WireEdge } from './WireEdge';
 import { PhysicsCanvasOverlay } from './PhysicsCanvasOverlay';
 import { usePhysicsLensCanvasHandlers } from '../../hooks/usePhysicsLensCanvasHandlers';
+import { WireConnectAssistBar } from './WireConnectAssistBar';
+import { useTapToConnectHandlers } from '../../hooks/useTapToConnectHandlers';
 
 interface CircuitCanvasInnerProps {
   reactFlowWrapper: React.RefObject<HTMLDivElement | null>;
@@ -40,7 +42,6 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
   const edges = useCircuitStore((state) => state.edges);
   const onNodesChange = useCircuitStore((state) => state.onNodesChange);
   const onEdgesChange = useCircuitStore((state) => state.onEdgesChange);
-  const onConnect = useCircuitStore((state) => state.onConnect);
   const addComponent = useCircuitStore((state) => state.addComponent);
   const splitEdgeWithWaypoint = useCircuitStore((state) => state.splitEdgeWithWaypoint);
   const insertBatteryIntoHolder = useCircuitStore((state) => state.insertBatteryIntoHolder);
@@ -49,6 +50,10 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
   const syncSnappedBulbPosition = useCircuitStore((state) => state.syncSnappedBulbPosition);
   const theme = useCircuitStore((state) => state.theme);
   const lensHandlers = usePhysicsLensCanvasHandlers();
+  const clearPendingWireStart = useCircuitStore((state) => state.clearPendingWireStart);
+  const wireHandlers = useTapToConnectHandlers('lab', {
+    isProbeMode: lensHandlers.physicsLensMode === 'probe',
+  });
 
   const labNodes = useMemo(
     () =>
@@ -244,7 +249,10 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
         edges={labEdges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
+        onConnect={wireHandlers.handleConnect}
+        onConnectStart={wireHandlers.handleConnectStart}
+        onConnectEnd={wireHandlers.handleConnectEnd}
+        connectOnClick={false}
         onInit={(instance) => {
           setReactFlowInstance(instance);
           useCircuitStore.getState().setReactFlowInstance(instance);
@@ -270,7 +278,10 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
         onEdgeClick={lensHandlers.handleEdgeClick}
         onEdgeMouseEnter={lensHandlers.handleEdgeMouseEnter}
         onEdgeMouseLeave={lensHandlers.handleEdgeMouseLeave}
-        onPaneClick={lensHandlers.handlePaneClick}
+        onPaneClick={() => {
+          clearPendingWireStart();
+          lensHandlers.handlePaneClick();
+        }}
         fitView
         fitViewOptions={{ padding: 0.24, minZoom: 0.12 }}
         minZoom={0.12}
@@ -296,6 +307,7 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
           showInteractive={false}
         />
       </ReactFlow>
+      <WireConnectAssistBar worldScope="lab" />
     </div>
   );
 };

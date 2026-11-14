@@ -141,6 +141,8 @@ export interface CircuitElementData {
   waterFlowRate?: number;          // Volumetric flow rate percentage (0 - 100%)
   manualWaterFlowRate?: number;    // Explicit user valve slider override (0 - 100%, cleared on drag settlement)
   hydraulicHeadMeters?: number;    // Effective hydraulic head drop (meters)
+  manualHydraulicHeadMeters?: number; // Explicit user head slider override (meters, cleared on drag settlement)
+  hydroFlowRegime?: 'none' | 'puddle' | 'river' | 'waterfall'; // Detected hydrological terrain regime
   rpm?: number;                    // Pelton runner rotational speed (RPM)
   submergedDepthPx?: number;       // Height of the turbine base standing under the river surface (px)
   hasWaterContact?: boolean;       // Whether waterfall/river is currently contacting runner

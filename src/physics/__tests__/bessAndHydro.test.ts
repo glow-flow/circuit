@@ -470,6 +470,86 @@ describe('BESS Substation & Waterfall Micro-Hydro (Nature Mode Phase 3)', () => 
       expect(hydro.data.voltage).toBe(0);
       expect(hydro.data.rpm).toBe(0);
     });
+
+    it('scales monotonically: shallow puddle < flat deep river (<12.0V) < waterfall on river (>12.0V)', () => {
+      const box = { x: 880, y: 310, width: 208, height: 208 };
+
+      // 1. Flat continuous river basin (rows 15..18 across 4 cols, NO water above runner)
+      const flatRiverGrid = createEmptyTerrainGrid(20, 40);
+      for (let r = 15; r <= 18; r++) {
+        for (let c = 26; c <= 30; c++) {
+          flatRiverGrid[r][c] = 'WATER';
+        }
+      }
+      const riverFlow = detectTurbineWaterFlow(box, flatRiverGrid, 1360, 680);
+      const riverPoint = calculateHydroOperatingPoint(riverFlow.flowPercentage, riverFlow.headMeters);
+
+      expect(riverFlow.flowRegime).toBe('river');
+      expect(riverPoint.voltage).toBeLessThan(12.0);
+      expect(riverPoint.powerWatts).toBeLessThan(30.0);
+
+      // 2. Same river PLUS a 1-row overhead waterfall drop (water at row 8 > runnerRow ~10)
+      const oneRowWaterfallGrid = flatRiverGrid.map((row) => [...row]);
+      for (let r = 8; r <= 14; r++) {
+        oneRowWaterfallGrid[r][29] = 'WATER';
+      }
+      const oneRowFallFlow = detectTurbineWaterFlow(box, oneRowWaterfallGrid, 1360, 680);
+      const oneRowFallPoint = calculateHydroOperatingPoint(
+        oneRowFallFlow.flowPercentage,
+        oneRowFallFlow.headMeters
+      );
+
+      expect(oneRowFallFlow.flowRegime).toBe('waterfall');
+      expect(oneRowFallFlow.headMeters).toBeGreaterThan(riverFlow.headMeters);
+      expect(oneRowFallPoint.powerWatts).toBeGreaterThan(riverPoint.powerWatts);
+      expect(oneRowFallPoint.voltage).toBeGreaterThan(12.0);
+
+      // 3. Even taller 4-row waterfall exceeds 1-row waterfall cleanly (strictly monotonic)
+      const tallWaterfallGrid = oneRowWaterfallGrid.map((row) => [...row]);
+      for (let r = 4; r <= 7; r++) {
+        tallWaterfallGrid[r][29] = 'WATER';
+      }
+      const tallFallFlow = detectTurbineWaterFlow(box, tallWaterfallGrid, 1360, 680);
+      const tallFallPoint = calculateHydroOperatingPoint(
+        tallFallFlow.flowPercentage,
+        tallFallFlow.headMeters
+      );
+
+      expect(tallFallFlow.headMeters).toBeGreaterThan(oneRowFallFlow.headMeters);
+      expect(tallFallPoint.voltage).toBeGreaterThanOrEqual(oneRowFallPoint.voltage);
+    });
+
+    it('detects water touching the outer Pelton rim and preserves manualHydraulicHeadMeters across terrain ticks', () => {
+      // Water stream touching the right rim (~42px from runner center) still engages runner
+      const grid = createEmptyTerrainGrid(20, 40);
+      const box = { x: 880, y: 310, width: 208, height: 208 }; // runnerCenterX = 984, +42px = 1026 -> col 30
+      for (let r = 6; r <= 14; r++) {
+        grid[r][30] = 'WATER';
+      }
+      const rimFlow = detectTurbineWaterFlow(box, grid, 1360, 680);
+      expect(rimFlow.hasWaterContact).toBe(true);
+      expect(rimFlow.flowRegime).toBe('waterfall');
+
+      // Manual hydraulic head slider stays honored across terrain ticks until dragged
+      const containerSize = { width: 1360, height: 680 };
+      useCircuitStore.getState().placeOutdoorComponent('hydro-turbine', { x: 900, y: 320 }, containerSize);
+      const hydro = useCircuitStore
+        .getState()
+        .nodes.find((n) => n.data.type === 'hydro-turbine')!;
+
+      useCircuitStore.getState().updateComponentData(hydro.id, {
+        manualHydraulicHeadMeters: 3.4,
+        hydraulicHeadMeters: 3.4,
+      });
+      useCircuitStore.getState().tickTerrainPhysics(Date.now() + 200);
+
+      const refreshedHydro = useCircuitStore
+        .getState()
+        .nodes.find((n) => n.id === hydro.id)!;
+      expect(refreshedHydro.data.hydraulicHeadMeters).toBe(3.4);
+      expect(refreshedHydro.data.voltage).toBeGreaterThan(12.0);
+      expect(refreshedHydro.data.calculatedVoltage).toBe(12.0);
+    });
   });
 
   describe('Natural Mountain Spring (WATER_SPRING)', () => {

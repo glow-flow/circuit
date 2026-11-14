@@ -7,6 +7,7 @@ import { useCircuitStore } from '../../../store/useCircuitStore';
 import { PanelDistribusiNode } from './PanelDistribusiNode';
 import { useModalKeyboardClose } from '../../../hooks/useModalKeyboardClose';
 import { computeTransmissionTelemetry } from '../../../physics/transmissionPhysics';
+import { usePendingPinHandleForNode } from '../../../hooks/useTapToConnectHandlers';
 
 /**
  * TransmissionTowerNode Component.
@@ -43,6 +44,7 @@ const OutdoorTowerView: React.FC<NodeProps<CircuitElementData>> = memo(({ id, da
   const language = useCircuitStore((state) => state.language);
   const updateComponentData = useCircuitStore((state) => state.updateComponentData);
   const notify = useCircuitStore((state) => state.notify);
+  const pendingPinHandle = usePendingPinHandleForNode(id);
   const isId = language === 'id';
 
   // Tap-to-inspect Gardu Trafo modal state
@@ -266,7 +268,9 @@ const OutdoorTowerView: React.FC<NodeProps<CircuitElementData>> = memo(({ id, da
             bottom: 'auto',
             transform: 'translate(-50%, -50%)',
           }}
-          className="!w-5 !h-5 !bg-red-500 !border-2 !border-white !rounded-full shadow-[0_0_14px_rgba(239,68,68,0.95)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center pointer-events-auto"
+          className={`!w-6 !h-6 md:!w-5 md:!h-5 !bg-red-500 !border-2 !border-white !rounded-full shadow-[0_0_14px_rgba(239,68,68,0.95)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center pointer-events-auto ${
+            pendingPinHandle === 'pos' ? '!ring-4 !ring-emerald-300/95 !scale-125 animate-pulse' : ''
+          }`}
           title={isId ? 'Isolator Kutub Positif (+)' : 'Positive Insulator Terminal (+)'}
         >
           <span className="text-[10px] font-mono font-black text-white leading-none pointer-events-none">
@@ -284,7 +288,9 @@ const OutdoorTowerView: React.FC<NodeProps<CircuitElementData>> = memo(({ id, da
             bottom: 'auto',
             transform: 'translate(-50%, -50%)',
           }}
-          className="!w-5 !h-5 !bg-sky-500 !border-2 !border-white !rounded-full shadow-[0_0_14px_rgba(56,189,248,0.95)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center pointer-events-auto"
+          className={`!w-6 !h-6 md:!w-5 md:!h-5 !bg-sky-500 !border-2 !border-white !rounded-full shadow-[0_0_14px_rgba(56,189,248,0.95)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center pointer-events-auto ${
+            pendingPinHandle === 'neg' ? '!ring-4 !ring-emerald-300/95 !scale-125 animate-pulse' : ''
+          }`}
           title={isId ? 'Isolator Kutub Negatif (-)' : 'Negative Insulator Terminal (-)'}
         >
           <span className="text-[11px] font-mono font-black text-white leading-none pointer-events-none">
