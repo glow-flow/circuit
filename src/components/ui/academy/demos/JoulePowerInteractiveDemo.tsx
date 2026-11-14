@@ -96,7 +96,7 @@ export const JoulePowerInteractiveDemo: React.FC = () => {
                   fontSize="10"
                   fontWeight="700"
                 >
-                  PUTUS!
+                  {isId ? 'PUTUS!' : 'BLOWN!'}
                 </text>
               </>
             ) : (

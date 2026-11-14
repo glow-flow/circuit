@@ -2,7 +2,11 @@ import React, { useState } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
 import { BatteryCharging, Plus, Unplug } from 'lucide-react';
 import { CircuitElementData, ComponentType } from '../../../types/circuit';
-import { computeEffectiveBatteryVoltage } from '../../../physics/batterySoC';
+import {
+  computeSeriesHolderTelemetry,
+  insertCellIntoHolderState,
+  normalizeHolderCellCharges,
+} from '../../../physics/batterySoC';
 import { useCircuitStore } from '../../../store/useCircuitStore';
 import { TRANSLATIONS } from '../../../i18n/translations';
 import { NodeInfoPopover } from './NodeInfoPopover';
@@ -68,11 +72,13 @@ export const BatteryHolderNode: React.FC<NodeProps<CircuitElementData>> = ({
   const hasSlot1 = batteryCount >= 1;
   const hasSlot2 = batteryCount >= 2;
 
-  const nominalBaseVoltage = batteryCount * 1.5;
   const charge = Math.max(0, Math.min(100, data.currentCharge ?? 100));
+  const computedTelemetry = computeSeriesHolderTelemetry(
+    normalizeHolderCellCharges(data.cellCharges, batteryCount, charge)
+  );
   const effectiveVoltage =
     data.calculatedVoltage ??
-    (hasBattery ? computeEffectiveBatteryVoltage(nominalBaseVoltage, charge) : 0);
+    (hasBattery ? computedTelemetry.effectiveVoltage : 0);
   const isDead = hasBattery && charge <= 0;
   const isSagActive = hasBattery && charge > 0 && charge < 20;
 
@@ -82,12 +88,15 @@ export const BatteryHolderNode: React.FC<NodeProps<CircuitElementData>> = ({
 
   const handleInsertBattery = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (batteryCount >= 2) return;
-    const nextCount = Math.min(2, batteryCount + 1);
+    const inserted = insertCellIntoHolderState(data, 100);
+    if (!inserted) return;
     updateComponentData(id, {
-      hasBattery: true,
-      batteryCount: nextCount,
-      voltage: nextCount * 1.5,
+      hasBattery: inserted.hasBattery,
+      batteryCount: inserted.batteryCount,
+      voltage: inserted.voltage,
+      capacity: inserted.capacity,
+      currentCharge: inserted.currentCharge,
+      cellCharges: inserted.cellCharges,
     });
   };
 
@@ -117,11 +126,15 @@ export const BatteryHolderNode: React.FC<NodeProps<CircuitElementData>> = ({
       e.preventDefault();
       e.stopPropagation();
       setIsDragOver(false);
-      const nextCount = Math.min(2, batteryCount + 1);
+      const inserted = insertCellIntoHolderState(data, 100);
+      if (!inserted) return;
       updateComponentData(id, {
-        hasBattery: true,
-        batteryCount: nextCount,
-        voltage: nextCount * 1.5,
+        hasBattery: inserted.hasBattery,
+        batteryCount: inserted.batteryCount,
+        voltage: inserted.voltage,
+        capacity: inserted.capacity,
+        currentCharge: inserted.currentCharge,
+        cellCharges: inserted.cellCharges,
       });
     }
   };

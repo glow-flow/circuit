@@ -116,6 +116,14 @@ describe('Terrain-Coupled Microclimate Engine (Nature Mode Phase 2)', () => {
       // Doubling wind speed increases aerodynamic power by 8x (2^3)
       expect(power100 / power50).toBeCloseTo(8.0, 1);
     });
+
+    it('governs peak hilltop DC EMF at the 12.0V AVR ceiling instead of overvolting to 18V', () => {
+      // Extreme rooftop/mountain ridge: deltaY = +272px with 100% slider speed -> 150% wind speed
+      const hilltopSurfaceY = baselineY - 272;
+      const result = calculateOrographicWindShear(100, hilltopSurfaceY, baselineY);
+      expect(result.effectiveSpeed).toBeGreaterThan(140);
+      expect(result.effectiveVoltage).toBe(12.0);
+    });
   });
 
   describe('1D Topographic Ray-Casting Shadowing', () => {

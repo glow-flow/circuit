@@ -21,9 +21,19 @@ import {
   MathematicalDerivationStep,
   WhatIfPrediction,
 } from '../types/tutor';
-import { getComponentEffectiveResistance, getComponentPinIdentifiers } from '../physics/mnaSolver';
+import {
+  getComponentEffectiveResistance,
+  getComponentPinIdentifiers,
+  getSocketForwardThreshold,
+  getSourceDischargeResistance,
+} from '../physics/mnaSolver';
 import { UnionFind } from '../physics/unionFind';
-import { computeEffectiveBatteryVoltage } from '../physics/batterySoC';
+import {
+  computeEffectiveBatteryVoltage,
+  computeSeriesHolderTelemetry,
+  normalizeHolderCellCharges,
+  resolveHolderCellCount,
+} from '../physics/batterySoC';
 import { getBulbSpec } from '../constants/bulbCatalog';
 
 /**
@@ -32,6 +42,18 @@ import { getBulbSpec } from '../constants/bulbCatalog';
  * Time Complexity: O(1).
  */
 function resolveTutorSourceVoltage(data: CircuitElementData): number {
+  if (data.type === 'battery-holder') {
+    const cellCount = resolveHolderCellCount(data);
+    if (cellCount === 0) return 0;
+    const normalizedCells = normalizeHolderCellCharges(
+      data.cellCharges,
+      cellCount,
+      data.currentCharge
+    );
+    const telemetry = computeSeriesHolderTelemetry(normalizedCells);
+    return telemetry.effectiveVoltage;
+  }
+
   let nominalVoltage: number;
   if (typeof data.voltage === 'number' && Number.isFinite(data.voltage)) {
     nominalVoltage = data.voltage;
@@ -40,11 +62,6 @@ function resolveTutorSourceVoltage(data: CircuitElementData): number {
       case 'battery9v':
         nominalVoltage = 9.0;
         break;
-      case 'battery-holder': {
-        const count = Math.max(1, data.batteryCount ?? 2);
-        nominalVoltage = count * 1.5;
-        break;
-      }
       case 'bess-substation':
       case 'bess_substation':
         nominalVoltage = 12.8;
@@ -71,7 +88,6 @@ function resolveTutorSourceVoltage(data: CircuitElementData): number {
     Number.isFinite(soc) &&
     (data.type === 'battery' ||
       data.type === 'battery9v' ||
-      data.type === 'battery-holder' ||
       data.type === 'bess-substation' ||
       data.type === 'bess_substation')
   ) {
@@ -362,30 +378,72 @@ export function analyzeExplainableCircuit(
     };
   }
 
+  // Build O(V + E) connected wire set so unwired spares, unmounted inventory bulbs,
+  // and empty sockets (R = 1e9 Ω) do not pollute equations or circuit totals.
+  const wiredNodeIds = new Set<string>();
+  for (const edge of edges) {
+    wiredNodeIds.add(edge.source);
+    wiredNodeIds.add(edge.target);
+  }
+  const hasWiring = edges.length > 0;
+  const isNodeWired = (nodeId: string) => !hasWiring || wiredNodeIds.has(nodeId);
+
   // Categorize components
-  const voltageSources = nodes.filter((n) =>
-    [
-      'battery',
-      'battery9v',
-      'battery-holder',
-      'solar-panel',
-      'solar_panel',
-      'wind-turbine',
-      'wind_turbine',
-      'bess-substation',
-      'bess_substation',
-      'hydro-turbine',
-      'hydro_turbine',
-      'distribution-panel',
-      'distribution_panel',
-    ].includes(n.data.type)
+  const voltageSources = nodes.filter(
+    (n) =>
+      isNodeWired(n.id) &&
+      [
+        'battery',
+        'battery9v',
+        'battery-holder',
+        'solar-panel',
+        'solar_panel',
+        'wind-turbine',
+        'wind_turbine',
+        'bess-substation',
+        'bess_substation',
+        'hydro-turbine',
+        'hydro_turbine',
+        'distribution-panel',
+        'distribution_panel',
+      ].includes(n.data.type)
   );
 
-  const resistors = nodes.filter((n) => n.data.type === 'resistor');
-  const bulbs = nodes.filter((n) => ['bulb', 'socket', 'pin-socket', 'socket-pin'].includes(n.data.type));
-  const switches = nodes.filter((n) => n.data.type === 'switch');
+  const resistors = nodes.filter((n) => n.data.type === 'resistor' && isNodeWired(n.id));
+  const bulbs = nodes.filter((n) => {
+    if (!isNodeWired(n.id)) return false;
+    if (n.data.type === 'bulb') {
+      // Only include standalone bulb if directly wired in a circuit (ignore loose desk spare)
+      return wiredNodeIds.has(n.id);
+    }
+    if (['socket', 'pin-socket', 'socket-pin'].includes(n.data.type)) {
+      return Boolean(n.data.installedBulb);
+    }
+    return false;
+  });
+  const switches = nodes.filter((n) => n.data.type === 'switch' && isNodeWired(n.id));
   const grounds = nodes.filter((n) => n.data.type === 'ground');
-  const activeLoads = [...resistors, ...bulbs];
+  const allWiredLoads = [...resistors, ...bulbs];
+
+  // Check if any wired source or load carries live solved MNA current (e.g., parallel branch stays active while another branch's switch is open)
+  const getSolvedBranchMag = (node: Node<CircuitElementData>): number => {
+    const direct = Math.abs(simulation.branchCurrents[node.id] ?? 0);
+    if (direct > 1e-6) return direct;
+    if (node.data.bulbId) {
+      return Math.abs(simulation.branchCurrents[node.data.bulbId] ?? 0);
+    }
+    return 0;
+  };
+  const hasLiveBranchCurrent = [...voltageSources, ...allWiredLoads].some(
+    (node) => getSolvedBranchMag(node) > 1e-4
+  );
+
+  // Determine if switches are breaking the circuit or isolating specific parallel branches
+  const openSwitches = switches.filter((s) => s.data.isOpen === true);
+  const activeLoads =
+    openSwitches.length > 0 && hasLiveBranchCurrent
+      ? allWiredLoads.filter((load) => getSolvedBranchMag(load) > 1e-5)
+      : allWiredLoads;
 
   // Inspect handle-level connectivity & branching degree in O(V + E)
   const topologyCtx = inspectTutorTopologyGraph(nodes, edges, activeLoads);
@@ -393,9 +451,6 @@ export function analyzeExplainableCircuit(
   // Compute effective EMF across single / series / parallel / opposing voltage sources
   const sourceBank = computeEffectiveSourceBank(voltageSources, topologyCtx);
   const totalSourcesVoltage = sourceBank.effectiveVoltage;
-
-  // Determine if switches are breaking the circuit
-  const openSwitches = switches.filter((s) => s.data.isOpen === true);
 
   // Check for dead short circuit condition
   const isShortCircuit = simulation.isShortCircuit || simulation.shortCircuitBranches.length > 0;
@@ -409,7 +464,7 @@ export function analyzeExplainableCircuit(
     topologyType = 'dead_short';
     summaryId = 'Terjadi Korsleting Langsung (Dead Short Circuit). Arus mengalir melalui jalur resistansi nol tanpa hambatan beban.';
     summaryEn = 'Direct Dead Short Circuit detected. Current bypasses loads through an unrestricted near-zero resistance path.';
-  } else if (openSwitches.length > 0) {
+  } else if (openSwitches.length > 0 && !hasLiveBranchCurrent) {
     topologyType = 'open_circuit';
     summaryId = `Rangkaian Terbuka (Open Loop). Sakelar [${openSwitches.map((s) => s.data.label).join(', ')}] dalam kondisi terbuka memutus aliran elektron.`;
     summaryEn = `Open Circuit Loop. Switch [${openSwitches.map((s) => s.data.label).join(', ')}] is open, stopping electron drift.`;
@@ -427,7 +482,7 @@ export function analyzeExplainableCircuit(
     summaryEn = 'Single Closed Series Loop. Current flows uniformly through each component in sequence.';
   }
 
-  // Calculate equivalent resistance Req
+  // Calculate equivalent resistance Req across conducting active loads
   let equivalentResistanceOhms = 0;
 
   if (activeLoads.length > 0) {
@@ -435,25 +490,56 @@ export function analyzeExplainableCircuit(
       let invSum = 0;
       for (const load of activeLoads) {
         const r = getComponentEffectiveResistance(load.data);
-        if (r > 0) invSum += 1 / r;
+        if (r > 0 && r < 1e8) invSum += 1 / r;
       }
       equivalentResistanceOhms = invSum > 0 ? Number((1 / invSum).toFixed(2)) : 0.1;
     } else {
       // Series or single loop sum
       let sum = 0;
       for (const load of activeLoads) {
-        sum += getComponentEffectiveResistance(load.data);
+        const r = getComponentEffectiveResistance(load.data);
+        if (r < 1e8) sum += r;
       }
       equivalentResistanceOhms = Number(sum.toFixed(2));
     }
   }
 
-  // Total loop current from simulation or Ohm's Law
+  // Account for active semiconductor diode threshold Vf (e.g., 2.0V LED junction) in series loop calculations
+  const totalSeriesDiodeVf =
+    topologyType === 'series_loop'
+      ? activeLoads.reduce((acc, load) => acc + getSocketForwardThreshold(load.data), 0)
+      : 0;
+  const reverseBlockedSet = new Set(simulation.reverseBiasedBranches ?? []);
+
+  // Total loop current from MNA solved branch currents, physical Ohm's Law (with Vf), or real R_int short surge
   let totalLoopCurrentAmps = 0;
-  if (!isShortCircuit && openSwitches.length === 0 && equivalentResistanceOhms > 0) {
-    totalLoopCurrentAmps = Number((totalSourcesVoltage / equivalentResistanceOhms).toFixed(3));
+  if (!isShortCircuit && (openSwitches.length === 0 || hasLiveBranchCurrent) && equivalentResistanceOhms > 0) {
+    const solvedSourceCurrents = voltageSources
+      .map((src) => getSolvedBranchMag(src))
+      .filter((i) => i > 1e-6);
+    if (solvedSourceCurrents.length > 0 && (openSwitches.length > 0 || totalSeriesDiodeVf > 0 || activeLoads.some((l) => reverseBlockedSet.has(l.id)))) {
+      totalLoopCurrentAmps = Number(Math.max(...solvedSourceCurrents).toFixed(4));
+    } else {
+      const effectiveDriveVoltage = Math.max(0, totalSourcesVoltage - totalSeriesDiodeVf);
+      totalLoopCurrentAmps = Number((effectiveDriveVoltage / equivalentResistanceOhms).toFixed(3));
+    }
   } else if (isShortCircuit) {
-    totalLoopCurrentAmps = 60.0; // Clamped short circuit surge
+    // Derive real short-circuit surge from MNA branch currents or V_oc / R_int (no arbitrary 60A constant)
+    const shortedMagnitudes = [
+      ...voltageSources.map((src) => Math.abs(simulation.branchCurrents[src.id] ?? 0)),
+      ...(simulation.shortCircuitBranches ?? []).map((id) =>
+        Math.abs(simulation.branchCurrents[id] ?? 0)
+      ),
+    ].filter((val) => Number.isFinite(val) && val > 1e-3);
+    if (shortedMagnitudes.length > 0) {
+      totalLoopCurrentAmps = Number(Math.max(...shortedMagnitudes).toFixed(3));
+    } else {
+      const primaryRint =
+        voltageSources.length > 0
+          ? Math.max(0.05, getSourceDischargeResistance(voltageSources[0].data))
+          : 0.25;
+      totalLoopCurrentAmps = Number((totalSourcesVoltage / primaryRint).toFixed(3));
+    }
   }
 
   const totalPowerWatts = Number((totalSourcesVoltage * totalLoopCurrentAmps).toFixed(2));
@@ -617,18 +703,24 @@ export function analyzeExplainableCircuit(
     });
   }
 
-  // Step 3: Loop Current via Ohm's Law
+  // Step 3: Loop Current via Ohm's Law (subtracting active series diode forward threshold Vf when applicable)
+  const effectiveFormulaLatex =
+    totalSeriesDiodeVf > 0 ? 'I = \\frac{V_{s} - V_{f}}{R_{eq}}' : 'I = \\frac{V_{s}}{R_{eq}}';
+  const effectiveNumeratorStr =
+    totalSeriesDiodeVf > 0
+      ? `(${totalSourcesVoltage} - ${totalSeriesDiodeVf.toFixed(1)})`
+      : `${totalSourcesVoltage}`;
   derivationSteps.push({
     stepNumber: 3,
     titleId: 'Perhitungan Kuat Arus Loop (Hukum Ohm)',
     titleEn: 'Calculate Loop Current (Ohm\'s Law)',
     lawOrTheorem: 'Hukum Ohm (Ohm\'s Law)',
-    formulaLatex: 'I = \\frac{V_{s}}{R_{eq}}',
+    formulaLatex: effectiveFormulaLatex,
     calculationDescriptionId:
       'Kuat arus listrik yang mengalir sebanding lurus dengan beda potensial dan berbanding terbalik dengan hambatan total.',
     calculationDescriptionEn:
       'Electric current is directly proportional to potential difference and inversely proportional to total resistance.',
-    substitutedFormula: `I = \\frac{${totalSourcesVoltage} \\text{ V}}{${equivalentResistanceOhms || 0.1} \\text{ }\\Omega} = ${totalLoopCurrentAmps} \\text{ A} \\; (${(totalLoopCurrentAmps * 1000).toFixed(1)} \\text{ mA})`,
+    substitutedFormula: `I = \\frac{${effectiveNumeratorStr} \\text{ V}}{${equivalentResistanceOhms || 0.1} \\text{ }\\Omega} = ${totalLoopCurrentAmps} \\text{ A} \\; (${(totalLoopCurrentAmps * 1000).toFixed(1)} \\text{ mA})`,
     verifiedResult: `I = ${totalLoopCurrentAmps} Ampere`,
     relevantComponentIds: [...voltageSources.map((s) => s.id), ...activeLoads.map((l) => l.id)],
   });
@@ -639,22 +731,26 @@ export function analyzeExplainableCircuit(
 
     const branchData = activeLoads.map((load) => {
       const r = getComponentEffectiveResistance(load.data);
+      const forwardVf = getSocketForwardThreshold(load.data);
+      const isReverseBlocked = reverseBlockedSet.has(load.id);
       // Read exact MNA branch current; fall back to ideal branch calculation if simulation current is 0
       let branchCurrent = Math.abs(simulation.branchCurrents[load.id] ?? 0);
       if (branchCurrent === 0 && load.data.bulbId) {
         branchCurrent = Math.abs(simulation.branchCurrents[load.data.bulbId] ?? 0);
       }
-      if (branchCurrent === 0) {
+      if (branchCurrent === 0 && !isReverseBlocked) {
         if (isParallel && r > 0) {
-          branchCurrent = Number((totalSourcesVoltage / r).toFixed(3));
-        } else if (!isParallel) {
+          branchCurrent = Number((Math.max(0, totalSourcesVoltage - forwardVf) / r).toFixed(3));
+        } else if (!isParallel && (openSwitches.length === 0 || hasLiveBranchCurrent)) {
           branchCurrent = totalLoopCurrentAmps;
         }
       }
 
-      const vDrop = isParallel
+      const vDrop = isReverseBlocked
+        ? 0
+        : isParallel
         ? Number(totalSourcesVoltage.toFixed(2))
-        : Number((branchCurrent * r).toFixed(2));
+        : Number(((branchCurrent > 1e-6 ? forwardVf : 0) + branchCurrent * r).toFixed(2));
       const pDiss = Number((vDrop * branchCurrent).toFixed(2));
 
       return {

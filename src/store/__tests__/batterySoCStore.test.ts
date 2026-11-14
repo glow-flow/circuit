@@ -121,4 +121,44 @@ describe('useCircuitStore - Battery State of Charge (SoC)', () => {
     expect(currentAtDead).toBe(0);
     expect(simulationResult.errorMessage).toBeUndefined();
   });
+
+  it('preserves series capacity invariance (1000 mAh) and individual cell SoC on holder insert/eject', () => {
+    const store = useCircuitStore.getState();
+    store.addComponent('battery-holder', { x: 0, y: 0 });
+    store.addComponent('battery', { x: 180, y: 0 });
+    store.addComponent('battery', { x: 320, y: 0 });
+
+    const initialNodes = useCircuitStore.getState().nodes;
+    const holder = initialNodes.find((n) => n.data.type === 'battery-holder')!;
+    const batteries = initialNodes.filter((n) => n.data.type === 'battery');
+    expect(holder.data.capacity).toBe(0);
+
+    // Discharge Cell A to 45% and leave Cell B at 90%
+    store.updateComponentData(batteries[0].id, { currentCharge: 45 });
+    store.updateComponentData(batteries[1].id, { currentCharge: 90 });
+
+    // Insert Cell A (45%) and Cell B (90%) in series
+    store.insertBatteryIntoHolder(batteries[0].id, holder.id);
+    store.insertBatteryIntoHolder(batteries[1].id, holder.id);
+
+    const loadedHolder = useCircuitStore
+      .getState()
+      .nodes.find((n) => n.id === holder.id)!;
+    expect(loadedHolder.data.batteryCount).toBe(2);
+    expect(loadedHolder.data.voltage).toBeCloseTo(3.0, 2);
+    expect(loadedHolder.data.capacity).toBe(1000);
+    expect(loadedHolder.data.cellCharges).toEqual([45, 90]);
+    expect(loadedHolder.data.currentCharge).toBe(45);
+
+    // Eject Slot 2: must restore Cell B's exact 90% SoC, leaving Cell A at 45%
+    store.ejectBatteryFromHolder(holder.id);
+    const afterFirstEject = useCircuitStore.getState().nodes;
+    const ejectedB = afterFirstEject.find((n) => n.data.type === 'battery')!;
+    const halfHolder = afterFirstEject.find((n) => n.id === holder.id)!;
+    expect(ejectedB.data.currentCharge).toBe(90);
+    expect(halfHolder.data.batteryCount).toBe(1);
+    expect(halfHolder.data.cellCharges).toEqual([45]);
+    expect(halfHolder.data.currentCharge).toBe(45);
+    expect(halfHolder.data.capacity).toBe(1000);
+  });
 });

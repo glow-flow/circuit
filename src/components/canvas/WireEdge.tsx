@@ -79,6 +79,71 @@ export function resolveEdgeBranchCurrent(
   return Math.max(rawSourceI, rawTargetI);
 }
 
+export type WireFlowDirection = 'forward' | 'reverse' | 'none';
+
+/**
+ * Resolves physical conventional current direction (`source -> target` vs `target -> source`)
+ * from signed MNA branch currents so dash animation flows in the true electrical direction
+ * regardless of canvas drag order.
+ *
+ * Time Complexity: O(1).
+ */
+export function resolveWireFlowDirection(
+  source: string,
+  target: string,
+  sourceHandleId: string | null | undefined,
+  targetHandleId: string | null | undefined,
+  branchCurrents: Record<string, number>,
+  epsilon = 0.0001
+): WireFlowDirection {
+  const sourceI = branchCurrents[source] ?? 0;
+  const targetI = branchCurrents[target] ?? 0;
+  if (Math.abs(sourceI) <= epsilon && Math.abs(targetI) <= epsilon) {
+    return 'none';
+  }
+
+  const resolvePinExitSign = (
+    compId: string,
+    handleId: string | null | undefined,
+    signedCurrent: number
+  ): number => {
+    if (Math.abs(signedCurrent) <= epsilon || !handleId || compId.startsWith('wp_')) {
+      return 0;
+    }
+    if (handleId === 'pos') {
+      return signedCurrent < 0 ? 1 : -1;
+    }
+    if (handleId === 'neg') {
+      return signedCurrent < 0 ? -1 : 1;
+    }
+    if (handleId === 'p1') {
+      return signedCurrent > 0 ? -1 : 1;
+    }
+    if (handleId === 'p2') {
+      return signedCurrent > 0 ? 1 : -1;
+    }
+    return 0;
+  };
+
+  const sourceSign = resolvePinExitSign(source, sourceHandleId, sourceI);
+  if (sourceSign !== 0) {
+    return sourceSign > 0 ? 'forward' : 'reverse';
+  }
+
+  const targetSign = resolvePinExitSign(target, targetHandleId, targetI);
+  if (targetSign !== 0) {
+    return targetSign < 0 ? 'forward' : 'reverse';
+  }
+
+  if (sourceHandleId === 'pos' || targetHandleId === 'neg' || targetHandleId === 'gnd') {
+    return 'forward';
+  }
+  if (targetHandleId === 'pos' || sourceHandleId === 'neg' || sourceHandleId === 'gnd') {
+    return 'reverse';
+  }
+  return 'forward';
+}
+
 export type WirePolarity = 'positive' | 'negative' | 'neutral';
 
 /**
@@ -164,6 +229,13 @@ export const WireEdge: React.FC<EdgeProps> = ({
   const wireCurrent = resolveEdgeBranchCurrent(
     source,
     target,
+    simulation.branchCurrents
+  );
+  const flowDirection = resolveWireFlowDirection(
+    source,
+    target,
+    sourceHandleId,
+    targetHandleId,
     simulation.branchCurrents
   );
   const hasCurrent = wireCurrent > 0.0001;
@@ -361,7 +433,7 @@ export const WireEdge: React.FC<EdgeProps> = ({
         />
       )}
 
-      {/* Animated physical electron flow dash ONLY when simulation verifies real current */}
+      {/* Animated physical current flow dash ONLY when simulation verifies real current */}
       {hasCurrent && !isBranchShortCircuit && (
         <path
           d={edgePath}
@@ -370,7 +442,10 @@ export const WireEdge: React.FC<EdgeProps> = ({
           strokeWidth={2}
           strokeDasharray="6 8"
           className="animate-wire-flow pointer-events-none"
-          style={{ animationDuration: animationSpeed }}
+          style={{
+            animationDuration: animationSpeed,
+            animationDirection: flowDirection === 'reverse' ? 'reverse' : 'normal',
+          }}
         />
       )}
 

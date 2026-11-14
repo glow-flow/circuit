@@ -84,7 +84,7 @@ export const SutetLossInteractiveDemo: React.FC = () => {
           {/* Outdoor Plant Box */}
           <rect x="14" y="24" width="78" height="60" rx="10" fill="#090d16" stroke="#fbbf24" strokeWidth="1.5" />
           <text x="53" y="46" textAnchor="middle" fill="#fde68a" fontSize="10" fontWeight="700">
-            PLTS/Bayu
+            {isId ? 'PLTS/Bayu' : 'Solar/Wind'}
           </text>
           <text x="53" y="66" textAnchor="middle" fill="#7dd3fc" fontSize="11" fontWeight="700" fontFamily="JetBrains Mono, monospace">
             {genPowerWatts}W
@@ -93,7 +93,7 @@ export const SutetLossInteractiveDemo: React.FC = () => {
           {/* Mid-line Telemetry Bubble */}
           <rect x="116" y="16" width="128" height="30" rx="8" fill="#0f172a" stroke="#334155" strokeWidth="1.2" />
           <text x="180" y="29" textAnchor="middle" fill="#94a3b8" fontSize="8.5" fontFamily="JetBrains Mono, monospace">
-            {txVoltage}V · Arus {lineCurrent.toFixed(1)}A
+            {txVoltage}V · {isId ? 'Arus' : 'Current'} {lineCurrent.toFixed(1)}A
           </text>
           <text
             x="180"
@@ -104,7 +104,7 @@ export const SutetLossInteractiveDemo: React.FC = () => {
             fontWeight="700"
             fontFamily="JetBrains Mono, monospace"
           >
-            Rugi Panas: -{actualLossWatts.toFixed(0)}W
+            {isId ? 'Rugi Panas:' : 'Heat Loss:'} -{actualLossWatts.toFixed(0)}W
           </text>
 
           {/* Lab Charger Box */}
@@ -119,7 +119,7 @@ export const SutetLossInteractiveDemo: React.FC = () => {
             strokeWidth="1.5"
           />
           <text x="307" y="44" textAnchor="middle" fill="#cbd5e1" fontSize="9.5" fontWeight="700">
-            Cas Lab 9V
+            {isId ? 'Cas Lab 9V' : 'Lab 9V Bus'}
           </text>
           <text
             x="307"
@@ -138,7 +138,7 @@ export const SutetLossInteractiveDemo: React.FC = () => {
 
           {/* Bottom Wire Resistance Info */}
           <text x="180" y="106" textAnchor="middle" fill="#64748b" fontSize="9.5" fontFamily="JetBrains Mono, monospace">
-            Jarak SUTET: {distanceMeters}m (R_kabel = {lineResistance.toFixed(1)} Ω)
+            {isId ? 'Jarak SUTET' : 'SUTET Span'}: {distanceMeters}m (R_{isId ? 'kabel' : 'line'} = {lineResistance.toFixed(1)} Ω)
           </text>
         </svg>
       </div>

@@ -3,6 +3,7 @@ import { Handle, Position, NodeProps } from 'reactflow';
 import { CircuitElementData } from '../../../types/circuit';
 import { Wind, Zap, Mountain, TrendingDown, ShieldCheck } from 'lucide-react';
 import { useCircuitStore } from '../../../store/useCircuitStore';
+import { WIND_AVR_MAX_VOLTAGE } from '../../../physics/terrainClimateEngine';
 
 /**
  * WindTurbineNode Component.
@@ -11,7 +12,7 @@ import { useCircuitStore } from '../../../store/useCircuitStore';
  * Features:
  * - Dynamic rotor rotational CSS animation with variable duration based on speed.
  * - Progressive anime/cinema motion-blur smear frame overlay when spinning fast.
- * - Slider from 0% to 100% controlling rotor speed and linear output EMF (0V to 12V).
+ * - Slider from 0% to 100% controlling rotor speed and AVR-regulated DC output EMF (0V to 12V).
  * - Dual terminals (Positive and Negative) at bottom base of the mast.
  * - Strictly calibrated 260px height (`justify-end`) so the mast base stays flush on the ground.
  *
@@ -26,7 +27,10 @@ export const WindTurbineNode: React.FC<NodeProps<CircuitElementData>> = memo(
 
     const baseSpeed = data.speed ?? 50;
     const effectiveSpeed = data.effectiveSpeed ?? baseSpeed;
-    const outputVoltage = data.voltage ?? (effectiveSpeed / 100) * 12.0;
+    const outputVoltage = Math.min(
+      WIND_AVR_MAX_VOLTAGE,
+      data.voltage ?? (effectiveSpeed / 100) * WIND_AVR_MAX_VOLTAGE
+    );
     const elevationBonus = data.elevationBonusPercent ?? 0;
 
     const currentAmperes = Math.abs(simulation.branchCurrents[id] ?? data.calculatedCurrent ?? 0);
@@ -48,7 +52,7 @@ export const WindTurbineNode: React.FC<NodeProps<CircuitElementData>> = memo(
         const nextSpeed = parseInt(e.target.value, 10);
         updateComponentData(id, {
           speed: nextSpeed,
-          voltage: (nextSpeed / 100) * 12.0,
+          voltage: Math.min(WIND_AVR_MAX_VOLTAGE, (nextSpeed / 100) * WIND_AVR_MAX_VOLTAGE),
         });
       },
       [id, updateComponentData]

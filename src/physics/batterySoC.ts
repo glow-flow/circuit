@@ -26,8 +26,12 @@ export const DEFAULT_AA_CAPACITY_MAH = 1000;
 /** Default rated capacity for 9V alkaline battery (milliampere-hours) */
 export const DEFAULT_9V_CAPACITY_MAH = 500;
 
-/** Default rated capacity for dual AA battery holder (milliampere-hours) */
-export const DEFAULT_HOLDER_CAPACITY_MAH = 2000;
+/**
+ * Default rated capacity for series AA battery holder (milliampere-hours).
+ * In a series string (2 × 1.5V = 3.0V), voltages add while ampere-hour capacity
+ * remains equal to one individual cell (1000 mAh), preserving energy E = V × Q = 3.0 Wh.
+ */
+export const DEFAULT_HOLDER_CAPACITY_MAH = DEFAULT_AA_CAPACITY_MAH;
 
 /** Current flow threshold to differentiate active flow from numerical noise (Amperes) */
 export const CURRENT_FLOW_EPSILON = 1e-5; // 0.01 mA
@@ -46,6 +50,18 @@ export const BATTERY_SIMULATION_TIME_SCALE = 60;
  * @param cellCount - For battery-holder: number of installed cells
  * @returns Capacity in mAh
  */
+/**
+ * Resolves the default mAh battery capacity based on component type and cell count.
+ * For series-connected holders ('battery-holder'), ampere-hour capacity does NOT
+ * scale with series cell count: 1 or 2 cells in series share the 1000 mAh rating,
+ * while 0 installed cells yields 0 mAh.
+ *
+ * Time Complexity: O(1).
+ *
+ * @param componentType - Component identifier ('battery', 'battery9v', or 'battery-holder')
+ * @param cellCount - For battery-holder: number of installed cells
+ * @returns Rated capacity in mAh
+ */
 export function getDefaultBatteryCapacity(
   componentType: ComponentType,
   cellCount?: number
@@ -56,7 +72,7 @@ export function getDefaultBatteryCapacity(
     case 'battery9v':
       return DEFAULT_9V_CAPACITY_MAH;
     case 'battery-holder':
-      return (cellCount ?? 2) * DEFAULT_AA_CAPACITY_MAH;
+      return cellCount === 0 ? 0 : DEFAULT_HOLDER_CAPACITY_MAH;
     case 'bess-substation':
     case 'bess_substation':
       return 10000;
@@ -220,5 +236,169 @@ export function stepBatteryCharge(
   return {
     newCharge: updatedCharge,
     chargeState,
+  };
+}
+
+/** Nominal EMF of a single standard AA alkaline cell in Volts */
+export const NOMINAL_AA_CELL_VOLTAGE = 1.5;
+
+/** Maximum AA cells supported in the dual-AA series holder */
+export const MAX_HOLDER_CELLS = 2;
+
+export interface SeriesHolderStateInput {
+  hasBattery?: boolean;
+  batteryCount?: number;
+  currentCharge?: number;
+  cellCharges?: number[];
+}
+
+export interface SeriesHolderTelemetry {
+  hasBattery: boolean;
+  batteryCount: number;
+  cellCharges: number[];
+  /** Limiting cell SoC (weakest cell determines remaining series mAh delivery) */
+  currentCharge: number;
+  /** Series string capacity equals single-cell mAh when loaded, 0 when empty */
+  capacity: number;
+  /** Nominal open-circuit series EMF sum (e.g. 1.5V or 3.0V) */
+  voltage: number;
+  /** Sag-adjusted series EMF sum */
+  effectiveVoltage: number;
+}
+
+function clampChargePercentage(value: number | undefined, fallback = 100): number {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return fallback;
+  }
+  return Math.max(0, Math.min(100, value));
+}
+
+/**
+ * Normalizes per-cell SoC tracking for a series `battery-holder`.
+ * Time Complexity: O(N) with N <= 2 (O(1) bounded).
+ *
+ * @param cellCharges - Existing per-cell SoC array if recorded
+ * @param cellCount - Number of currently installed AA cells (0..2)
+ * @param fallbackCharge - Fallback pack SoC when individual cell charges were not tracked
+ * @returns Clamped array of length `cellCount`
+ */
+export function normalizeHolderCellCharges(
+  cellCharges: number[] | undefined,
+  cellCount: number,
+  fallbackCharge = 100
+): number[] {
+  const safeCount = Math.max(0, Math.min(MAX_HOLDER_CELLS, Math.floor(cellCount)));
+  if (safeCount === 0) {
+    return [];
+  }
+
+  const safeFallback = clampChargePercentage(fallbackCharge, 100);
+  const result: number[] = [];
+  for (let i = 0; i < safeCount; i++) {
+    result.push(clampChargePercentage(cellCharges?.[i], safeFallback));
+  }
+  return result;
+}
+
+/**
+ * Resolves the active cell count from holder node fields safely.
+ * Time Complexity: O(1).
+ */
+export function resolveHolderCellCount(holder: SeriesHolderStateInput): number {
+  const rawCount = holder.batteryCount ?? (holder.hasBattery ? MAX_HOLDER_CELLS : 0);
+  return Math.max(0, Math.min(MAX_HOLDER_CELLS, Math.floor(rawCount)));
+}
+
+/**
+ * Computes consistent physical telemetry for a series AA battery holder.
+ * Voltages sum in series, while ampere-hour capacity stays invariant at 1000 mAh
+ * and usable pack charge is governed by the lowest-SoC cell in series.
+ *
+ * Time Complexity: O(N) where N <= 2 (O(1) bounded).
+ */
+export function computeSeriesHolderTelemetry(
+  cellCharges: number[],
+  nominalCellVoltage: number = NOMINAL_AA_CELL_VOLTAGE
+): SeriesHolderTelemetry {
+  const safeCells = cellCharges
+    .slice(0, MAX_HOLDER_CELLS)
+    .map((soc) => clampChargePercentage(soc, 100));
+  const batteryCount = safeCells.length;
+  const hasBattery = batteryCount > 0;
+
+  let effectiveVoltage = 0;
+  let limitingCharge = hasBattery ? 100 : 100;
+  if (hasBattery) {
+    limitingCharge = safeCells[0];
+    for (let i = 0; i < batteryCount; i++) {
+      const soc = safeCells[i];
+      if (soc < limitingCharge) {
+        limitingCharge = soc;
+      }
+      effectiveVoltage += computeEffectiveBatteryVoltage(nominalCellVoltage, soc);
+    }
+  }
+
+  return {
+    hasBattery,
+    batteryCount,
+    cellCharges: safeCells,
+    currentCharge: limitingCharge,
+    capacity: hasBattery ? DEFAULT_HOLDER_CAPACITY_MAH : 0,
+    voltage: batteryCount * nominalCellVoltage,
+    effectiveVoltage,
+  };
+}
+
+/**
+ * Computes updated holder fields when inserting an AA cell (default or dragged) into a holder,
+ * preserving existing cells' SoC and storing the newly inserted cell's individual SoC.
+ * Returns null if the holder already holds 2 cells.
+ *
+ * Time Complexity: O(1).
+ */
+export function insertCellIntoHolderState(
+  holder: SeriesHolderStateInput,
+  insertedCellCharge = 100
+): SeriesHolderTelemetry | null {
+  const currentCount = resolveHolderCellCount(holder);
+  if (currentCount >= MAX_HOLDER_CELLS) {
+    return null;
+  }
+
+  const existingCells = normalizeHolderCellCharges(
+    holder.cellCharges,
+    currentCount,
+    holder.currentCharge ?? 100
+  );
+  const nextCells = [...existingCells, clampChargePercentage(insertedCellCharge, 100)];
+  return computeSeriesHolderTelemetry(nextCells);
+}
+
+/**
+ * Computes updated holder fields and the ejected AA cell's preserved SoC when removing one cell.
+ * Pops the last inserted cell (LIFO slot 2 -> slot 1). Returns null if holder is empty.
+ *
+ * Time Complexity: O(1).
+ */
+export function ejectCellFromHolderState(
+  holder: SeriesHolderStateInput
+): { updatedHolder: SeriesHolderTelemetry; ejectedCellCharge: number } | null {
+  const currentCount = resolveHolderCellCount(holder);
+  if (currentCount <= 0) {
+    return null;
+  }
+
+  const existingCells = normalizeHolderCellCharges(
+    holder.cellCharges,
+    currentCount,
+    holder.currentCharge ?? 100
+  );
+  const ejectedCellCharge = existingCells[existingCells.length - 1] ?? clampChargePercentage(holder.currentCharge, 100);
+  const remainingCells = existingCells.slice(0, existingCells.length - 1);
+
+  return {
+    updatedHolder: computeSeriesHolderTelemetry(remainingCells),
+    ejectedCellCharge,
   };
 }

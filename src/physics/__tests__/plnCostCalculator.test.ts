@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { Node } from 'reactflow';
+import { Edge, Node } from 'reactflow';
 import { CircuitElementData } from '../../types/circuit';
 import {
   calculatePlnCostEstimate,
@@ -7,6 +7,7 @@ import {
   getPlnTariffTier,
   PLN_TARIFF_TIERS,
 } from '../plnCostCalculator';
+import { solveCircuitMNA } from '../mnaSolver';
 
 describe('PLN Electricity Consumption & Rupiah Cost Calculator', () => {
   const baseSimulation = {
@@ -137,5 +138,61 @@ describe('PLN Electricity Consumption & Rupiah Cost Calculator', () => {
     expect(formatRupiah(0)).toBe('Rp 0');
     expect(formatRupiah(0.45)).toBe('Rp 0,45');
     expect(formatRupiah(216705)).toBe('Rp 216.705');
+  });
+
+  it('excludes galvanically isolated off-grid pocket battery islands when grid/solar islands exist', () => {
+    const hybridNodes: Node<CircuitElementData>[] = [
+      // Island A: Solar + Load
+      {
+        id: 'solar_grid',
+        type: 'solar-panel',
+        position: { x: 0, y: 0 },
+        data: { id: 'solar_grid', type: 'solar-panel', voltage: 12, label: 'PLTS' },
+      },
+      {
+        id: 'r_grid',
+        type: 'resistor',
+        position: { x: 100, y: 0 },
+        data: { id: 'r_grid', type: 'resistor', resistance: 120, label: 'Beban Grid' },
+      },
+      // Island B: Isolated 9V off-grid battery + Load (no shared wires with Island A)
+      {
+        id: 'bat_offgrid',
+        type: 'battery9v',
+        position: { x: 0, y: 200 },
+        data: { id: 'bat_offgrid', type: 'battery9v', voltage: 9, label: 'Baterai Saku' },
+      },
+      {
+        id: 'r_offgrid',
+        type: 'resistor',
+        position: { x: 100, y: 200 },
+        data: { id: 'r_offgrid', type: 'resistor', resistance: 9, label: 'Beban Saku' },
+      },
+    ];
+
+    const edges: Edge[] = [
+      { id: 'eg1', source: 'solar_grid', sourceHandle: 'pos', target: 'r_grid', targetHandle: 'p1' },
+      { id: 'eg2', source: 'r_grid', sourceHandle: 'p2', target: 'solar_grid', targetHandle: 'neg' },
+      { id: 'eo1', source: 'bat_offgrid', sourceHandle: 'pos', target: 'r_offgrid', targetHandle: 'p1' },
+      { id: 'eo2', source: 'r_offgrid', sourceHandle: 'p2', target: 'bat_offgrid', targetHandle: 'neg' },
+    ];
+
+    const sim = solveCircuitMNA({
+      components: hybridNodes.map((n) => n.data),
+      wires: edges.map((e) => ({
+        id: e.id,
+        source: e.source,
+        sourceHandle: e.sourceHandle ?? 'pos',
+        target: e.target,
+        targetHandle: e.targetHandle ?? 'neg',
+      })),
+    });
+
+    const result = calculatePlnCostEstimate(hybridNodes, sim, 'R1_1300_2200', 8, 1, edges);
+
+    expect(result.greenEnergySharePercent).toBe(100);
+    expect(result.nonRenewablePowerWatts).toBe(0);
+    expect(result.excludedOffGridWatts).toBeGreaterThan(5);
+    expect(result.componentBreakdown.map((item) => item.nodeId)).toEqual(['r_grid']);
   });
 });

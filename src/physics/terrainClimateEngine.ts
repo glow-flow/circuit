@@ -213,6 +213,9 @@ export function getTerrainHeightmap(terrainGrid: TerrainCellType[][]): number[] 
   return heightmap;
 }
 
+/** Regulated maximum open-circuit DC bus EMF (V) from integrated wind AVR rectifier */
+export const WIND_AVR_MAX_VOLTAGE = 12.0;
+
 /**
  * Calculates effective wind speed based on terrain elevation under wind turbines
  * using the Hellmann power law:
@@ -228,7 +231,7 @@ export function getTerrainHeightmap(terrainGrid: TerrainCellType[][]): number[] 
  * @param baseSpeed - User slider setting for wind turbine (0 - 100%)
  * @param surfaceY - Terrain surface Y coordinate in pixels directly beneath the turbine
  * @param baselineY - Baseline ground level Y coordinate in pixels (defaults to row 15 * cellHeight)
- * @returns WindShearResult with effective speed, multiplier, bonus percentage, and voltage
+ * @returns WindShearResult with effective speed, multiplier, bonus percentage, and AVR-capped voltage
  */
 export function calculateOrographicWindShear(
   baseSpeed: number,
@@ -251,8 +254,10 @@ export function calculateOrographicWindShear(
   const effectiveSpeed = Math.max(0, Math.min(150, Math.round(rawEffectiveSpeed * 10) / 10));
   const elevationBonusPercent = Math.round((shearFactor - 1) * 100);
 
-  // Effective output EMF voltage: (effectiveSpeed / 100) * 12.0V
-  const effectiveVoltage = Number(((effectiveSpeed / 100) * 12.0).toFixed(2));
+  // Effective output EMF voltage governed by onboard 12V DC AVR rectifier
+  const effectiveVoltage = Number(
+    Math.min(WIND_AVR_MAX_VOLTAGE, (effectiveSpeed / 100) * WIND_AVR_MAX_VOLTAGE).toFixed(2)
+  );
 
   return {
     baseSpeed: safeBaseSpeed,

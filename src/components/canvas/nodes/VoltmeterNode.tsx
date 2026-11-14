@@ -31,9 +31,13 @@ export const VoltmeterNode: React.FC<NodeProps<CircuitElementData>> = ({ id, sel
       (e.target === id && e.targetHandle === 'p2')
   );
 
-  // Calculate voltage difference between the two connected nets (R_internal = 10MΩ)
+  const isFloatingIsland =
+    Boolean(wireP1 && wireP2) && (simulation.floatingVoltmeterIds?.includes(id) ?? false);
+
+  // Calculate voltage difference between the two connected nets (R_internal = 10MΩ),
+  // suppressing phantom readings when probes span galvanically isolated floating islands.
   let measuredVoltage = 0.0;
-  if (wireP1 && wireP2) {
+  if (wireP1 && wireP2 && !isFloatingIsland) {
     const current = simulation.branchCurrents[id] ?? 0;
     measuredVoltage = current * 1e7;
   }
@@ -125,7 +129,11 @@ export const VoltmeterNode: React.FC<NodeProps<CircuitElementData>> = ({ id, sel
               {displayVoltage} V
             </div>
             <div className="text-[9px] text-slate-400 font-sans mt-0.5">
-              {t.probeDiff}
+              {isFloatingIsland
+                ? isIndonesian
+                  ? 'Rangkaian terpisah (mengambang / tanpa jalur balik)'
+                  : 'Floating / isolated loops (no closed return reference)'
+                : t.probeDiff}
             </div>
           </div>
 

@@ -403,6 +403,27 @@ describe('BESS Substation & Waterfall Micro-Hydro (Nature Mode Phase 3)', () => 
       }
     });
 
+    it('assigns strictly smaller hydraulic head and power to a shallow stagnant puddle than a falling 3-row waterfall', () => {
+      const puddleGrid = createEmptyTerrainGrid(20, 40);
+      // 1-row shallow puddle under turbine base (row 17 at col 12..13, no overhead fall)
+      puddleGrid[17][12] = 'WATER';
+      puddleGrid[17][13] = 'WATER';
+      const targetBox = { x: 340, y: 408, width: 144, height: 144 };
+      const puddleFlow = detectTurbineWaterFlow(targetBox, puddleGrid, 1360, 680);
+
+      const waterfallGrid = createEmptyTerrainGrid(20, 40);
+      // 3-row overhead waterfall dropping into runner (runner at row 13, water rows 10..13)
+      for (let r = 10; r <= 13; r++) {
+        waterfallGrid[r][12] = 'WATER';
+      }
+      const waterfallFlow = detectTurbineWaterFlow(targetBox, waterfallGrid, 1360, 680);
+
+      expect(puddleFlow.headMeters).toBeLessThan(waterfallFlow.headMeters);
+      const puddlePoint = calculateHydroOperatingPoint(puddleFlow.flowPercentage, puddleFlow.headMeters);
+      const waterfallPoint = calculateHydroOperatingPoint(waterfallFlow.flowPercentage, waterfallFlow.headMeters);
+      expect(puddlePoint.powerWatts).toBeLessThan(waterfallPoint.powerWatts);
+    });
+
     it('respects manualWaterFlowRate valve slider in river and resets to 0V when dragged onto dry land', () => {
       const containerSize = { width: 1360, height: 680 };
 

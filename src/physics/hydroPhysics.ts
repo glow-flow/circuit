@@ -241,13 +241,16 @@ export function detectTurbineWaterFlow(
   let highestWaterRow: number | null = null;
   let lowestWaterRow: number | null = null;
   let waterCellCount = 0;
+  let colsWithWaterCount = 0;
   let directContact = false;
 
   for (let c = minCol; c <= maxCol; c++) {
+    let colHasWater = false;
     for (let r = 0; r <= maxScanRow && r < rows; r++) {
       const cell = terrainGrid[r][c];
       if (cell === 'WATER' || cell === 'WATER_SPRING') {
         waterCellCount++;
+        colHasWater = true;
         if (highestWaterRow === null || r < highestWaterRow) {
           highestWaterRow = r;
         }
@@ -260,23 +263,39 @@ export function detectTurbineWaterFlow(
         }
       }
     }
+    if (colHasWater) {
+      colsWithWaterCount++;
+    }
   }
 
   if (highestWaterRow === null || (!directContact && waterCellCount < 2)) {
     return { flowPercentage: 0, headMeters: 0, hasWaterContact: false };
   }
 
-  // Calculate hydraulic head:
-  // - For overhead waterfalls (highestWaterRow < runnerRow): vertical drop from highest water cell to runner.
-  // - For river/stream basin placement (highestWaterRow >= runnerRow): effective kinetic head from river depth.
+  // Calculate hydraulic head & flow physically:
+  // - Overhead waterfall (highestWaterRow < runnerRow): real gravitational vertical drop (H = waterfallDropRows * 0.45m).
+  // - Continuous river channel (riverDepthRows >= 2 across all 3 intake cols): kinetic channel head proportional to depth (< 2.2 rows so a waterfall always beats a flat river).
+  // - Shallow stagnant puddle (1 row deep or narrow basin without waterfall drop): low stagnant head & minimal flux.
   const waterfallDropRows = runnerRow - highestWaterRow;
   const riverDepthRows = lowestWaterRow !== null ? lowestWaterRow - highestWaterRow + 1 : 1;
-  const effectiveRowDrop =
-    waterfallDropRows >= 1 ? waterfallDropRows : Math.max(4, riverDepthRows + 2);
-  const headMeters = Number((effectiveRowDrop * METERS_PER_TERRAIN_ROW).toFixed(2));
+  const isContinuousRiverChannel =
+    riverDepthRows >= 2 && colsWithWaterCount >= 3 && waterCellCount >= 6;
 
-  // Flow percentage scales with number of active water cells feeding the turbine
-  const flowPercentage = Math.min(100, Math.max(25, waterCellCount * 25));
+  let effectiveRowDrop: number;
+  let flowPercentage: number;
+
+  if (waterfallDropRows >= 1) {
+    effectiveRowDrop = waterfallDropRows;
+    flowPercentage = Math.min(100, Math.max(25, waterCellCount * 25));
+  } else if (isContinuousRiverChannel) {
+    effectiveRowDrop = Math.min(2.2, riverDepthRows * 0.65);
+    flowPercentage = Math.min(100, Math.max(25, waterCellCount * 25));
+  } else {
+    effectiveRowDrop = Math.max(0.25, riverDepthRows * 0.3);
+    flowPercentage = Math.min(35, Math.max(10, waterCellCount * 10));
+  }
+
+  const headMeters = Number((effectiveRowDrop * METERS_PER_TERRAIN_ROW).toFixed(2));
 
   return {
     flowPercentage,

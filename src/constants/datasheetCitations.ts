@@ -236,13 +236,13 @@ export const COMPONENT_DATASHEET_CITATIONS: Readonly<
     titleId: 'Wadah Baterai 2×AA Seri (3,0 V DC)',
     titleEn: '2×AA Series Battery Holder (3.0 V DC)',
     parameterSummaryId:
-      'V_out = 3,0 V DC (2 × 1,5 V AA Seri) • Hambatan Dalam Total = 0,2 Ω • Kapasitas = 2000 mAh',
+      'V_out = 3,0 V DC (2 × 1,5 V AA Seri) • Hambatan Dalam Total = 0,1 Ω • Kapasitas Seri = 1000 mAh',
     parameterSummaryEn:
-      'V_out = 3.0 V DC (2 × 1.5 V AA in Series) • Total Internal Resistance = 0.2 Ω • Capacity = 2000 mAh',
+      'V_out = 3.0 V DC (2 × 1.5 V AA in Series) • Total Internal Resistance = 0.1 Ω • Series Capacity = 1000 mAh',
     formulaDerivationId:
-      'Berdasarkan Hukum II Kirchhoff (KVL) pada susunan baterai seri, tegangan total adalah penjumlahan GGL tiap sel: V_total = E₁ + E₂ = 1,5 V + 1,5 V = 3,0 V DC (atau 1,5 V jika hanya terisi 1 baterai).',
+      'Berdasarkan Hukum II Kirchhoff (KVL) pada susunan baterai seri, tegangan total adalah penjumlahan GGL tiap sel: V_total = E₁ + E₂ = 1,5 V + 1,5 V = 3,0 V DC (atau 1,5 V jika terisi 1 sel). Kapasitas arus-jam (mAh) tetap 1000 mAh (sama seperti satu sel AA) karena arus yang sama mengalir melalui tiap sel, sehingga energi total E = 3,0 V × 1,0 Ah = 3,0 Wh.',
     formulaDerivationEn:
-      'By Kirchhoff’s Voltage Law (KVL) for series cells, total EMF equals the sum of individual cells: V_total = E₁ + E₂ = 1.5 V + 1.5 V = 3.0 V DC (or 1.5 V when loaded with 1 cell).',
+      'By Kirchhoff’s Voltage Law (KVL) for series cells, total EMF equals the sum of individual cells: V_total = E₁ + E₂ = 1.5 V + 1.5 V = 3.0 V DC (or 1.5 V with 1 cell). Ampere-hour capacity remains 1000 mAh (invariant in series because identical current flows through each cell), yielding stored energy E = 3.0 V × 1.0 Ah = 3.0 Wh.',
     sourceCitationId:
       'IEC 60086-1 (Series Cell Configuration) & Buku Teks IPA SMP Kelas IX Kemendikbudristek (Bab Listrik Dinamis — Susunan Seri Elemen Listrik).',
     sourceCitationEn:

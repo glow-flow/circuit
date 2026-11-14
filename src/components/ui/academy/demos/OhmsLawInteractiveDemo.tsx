@@ -76,7 +76,7 @@ export const OhmsLawInteractiveDemo: React.FC = () => {
             strokeOpacity="0.45"
           />
 
-          {/* Animated Electron Flow Dots */}
+          {/* Animated Electron Flow Dots: real electron drift travels (-) -> load -> (+) */}
           {metrics.animDurationSec > 0 &&
             [0, 0.25, 0.5, 0.75].map((offsetFraction) => (
               <circle
@@ -88,6 +88,9 @@ export const OhmsLawInteractiveDemo: React.FC = () => {
                   dur={`${metrics.animDurationSec.toFixed(2)}s`}
                   repeatCount="indefinite"
                   begin={`${-(offsetFraction * metrics.animDurationSec).toFixed(2)}s`}
+                  keyPoints="1;0"
+                  keyTimes="0;1"
+                  calcMode="linear"
                 >
                   <mpath href="#ohmLoopPath" />
                 </animateMotion>
@@ -107,7 +110,9 @@ export const OhmsLawInteractiveDemo: React.FC = () => {
               strokeWidth="1.5"
             />
             <line x1="20" y1="20" x2="46" y2="20" stroke="#38bdf8" strokeWidth="3" />
+            <text x="53" y="23" fill="#38bdf8" fontSize="9" fontWeight="700">+</text>
             <line x1="27" y1="30" x2="39" y2="30" stroke="#94a3b8" strokeWidth="2.5" />
+            <text x="53" y="33" fill="#94a3b8" fontSize="10" fontWeight="700">-</text>
             <text
               x="33"
               y="47"
@@ -228,6 +233,20 @@ export const OhmsLawInteractiveDemo: React.FC = () => {
               {metrics.currentMa.toFixed(1)} mA
             </text>
           </g>
+
+          {/* Electron Drift Direction Caption */}
+          <text
+            x="180"
+            y="144"
+            textAnchor="middle"
+            fill="#64748b"
+            fontSize="8.5"
+            fontFamily="JetBrains Mono, monospace"
+          >
+            {isId
+              ? 'e⁻ (Aliran Elektron): (−) → (+)  |  I (Konvensional): (+) → (−)'
+              : 'e⁻ (Electron Drift): (−) → (+)  |  I (Conventional): (+) → (−)'}
+          </text>
         </svg>
       </div>
 

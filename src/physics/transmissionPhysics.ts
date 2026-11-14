@@ -285,15 +285,19 @@ export interface TelemetryComputationParams {
   spanMeters?: number;
   lineResistance?: number;
   generatorVoltage?: number;
+  /** Fixed hardware transformer primary winding rating (defaults to 12.0V nominal) */
+  nominalPrimaryVoltage?: number;
 }
 
 /**
  * Computes end-to-end transmission grid telemetry including line current,
  * Joule heat loss, transmission efficiency, and thermal stress status.
- * 
+ * Uses hardware transformer turns ratio N = V_tx / V_primary_nominal so winding geometry
+ * remains physically constant even if source irradiance or load fluctuates.
+ *
  * @param params - Telemetry computation parameters
  * @returns Complete TransmissionTelemetry object
- * 
+ *
  * Time Complexity: O(1)
  */
 export function computeTransmissionTelemetry(
@@ -305,11 +309,12 @@ export function computeTransmissionTelemetry(
     spanMeters = DEFAULT_SPAN_DISTANCE_METERS,
     lineResistance,
     generatorVoltage = LOW_VOLTAGE_NOMINAL,
+    nominalPrimaryVoltage = LOW_VOLTAGE_NOMINAL,
   } = params;
 
   const transmissionVoltage = resolveTransmissionVoltage(voltageMode);
-  const primaryVoltage = Math.max(1.0, generatorVoltage);
-  const turnsRatio = calculateTurnsRatio(primaryVoltage, transmissionVoltage);
+  const fixedPrimaryRating = Math.max(1.0, nominalPrimaryVoltage);
+  const turnsRatio = calculateTurnsRatio(fixedPrimaryRating, transmissionVoltage);
 
   const lineResistanceOhms =
     lineResistance !== undefined && lineResistance > 0
@@ -318,16 +323,17 @@ export function computeTransmissionTelemetry(
 
   const effectiveReferredResistance = calculateReferredLineResistance(
     lineResistanceOhms,
-    primaryVoltage,
+    fixedPrimaryRating,
     transmissionVoltage
   );
 
   const absLoadCurrent = Math.abs(loadCurrent);
-  // Line current is scaled down by turns ratio N in high-voltage step-up
+  // Ideal transformer current scaling depends on fixed turns ratio N2/N1
   const lineCurrentAmperes = turnsRatio > 1.0 ? absLoadCurrent / turnsRatio : absLoadCurrent;
 
   const jouleLossWatts = calculateJouleLoss(lineCurrentAmperes, lineResistanceOhms);
-  const powerDeliveredWatts = primaryVoltage * absLoadCurrent;
+  const effectiveSourceVoltage = Math.max(0, generatorVoltage);
+  const powerDeliveredWatts = effectiveSourceVoltage * absLoadCurrent;
   const efficiencyPercent = calculateTransmissionEfficiency(
     powerDeliveredWatts,
     jouleLossWatts

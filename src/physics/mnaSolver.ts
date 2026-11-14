@@ -324,7 +324,17 @@ export function getVoltageSourceNominalVoltage(component: CircuitElementData): n
   } else if (component.type === 'battery-holder') {
     if (!component.hasBattery) return 0;
     const cellCount = component.batteryCount ?? 2;
+    if (cellCount <= 0) return 0;
     baseVoltage = component.voltage ?? cellCount * 1.5;
+    if (component.cellCharges && component.cellCharges.length > 0) {
+      const perCellNominal = baseVoltage / cellCount;
+      let totalEmf = 0;
+      for (let i = 0; i < cellCount; i++) {
+        const cellSoC = component.cellCharges[i] ?? component.currentCharge;
+        totalEmf += computeEffectiveBatteryVoltage(perCellNominal, cellSoC);
+      }
+      return totalEmf;
+    }
   } else if (component.type === 'solar-panel' || component.type === 'solar_panel') {
     return component.voltage ?? getSolarPanelVoltage(component.sunlight ?? 100);
   } else if (component.type === 'wind-turbine' || component.type === 'wind_turbine') {
@@ -431,12 +441,16 @@ export interface CircuitPinNetResolution {
   gridReferredResistance: number;
   outdoorGridPosNet: string | undefined;
   labGridPosNet: string | undefined;
+  gridNegativeNet: string | undefined;
   hasSplitTransmissionLine: boolean;
+  hasLabBuckRegulation: boolean;
+  labBuckPanels: CircuitElementData[];
 }
 
 /**
  * Resolves Union-Find electrical pin nets across components, waypoints, virtual
- * transmission towers/panels (supporting split high/low voltage spans), and wires.
+ * transmission towers/panels (supporting split high/low voltage spans and regulated
+ * Lab step-down buck outputs), and wires.
  * Time Complexity: O(P * α(P) + W) where P is pin count and W is wire count.
  *
  * @param components - Circuit components on the canvas
@@ -484,18 +498,26 @@ export function resolveCircuitPinNets(
 
   const outdoorTowers = activeTransmissionTowers.filter((t) => t.worldMode === 'outside');
   const labTowers = activeTransmissionTowers.filter((t) => t.worldMode !== 'outside');
-  const splitOutdoorTowers =
-    gridReferredResistance > 0 && activeTransmissionTowers.length > 1
-      ? outdoorTowers.length > 0 && labTowers.length > 0
-        ? outdoorTowers
-        : [configuredLineTowers[0]]
+  const labBuckPanels =
+    outdoorTowers.length > 0
+      ? labTowers.filter(
+          (t) => typeof t.stepDownVoltage === 'number' && t.stepDownVoltage > 0
+        )
       : [];
-  const splitLabTowers =
-    gridReferredResistance > 0 && activeTransmissionTowers.length > 1
-      ? outdoorTowers.length > 0 && labTowers.length > 0
-        ? labTowers
-        : activeTransmissionTowers.filter((t) => t.id !== configuredLineTowers[0].id)
-      : [];
+  const hasLabBuckRegulation = labBuckPanels.length > 0;
+  const shouldSplitOutdoorAndLabPos =
+    activeTransmissionTowers.length > 1 && (gridReferredResistance > 0 || hasLabBuckRegulation);
+
+  const splitOutdoorTowers = shouldSplitOutdoorAndLabPos
+    ? outdoorTowers.length > 0 && labTowers.length > 0
+      ? outdoorTowers
+      : [configuredLineTowers[0]]
+    : [];
+  const splitLabTowers = shouldSplitOutdoorAndLabPos
+    ? outdoorTowers.length > 0 && labTowers.length > 0
+      ? labTowers
+      : activeTransmissionTowers.filter((t) => t.id !== configuredLineTowers[0].id)
+    : [];
 
   if (splitOutdoorTowers.length > 0 && splitLabTowers.length > 0) {
     const primaryOut = splitOutdoorTowers[0];
@@ -541,6 +563,10 @@ export function resolveCircuitPinNets(
     splitLabTowers.length > 0
       ? pinToNetMap.get(`${splitLabTowers[0].id}:pos`)
       : undefined;
+  const gridNegativeNet =
+    activeTransmissionTowers.length > 0
+      ? pinToNetMap.get(`${activeTransmissionTowers[0].id}:neg`)
+      : undefined;
   const hasSplitTransmissionLine =
     gridReferredResistance > 0 &&
     outdoorGridPosNet !== undefined &&
@@ -553,7 +579,10 @@ export function resolveCircuitPinNets(
     gridReferredResistance,
     outdoorGridPosNet,
     labGridPosNet,
+    gridNegativeNet,
     hasSplitTransmissionLine,
+    hasLabBuckRegulation,
+    labBuckPanels,
   };
 }
 
@@ -586,30 +615,18 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
       gridReferredResistance,
       outdoorGridPosNet,
       labGridPosNet,
+      gridNegativeNet,
       hasSplitTransmissionLine,
+      hasLabBuckRegulation,
+      labBuckPanels,
     } = resolveCircuitPinNets(components, wires);
 
-    // Determine optional Step-Down DC voltage ceiling from any active Lab Distribution Panel on the grid
-    const gridPositiveNet =
-      activeTransmissionTowers.length > 0
-        ? pinToNetMap.get(`${activeTransmissionTowers[0].id}:pos`)
-        : undefined;
-    const gridNegativeNet =
-      activeTransmissionTowers.length > 0
-        ? pinToNetMap.get(`${activeTransmissionTowers[0].id}:neg`)
-        : undefined;
-
-    const configuredStepDownVoltages = activeTransmissionTowers
-      .map((t) => t.stepDownVoltage)
-      .filter((v): v is number => typeof v === 'number' && v > 0);
-    const gridStepDownCeiling =
-      configuredStepDownVoltages.length > 0
-        ? Math.min(...configuredStepDownVoltages)
-        : null;
+    const labBuckPanelIds = new Set(labBuckPanels.map((p) => p.id));
 
     /**
      * Resolves the highest active renewable generator voltage (Solar, Wind, or Hydro)
      * connected across the specified positive and negative electrical nets.
+     * Outdoor generators keep their real photovoltaic/turbine EMF undisturbed by Lab step-down dials.
      * Time Complexity: O(C) where C is component count.
      */
     const getMaxActiveRenewableVoltageOnNet = (posNet?: string, negNet?: string): number => {
@@ -624,14 +641,6 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
           if (comp.type === 'hydro-turbine' || comp.type === 'hydro_turbine') {
             genV = Math.min(genV, 12.0);
           }
-          const isOnTransmissionGrid =
-            compPos === gridPositiveNet ||
-            compPos === outdoorGridPosNet ||
-            compPos === labGridPosNet ||
-            compNeg === gridNegativeNet;
-          if (gridStepDownCeiling !== null && isOnTransmissionGrid) {
-            genV = Math.min(genV, gridStepDownCeiling);
-          }
           if (genV > maxRenewableV) {
             maxRenewableV = genV;
           }
@@ -640,7 +649,35 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
       return maxRenewableV;
     };
 
+    const getOutdoorBusAvailableVoltage = (): number => {
+      if (!outdoorGridPosNet || !gridNegativeNet || outdoorGridPosNet === gridNegativeNet) {
+        return 0;
+      }
+      let maxOutdoorV = 0;
+      for (const comp of components) {
+        if (!isActiveVoltageSource(comp, components) || labBuckPanelIds.has(comp.id)) continue;
+        const compPos = pinToNetMap.get(`${comp.id}:pos`);
+        const compNeg = pinToNetMap.get(`${comp.id}:neg`);
+        if (compPos === outdoorGridPosNet && compNeg === gridNegativeNet) {
+          let emf = getVoltageSourceNominalVoltage(comp);
+          if (comp.type === 'hydro-turbine' || comp.type === 'hydro_turbine') {
+            emf = Math.min(emf, 12.0);
+          }
+          if (emf > maxOutdoorV) {
+            maxOutdoorV = emf;
+          }
+        }
+      }
+      return maxOutdoorV;
+    };
+
     const getRegulatedSourceVoltage = (sourceComp: CircuitElementData): number => {
+      if (labBuckPanelIds.has(sourceComp.id)) {
+        const outdoorAvailable = getOutdoorBusAvailableVoltage();
+        const ceiling = sourceComp.stepDownVoltage ?? 12.0;
+        return outdoorAvailable > 0 ? Math.min(outdoorAvailable, ceiling) : 0;
+      }
+
       let rawVoltage = getVoltageSourceNominalVoltage(sourceComp);
       const srcPosNet = pinToNetMap.get(`${sourceComp.id}:pos`);
       const srcNegNet = pinToNetMap.get(`${sourceComp.id}:neg`);
@@ -666,20 +703,6 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
         }
       }
 
-      const isOutdoorGridSource =
-        isRenewableWithBlockingDiode(sourceComp) ||
-        sourceComp.type === 'bess-substation' ||
-        sourceComp.type === 'bess_substation';
-      if (
-        gridStepDownCeiling !== null &&
-        isOutdoorGridSource &&
-        gridPositiveNet !== undefined &&
-        gridNegativeNet !== undefined
-      ) {
-        if (srcPosNet === gridPositiveNet || srcNegNet === gridNegativeNet) {
-          return Math.min(rawVoltage, gridStepDownCeiling);
-        }
-      }
       return rawVoltage;
     };
 
@@ -690,7 +713,7 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
     if (uniqueNets.length <= 1) {
       // Check if any active voltage source is directly short-circuited across its own terminals
       const shortedSources = components.filter((c) => {
-        if (!isActiveVoltageSource(c, components)) return false;
+        if (!isActiveVoltageSource(c, components) && !labBuckPanelIds.has(c.id)) return false;
         const posNet = pinToNetMap.get(`${c.id}:pos`);
         const negNet = pinToNetMap.get(`${c.id}:neg`);
         return posNet !== undefined && negNet !== undefined && posNet === negNet;
@@ -705,10 +728,14 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
           const nominalVoltage = getRegulatedSourceVoltage(sourceComp);
           const rInt = Math.max(
             0.01,
-            sourceComp.internalResistance ?? getSourceDischargeResistance(sourceComp)
+            sourceComp.internalResistance ??
+              (labBuckPanelIds.has(sourceComp.id)
+                ? 0.2
+                : getSourceDischargeResistance(sourceComp))
           );
           const iSc = nominalVoltage / rInt;
-          branchCurrentMap[sourceComp.id] = iSc;
+          // MNA sign convention: negative branch current denotes active discharge out of (+)
+          branchCurrentMap[sourceComp.id] = -iSc;
           totalPowerDrawn += nominalVoltage * iSc;
         }
 
@@ -720,6 +747,7 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
           shortCircuitBranches,
           blockedGeneratorIds: [],
           reverseBiasedBranches: [],
+          floatingVoltmeterIds: [],
           totalPowerDrawn,
           timestamp: Date.now(),
         };
@@ -732,6 +760,7 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
         shortCircuitBranches: [],
         blockedGeneratorIds: [],
         reverseBiasedBranches: [],
+        floatingVoltmeterIds: [],
         totalPowerDrawn: 0,
         timestamp: Date.now(),
       };
@@ -782,7 +811,16 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
     //    - Dynamic Adaptive CC-CV Resistance on electrochemical batteries during charging
     //    - BMS Full-Charge Cut-Off (100% SoC Standby) on BESS when renewable generators are active
     //    - High-Voltage Step-Up / Direct Line Resistance on the Virtual Transmission Grid
-    const allVoltageSourceComponents = components.filter((c) => isActiveVoltageSource(c, components));
+    const seenSourceIds = new Set<string>();
+    const allVoltageSourceComponents: CircuitElementData[] = [];
+    for (const c of components) {
+      if (isActiveVoltageSource(c, components) || labBuckPanelIds.has(c.id)) {
+        if (!seenSourceIds.has(c.id)) {
+          seenSourceIds.add(c.id);
+          allVoltageSourceComponents.push(c);
+        }
+      }
+    }
     const blockedGeneratorSet = new Set<string>();
     const reverseBiasedSocketSet = new Set<string>();
     const belowThresholdSocketSet = new Set<string>();
@@ -807,7 +845,9 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
 
     const sourceResistanceMap = new Map<string, number>();
     for (const sourceComp of allVoltageSourceComponents) {
-      let baseResistance = getSourceDischargeResistance(sourceComp);
+      let baseResistance = labBuckPanelIds.has(sourceComp.id)
+        ? Math.max(0.01, sourceComp.internalResistance ?? 0.2)
+        : getSourceDischargeResistance(sourceComp);
       if (sourceComp.type === 'bess-substation' || sourceComp.type === 'bess_substation') {
         const bessSoc = Math.max(
           0,
@@ -822,6 +862,7 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
       // Fallback: if outdoor/lab positive buses are externally bridged (not split), apply line impedance per span
       if (
         !hasSplitTransmissionLine &&
+        !hasLabBuckRegulation &&
         gridReferredResistance > 0 &&
         (isRenewableWithBlockingDiode(sourceComp) ||
           sourceComp.type === 'distribution-panel' ||
@@ -835,11 +876,83 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
     let activeVoltageSources = allVoltageSourceComponents;
     let solution: number[] = [];
     const nodeVoltageMap: Record<string, number> = {};
+    const floatingVoltmeterSet = new Set<string>();
+
+    const buildConductionIslandUnionFind = (sources: CircuitElementData[]): UnionFind => {
+      const islandUF = new UnionFind();
+      for (const net of uniqueNets) {
+        islandUF.makeSet(net);
+      }
+      for (const src of sources) {
+        const pNet = pinToNetMap.get(`${src.id}:pos`);
+        const nNet = pinToNetMap.get(`${src.id}:neg`);
+        if (pNet && nNet) {
+          islandUF.union(pNet, nNet);
+        }
+      }
+      for (const comp of components) {
+        if (
+          comp.type === 'voltmeter' ||
+          comp.type === 'battery' ||
+          comp.type === 'battery9v' ||
+          comp.type === 'battery-holder' ||
+          comp.type === 'solar-panel' ||
+          comp.type === 'solar_panel' ||
+          comp.type === 'wind-turbine' ||
+          comp.type === 'wind_turbine' ||
+          comp.type === 'bess-substation' ||
+          comp.type === 'bess_substation' ||
+          comp.type === 'hydro-turbine' ||
+          comp.type === 'hydro_turbine' ||
+          comp.type === 'transmission-tower' ||
+          comp.type === 'transmission_tower' ||
+          comp.type === 'distribution-panel' ||
+          comp.type === 'distribution_panel' ||
+          comp.type === 'ground' ||
+          comp.type === 'waypoint' ||
+          comp.type === 'bulb'
+        ) {
+          continue;
+        }
+        if (reverseBiasedSocketSet.has(comp.id) || belowThresholdSocketSet.has(comp.id)) {
+          continue;
+        }
+        if (calculateComponentConductance(comp) <= 0) continue;
+        const pinKeys = getComponentPinIdentifiers(comp);
+        if (pinKeys.length < 2) continue;
+        const netA = pinToNetMap.get(pinKeys[0]);
+        const netB = pinToNetMap.get(pinKeys[1]);
+        if (netA && netB) {
+          islandUF.union(netA, netB);
+        }
+      }
+      if (hasSplitTransmissionLine && !hasLabBuckRegulation && outdoorGridPosNet && labGridPosNet) {
+        islandUF.union(outdoorGridPosNet, labGridPosNet);
+      }
+      return islandUF;
+    };
+
+    let lastConductionIslandUF = buildConductionIslandUnionFind(activeVoltageSources);
 
     for (let pass = 0; pass < MAX_SOLVER_PASSES; pass++) {
       activeVoltageSources = allVoltageSourceComponents.filter(
         (c) => !blockedGeneratorSet.has(c.id)
       );
+      lastConductionIslandUF = buildConductionIslandUnionFind(activeVoltageSources);
+      floatingVoltmeterSet.clear();
+      for (const comp of components) {
+        if (comp.type !== 'voltmeter') continue;
+        const p1Net = pinToNetMap.get(`${comp.id}:p1`);
+        const p2Net = pinToNetMap.get(`${comp.id}:p2`);
+        if (
+          !p1Net ||
+          !p2Net ||
+          lastConductionIslandUF.find(p1Net) !== lastConductionIslandUF.find(p2Net)
+        ) {
+          floatingVoltmeterSet.add(comp.id);
+        }
+      }
+
       const voltageSourceCount = activeVoltageSources.length;
       const matrixDimension = nonGroundNetCount + voltageSourceCount;
 
@@ -851,6 +964,7 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
           shortCircuitBranches: [],
           blockedGeneratorIds: Array.from(blockedGeneratorSet),
           reverseBiasedBranches: Array.from(reverseBiasedSocketSet),
+          floatingVoltmeterIds: Array.from(floatingVoltmeterSet),
           totalPowerDrawn: 0,
           timestamp: Date.now(),
         };
@@ -880,7 +994,7 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
 
       // Stamp referred transmission line impedance as a single shared series resistor
       // between outdoor generation bus and indoor Lab distribution bus.
-      if (hasSplitTransmissionLine && outdoorGridPosNet && labGridPosNet) {
+      if (hasSplitTransmissionLine && !hasLabBuckRegulation && outdoorGridPosNet && labGridPosNet) {
         stampConductance(
           netToIndexMap.get(outdoorGridPosNet),
           netToIndexMap.get(labGridPosNet),
@@ -909,6 +1023,11 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
           component.type === 'ground' ||
           component.type === 'waypoint'
         ) {
+          continue;
+        }
+
+        // Galvanically isolated voltmeters (open single-bridge across disjoint islands) do not inject phantom conductance
+        if (floatingVoltmeterSet.has(component.id)) {
           continue;
         }
 
@@ -1094,10 +1213,16 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
       }
     }
 
-    const anyBatteryCharging = activeVoltageSources.some((candidateComp, candidateIndex) => {
-      if (!isBatteryComponent(candidateComp)) return false;
+    const chargingBatteryIslands = new Set<string>();
+    activeVoltageSources.forEach((candidateComp, candidateIndex) => {
+      if (!isBatteryComponent(candidateComp)) return;
       const candidateCurrent = solution[nonGroundNetCount + candidateIndex] ?? 0;
-      return candidateCurrent > CURRENT_FLOW_EPSILON;
+      if (candidateCurrent > CURRENT_FLOW_EPSILON) {
+        const candidatePosNet = pinToNetMap.get(`${candidateComp.id}:pos`);
+        if (candidatePosNet) {
+          chargingBatteryIslands.add(lastConductionIslandUF.find(candidatePosNet));
+        }
+      }
     });
 
     // Active voltage source currents directly from solution vector
@@ -1109,25 +1234,42 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
       branchCurrentMap[sourceComp.id] = sourceCurrent;
 
       const isBattery = isBatteryComponent(sourceComp);
-      const isLegitimateCharging =
-        (isBattery && sourceCurrent > CURRENT_FLOW_EPSILON) ||
-        (anyBatteryCharging && sourceCurrent < -CURRENT_FLOW_EPSILON);
-
-      // Topological direct terminal short check: (+) and (-) belong to the same electrical net
       const positiveNet = pinToNetMap.get(`${sourceComp.id}:pos`);
       const negativeNet = pinToNetMap.get(`${sourceComp.id}:neg`);
+      const sourceIslandRoot = positiveNet ? lastConductionIslandUF.find(positiveNet) : undefined;
+      const isLegitimateCharging =
+        (isBattery && sourceCurrent > CURRENT_FLOW_EPSILON) ||
+        (sourceIslandRoot !== undefined &&
+          chargingBatteryIslands.has(sourceIslandRoot) &&
+          sourceCurrent < -CURRENT_FLOW_EPSILON);
+
+      // Topological direct terminal short check: (+) and (-) belong to the same electrical net
       const isDirectTerminalShort =
         positiveNet !== undefined && negativeNet !== undefined && positiveNet === negativeNet;
 
+      const nominalVoltage = getRegulatedSourceVoltage(sourceComp);
+      const terminalVoltage =
+        positiveNet && negativeNet
+          ? (nodeVoltageMap[positiveNet] ?? 0) - (nodeVoltageMap[negativeNet] ?? 0)
+          : nominalVoltage;
+
+      // Terminal voltage collapse check: detects genuine dead shorts on current-limited sources
+      // (such as 9V 6LR61 batteries with R_int = 2Ω yielding I_sc = 4.5A < 10A) shorted via
+      // closed switches or ammeters (V_term <= 15% of EMF while discharging > 0.5A).
+      const isTerminalCollapseShort =
+        sourceCurrent < -0.5 &&
+        nominalVoltage >= 1.0 &&
+        Math.abs(terminalVoltage) <= 0.15 * nominalVoltage;
+
       if (
         isDirectTerminalShort ||
+        isTerminalCollapseShort ||
         (!isLegitimateCharging && absoluteCurrent > SHORT_CIRCUIT_CURRENT_THRESHOLD)
       ) {
         isOverallShortCircuit = true;
         shortCircuitBranches.push(sourceComp.id);
       }
 
-      const nominalVoltage = getRegulatedSourceVoltage(sourceComp);
       totalPowerDrawn += computeDeliveredEmfPowerWatts(nominalVoltage, sourceCurrent);
     });
 
@@ -1152,6 +1294,11 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
         component.type === 'ground' ||
         component.type === 'waypoint'
       ) {
+        continue;
+      }
+
+      if (floatingVoltmeterSet.has(component.id)) {
+        branchCurrentMap[component.id] = 0;
         continue;
       }
 
@@ -1227,7 +1374,7 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
         continue;
       }
 
-      if (isTower && hasSplitTransmissionLine && outdoorGridPosNet && labGridPosNet) {
+      if (isTower && hasSplitTransmissionLine && !hasLabBuckRegulation && outdoorGridPosNet && labGridPosNet) {
         const outdoorBusVoltage = nodeVoltageMap[outdoorGridPosNet] ?? 0;
         const labBusVoltage = nodeVoltageMap[labGridPosNet] ?? 0;
         branchCurrentMap[component.id] =
@@ -1281,6 +1428,7 @@ export function solveCircuitMNA(circuitInput: CircuitGraphInput): SimulationResu
       shortCircuitBranches,
       blockedGeneratorIds: Array.from(blockedGeneratorSet),
       reverseBiasedBranches: Array.from(reverseBiasedSocketSet),
+      floatingVoltmeterIds: Array.from(floatingVoltmeterSet),
       totalPowerDrawn,
       timestamp: Date.now(),
     };

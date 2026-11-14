@@ -62,6 +62,8 @@ export interface BulbSpec {
   resistance: number; // Ohms (Ω)
   /** Semiconductor forward junction threshold Vf (Volts), e.g., ~2.0V for discrete indicator LED. */
   forwardVoltage?: number;
+  /** Luminous efficacy in lumens per Watt (lm/W): ~12 incandescent, ~60 CFL, ~95 white LED. */
+  efficacyLmPerW: number;
   maxPower: number; // Max rated power in Watts (W)
   glowTag: string;
   traits: string;
@@ -85,6 +87,7 @@ export const BULB_CATALOG: readonly BulbSpec[] = [
     label: 'Lampu Pijar',
     labelEn: 'Incandescent Bulb',
     resistance: 800,
+    efficacyLmPerW: 12,
     maxPower: 40,
     glowTag: 'Warm Glow',
     traits: 'Menghasilkan panas tinggi, cahaya kuning/oranye.',
@@ -103,6 +106,7 @@ export const BULB_CATALOG: readonly BulbSpec[] = [
     label: 'Lampu Halogen',
     labelEn: 'Halogen Bulb',
     resistance: 1500,
+    efficacyLmPerW: 18,
     maxPower: 50,
     glowTag: 'Bright Warm',
     traits: 'Sangat terang, panas tinggi, umur pendek.',
@@ -121,6 +125,7 @@ export const BULB_CATALOG: readonly BulbSpec[] = [
     label: 'Lampu Edison',
     labelEn: 'Edison Vintage',
     resistance: 1200,
+    efficacyLmPerW: 9,
     maxPower: 30,
     glowTag: 'Amber Glow',
     traits: 'Estetik, hangat, panas sedang.',
@@ -140,6 +145,7 @@ export const BULB_CATALOG: readonly BulbSpec[] = [
     label: 'Lampu Neon (CFL)',
     labelEn: 'Neon Tube (CFL)',
     resistance: 3000,
+    efficacyLmPerW: 60,
     maxPower: 15,
     glowTag: 'Cool White',
     traits: 'Hemat energi, cahaya putih bersih, panas rendah.',
@@ -158,6 +164,7 @@ export const BULB_CATALOG: readonly BulbSpec[] = [
     label: 'Lampu LED',
     labelEn: 'Standard LED',
     resistance: 4500,
+    efficacyLmPerW: 95,
     maxPower: 9,
     glowTag: 'Cool White',
     traits: 'Sangat hemat energi, dingin, terang.',
@@ -176,6 +183,7 @@ export const BULB_CATALOG: readonly BulbSpec[] = [
     label: 'Smart LED',
     labelEn: 'Smart RGB LED',
     resistance: 6000,
+    efficacyLmPerW: 75,
     maxPower: 7,
     glowTag: 'RGB Colors',
     traits: 'Paling hemat daya, warna variatif.',
@@ -195,6 +203,7 @@ export const BULB_CATALOG: readonly BulbSpec[] = [
     labelEn: 'Green Indicator LED',
     resistance: 5000,
     forwardVoltage: 2.0,
+    efficacyLmPerW: 50,
     maxPower: 3,
     glowTag: 'Green',
     traits: 'Hanya untuk indikator, arus sangat kecil.',
@@ -233,15 +242,12 @@ export function getBulbSpec(bulbType?: BulbType | string): BulbSpec {
 }
 
 /**
- * Computes visual brightness (0.0 to 1.0) and thermal status based on real-time
- * dissipated power P = I^2 * R.
+ * Computes visual brightness (0.0 to 1.0), luminous flux (lumens), and thermal status
+ * based on electrical power P = V_drop * I and luminous efficacy (lm/W).
  *
  * Physics Calibration:
- * - At a standard 3.0V battery holder source, an 800Ω Incandescent bulb draws
- *   I = 3.0 / 800 = 3.75 mA and dissipates P = I^2 * R = 11.25 mW (0.01125 W).
- * - When the user switches the same 3.0V circuit to an LED (e.g., 4500Ω or 6000Ω),
- *   current I drops (0.67 mA / 0.50 mA), so P = I^2 * R drops proportionally
- *   (2.0 mW / 1.5 mW), making high-resistance bulbs visibly dimmer at the same voltage.
+ * - Incandescent (800Ω, 12 lm/W) at 3.0V draws 3.75 mA (11.25 mW) -> 0.135 lm (high waste heat, ~71% brightness).
+ * - Standard LED (4500Ω, 95 lm/W) at 3.0V draws 0.67 mA (2.00 mW) -> 0.190 lm (100% brightness, 5.6x less power, stays cold).
  *
  * Time Complexity: O(1)
  */
@@ -252,6 +258,7 @@ export function computeBulbPhotometrics(
 ): {
   powerWatts: number;
   voltageDrop: number;
+  lumens: number;
   brightness: number;
   heatLevel: 'cold' | 'warm' | 'hot' | 'overheat';
   isOverloaded: boolean;
@@ -261,12 +268,15 @@ export function computeBulbPhotometrics(
   const forwardDrop = absCurrent > 1e-6 ? (spec.forwardVoltage ?? 0) : 0;
   const voltageDrop = forwardDrop + absCurrent * safeResistance; // Total pin drop Vf + I * R
   const powerWatts = voltageDrop * absCurrent; // Reduces to I^2 * R when Vf = 0
+  const efficacy = spec.efficacyLmPerW ?? 12;
+  const lumens = absCurrent <= 1e-6 ? 0 : powerWatts * efficacy;
 
-  // Reference baseline power: 3.0V across 800Ω incandescent = 0.01125 W
-  // For legacy low-resistance test circuits (< 100Ω), scale against 1.5W
-  const referencePower = safeResistance >= 200 ? 0.01125 : 1.5;
+  // Reference baseline luminous flux calibrated against a 3.0V modern 2mW LED (0.19 lm)
+  // so 3V incandescent (0.135 lm) renders ~71% warm brightness while LED hits 100% at 5.6x less wattage.
+  // Legacy low-resistance test circuits (< 200Ω) normalize against 1.5W * 12 lm/W = 18.0 lm.
+  const referenceLumens = safeResistance >= 200 ? 0.19 : 18.0;
   const brightness =
-    absCurrent <= 1e-6 ? 0 : Math.min(1.0, Math.max(0.08, powerWatts / referencePower));
+    absCurrent <= 1e-6 ? 0 : Math.min(1.0, Math.max(0.08, lumens / referenceLumens));
 
   // Overload check: if P exceeds maxPower OR if fragile LED is subjected to excessive voltage (e.g. >= 9V on indicator/RGB LED)
   const isOverloaded =
@@ -289,6 +299,7 @@ export function computeBulbPhotometrics(
   return {
     powerWatts,
     voltageDrop,
+    lumens,
     brightness,
     heatLevel,
     isOverloaded,

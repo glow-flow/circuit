@@ -152,4 +152,70 @@ describe('Explainable Tutor Audit Fixes - Parallel Banks, Series Chain & Paralle
     expect(doubleResWhatIf?.mathematicalProof).toContain('6.67');
     expect(doubleResWhatIf?.mathematicalProof).toContain('1.799');
   });
+
+  it('ignores unwired spare bulbs and empty sockets instead of adding 1e9 Ohm to Req', () => {
+    const nodes: Node<CircuitElementData>[] = [
+      makeNode('bat', { type: 'battery9v', label: 'Bat 9V', voltage: 9 }),
+      makeNode('r_load', { type: 'resistor', label: 'R 90 Ohm', resistance: 90 }),
+      // Unwired spare inventory bulb and empty socket sitting on canvas
+      makeNode('spare_bulb', { type: 'bulb', label: 'Lampu Meja', resistance: 800 }),
+      makeNode('empty_socket', { type: 'socket', label: 'Fiting Kosong' }),
+    ];
+    const edges: Edge[] = [
+      makeEdge('e1', 'bat', 'pos', 'r_load', 'p1'),
+      makeEdge('e2', 'r_load', 'p2', 'bat', 'neg'),
+    ];
+
+    const sim = solveForTutor(nodes, edges);
+    const analysis = analyzeExplainableCircuit(nodes, edges, sim);
+
+    expect(analysis.equivalentResistanceOhms).toBe(90);
+    expect(analysis.totalLoopCurrentAmps).toBeCloseTo(9 / 92, 2);
+  });
+
+  it('computes physical short-circuit surge from V_oc / R_int (4.5A for 9V) instead of hardcoded 60A', () => {
+    const nodes: Node<CircuitElementData>[] = [
+      makeNode('bat9', {
+        type: 'battery9v',
+        label: 'Bat 9V',
+        voltage: 9.0,
+        internalResistance: 2.0,
+      }),
+    ];
+    const edges: Edge[] = [makeEdge('e_sc', 'bat9', 'pos', 'bat9', 'neg')];
+
+    const sim = solveForTutor(nodes, edges);
+    const analysis = analyzeExplainableCircuit(nodes, edges, sim);
+
+    expect(analysis.topologyType).toBe('dead_short');
+    expect(analysis.totalLoopCurrentAmps).toBeCloseTo(4.5, 2);
+    expect(analysis.totalLoopCurrentAmps).not.toBe(60);
+  });
+
+  it('keeps conducting parallel branch active when an open switch isolates only a sibling branch', () => {
+    const nodes: Node<CircuitElementData>[] = [
+      makeNode('bat', { type: 'battery9v', label: 'Bat 9V', voltage: 9 }),
+      makeNode('wp_pos', { type: 'waypoint', label: 'Rel +' }),
+      makeNode('wp_neg', { type: 'waypoint', label: 'Rel -' }),
+      makeNode('sw_off', { type: 'switch', label: 'Sakelar B', isOpen: true }),
+      makeNode('r_live', { type: 'resistor', label: 'R Live', resistance: 100 }),
+      makeNode('r_off', { type: 'resistor', label: 'R Off', resistance: 100 }),
+    ];
+    const edges: Edge[] = [
+      makeEdge('e1', 'bat', 'pos', 'wp_pos', 'p1'),
+      makeEdge('e2', 'wp_pos', 'p1', 'r_live', 'p1'),
+      makeEdge('e3', 'r_live', 'p2', 'wp_neg', 'p1'),
+      makeEdge('e4', 'wp_pos', 'p1', 'sw_off', 'p1'),
+      makeEdge('e5', 'sw_off', 'p2', 'r_off', 'p1'),
+      makeEdge('e6', 'r_off', 'p2', 'wp_neg', 'p1'),
+      makeEdge('e7', 'wp_neg', 'p1', 'bat', 'neg'),
+    ];
+
+    const sim = solveForTutor(nodes, edges);
+    const analysis = analyzeExplainableCircuit(nodes, edges, sim);
+
+    expect(analysis.topologyType).toBe('series_loop');
+    expect(analysis.equivalentResistanceOhms).toBe(100);
+    expect(analysis.totalLoopCurrentAmps).toBeCloseTo(9 / 102, 2);
+  });
 });

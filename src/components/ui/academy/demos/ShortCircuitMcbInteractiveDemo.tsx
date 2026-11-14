@@ -22,10 +22,12 @@ export const ShortCircuitMcbInteractiveDemo: React.FC = () => {
   const rWire = wireGauge === 'thin' ? 1.8 : 0.2;
 
   const isTrippedByShort = hasBypassFault && mcbClosed;
-  const faultCurrent = hasBypassFault ? batteryV / Math.max(0.05, 0.05) : 0;
-  const loadCurrent = !hasBypassFault && mcbClosed ? batteryV / (loadR + rWire) : 0;
+  const peakTransientSurgeAmps = hasBypassFault ? batteryV / Math.max(0.1, rWire) : 0;
+  // Once MCB trips open in milliseconds, steady-state loop current drops to 0.00 A
+  const steadyCurrentAmps =
+    !hasBypassFault && mcbClosed ? batteryV / (loadR + rWire) : 0;
   const wireHeatWatts =
-    isTrippedByShort ? 120 : loadCurrent * loadCurrent * rWire;
+    isTrippedByShort ? 0 : steadyCurrentAmps * steadyCurrentAmps * rWire;
   const isCured = !hasBypassFault && mcbClosed && wireGauge === 'puil';
 
   const handleToggleMcb = () => {
@@ -72,9 +74,8 @@ export const ShortCircuitMcbInteractiveDemo: React.FC = () => {
             {isTrippedByShort ? '0.0V' : '12V'}
           </text>
           <text x="43" y="88" textAnchor="middle" fill="#94a3b8" fontSize="8.5" fontFamily="JetBrains Mono, monospace">
-            {isTrippedByShort ? 'DROP!' : 'STABIL'}
+            {isTrippedByShort ? (isId ? 'ANJLOK!' : 'DROP!') : (isId ? 'STABIL' : 'STABLE')}
           </text>
-
           {/* Clickable MCB Switch */}
           <g onClick={handleToggleMcb} className="cursor-pointer">
             <rect
@@ -118,7 +119,7 @@ export const ShortCircuitMcbInteractiveDemo: React.FC = () => {
                   CUT
                 </text>
                 <text x="205" y="124" textAnchor="middle" fill="#fb7185" fontSize="8.5" fontWeight="600">
-                  Kawat 0Ω!
+                  {isId ? 'Kawat 0Ω!' : '0Ω Short!'}
                 </text>
               </>
             ) : (
@@ -126,7 +127,7 @@ export const ShortCircuitMcbInteractiveDemo: React.FC = () => {
                 <line x1="205" y1="42" x2="205" y2="56" stroke="#334155" strokeWidth="2" />
                 <line x1="205" y1="92" x2="205" y2="106" stroke="#334155" strokeWidth="2" />
                 <text x="205" y="77" textAnchor="middle" fill="#34d399" fontSize="8.5" fontWeight="700">
-                  PUTUS OK
+                  {isId ? 'PUTUS OK' : 'CLEARED'}
                 </text>
               </>
             )}
@@ -135,22 +136,22 @@ export const ShortCircuitMcbInteractiveDemo: React.FC = () => {
           {/* Right Lab Load Bulb */}
           <g transform="translate(274, 52)">
             <line x1="21" y1="-10" x2="21" y2="54" stroke="#334155" strokeWidth="2" />
-            {loadCurrent > 0 && <circle cx="21" cy="22" r="26" fill="#facc15" fillOpacity="0.3" />}
+            {steadyCurrentAmps > 0 && <circle cx="21" cy="22" r="26" fill="#facc15" fillOpacity="0.3" />}
             <circle
               cx="21"
               cy="22"
               r="18"
               fill="#090d16"
-              stroke={loadCurrent > 0 ? '#facc15' : '#475569'}
+              stroke={steadyCurrentAmps > 0 ? '#facc15' : '#475569'}
               strokeWidth="2"
             />
             <text x="21" y="25" textAnchor="middle" fill="#e2e8f0" fontSize="9" fontWeight="700">
-              {loadCurrent > 0 ? 'NYALA' : 'MATI'}
+              {steadyCurrentAmps > 0 ? (isId ? 'NYALA' : 'LIT') : (isId ? 'MATI' : 'OFF')}
             </text>
-            <text x="21" y="72" textAnchor="middle" fill="#94a3b8" fontSize="9" fontFamily="JetBrains Mono, monospace">
+            <text x="21" y="72" textAnchor="middle" fill="#94a3b8" fontSize="8.5" fontFamily="JetBrains Mono, monospace">
               {isTrippedByShort
-                ? `${faultCurrent.toFixed(0)}A`
-                : `${loadCurrent.toFixed(2)}A`}
+                ? `0.00A (${isId ? 'Puncak' : 'Peak'} ${peakTransientSurgeAmps.toFixed(0)}A)`
+                : `${steadyCurrentAmps.toFixed(2)}A`}
             </text>
           </g>
         </svg>
@@ -202,8 +203,8 @@ export const ShortCircuitMcbInteractiveDemo: React.FC = () => {
           }`}
         >
           {wireGauge === 'puil'
-            ? `Kabel 2.5mm² (${wireHeatWatts.toFixed(1)}W)`
-            : `Kabel 0.5mm² (${wireHeatWatts.toFixed(1)}W!)`}
+            ? `${isId ? 'Kabel' : 'Wire'} 2.5mm² (${wireHeatWatts.toFixed(1)}W)`
+            : `${isId ? 'Kabel' : 'Wire'} 0.5mm² (${wireHeatWatts.toFixed(1)}W!)`}
         </button>
       </div>
     </MiniLabFrame>

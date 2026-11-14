@@ -9,9 +9,15 @@ import {
 import { useCircuitStore } from '../../store/useCircuitStore';
 import {
   resolveEdgeBranchCurrent,
+  resolveWireFlowDirection,
   resolveWirePolarity,
 } from './WireEdge';
-import { THERMAL_STRESS_CURRENT_THRESHOLD } from '../../physics/transmissionPhysics';
+import {
+  calculateJouleLoss,
+  calculateTurnsRatio,
+  isTransmissionLineOverheated,
+  LOW_VOLTAGE_NOMINAL,
+} from '../../physics/transmissionPhysics';
 import { resolveWireLensPresentation } from '../../physics/physicsLensEngine';
 
 /**
@@ -116,10 +122,11 @@ export const TransmissionWireEdge: React.FC<EdgeProps> = memo(({
     targetNode?.data.type === 'transmission_tower';
   const isTransmissionWire = isSourceTower || isTargetTower;
 
-  // Resolve tower voltage mode & step-up status
+  // Resolve tower voltage mode & step-up turns ratio
   const towerNode = isSourceTower ? sourceNode : targetNode;
   const stepUpVoltage = towerNode?.data.stepUpVoltage ?? 12;
-  const isStepUp = stepUpVoltage === 240;
+  const isStepUp = stepUpVoltage > LOW_VOLTAGE_NOMINAL;
+  const turnsRatio = calculateTurnsRatio(LOW_VOLTAGE_NOMINAL, stepUpVoltage);
 
   // Real simulation branch current through this wire
   const wireCurrent = resolveEdgeBranchCurrent(
@@ -127,14 +134,21 @@ export const TransmissionWireEdge: React.FC<EdgeProps> = memo(({
     target,
     simulation.branchCurrents
   );
+  const flowDirection = resolveWireFlowDirection(
+    source,
+    target,
+    sourceHandleId,
+    targetHandleId,
+    simulation.branchCurrents
+  );
   const hasCurrent = wireCurrent > 0.0001;
+  const transmittedCurrent = isTransmissionWire && turnsRatio > 1 ? wireCurrent / turnsRatio : wireCurrent;
 
-  // Thermal stress condition: current >= threshold on low voltage
+  // Thermal stress condition: line current exceeds conductor ampacity
   const isOverheated =
     isTransmissionWire &&
     hasCurrent &&
-    wireCurrent >= THERMAL_STRESS_CURRENT_THRESHOLD &&
-    !isStepUp;
+    isTransmissionLineOverheated(transmittedCurrent, stepUpVoltage);
 
   // Wire selection and short-circuit flags
   const isWireSelected = selected || selectedEdgeId === id;
@@ -262,10 +276,9 @@ export const TransmissionWireEdge: React.FC<EdgeProps> = memo(({
     splitEdgeWithWaypoint(id, clickPosition);
   };
 
-  // Joule loss calculation for badge display
+  // Joule loss calculation using dynamic transformer turns ratio
   const lineResistance = towerNode?.data.lineResistance ?? 4.0;
-  const transmittedCurrent = isStepUp ? wireCurrent / 20 : wireCurrent;
-  const jouleLoss = transmittedCurrent * transmittedCurrent * lineResistance;
+  const jouleLoss = calculateJouleLoss(transmittedCurrent, lineResistance);
 
   const lensVisual = resolveWireLensPresentation({
     edgeId: id,
@@ -358,7 +371,7 @@ export const TransmissionWireEdge: React.FC<EdgeProps> = memo(({
         />
       )}
 
-      {/* Animated electron flow dashes when live current is flowing */}
+      {/* Animated current flow dashes aligned to physical potential direction */}
       {hasCurrent && !isBranchShortCircuit && (
         <path
           d={edgePath}
@@ -375,7 +388,10 @@ export const TransmissionWireEdge: React.FC<EdgeProps> = memo(({
           strokeWidth={isOverheated ? 2.8 : 2}
           strokeDasharray={isOverheated ? '4 6' : '6 8'}
           className="animate-wire-flow pointer-events-none"
-          style={{ animationDuration: animationSpeed }}
+          style={{
+            animationDuration: animationSpeed,
+            animationDirection: flowDirection === 'reverse' ? 'reverse' : 'normal',
+          }}
         />
       )}
 

@@ -430,10 +430,13 @@ describe('Modified Nodal Analysis (MNA) Physics Engine', () => {
     const currentLed = Math.abs(resLed.branchCurrents['bulb_1']);
     const photoLed = computeBulbPhotometrics(currentLed, ledSpec.resistance, ledSpec);
 
-    // Higher resistance on LED means lower current I, lower power P = I^2 * R, and dimmer glow
+    // Higher resistance on LED means lower current I and lower power P = I^2 * R,
+    // yet superior luminous efficacy (95 lm/W vs 12 lm/W) produces greater luminous output and stays cool!
     expect(currentLed).toBeLessThan(currentInc);
     expect(photoLed.powerWatts).toBeLessThan(photoInc.powerWatts);
-    expect(photoLed.brightness).toBeLessThan(photoInc.brightness);
+    expect(photoLed.lumens).toBeGreaterThan(photoInc.lumens);
+    expect(photoLed.brightness).toBeGreaterThan(photoInc.brightness);
+    expect(photoLed.heatLevel).toBe('cold');
 
     // 3. Overvoltage test: 9V battery connected directly to Indicator LED (led_green) triggers overheat/overload
     const greenSpec = getBulbSpec('led_green');
@@ -491,7 +494,8 @@ describe('Modified Nodal Analysis (MNA) Physics Engine', () => {
       2
     );
 
-    // Direct short across a single 9V battery with 2.0Ω internal resistance limits current to ~4.5A (< 10A)
+    // Direct short across a single 9V battery via closed switch limits current to ~4.5A (R_int = 2Ω),
+    // but terminal voltage collapses near 0V -> must be flagged as short circuit!
     const closedSwitch: CircuitElementData = {
       id: 'sw_short',
       type: 'switch',
@@ -506,7 +510,8 @@ describe('Modified Nodal Analysis (MNA) Physics Engine', () => {
       ],
     });
     expect(Math.abs(shortResult.branchCurrents['b9_1'])).toBeCloseTo(9.0 / 2.001, 2);
-    expect(shortResult.isShortCircuit).toBe(false);
+    expect(shortResult.isShortCircuit).toBe(true);
+    expect(shortResult.shortCircuitBranches).toContain('b9_1');
   });
 
   it('correctly models pin-socket: 1e9 when empty, 1500Ω when halogen installed', () => {

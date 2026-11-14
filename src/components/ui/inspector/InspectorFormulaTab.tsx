@@ -3,6 +3,7 @@ import { BookOpen, ShieldCheck } from 'lucide-react';
 import { CircuitElementData } from '../../../types/circuit';
 import { useCircuitStore } from '../../../store/useCircuitStore';
 import { getComponentCitation } from '../../../constants/datasheetCitations';
+import { resolveComponentPhysicsEquationModel } from '../../../physics/physicsEquationHelper';
 
 interface InspectorFormulaTabProps {
   componentData: CircuitElementData;
@@ -25,12 +26,18 @@ export const InspectorFormulaTab: React.FC<InspectorFormulaTabProps> = ({
 
   const isId = language === 'id';
 
-  const branchCurrent = Math.abs(simulation.branchCurrents[nodeId] ?? 0);
+  const signedBranchCurrent = simulation.branchCurrents[nodeId] ?? 0;
+  const branchCurrent = Math.abs(signedBranchCurrent);
   const voltage = Math.abs(
     componentData.calculatedVoltage ?? (componentData.voltage ?? 0)
   );
-  const resistance = componentData.resistance ?? 100;
   const powerWatts = componentData.calculatedPower ?? voltage * branchCurrent;
+  const equationModel = resolveComponentPhysicsEquationModel(
+    componentData,
+    signedBranchCurrent,
+    voltage,
+    isId
+  );
 
   const citation = getComponentCitation(componentData.type);
 
@@ -43,15 +50,16 @@ export const InspectorFormulaTab: React.FC<InspectorFormulaTabProps> = ({
           <span>{isId ? 'Penurunan Rumus & Substitusi Fisika' : 'Physics Derivation & Live Substitution'}</span>
         </div>
 
-        {/* Ohm's Law */}
+        {/* Component-Appropriate Voltage / EMF Equation */}
         <div className="p-2.5 rounded-xl bg-void-950 border border-white/5 space-y-1">
           <div className="flex justify-between items-center text-[11px] text-slate-300 font-semibold">
-            <span>{isId ? 'Hukum Ohm (Beda Potensial):' : 'Ohm\'s Law (Voltage Drop):'}</span>
-            <span className="font-mono text-electric-400 font-bold">V = I × R</span>
+            <span>{equationModel.voltageLawLabel}</span>
+            <span className="font-mono text-electric-400 font-bold">
+              {equationModel.voltageFormulaTitle}
+            </span>
           </div>
           <div className="font-mono text-[11px] text-sky-300 bg-void-900 px-2 py-1 rounded border border-white/5">
-            V = ({branchCurrent.toFixed(3)} A) × ({resistance.toFixed(1)} Ω) ={' '}
-            <strong className="text-white">{(branchCurrent * resistance).toFixed(3)} V</strong>
+            {equationModel.voltageEquationText}
           </div>
         </div>
 
@@ -67,17 +75,16 @@ export const InspectorFormulaTab: React.FC<InspectorFormulaTabProps> = ({
           </div>
         </div>
 
-        {/* Dissipated Power I^2 * R */}
+        {/* Dissipated / Internal Thermal Loss I^2 * R */}
         <div className="p-2.5 rounded-xl bg-void-950 border border-white/5 space-y-1">
           <div className="flex justify-between items-center text-[11px] text-slate-300 font-semibold">
-            <span>{isId ? 'Disipasi Kalor Resistif:' : 'Resistive Thermal Dissipation:'}</span>
-            <span className="font-mono text-amber-400 font-bold">P = I² × R</span>
+            <span>{equationModel.thermalLawLabel}</span>
+            <span className="font-mono text-amber-400 font-bold">
+              {equationModel.thermalFormulaTitle}
+            </span>
           </div>
           <div className="font-mono text-[11px] text-amber-300 bg-void-900 px-2 py-1 rounded border border-white/5">
-            P = ({branchCurrent.toFixed(3)} A)² × ({resistance.toFixed(1)} Ω) ={' '}
-            <strong className="text-white">
-              {(branchCurrent * branchCurrent * resistance).toFixed(3)} W
-            </strong>
+            {equationModel.thermalEquationText}
           </div>
         </div>
       </div>

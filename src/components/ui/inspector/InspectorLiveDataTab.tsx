@@ -10,6 +10,7 @@ import {
 import { CircuitElementData } from '../../../types/circuit';
 import { useCircuitStore } from '../../../store/useCircuitStore';
 import { formatRupiah } from '../../../physics/plnCostCalculator';
+import { resolveComponentPhysicsEquationModel } from '../../../physics/physicsEquationHelper';
 
 interface InspectorLiveDataTabProps {
   componentData: CircuitElementData;
@@ -32,12 +33,18 @@ export const InspectorLiveDataTab: React.FC<InspectorLiveDataTabProps> = ({
 
   const isId = language === 'id';
 
-  const branchCurrent = Math.abs(simulation.branchCurrents[nodeId] ?? 0);
+  const signedBranchCurrent = simulation.branchCurrents[nodeId] ?? 0;
+  const branchCurrent = Math.abs(signedBranchCurrent);
   const voltage = Math.abs(
     componentData.calculatedVoltage ?? (componentData.voltage ?? 0)
   );
   const powerWatts = componentData.calculatedPower ?? voltage * branchCurrent;
-  const resistance = componentData.resistance ?? 100;
+  const equationModel = resolveComponentPhysicsEquationModel(
+    componentData,
+    signedBranchCurrent,
+    voltage,
+    isId
+  );
 
   // Calculate PLN cost rate in IDR per hour using R-1/TR 1300VA tariff (Rp 1.444,70 / kWh)
   const hourlyCostIdr = (powerWatts / 1000) * 1444.70;
@@ -61,8 +68,8 @@ export const InspectorLiveDataTab: React.FC<InspectorLiveDataTabProps> = ({
           <div className="text-base font-mono font-bold text-sky-300">
             {voltage.toFixed(3)} <span className="text-xs text-sky-400 font-sans">Volt</span>
           </div>
-          <div className="text-[10px] text-slate-500 font-mono">
-            V = I × R = {(branchCurrent * resistance).toFixed(2)}V
+          <div className="text-[10px] text-slate-500 font-mono truncate">
+            {equationModel.voltageFormulaTitle}
           </div>
         </div>
 
@@ -91,8 +98,8 @@ export const InspectorLiveDataTab: React.FC<InspectorLiveDataTabProps> = ({
           <div className="text-base font-mono font-bold text-emerald-300">
             {powerWatts.toFixed(3)} <span className="text-xs text-emerald-400 font-sans">Watt</span>
           </div>
-          <div className="text-[10px] text-slate-500 font-mono">
-            P = I² × R = {(branchCurrent * branchCurrent * resistance).toFixed(3)}W
+          <div className="text-[10px] text-slate-500 font-mono truncate">
+            {equationModel.thermalFormulaTitle}
           </div>
         </div>
 

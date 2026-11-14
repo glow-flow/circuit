@@ -176,8 +176,19 @@ export function calculateSolarOperatingPoint(
   const rawIsc = panel.ratedIsc * (effectiveIrradiance / 1000) * Math.max(0.1, tempIscMultiplier);
   const shortCircuitCurrent = Number(Math.max(0, rawIsc).toFixed(2));
 
-  // MPPT voltage and current
-  const rawVmpp = panel.ratedVmpp * tempVocMultiplier * (effectiveIrradiance > 50 ? 1 : effectiveIrradiance / 50);
+  // MPPT voltage and current: smooth logarithmic irradiance dependence (Shockley diode law)
+  const irradianceVoltageFactor =
+    effectiveIrradiance > 0
+      ? Math.max(
+          0,
+          Math.min(
+            1,
+            (1 + 0.065 * Math.log(Math.max(1e-4, effectiveIrradiance / 1000))) *
+              (1 - Math.exp(-effectiveIrradiance / 15))
+          )
+        )
+      : 0;
+  const rawVmpp = panel.ratedVmpp * tempVocMultiplier * irradianceVoltageFactor;
   const vmpp = Number(Math.max(0, Math.min(openCircuitVoltage * 0.85, rawVmpp)).toFixed(2));
 
   const rawImpp = panel.ratedImpp * (effectiveIrradiance / 1000) * tempIscMultiplier;
@@ -398,13 +409,15 @@ export function calculateBessDynamicState(
       // Clamp charge rate by maximum permissible C-rate
       const targetChargePower = Math.min(netPowerWatts, maxChargeWatts);
       // Available energy capacity headroom
-      const capacityHeadroomWh = bess.nominalCapacityWh - initialEnergyWh;
-      // Energy added accounting for Coulombic and DC-DC conversion efficiency
+      // Symmetric single-leg charger efficiency: eta_leg = sqrt(eta_rt) so charge->discharge = eta_rt
+      const legEfficiency = Math.sqrt(Math.max(0.1, Math.min(1.0, bess.roundTripEfficiency)));
+      const maxSafeEnergyWh = (bess.maxSafeSoCPercent / 100) * bess.nominalCapacityWh;
+      const capacityHeadroomWh = Math.max(0, maxSafeEnergyWh - initialEnergyWh);
       const potentialEnergyAddedWh =
-        targetChargePower * durationHours * bess.coulombicEfficiency * bess.roundTripEfficiency;
+        targetChargePower * durationHours * legEfficiency;
 
       const actualEnergyAddedWh = Math.min(capacityHeadroomWh, potentialEnergyAddedWh);
-      activePowerWatts = Number((actualEnergyAddedWh / (durationHours * bess.coulombicEfficiency * bess.roundTripEfficiency)).toFixed(1));
+      activePowerWatts = Number((actualEnergyAddedWh / (durationHours * legEfficiency)).toFixed(1));
 
       finalEnergyWh = initialEnergyWh + actualEnergyAddedWh;
       finalSoC = Number(((finalEnergyWh / bess.nominalCapacityWh) * 100).toFixed(1));
@@ -420,12 +433,13 @@ export function calculateBessDynamicState(
       // Clamp discharge rate by maximum permissible C-rate
       const targetDischargePower = Math.min(demandWatts, maxDischargeWatts);
       // Usable energy remaining above safe minimum cutoff reserve
+      const legEfficiency = Math.sqrt(Math.max(0.1, Math.min(1.0, bess.roundTripEfficiency)));
       const usableReserveWh = Math.max(0, initialEnergyWh - (bess.minSafeSoCPercent / 100) * bess.nominalCapacityWh);
-      // Energy drained from electrochemical cells accounting for conversion losses
-      const energyDrainedWh = (targetDischargePower * durationHours) / bess.roundTripEfficiency;
+      // Energy drained from electrochemical cells accounting for symmetric leg conversion losses
+      const energyDrainedWh = (targetDischargePower * durationHours) / legEfficiency;
 
       const actualEnergyDrainedWh = Math.min(usableReserveWh, energyDrainedWh);
-      activePowerWatts = -Number((actualEnergyDrainedWh * bess.roundTripEfficiency / durationHours).toFixed(1));
+      activePowerWatts = -Number(((actualEnergyDrainedWh * legEfficiency) / durationHours).toFixed(1));
 
       finalEnergyWh = Math.max(0, initialEnergyWh - actualEnergyDrainedWh);
       finalSoC = Number(((finalEnergyWh / bess.nominalCapacityWh) * 100).toFixed(1));
@@ -498,12 +512,17 @@ export function computeMicrogridPowerBalance(
   let gridImportWatts = 0;
   let status: MicrogridPowerBalance['status'] = 'self_sufficient_surplus';
 
+  const legEfficiency = Math.sqrt(Math.max(0.1, Math.min(1.0, bess.roundTripEfficiency)));
+  const ONE_HOUR_WINDOW_H = 1.0;
+
   if (netPowerWatts >= 0) {
-    // Generation surplus: prioritize BESS charging, then export
+    // Generation surplus: prioritize BESS charging within safe max SoC ceiling, then export
     if (bessSoCPercent < bess.maxSafeSoCPercent) {
-      const chargeAbsorptionCapacity = (1 - bessSoCPercent / 100) * bess.nominalCapacityWh;
+      const remainingHeadroomWh =
+        ((bess.maxSafeSoCPercent - bessSoCPercent) / 100) * bess.nominalCapacityWh;
+      const chargeAbsorptionPowerLimit = remainingHeadroomWh / (ONE_HOUR_WINDOW_H * legEfficiency);
       bessDispatchWatts = Number(
-        Math.min(netPowerWatts, maxBessChargePower, chargeAbsorptionCapacity).toFixed(1)
+        Math.min(netPowerWatts, maxBessChargePower, chargeAbsorptionPowerLimit).toFixed(1)
       );
     }
     gridExportWatts = Number(Math.max(0, netPowerWatts - bessDispatchWatts).toFixed(1));
@@ -533,21 +552,22 @@ export function computeMicrogridPowerBalance(
       autonomyHours = 999.0; // Infinite/fully self-sustaining under continuous surplus
     } else {
       const netDeficit = Math.abs(netPowerWatts);
-      autonomyHours = Number((usableEnergyWh / netDeficit).toFixed(1));
+      // Account for discharge conversion efficiency eta_leg when delivering usable reserve to load
+      autonomyHours = Number(((usableEnergyWh * legEfficiency) / netDeficit).toFixed(1));
     }
   }
 
-  // Estimated internal conversion dissipation losses in charger/inverter
+  // Estimated internal conversion dissipation losses in charger/inverter using symmetric leg efficiency
   let conversionLossWatts = 0;
   if (bessDispatchWatts > 0) {
-    // Charging efficiency losses
+    // Charging efficiency losses: bus draws P_dispatch, stores P_dispatch * eta_leg
     conversionLossWatts = Number(
-      (bessDispatchWatts * (1 - bess.coulombicEfficiency * bess.roundTripEfficiency)).toFixed(1)
+      (bessDispatchWatts * (1 - legEfficiency)).toFixed(1)
     );
   } else if (bessDispatchWatts < 0) {
-    // Discharging inversion losses
+    // Discharging inversion losses: delivers |P_dispatch|, drains |P_dispatch| / eta_leg
     conversionLossWatts = Number(
-      (Math.abs(bessDispatchWatts) * (1 / bess.roundTripEfficiency - 1)).toFixed(1)
+      (Math.abs(bessDispatchWatts) * (1 / legEfficiency - 1)).toFixed(1)
     );
   }
 

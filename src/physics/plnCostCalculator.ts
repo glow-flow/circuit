@@ -1,8 +1,18 @@
-import { Node } from 'reactflow';
+import { Edge, Node } from 'reactflow';
 import { CircuitElementData, SimulationResult } from '../types/circuit';
-import { computeEffectiveBatteryVoltage } from './batterySoC';
-import { getComponentEffectiveResistance, getSocketForwardThreshold } from './mnaSolver';
+import {
+  computeEffectiveBatteryVoltage,
+  computeSeriesHolderTelemetry,
+  normalizeHolderCellCharges,
+  resolveHolderCellCount,
+} from './batterySoC';
+import {
+  getComponentEffectiveResistance,
+  getSocketForwardThreshold,
+  isTransmissionNodeActive,
+} from './mnaSolver';
 import { getSolarPanelVoltage } from './solarPanel';
+import { UnionFind } from './unionFind';
 
 /**
  * Official PT PLN (Persero) / Kementerian ESDM household tariff categories (Golongan Tarif Rumah Tangga).
@@ -60,6 +70,8 @@ export interface PlnCostEstimateResult {
   netMonthlyPlnBillIdr: number;
   monthlyCo2SavedKg: number;
   componentBreakdown: ComponentPowerBreakdownItem[];
+  /** Power from galvanically isolated off-grid pocket battery islands excluded from the metered PLN grid bill. */
+  excludedOffGridWatts?: number;
 }
 
 /**
@@ -118,7 +130,8 @@ function resolvePlnSourceNominalVoltage(node: Node<CircuitElementData>): number 
     return Math.max(0, node.data.voltage ?? getSolarPanelVoltage(node.data.sunlight ?? 100));
   }
   if (compType === 'wind-turbine' || compType === 'wind_turbine') {
-    return Math.max(0, node.data.voltage ?? ((node.data.speed ?? 50) / 100) * 12.0);
+    const rawWindV = node.data.voltage ?? ((node.data.speed ?? 50) / 100) * 12.0;
+    return Math.min(12.0, Math.max(0, rawWindV));
   }
   if (compType === 'hydro-turbine' || compType === 'hydro_turbine') {
     return Math.max(0, node.data.voltage ?? 12.0);
@@ -132,12 +145,119 @@ function resolvePlnSourceNominalVoltage(node: Node<CircuitElementData>): number 
     return computeEffectiveBatteryVoltage(nominal, node.data.currentCharge);
   }
   if (compType === 'battery-holder') {
-    const count = Math.max(1, node.data.batteryCount ?? 2);
-    const nominal = Math.max(0, node.data.voltage ?? count * 1.5);
-    return computeEffectiveBatteryVoltage(nominal, node.data.currentCharge);
+    const count = resolveHolderCellCount(node.data);
+    if (count === 0) return 0;
+    const normalizedCells = normalizeHolderCellCharges(
+      node.data.cellCharges,
+      count,
+      node.data.currentCharge
+    );
+    const telemetry = computeSeriesHolderTelemetry(normalizedCells);
+    return telemetry.effectiveVoltage;
   }
   const nominal = Math.max(0, node.data.voltage ?? 1.5);
   return computeEffectiveBatteryVoltage(nominal, node.data.currentCharge);
+}
+
+/**
+ * Identifies galvanically isolated non-renewable off-grid DC battery islands when a grid
+ * `distribution-panel` or renewable microgrid bus exists alongside them, preventing pocket
+ * off-grid batteries from diluting grid renewable share or inflating metered household kWh.
+ *
+ * Time Complexity: O(V + E) via Union-Find.
+ */
+function buildExcludedOffGridNodeSet(
+  nodes: ReadonlyArray<Node<CircuitElementData>>,
+  edges?: ReadonlyArray<Edge>
+): Set<string> {
+  const excluded = new Set<string>();
+  if (!edges || edges.length === 0 || nodes.length === 0) {
+    return excluded;
+  }
+
+  const uf = new UnionFind();
+  let gridAnchorId: string | null = null;
+  let hasGridOrRenewableIsland = false;
+
+  for (const node of nodes) {
+    if (!node || !node.data) continue;
+    uf.makeSet(node.id);
+    const t = node.data.type;
+    if (
+      t === 'distribution-panel' ||
+      t === 'distribution_panel' ||
+      t === 'solar-panel' ||
+      t === 'solar_panel' ||
+      t === 'wind-turbine' ||
+      t === 'wind_turbine' ||
+      t === 'hydro-turbine' ||
+      t === 'hydro_turbine' ||
+      t === 'bess-substation' ||
+      t === 'bess_substation'
+    ) {
+      hasGridOrRenewableIsland = true;
+    }
+    if (
+      isTransmissionNodeActive(node.data) ||
+      t === 'solar-panel' ||
+      t === 'solar_panel' ||
+      t === 'wind-turbine' ||
+      t === 'wind_turbine' ||
+      t === 'hydro-turbine' ||
+      t === 'hydro_turbine' ||
+      t === 'bess-substation' ||
+      t === 'bess_substation' ||
+      t === 'distribution-panel' ||
+      t === 'distribution_panel'
+    ) {
+      // Group outdoor SUTET/grid/generation nodes when wirelessly bridged via SUTET grid
+      if (isTransmissionNodeActive(node.data) || t === 'distribution-panel' || t === 'distribution_panel') {
+        if (gridAnchorId === null) {
+          gridAnchorId = node.id;
+        } else {
+          uf.union(gridAnchorId, node.id);
+        }
+      }
+    }
+  }
+
+  if (!hasGridOrRenewableIsland) {
+    // Pure standalone Lab DC battery circuit: keep billing comparison intact for pedagogy
+    return excluded;
+  }
+
+  for (const edge of edges) {
+    uf.union(edge.source, edge.target);
+  }
+
+  const gridBackedRoots = new Set<string>();
+  for (const node of nodes) {
+    if (!node || !node.data) continue;
+    const t = node.data.type;
+    if (
+      t === 'distribution-panel' ||
+      t === 'distribution_panel' ||
+      t === 'solar-panel' ||
+      t === 'solar_panel' ||
+      t === 'wind-turbine' ||
+      t === 'wind_turbine' ||
+      t === 'hydro-turbine' ||
+      t === 'hydro_turbine' ||
+      t === 'bess-substation' ||
+      t === 'bess_substation'
+    ) {
+      gridBackedRoots.add(uf.find(node.id));
+    }
+  }
+
+  for (const node of nodes) {
+    if (!node || !node.data) continue;
+    if (!gridBackedRoots.has(uf.find(node.id))) {
+      excluded.add(node.id);
+    }
+  }
+
+  return excluded;
 }
 
 /**
@@ -197,13 +317,15 @@ export function calculatePlnCostEstimate(
   simulation: Pick<SimulationResult, 'branchCurrents' | 'totalPowerDrawn'>,
   tariffTierId: PlnTariffTierId = 'R1_1300_2200',
   dailyUsageHours: number = 8,
-  scaleMultiplier: PlnScaleMultiplier = 1
+  scaleMultiplier: PlnScaleMultiplier = 1,
+  edges?: ReadonlyArray<Edge>
 ): PlnCostEstimateResult {
   const tariffTier = getPlnTariffTier(tariffTierId);
 
   try {
     const safeNodes = Array.isArray(nodes) ? nodes : [];
     const branchCurrents = simulation?.branchCurrents ?? {};
+    const excludedOffGridIds = buildExcludedOffGridNodeSet(safeNodes, edges);
 
     const clampedHours = Number.isFinite(dailyUsageHours)
       ? Math.max(0, Math.min(24, dailyUsageHours))
@@ -215,10 +337,10 @@ export function calculatePlnCostEstimate(
       ? Math.max(0, simulation.totalPowerDrawn)
       : 0;
 
-    // Pre-check O(N) whether any active power source has signed negative MNA current (supplying/discharging).
+    // Pre-check O(N) whether any active power source on metered grid islands has signed negative MNA current (supplying/discharging).
     // Allows distinguishing batteries actively charging (j > 0) from legacy positive-signed synthetic unit mocks.
     const hasSignedSupplyingSource = safeNodes.some((node) => {
-      if (!node || !node.data) return false;
+      if (!node || !node.data || excludedOffGridIds.has(node.id)) return false;
       const t = node.data.type;
       const isSourceNode =
         t === 'solar-panel' ||
@@ -239,6 +361,7 @@ export function calculatePlnCostEstimate(
     let renewablePowerWatts = 0;
     let nonRenewablePowerWatts = 0;
     let summedLoadPowerWatts = 0;
+    let excludedOffGridWatts = 0;
 
     const rawLoadItems: Array<{
       nodeId: string;
@@ -255,6 +378,27 @@ export function calculatePlnCostEstimate(
       const signedCurrentAmps = branchCurrents[node.id] ?? 0;
       const currentAmps = Math.abs(signedCurrentAmps);
       if (!Number.isFinite(currentAmps) || currentAmps <= 1e-6) {
+        continue;
+      }
+
+      if (excludedOffGridIds.has(node.id)) {
+        // Accumulate excluded off-grid battery island load power separately instead of charging PLN meter
+        const isIsolatedLoad =
+          compType === 'bulb' ||
+          compType === 'resistor' ||
+          (compType === 'socket' && Boolean(node.data.installedBulb)) ||
+          ((compType === 'pin-socket' || compType === 'socket-pin') && Boolean(node.data.installedBulb));
+        if (isIsolatedLoad) {
+          const isSock =
+            compType === 'socket' || compType === 'pin-socket' || compType === 'socket-pin';
+          const loadR = isSock
+            ? getComponentEffectiveResistance(node.data)
+            : Math.max(0.1, node.data.resistance ?? 100);
+          if (loadR < 1e8) {
+            const vf = isSock ? getSocketForwardThreshold(node.data) : 0;
+            excludedOffGridWatts += currentAmps * currentAmps * loadR + vf * currentAmps;
+          }
+        }
         continue;
       }
 
@@ -333,8 +477,13 @@ export function calculatePlnCostEstimate(
 
     // Prefer exact measured useful load dissipation when resistive/lamp loads are present
     // so charging batteries and internal source R_int heat do not inflate household load kWh.
+    // When excluded off-grid battery islands were filtered out, do not fall back to global rawPowerFromSim.
     const rawTotalPowerWatts =
-      summedLoadPowerWatts > 1e-5 ? summedLoadPowerWatts : rawPowerFromSim;
+      summedLoadPowerWatts > 1e-5
+        ? summedLoadPowerWatts
+        : excludedOffGridIds.size > 0
+        ? 0
+        : rawPowerFromSim;
     const effectivePowerWatts = rawTotalPowerWatts * safeMultiplier;
     const effectivePowerKilowatts = effectivePowerWatts / 1000;
 
@@ -402,6 +551,7 @@ export function calculatePlnCostEstimate(
       netMonthlyPlnBillIdr,
       monthlyCo2SavedKg,
       componentBreakdown,
+      excludedOffGridWatts: Number((excludedOffGridWatts * safeMultiplier).toFixed(4)),
     };
   } catch (error) {
     console.warn('Failed to calculate PLN cost estimate:', error);
@@ -426,6 +576,7 @@ export function calculatePlnCostEstimate(
       netMonthlyPlnBillIdr: 0,
       monthlyCo2SavedKg: 0,
       componentBreakdown: [],
+      excludedOffGridWatts: 0,
     };
   }
 }

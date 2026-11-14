@@ -100,11 +100,17 @@ describe('Battery State of Charge (SoC) & Voltage Sag Physics', () => {
   });
 
   describe('getDefaultBatteryCapacity', () => {
-    it('provides standard rated capacities for components', () => {
+    it('provides standard rated capacities and series mAh invariance', () => {
       expect(getDefaultBatteryCapacity('battery')).toBe(1000);
       expect(getDefaultBatteryCapacity('battery9v')).toBe(500);
-      expect(getDefaultBatteryCapacity('battery-holder', 2)).toBe(2000);
+      expect(getDefaultBatteryCapacity('battery-holder', 2)).toBe(1000);
       expect(getDefaultBatteryCapacity('battery-holder', 1)).toBe(1000);
+      expect(getDefaultBatteryCapacity('battery-holder', 0)).toBe(0);
+
+      // Energy conservation: 2 series cells double voltage (3.0V) with 1000 mAh -> 3.0 Wh
+      const twoCellWh = (2 * 1.5 * getDefaultBatteryCapacity('battery-holder', 2)) / 1000;
+      const singleCellWh = (1.5 * getDefaultBatteryCapacity('battery')) / 1000;
+      expect(twoCellWh).toBeCloseTo(2 * singleCellWh, 5);
     });
   });
 

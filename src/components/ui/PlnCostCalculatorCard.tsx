@@ -51,6 +51,7 @@ const SCALE_OPTIONS: ReadonlyArray<{
  */
 export const PlnCostCalculatorCard: React.FC = () => {
   const nodes = useCircuitStore((state) => state.nodes);
+  const edges = useCircuitStore((state) => state.edges);
   const simulation = useCircuitStore((state) => state.simulation);
   const language = useCircuitStore((state) => state.language);
   const isId = language === 'id';
@@ -68,9 +69,10 @@ export const PlnCostCalculatorCard: React.FC = () => {
         simulation,
         selectedTariffId,
         dailyHours,
-        scaleMultiplier
+        scaleMultiplier,
+        edges
       ),
-    [nodes, simulation, selectedTariffId, dailyHours, scaleMultiplier]
+    [nodes, edges, simulation, selectedTariffId, dailyHours, scaleMultiplier]
   );
 
   const activeScaleMeta =

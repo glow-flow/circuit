@@ -52,14 +52,21 @@ import {
 } from '../physics/terrainClimateEngine';
 import {
   isTransmissionNodeActive,
+  resolveCircuitPinNets,
   SHORT_CIRCUIT_CURRENT_THRESHOLD,
   solveCircuitMNA,
 } from '../physics/mnaSolver';
 import { buildLabChargingStationMerge } from '../utils/labChargingStationUtils';
 import {
+  DEFAULT_HOLDER_CAPACITY_MAH,
   computeEffectiveBatteryVoltage,
+  computeSeriesHolderTelemetry,
   determineBatteryChargeState,
+  ejectCellFromHolderState,
   getDefaultBatteryCapacity,
+  insertCellIntoHolderState,
+  normalizeHolderCellCharges,
+  resolveHolderCellCount,
   stepBatteryCharge,
 } from '../physics/batterySoC';
 import {
@@ -309,10 +316,11 @@ function recalculateCircuit(
         if (!isTransmissionNodeActive(n.data) || n.data.worldMode === 'outside') return false;
         // Direct terminal short circuit (pos and neg bridged directly or via the same junction)
         const isDirectShorted = checkPanelDirectShort(n.id, wires).isShorted;
-        // Overcurrent fault from grid
+        // Overcurrent or terminal-collapse short fault involving the panel
         const isOvercurrent =
           simulation.isShortCircuit &&
-          Math.abs(simulation.branchCurrents[n.id] ?? 0) > SHORT_CIRCUIT_CURRENT_THRESHOLD;
+          (Math.abs(simulation.branchCurrents[n.id] ?? 0) > SHORT_CIRCUIT_CURRENT_THRESHOLD ||
+            simulation.shortCircuitBranches.includes(n.id));
 
         return isDirectShorted || isOvercurrent;
       })
@@ -338,9 +346,29 @@ function recalculateCircuit(
 
   // Update node data with calculated voltages, currents, power, and thermal overload status
   const activeTowersCount = workingNodes.filter((n) => isTransmissionNodeActive(n.data)).length;
-  const maxGridVoltage = Math.max(0, ...Object.values(simulation.nodeVoltages));
+  const { pinToNetMap } = resolveCircuitPinNets(components, wires);
   const reverseBiasedSet = new Set(simulation.reverseBiasedBranches ?? []);
   const blockedGeneratorSet = new Set(simulation.blockedGeneratorIds ?? []);
+  const floatingVoltmeterSet = new Set(simulation.floatingVoltmeterIds ?? []);
+
+  const getSolvedTerminalVoltage = (
+    comp: CircuitElementData,
+    pinA: string,
+    pinB: string,
+    fallbackVoltage: number
+  ): number => {
+    const netA = pinToNetMap.get(`${comp.id}:${pinA}`);
+    const netB = pinToNetMap.get(`${comp.id}:${pinB}`);
+    if (
+      netA &&
+      netB &&
+      Object.prototype.hasOwnProperty.call(simulation.nodeVoltages, netA) &&
+      Object.prototype.hasOwnProperty.call(simulation.nodeVoltages, netB)
+    ) {
+      return (simulation.nodeVoltages[netA] ?? 0) - (simulation.nodeVoltages[netB] ?? 0);
+    }
+    return fallbackVoltage;
+  };
 
   const updatedNodes = workingNodes.map((node) => {
     const branchCurrent = simulation.branchCurrents[node.id] ?? 0;
@@ -442,8 +470,11 @@ function recalculateCircuit(
       const effectiveSunlight =
         node.data.effectiveSunlight ?? (isShaded ? Math.round(baseSunlight * 0.15 * 10) / 10 : baseSunlight);
       const outputVoltage = node.data.voltage ?? getSolarPanelVoltage(effectiveSunlight);
-      const outputPower = Math.abs(branchCurrent * outputVoltage);
       const isBlockingDiodeActive = blockedGeneratorSet.has(node.id);
+      const terminalVoltage = isBlockingDiodeActive
+        ? outputVoltage
+        : Math.abs(getSolvedTerminalVoltage(node.data, 'pos', 'neg', outputVoltage));
+      const outputPower = Math.abs(branchCurrent * terminalVoltage);
 
       return {
         ...node,
@@ -456,7 +487,7 @@ function recalculateCircuit(
           effectiveSunlight,
           voltage: outputVoltage,
           calculatedCurrent: branchCurrent,
-          calculatedVoltage: outputVoltage,
+          calculatedVoltage: terminalVoltage,
           calculatedPower: outputPower,
           isShortCircuit,
           isBlockingDiodeActive,
@@ -468,8 +499,11 @@ function recalculateCircuit(
       const speed = node.data.speed ?? 50;
       const effectiveSpeed = node.data.effectiveSpeed ?? speed;
       const outputVoltage = node.data.voltage ?? ((effectiveSpeed / 100) * 12.0);
-      const outputPower = Math.abs(branchCurrent * outputVoltage);
       const isBlockingDiodeActive = blockedGeneratorSet.has(node.id);
+      const terminalVoltage = isBlockingDiodeActive
+        ? outputVoltage
+        : Math.abs(getSolvedTerminalVoltage(node.data, 'pos', 'neg', outputVoltage));
+      const outputPower = Math.abs(branchCurrent * terminalVoltage);
 
       return {
         ...node,
@@ -480,7 +514,7 @@ function recalculateCircuit(
           effectiveSpeed,
           voltage: outputVoltage,
           calculatedCurrent: branchCurrent,
-          calculatedVoltage: outputVoltage,
+          calculatedVoltage: terminalVoltage,
           calculatedPower: outputPower,
           isShortCircuit,
           isBlockingDiodeActive,
@@ -495,7 +529,10 @@ function recalculateCircuit(
       const isCharging = branchCurrent > 0.05;
       const isDischarging = branchCurrent < -0.05;
       const bessMode: 'idle' | 'charging' | 'discharging' = isCharging ? 'charging' : isDischarging ? 'discharging' : 'idle';
-      const outputPower = Math.abs(branchCurrent * effectiveV);
+      const terminalVoltage = Math.abs(
+        getSolvedTerminalVoltage(node.data, 'pos', 'neg', effectiveV)
+      );
+      const outputPower = Math.abs(branchCurrent * terminalVoltage);
       const nominalCapacityWh = node.data.nominalCapacityWh ?? 1000;
 
       return {
@@ -510,7 +547,7 @@ function recalculateCircuit(
           bessMode,
           chargeState: bessMode as BatteryChargeState,
           calculatedCurrent: branchCurrent,
-          calculatedVoltage: effectiveV,
+          calculatedVoltage: terminalVoltage,
           calculatedPower: outputPower,
           isShortCircuit,
         },
@@ -522,7 +559,11 @@ function recalculateCircuit(
       const head = node.data.hydraulicHeadMeters ?? 2.0;
       const hydroPoint = calculateHydroOperatingPoint(flow, head);
       const outVoltage = node.data.voltage ?? hydroPoint.voltage;
-      const outputPower = Math.abs(branchCurrent * outVoltage);
+      const regulatedEmf = Math.min(outVoltage, 12.0);
+      const terminalVoltage = Math.abs(
+        getSolvedTerminalVoltage(node.data, 'pos', 'neg', regulatedEmf)
+      );
+      const outputPower = Math.abs(branchCurrent * terminalVoltage);
 
       return {
         ...node,
@@ -534,7 +575,7 @@ function recalculateCircuit(
           voltage: outVoltage,
           rpm: hydroPoint.rpm,
           calculatedCurrent: branchCurrent,
-          calculatedVoltage: outVoltage,
+          calculatedVoltage: terminalVoltage,
           calculatedPower: outputPower,
           isShortCircuit,
         },
@@ -553,9 +594,10 @@ function recalculateCircuit(
         (node.data.type === 'distribution-panel' || node.data.type === 'distribution_panel') &&
         node.data.worldMode !== 'outside';
 
+      const solvedTowerVoltage = Math.abs(getSolvedTerminalVoltage(node.data, 'pos', 'neg', 0));
       const busVoltage = isActive
-        ? activeTowersCount > 1
-          ? maxGridVoltage
+        ? solvedTowerVoltage > 0.001
+          ? solvedTowerVoltage
           : isStandaloneLab
           ? (node.data.stepDownVoltage ?? 12.0)
           : 0
@@ -572,7 +614,7 @@ function recalculateCircuit(
         loadCurrent: Math.abs(branchCurrent),
         voltageMode: stepUpVoltage,
         lineResistance,
-        generatorVoltage: busVoltage > 0 ? busVoltage : 12.0,
+        generatorVoltage: busVoltage,
       });
 
       return {
@@ -616,6 +658,10 @@ function recalculateCircuit(
           ? (node.data.batteryCount ?? (node.data.hasBattery ? 2 : 0)) * 1.5
           : node.data.voltage ?? 1.5;
       const effectiveVoltage = computeEffectiveBatteryVoltage(nominalBase, currentCharge);
+      const terminalVoltage = isShortCircuit
+        ? 0
+        : Math.abs(getSolvedTerminalVoltage(node.data, 'pos', 'neg', effectiveVoltage));
+      const powerWatts = Math.abs(branchCurrent * terminalVoltage);
 
       return {
         ...node,
@@ -625,17 +671,26 @@ function recalculateCircuit(
           capacity,
           chargeState,
           calculatedCurrent: branchCurrent,
-          calculatedVoltage: isShortCircuit ? 0 : effectiveVoltage,
+          calculatedVoltage: terminalVoltage,
+          calculatedPower: powerWatts,
           isShortCircuit,
         },
       };
     }
+
+    const passiveVoltage =
+      node.data.type === 'voltmeter' && floatingVoltmeterSet.has(node.id)
+        ? 0
+        : Math.abs(getSolvedTerminalVoltage(node.data, 'p1', 'p2', 0));
+    const passivePower = Math.abs(passiveVoltage * branchCurrent);
 
     return {
       ...node,
       data: {
         ...node.data,
         calculatedCurrent: branchCurrent,
+        calculatedVoltage: passiveVoltage,
+        calculatedPower: passivePower,
         isShortCircuit,
       },
     };
@@ -1374,7 +1429,8 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
           hasBattery: false,
           batteryCount: 0,
           voltage: 0,
-          capacity: 2000,
+          capacity: 0,
+          cellCharges: [],
           currentCharge: 100,
           chargeState: 'idle',
           label: isId ? 'Wadah Baterai AA' : 'Dual AA Holder',
@@ -1539,12 +1595,24 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   updateComponentData: (id: string, partialData: Partial<CircuitElementData>) => {
     const nextNodes = get().nodes.map((node) => {
       if (node.id === id) {
+        const mergedData: CircuitElementData = {
+          ...node.data,
+          ...partialData,
+        };
+        if (
+          node.data.type === 'battery-holder' &&
+          partialData.currentCharge !== undefined &&
+          partialData.cellCharges === undefined &&
+          partialData.batteryCount === undefined
+        ) {
+          const cellCount = resolveHolderCellCount(mergedData);
+          mergedData.cellCharges = Array.from({ length: cellCount }, () =>
+            Math.max(0, Math.min(100, partialData.currentCharge ?? 100))
+          );
+        }
         return {
           ...node,
-          data: {
-            ...node.data,
-            ...partialData,
-          },
+          data: mergedData,
         };
       }
       return node;
@@ -1923,11 +1991,11 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
 
     if (!holderNode || !batteryNode) return;
 
-    const currentCount = holderNode.data.batteryCount ?? (holderNode.data.hasBattery ? 2 : 0);
-    if (currentCount >= 2) return; // Holder already full (max 2 AA cells)
-
-    const nextCount = Math.min(2, currentCount + 1);
-    const nextVoltage = nextCount * 1.5;
+    const insertedTelemetry = insertCellIntoHolderState(
+      holderNode.data,
+      batteryNode.data.currentCharge ?? 100
+    );
+    if (!insertedTelemetry) return; // Holder already full (max 2 AA cells)
 
     // Remove the dropped BatteryNode and any edges connected to it
     const nextEdges = get().edges.filter(
@@ -1941,9 +2009,12 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
             ...node,
             data: {
               ...node.data,
-              hasBattery: true,
-              batteryCount: nextCount,
-              voltage: nextVoltage,
+              hasBattery: insertedTelemetry.hasBattery,
+              batteryCount: insertedTelemetry.batteryCount,
+              voltage: insertedTelemetry.voltage,
+              capacity: insertedTelemetry.capacity,
+              currentCharge: insertedTelemetry.currentCharge,
+              cellCharges: insertedTelemetry.cellCharges,
             },
           };
         }
@@ -1967,11 +2038,9 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     );
     if (!holderNode) return;
 
-    const currentCount = holderNode.data.batteryCount ?? (holderNode.data.hasBattery ? 2 : 0);
-    if (currentCount <= 0) return;
-
-    const nextCount = Math.max(0, currentCount - 1);
-    const nextVoltage = nextCount * 1.5;
+    const currentCount = resolveHolderCellCount(holderNode.data);
+    const ejectedResult = ejectCellFromHolderState(holderNode.data);
+    if (!ejectedResult) return;
 
     const ejectedId = `battery_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`;
     const ejectedBatteryNode: Node<CircuitElementData> = {
@@ -1985,8 +2054,8 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
         id: ejectedId,
         type: 'battery',
         voltage: 1.5,
-        capacity: 1000,
-        currentCharge: holderNode.data.currentCharge ?? 100,
+        capacity: DEFAULT_HOLDER_CAPACITY_MAH,
+        currentCharge: ejectedResult.ejectedCellCharge,
         chargeState: 'idle',
         label: get().language === 'id' ? 'Baterai AA 1.5V' : '1.5V AA Battery',
       },
@@ -1999,9 +2068,12 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
             ...node,
             data: {
               ...node.data,
-              hasBattery: nextCount > 0,
-              batteryCount: nextCount,
-              voltage: nextVoltage,
+              hasBattery: ejectedResult.updatedHolder.hasBattery,
+              batteryCount: ejectedResult.updatedHolder.batteryCount,
+              voltage: ejectedResult.updatedHolder.voltage,
+              capacity: ejectedResult.updatedHolder.capacity,
+              currentCharge: ejectedResult.updatedHolder.currentCharge,
+              cellCharges: ejectedResult.updatedHolder.cellCharges,
             },
           };
         }
@@ -2350,10 +2422,50 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       const currentCharge = isBess
         ? (node.data.socPercent ?? node.data.currentCharge ?? 80)
         : (node.data.currentCharge ?? 100);
+      const branchCurrent = state.simulation.branchCurrents[node.id] ?? 0;
+
+      if (node.data.type === 'battery-holder') {
+        const cellCount = resolveHolderCellCount(node.data);
+        const seriesCapacity =
+          node.data.capacity && node.data.capacity > 0
+            ? node.data.capacity
+            : getDefaultBatteryCapacity('battery-holder', cellCount);
+        const currentCells = normalizeHolderCellCharges(
+          node.data.cellCharges,
+          cellCount,
+          currentCharge
+        );
+        const steppedResults = currentCells.map((cellSoC) =>
+          stepBatteryCharge(cellSoC, seriesCapacity, branchCurrent, deltaSeconds)
+        );
+        const nextCells = steppedResults.map((res) => res.newCharge);
+        const nextChargeState = steppedResults[0]?.chargeState ?? 'idle';
+        const packTelemetry = computeSeriesHolderTelemetry(nextCells);
+        const cellChanged = nextCells.some((c, idx) => Math.abs(c - currentCells[idx]) > 1e-4);
+
+        if (
+          cellChanged ||
+          Math.abs(packTelemetry.currentCharge - currentCharge) > 1e-4 ||
+          nextChargeState !== node.data.chargeState
+        ) {
+          hasChanged = true;
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              currentCharge: packTelemetry.currentCharge,
+              cellCharges: packTelemetry.cellCharges,
+              capacity: seriesCapacity,
+              chargeState: nextChargeState,
+            },
+          };
+        }
+        return node;
+      }
+
       const capacity =
         node.data.capacity ??
         getDefaultBatteryCapacity(node.data.type, node.data.batteryCount);
-      const branchCurrent = state.simulation.branchCurrents[node.id] ?? 0;
 
       const { newCharge, chargeState } = stepBatteryCharge(
         currentCharge,
@@ -2405,11 +2517,19 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
         const isBess =
           node.data.type === 'bess-substation' || node.data.type === 'bess_substation';
         const nominalCapacityWh = node.data.nominalCapacityWh ?? 1000;
+        const isHolder = node.data.type === 'battery-holder';
+        const holderCellCount = isHolder ? resolveHolderCellCount(node.data) : 0;
         return {
           ...node,
           data: {
             ...node.data,
             currentCharge: 100,
+            ...(isHolder
+              ? {
+                  cellCharges: Array.from({ length: holderCellCount }, () => 100),
+                  capacity: holderCellCount > 0 ? DEFAULT_HOLDER_CAPACITY_MAH : 0,
+                }
+              : {}),
             ...(isBess
               ? {
                   socPercent: 100,
@@ -2438,11 +2558,19 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
         isBess
       ) {
         const nominalCapacityWh = node.data.nominalCapacityWh ?? 1000;
+        const isHolder = node.data.type === 'battery-holder';
+        const holderCellCount = isHolder ? resolveHolderCellCount(node.data) : 0;
         return {
           ...node,
           data: {
             ...node.data,
             currentCharge: 100,
+            ...(isHolder
+              ? {
+                  cellCharges: Array.from({ length: holderCellCount }, () => 100),
+                  capacity: holderCellCount > 0 ? DEFAULT_HOLDER_CAPACITY_MAH : 0,
+                }
+              : {}),
             ...(isBess
               ? {
                   socPercent: 100,

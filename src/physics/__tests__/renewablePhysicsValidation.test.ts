@@ -199,6 +199,39 @@ describe('Renewable Energy Digital Twin - Comprehensive Physics Validation', () 
       expect(Math.abs(lhs - rhs)).toBeLessThan(0.1);
     });
 
+    it('enforces single-cycle BESS round-trip efficiency (~92% for LFP), maxSafeSoC ceiling, and smooth low-sun Vmpp', () => {
+      const lfp = DEFAULT_BESS_PARAMS;
+      const chargeStep = calculateBessDynamicState(lfp, 50, 100, 1.0);
+      const storedDeltaWh = chargeStep.currentEnergyWh - 500;
+      // Drain that exact stored delta back out
+      const exactDischargeNeededW = (storedDeltaWh * Math.sqrt(lfp.roundTripEfficiency)) / 1.0;
+      const dischargeStep = calculateBessDynamicState(lfp, chargeStep.stateOfChargePercent, -exactDischargeNeededW, 1.0);
+      const deliveredWh = Math.abs(dischargeStep.activePowerWatts) * 1.0;
+      expect(deliveredWh / 100).toBeCloseTo(lfp.roundTripEfficiency, 2);
+
+      // Respect Li-ion maxSafeSoCPercent = 95% (headroom at 94% is only 1% = 10Wh, not 6% = 60Wh)
+      const liIon = BESS_CHEMISTRY_DEFAULTS['lithium-ion'];
+      const liBalance = computeMicrogridPowerBalance(200, 0, 0, liIon, 94);
+      expect(liBalance.bessDispatchWatts).toBeLessThan(20);
+
+      // Smooth low-irradiance transition across 49 -> 51 W/m^2 without discontinuity
+      const pvBelow50 = calculateSolarOperatingPoint(DEFAULT_SOLAR_PANEL_PARAMS, {
+        irradiance: 49,
+        sunElevationDeg: 90,
+        panelTiltDeg: 0,
+        ambientTempCelsius: 25,
+        shadingFactor: 0,
+      });
+      const pvAbove50 = calculateSolarOperatingPoint(DEFAULT_SOLAR_PANEL_PARAMS, {
+        irradiance: 51,
+        sunElevationDeg: 90,
+        panelTiltDeg: 0,
+        ambientTempCelsius: 25,
+        shadingFactor: 0,
+      });
+      expect(Math.abs(pvAbove50.vmpp - pvBelow50.vmpp)).toBeLessThan(0.5);
+    });
+
     it('handles zero load without dividing by zero or throwing NaN', () => {
       const balance = computeMicrogridPowerBalance(200, 100, 0, DEFAULT_BESS_PARAMS, 90);
       expect(Number.isFinite(balance.netPowerWatts)).toBe(true);

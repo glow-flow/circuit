@@ -114,6 +114,7 @@ export interface CircuitElementData {
 
   // Battery State of Charge (SoC) properties
   currentCharge?: number;      // State of Charge in percentage (0 - 100, default 100)
+  cellCharges?: number[];      // Individual cell SoC percentages for series packs (e.g. battery-holder)
   capacity?: number;           // Battery capacity in milliampere-hours (mAh, e.g. 1000 for AA, 500 for 9V)
   chargeState?: BatteryChargeState; // Current dynamic charge state ('idle' | 'charging' | 'discharging')
 
@@ -192,6 +193,7 @@ export interface SimulationResult {
   shortCircuitBranches: string[];
   blockedGeneratorIds?: string[];          // Renewable generators whose blocking diode prevented reverse current
   reverseBiasedBranches?: string[];        // LED socket IDs wired with reversed polarity (Anode < Cathode)
+  floatingVoltmeterIds?: string[];         // Voltmeters whose probes span galvanically isolated islands
   totalPowerDrawn: number;                 // Total active power in Watts
   errorMessage?: string;
   timestamp: number;

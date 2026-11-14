@@ -48,6 +48,8 @@ export const HydroTurbineNode: React.FC<NodeProps<CircuitElementData>> = ({
   const nominalVoltage = data.voltage ?? hydroPoint.voltage;
 
   const current = Math.abs(simulation.branchCurrents[id] ?? 0);
+  const terminalVoltage = data.calculatedVoltage ?? Math.min(nominalVoltage, 12.0);
+  const deliveredPowerWatts = Math.abs(current * terminalVoltage);
   const isGenerating = hydroPoint.isGenerating && nominalVoltage > 0;
   const formattedCurrent =
     current === 0
@@ -96,7 +98,10 @@ export const HydroTurbineNode: React.FC<NodeProps<CircuitElementData>> = ({
             <>
               <Waves className="w-3 h-3 text-cyan-400 shrink-0" />
               <span>
-                {flowPercentage}% · {nominalVoltage.toFixed(1)}V · {hydroPoint.powerWatts}W
+                {flowPercentage}% · {nominalVoltage.toFixed(1)}V ·{' '}
+                {current > 0.001
+                  ? `${deliveredPowerWatts.toFixed(1)}W`
+                  : `Cap ${hydroPoint.powerWatts}W`}
               </span>
             </>
           ) : (
@@ -258,10 +263,10 @@ export const HydroTurbineNode: React.FC<NodeProps<CircuitElementData>> = ({
 
                 <div className="p-3 rounded-xl bg-slate-800/70 border border-white/5">
                   <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
-                    {isId ? 'Daya Listrik (W)' : 'Output Power (W)'}
+                    {isId ? 'Daya Beban / Kapasitas (W)' : 'Load Power / Cap (W)'}
                   </span>
                   <p className="text-sm font-bold font-mono text-cyan-300 mt-0.5 tabular-nums">
-                    {hydroPoint.powerWatts} W ({formattedCurrent})
+                    {deliveredPowerWatts.toFixed(1)}W / {hydroPoint.powerWatts}W ({formattedCurrent})
                   </p>
                 </div>
               </div>

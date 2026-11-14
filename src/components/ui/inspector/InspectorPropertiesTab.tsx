@@ -9,6 +9,7 @@ import {
 import { CircuitElementData } from '../../../types/circuit';
 import { useCircuitStore } from '../../../store/useCircuitStore';
 import { BULB_CATALOG, BulbType, getBulbSpec } from '../../../constants/bulbCatalog';
+import { insertCellIntoHolderState } from '../../../physics/batterySoC';
 import { TRANSLATIONS } from '../../../i18n/translations';
 
 interface InspectorPropertiesTabProps {
@@ -203,11 +204,15 @@ export const InspectorPropertiesTab: React.FC<InspectorPropertiesTabProps> = ({
                 type="button"
                 disabled={(componentData.batteryCount ?? 0) >= 2}
                 onClick={() => {
-                  const nextCount = Math.min(2, (componentData.batteryCount ?? 0) + 1);
+                  const inserted = insertCellIntoHolderState(componentData, 100);
+                  if (!inserted) return;
                   updateComponentData(nodeId, {
-                    hasBattery: true,
-                    batteryCount: nextCount,
-                    voltage: nextCount * 1.5,
+                    hasBattery: inserted.hasBattery,
+                    batteryCount: inserted.batteryCount,
+                    voltage: inserted.voltage,
+                    capacity: inserted.capacity,
+                    currentCharge: inserted.currentCharge,
+                    cellCharges: inserted.cellCharges,
                   });
                 }}
                 className="py-2 px-2.5 rounded-lg text-xs font-semibold bg-electric-500/15 text-electric-400 border border-electric-500/30 hover:bg-electric-500/25 disabled:opacity-40 active:scale-95 transition-all cursor-pointer"

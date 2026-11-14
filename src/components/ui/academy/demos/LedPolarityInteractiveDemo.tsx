@@ -23,21 +23,29 @@ export const LedPolarityInteractiveDemo: React.FC = () => {
   const isMeterShort = meterMode === 'ammeter_parallel_short';
   const vSource = 5.0;
   const vLedDrop = 2.0;
+  const rSourceAndMeterOhms = 0.3; // 0.25Ω supply R_int + 0.05Ω ammeter shunt
+  const rUnclampedLedOhms = 15.0; // Low dynamic bulk resistance when LED driven without limiting resistor
 
   let currentMa = 0;
+  let measuredLedVoltage = 0;
   let statusBadge = '';
 
   if (isMeterShort) {
-    currentMa = 5000;
+    currentMa = (vSource / rSourceAndMeterOhms) * 1000;
+    measuredLedVoltage = 0;
     statusBadge = isId ? 'KORSLET! R_ammeter ≈ 0 Ω' : 'SHORT! R_ammeter ≈ 0 Ω';
   } else if (!isForwardBias) {
     currentMa = 0;
-    statusBadge = isId ? 'TERBLOKIR (Reverse Bias)' : 'BLOCKED (Reverse Bias)';
+    // By KVL with I = 0 across 220Ω resistor (V_R = 0V), full 5.0V source potential appears across open reverse diode
+    measuredLedVoltage = vSource;
+    statusBadge = isId ? 'TERBLOKIR (Reverse Bias · V_oc = 5V)' : 'BLOCKED (Reverse Bias · V_oc = 5V)';
   } else if (!hasResistor) {
-    currentMa = 180;
+    currentMa = ((vSource - vLedDrop) / rUnclampedLedOhms) * 1000;
+    measuredLedVoltage = vSource;
     statusBadge = isId ? 'OVERLOAD! LED Rusak Tanpa Resistor' : 'OVERLOAD! Missing Resistor';
   } else {
     currentMa = ((vSource - vLedDrop) / 220) * 1000;
+    measuredLedVoltage = vLedDrop;
     statusBadge = isId ? 'MENYALA AMAN (Forward Bias)' : 'LIT SAFELY (Forward Bias)';
   }
 
@@ -178,10 +186,10 @@ export const LedPolarityInteractiveDemo: React.FC = () => {
               fontWeight="600"
             >
               {meterMode === 'voltmeter_parallel'
-                ? 'VOLTMETER (Paralel · R≈∞)'
+                ? isId ? 'VOLTMETER (Paralel · R≈∞)' : 'VOLTMETER (Parallel · R≈∞)'
                 : meterMode === 'ammeter_series'
-                ? 'AMMETER (Seri · R≈0)'
-                : 'AMMETER PARALEL (BAHAYA!)'}
+                ? isId ? 'AMMETER (Seri · R≈0)' : 'AMMETER (Series · R≈0)'
+                : isId ? 'AMMETER PARALEL (BAHAYA!)' : 'PARALLEL AMMETER (SHORT!)'}
             </text>
             <text
               x="70"
@@ -193,7 +201,7 @@ export const LedPolarityInteractiveDemo: React.FC = () => {
               fontFamily="JetBrains Mono, monospace"
             >
               {meterMode === 'voltmeter_parallel'
-                ? `V_led = ${isForwardBias ? '2.00 V' : '0.00 V'}`
+                ? `V_led = ${measuredLedVoltage.toFixed(2)} V`
                 : `I = ${currentMa.toFixed(1)} mA`}
             </text>
           </g>

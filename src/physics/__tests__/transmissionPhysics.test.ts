@@ -159,6 +159,26 @@ describe('Nature Mode Transmission Physics & Gardu Trafo Substation', () => {
       expect(stepUpTelemetry.efficiencyPercent).toBeGreaterThanOrEqual(99.8);
       expect(stepUpTelemetry.lossReductionFactor).toBe(400); // (20^2) = 400x reduction
     });
+
+    it('keeps transformer turns ratio fixed by winding rating even when generator voltage sags', () => {
+      const fullSun = computeTransmissionTelemetry({
+        loadCurrent: 1.0,
+        voltageMode: 'step_up',
+        generatorVoltage: 12.0,
+      });
+      const cloudySag = computeTransmissionTelemetry({
+        loadCurrent: 1.0,
+        voltageMode: 'step_up',
+        generatorVoltage: 5.0,
+      });
+
+      // Copper winding ratio stays fixed at 240V / 12V = 20:1
+      expect(fullSun.turnsRatio).toBe(20);
+      expect(cloudySag.turnsRatio).toBe(20);
+      expect(cloudySag.lineCurrentAmperes).toBeCloseTo(0.05, 4);
+      // Power delivered reflects reduced primary voltage (5V * 1A = 5W vs 12W)
+      expect(cloudySag.powerDeliveredWatts).toBeCloseTo(5.0, 2);
+    });
   });
 
   describe('MNA Solver Integration with Gardu Trafo SUTET', () => {

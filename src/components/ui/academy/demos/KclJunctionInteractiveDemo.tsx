@@ -161,7 +161,7 @@ export const KclJunctionInteractiveDemo: React.FC = () => {
                 />
                 {i1Ma > 0 && <circle cx="148" cy="50" r="10" fill="#fde047" fillOpacity="0.45" />}
                 <text x="148" y="54" textAnchor="middle" fill="#e2e8f0" fontSize="10" fontWeight="700">
-                  {bulb1Connected ? 'L1' : 'LEPAS'}
+                  {bulb1Connected ? 'L1' : isId ? 'LEPAS' : 'OPEN'}
                 </text>
                 <text x="148" y="82" textAnchor="middle" fill="#94a3b8" fontSize="9" fontFamily="JetBrains Mono, monospace">
                   {v1.toFixed(1)}V · {i1Ma.toFixed(0)}mA
@@ -181,7 +181,7 @@ export const KclJunctionInteractiveDemo: React.FC = () => {
                 />
                 {i2Ma > 0 && <circle cx="256" cy="50" r="10" fill="#fde047" fillOpacity="0.45" />}
                 <text x="256" y="54" textAnchor="middle" fill="#e2e8f0" fontSize="10" fontWeight="700">
-                  {bulb2Connected ? 'L2' : 'LEPAS'}
+                  {bulb2Connected ? 'L2' : isId ? 'LEPAS' : 'OPEN'}
                 </text>
                 <text x="256" y="82" textAnchor="middle" fill="#94a3b8" fontSize="9" fontFamily="JetBrains Mono, monospace">
                   {v2.toFixed(1)}V · {i2Ma.toFixed(0)}mA
@@ -195,7 +195,7 @@ export const KclJunctionInteractiveDemo: React.FC = () => {
               <path d="M 70 98 L 285 98" fill="none" stroke="#64748b" strokeWidth="2.5" />
               <circle cx="155" cy="46" r="4" fill="#10b981" />
               <text x="155" y="34" textAnchor="middle" fill="#6ee7b7" fontSize="9" fontWeight="700">
-                Simpul KCL
+                {isId ? 'Simpul KCL' : 'KCL Node'}
               </text>
 
               {/* Branch 1 */}
