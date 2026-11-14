@@ -44,7 +44,7 @@ Wind turbines (`wind-turbine`) respond to topographic elevation via the **Hellma
 
 $$v_{eff}(y) = v_{base} \cdot \left( \frac{h_{hub}(y)}{h_{ref}} \right)^{\alpha}$$
 
-- **Hilltop Acceleration**: Placing a wind turbine on an elevated ridge increases $h_{hub}$ relative to the valley baseline $h_{ref}$, yielding up to a $+45\%$ wind shear bonus (`windShearMultiplier > 1.0`) and boosting output toward the $12.0\,\text{V}$ rated ceiling.
+- **Hilltop Acceleration & AVR Governance**: Placing a wind turbine on an elevated ridge increases $h_{hub}$ relative to the valley baseline $h_{ref}$, yielding up to a $+45\%$ wind shear bonus (`windShearMultiplier > 1.0`, `effectiveSpeed <= 150%`) while an integrated $12.0\,\text{V}$ DC AVR rectifier (`WIND_AVR_MAX_VOLTAGE`) governs open-circuit EMF at $\le 12.0\,\text{V}$ to prevent hilltop overvoltage ($18\,\text{V}$) spikes.
 - **Valley Sheltering Penalty**: Placing a wind turbine in a deep excavated trench reduces $h_{hub}$, resulting in a negative `elevationBonusPercent` and lower generator EMF in [[PHYSICS_MNA_SOLVER_AND_TRANSMISSION_GRID|mnaSolver.ts]].
 
 ---

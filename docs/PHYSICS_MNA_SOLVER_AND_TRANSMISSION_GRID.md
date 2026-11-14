@@ -41,8 +41,12 @@ A single linear solve is insufficient when non-linear protection elements are pr
    - If the solver detects reverse current ($I_{gen} < -10^{-4}\,\text{A}$) through a renewable generator, `blockedGeneratorIds` marks the generator's internal Schottky diode as reverse-biased (open circuit) and re-solves.
 2. **LED Polarity Verification (`reverseBiasedBranches`)**:
    - Checks anode-to-cathode potential difference ($V_{p1} - V_{p2}$) on semiconductor LED bulbs (`led_standard`, `led_rgb`, `led_green`). If reverse-biased, current is blocked without damaging the LED.
-3. **PUIL MCB Overcurrent Auto-Trip**:
-   - Evaluates branch currents leaving [[ARCHITECTURE_OUTDOOR_AND_LAB_QUARANTINE|Lab Distribution Panels]] (`distribution-panel`). If a dead short or severe overload is detected, `isMcbTripped` latches `true` and isolates the indoor circuit.
+3. **PUIL MCB Overcurrent Auto-Trip & Terminal-Collapse Short Detection**:
+   - Evaluates branch currents and severe source terminal voltage collapse ($\le 15\%$ of $V_{oc}$ under heavy load) leaving [[ARCHITECTURE_OUTDOOR_AND_LAB_QUARANTINE|Lab Distribution Panels]] (`distribution-panel`) and high-resistance sources such as $9\,\text{V}$ batteries ($R_{int} = 2.0\,\Omega$) through closed switches. Discharging short-circuit sign follows passive-sign convention (`-iSc`).
+4. **Per-Island Galvanic Isolation Guards**:
+   - BESS charging exemption applies per connected conduction island (`chargingBatteryIslands`) so charging in Island A never masks a short circuit in Island B.
+   - Voltmeters spanning galvanically separated islands without a return path are flagged in `floatingVoltmeterIds` and left unstamped (`0.00 V`).
+   - Lab Distribution Panel DC step-down regulation (`3V / 6V / 9V / 12V`) regulates the downstream indoor lab bus without altering outdoor generator EMFs.
 
 ---
 

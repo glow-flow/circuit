@@ -29,9 +29,11 @@ Every electrical component in Circuit Sandbox 4.0 is parameterized from real ind
   - Smart RGB LED ($7\,\text{W}$, $6000\,\Omega$, IEC 62612)
   - Mini Green Indicator LED G4 ($1.2\,\text{W}$, $120\,\Omega$ at $12\,\text{V}$ DC)
 - **Energy Sources**:
-  - AA Alkaline Cell ($1.5\,\text{V}$, $1000\,\text{mAh}$, IEC 60086-2)
+  - AA Alkaline Cell ($1.5\,\text{V}$, $1000\,\text{mAh}$, $R_{int} = 0.25\,\Omega$, IEC 60086-2)
   - 9V Prismatic Alkaline Battery ($9.0\,\text{V}$, $R_{int} = 2.0\,\Omega$, $500\,\text{mAh}$)
-  - Dual AA Series Holder ($0\,\text{V} / 1.5\,\text{V} / 3.0\,\text{V}$ depending on inserted cell count)
+  - Dual AA Series Holder ($0\,\text{V} / 1.5\,\text{V} / 3.0\,\text{V}$, invariant series capacity $1000\,\text{mAh}$, per-cell SoC tracking via `cellCharges` with weakest-cell limit)
+- **Luminous Efficacy Calibration (`efficacyLmPerW`)**:
+  - Visual bulb brightness and flux (`lumens = powerWatts * efficacyLmPerW`) reflect real lamp efficiency differences (Incandescent $12\,\text{lm/W}$ vs CFL $60\,\text{lm/W}$ vs Standard LED $95\,\text{lm/W}$) rather than scaling linearly with wasted filament heat.
 
 ---
 

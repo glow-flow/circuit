@@ -26,7 +26,7 @@ $$P_{hydro} = \eta \cdot \rho \cdot g \cdot Q \cdot H$$
 - **$\rho = 1000\,\text{kg/m}^3$**: Density of freshwater (`WATER_DENSITY_KG_M3`).
 - **$g = 9.81\,\text{m/s}^2$**: Gravitational acceleration (`GRAVITY_ACCELERATION_M_S2`).
 - **$Q \in [0, 0.004]\,\text{m}^3/\text{s}$**: Volumetric flow rate scaled by `waterFlowRate` ($0\text{--}100\%$).
-- **$H \in [0.5, 5.0]\,\text{m}$**: Effective hydraulic head drop (`hydraulicHeadMeters`) derived from vertical waterfall cascade height or river basin kinetic flow (`cols 24..32`).
+- **$H \in [0.14, 5.0]\,\text{m}$**: Effective hydraulic head drop (`hydraulicHeadMeters`) distinguishes true falling vertical waterfalls (`waterfallDropRows * 0.45 m`), wide continuous river channels (`cols 24..32`), and shallow stagnant puddles (strictly lower head/flow than cascading falls).
 - **Integrated DC AVR (Automatic Voltage Regulator)**:
   - Up to $30\,\text{W}$, open-circuit voltage scales as $12.0 \cdot \sqrt{P_{hydro} / 30}$.
   - Above $30\,\text{W}$ (high river or waterfall head), an internal DC AVR regulates open-circuit EMF between $12.0\,\text{V}$ and $13.8\,\text{V}$, and clamps the shared microgrid bus output to $12.0\,\text{V}$ in [[PHYSICS_MNA_SOLVER_AND_TRANSMISSION_GRID|mnaSolver.ts]] so parallel $12\,\text{V}$ Solar Panels and $12\,\text{V}$ Wind Turbines are never falsely locked out by reverse-bias diodes.

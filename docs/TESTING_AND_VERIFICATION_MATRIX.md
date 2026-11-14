@@ -1,5 +1,5 @@
 ---
-title: Deterministic Vitest Verification Matrix (360 Tests)
+title: Deterministic Vitest Verification Matrix (373 Tests)
 tags:
   - architecture
   - physics-engine
@@ -10,7 +10,7 @@ aliases:
   - Unit Test Suite
 ---
 
-# Deterministic Vitest Verification Matrix (360 Tests)
+# Deterministic Vitest Verification Matrix (373 Tests)
 
 Parent Hub: [[README|Circuit Sandbox 4.0 Master Architecture Hub (MOC)]]  
 Related Devlogs: [[DEVLOG_SESSION_NATURE_MODE_4.0]], [[DEVLOG_ANTISLOP_MODAL_AND_ASSET_OVERHAUL]], [[PHYSICS_LENS_XRAY_AND_SCIENTIFIC_AUDIT]]
@@ -19,7 +19,7 @@ Related Devlogs: [[DEVLOG_SESSION_NATURE_MODE_4.0]], [[DEVLOG_ANTISLOP_MODAL_AND
 
 ## 1. Test Suite Architecture (`npx vitest run`)
 
-All physics engines, store actions, quarantine boundaries, hardware asset bindings, and pedagogical validators are verified across **52 deterministic test files** (**360 tests**):
+All physics engines, store actions, quarantine boundaries, hardware asset bindings, and pedagogical validators are verified across **52 deterministic test files** (**373 tests**):
 
 | Subsystem | Primary Test Suites | Verified Invariants |
 | :--- | :--- | :--- |

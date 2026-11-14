@@ -20,11 +20,11 @@ Source Modules: `src/tutor/explainableTutor.ts`, `src/academy/academyCatalog.ts`
 
 Unlike generic LLM chatbots that hallucinate equations, the **Explainable Circuit Physics Tutor** (`ExplainableTutorModal.tsx`) inspects the live [[PHYSICS_MNA_SOLVER_AND_TRANSMISSION_GRID|MNA Solver]] graph and generates deterministic, step-by-step mathematical derivations:
 
-1. **Topology Classification**: Identifies series loops, parallel branches, open circuits, short circuits, and virtual transmission links in $O(V + E)$ time.
+1. **Topology Classification**: Filters out unwired bench spares and empty sockets (`1e9 Ω`) in $O(V + E)$ time while keeping live parallel branches conducting when an open switch isolates only a sibling branch.
 2. **Step-by-Step Mathematical Proofs**:
-   - Derives equivalent resistance ($R_{eq}$), Kirchhoff's Voltage Law ($\sum V = 0$), Kirchhoff's Current Law ($\sum I_{in} = \sum I_{out}$), and Joule power dissipation ($P = V \cdot I = I^2 R$) using the live component values on canvas.
+   - Derives equivalent resistance ($R_{eq}$), diode threshold adjustments ($V_s - V_f$), real MNA/$R_{int}$ short-circuit surge ($V_{oc}/R_{int}$), Kirchhoff's Voltage Law ($\sum V = 0$), Kirchhoff's Current Law ($\sum I_{in} = \sum I_{out}$), and component-aware Inspector formulas (`physicsEquationHelper.ts`).
 3. **Physical Phenomena & What-If Analysis**:
-   - Explains active [[HARDWARE_COMPONENTS_AND_PROTECTION|Schottky Blocking Diodes, LED Reverse Bias, and PUIL MCB Trips]], plus interactive *"What-If"* sensitivity predictions when resistance or source EMF is doubled/halved.
+   - Explains active [[HARDWARE_COMPONENTS_AND_PROTECTION|Schottky Blocking Diodes, LED Reverse Bias, and PUIL MCB Trips]], plus interactive *"What-If"* sensitivity predictions when resistance or source EMF is doubled/halved, paired with physically accurate Academy SVG micro-labs (true $e^-$ $(-) \to (+)$ electron drift, $5.00\,\text{V}$ KVL reverse-biased LED open drop, post-trip $0\,\text{A}$ MCB readout).
 
 ---
 

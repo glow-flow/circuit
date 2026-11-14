@@ -26,8 +26,7 @@ $$P_{loss} = I_{line}^2 \cdot R_{line}, \qquad \eta_{trans} = \frac{P_{load}}{P_
 - **Direct 12V Mode (`transmissionVoltageMode: 'direct'`)**:
   - Transmitting high power at $12\,\text{V}$ requires large current $I = P / V$, causing severe voltage drop ($\Delta V = I \cdot R_{line}$), conductor thermal stress (`isLineOverheated = true`), and heavy Joule heating loss.
 - **Gardu Trafo Cantol Step-Up 240V Mode (`hasTransformer: true`, `stepUpVoltage: 240`)**:
-  - Attaching the snap-on **Gardu Trafo Cantol** steps the transmission voltage up by $20\times$ ($12\,\text{V} \rightarrow 240\,\text{V}$).
-  - For the same transmitted power, line current drops by $20\times$, reducing Joule power loss ($I^2 R_{line}$) by a factor of $400\times$ and restoring transmission efficiency $\eta_{trans} > 99\%$.
+  - Attaching the snap-on **Gardu Trafo Cantol** fixes the physical copper winding turns ratio ($n = V_{tx} / 12.0\,\text{V}_{\text{nom}} = 20\times$, independent of temporary solar irradiance sag) so referred primary impedance stays hardware-invariant while line current drops $20\times$ and Joule loss ($I^2 R_{line}$) falls by $400\times$.
 
 ---
 
