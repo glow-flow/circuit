@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   Activity,
   BookmarkPlus,
@@ -11,10 +11,10 @@ import {
   Sun,
   Trophy,
   Wrench,
-  X,
 } from 'lucide-react';
 import { useCircuitStore } from '../../../store/useCircuitStore';
-import { useModalKeyboardClose } from '../../../hooks/useModalKeyboardClose';
+import { useModalFocusTrap } from '../../../hooks/useModalKeyboardClose';
+import { LabModalHeader } from '../common/LabModalHeader';
 
 export interface MobileHubModalProps {
   isOpen: boolean;
@@ -26,14 +26,11 @@ export interface MobileHubModalProps {
 }
 
 /**
- * Reorganized Mobile Feature Hub & Settings Drawer (`MobileHubModal.tsx`).
+ * Reorganized Mobile & Tablet Feature Hub & Settings Drawer (`MobileHubModal.tsx`).
  *
- * Replaces the old "Menu 4.0" drawer with a logical, teacher-friendly
- * "Menu Lab & Alat Praktikum" sheet that organizes:
- * 1. Praktikum, Evaluasi & Alat Ukur (Misi Praktikum, Oskiloskop/Scope, Tutor Fisika,
- *    Lab Diagnostik Korsleting, Digital Twin EBT).
- * 2. Simpan, Bagikan & Pengaturan Kelas (Simpan Rangkaian, Bagikan QR, Tema Terang/Gelap,
- *    Bahasa ID/EN, Panduan Cepat Guru, Reset Lampu Dasar) — zero duplicate Gallery buttons!
+ * Provides quick access on mobile/tablet (< 1024px) to:
+ * 1. Evaluasi, Alat Ukur & Diagnostik (Misi, Oskiloskop, Tutor, Korsleting, Microgrid).
+ * 2. Simpan, Bagikan QR, Tema Terang/Gelap, Bahasa ID/EN, Panduan Guru, Muat Lampu Dasar.
  *
  * Time Complexity: O(1) render.
  */
@@ -43,7 +40,8 @@ export const MobileHubModal: React.FC<MobileHubModalProps> = ({
   onOpenSavePresetModal,
   onOpenWelcomeGuide,
 }) => {
-  useModalKeyboardClose(isOpen, onClose);
+  const modalRef = useRef<HTMLDivElement>(null);
+  useModalFocusTrap(isOpen, modalRef, onClose);
   const language = useCircuitStore((state) => state.language);
   const setLanguage = useCircuitStore((state) => state.setLanguage);
   const theme = useCircuitStore((state) => state.theme);
@@ -90,47 +88,29 @@ export const MobileHubModal: React.FC<MobileHubModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm p-0 sm:p-4 animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-scrim/75 p-0 sm:p-4 animate-in fade-in duration-200"
       role="dialog"
       aria-modal="true"
-      aria-label={isId ? 'Menu Lab & Pengaturan' : 'Lab Menu & Settings'}
+      aria-labelledby="mobile-hub-title"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg rounded-t-2xl sm:rounded-2xl bg-void-950 border border-white/15 shadow-2xl flex flex-col max-h-[86dvh] overflow-hidden text-slate-100 font-sans"
+        ref={modalRef}
+        className="w-full max-w-lg rounded-t-2xl sm:rounded-2xl bg-void-950 border border-control shadow-2xl flex flex-col max-h-[86dvh] overflow-hidden text-ink font-sans"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Top Header */}
-        <div className="px-4 sm:px-5 py-3.5 border-b border-white/10 flex items-center justify-between shrink-0 bg-void-900">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <img
-              src="/assets/logo-circuit-sandbox.png"
-              alt="Circuit Sandbox"
-              width={28}
-              height={28}
-              className="w-7 h-7 object-contain shrink-0"
-            />
-            <div className="min-w-0">
-              <h3 className="text-sm font-bold text-white tracking-tight truncate">
-                {isId ? 'Menu Lab & Alat Praktikum' : 'Lab Menu & Instruments'}
-              </h3>
-              <p className="text-[11px] text-slate-400 truncate">
-                {isId
-                  ? 'Misi evaluasi, alat ukur lanjut, simpan & pengaturan tampilan'
-                  : 'Missions, advanced instruments, save & display settings'}
-              </p>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-10 h-10 rounded-xl bg-void-850 hover:bg-white/10 border border-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-all active:scale-95 cursor-pointer shrink-0"
-            aria-label={isId ? 'Tutup' : 'Close'}
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+        <LabModalHeader
+          titleId="mobile-hub-title"
+          eyebrow={isId ? 'MENU LAB & ALAT PRAKTIKUM' : 'LAB MENU & INSTRUMENTS'}
+          title={isId ? 'Alat Praktikum & Pengaturan' : 'Instruments & Settings'}
+          subtitle={
+            isId
+              ? 'Misi evaluasi, alat ukur lanjut, simpan & tampilan'
+              : 'Missions, advanced instruments, save & display'
+          }
+          onClose={onClose}
+          closeLabel={isId ? 'Tutup menu lab' : 'Close lab menu'}
+        />
 
         {/* Scrollable Hub Content */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -146,16 +126,16 @@ export const MobileHubModal: React.FC<MobileHubModalProps> = ({
               <button
                 type="button"
                 onClick={() => handleLaunchModal('missions')}
-                className="text-left p-3 rounded-xl bg-void-900 hover:bg-void-850 border border-amber-500/35 transition-all active:scale-95 cursor-pointer flex flex-col justify-between space-y-1.5"
+                className="text-left p-3 min-h-[76px] rounded-xl bg-void-900 hover:bg-void-850 border border-amber-500/45 transition-colors active:scale-95 cursor-pointer flex flex-col justify-between space-y-1.5"
               >
-                <div className="flex items-center justify-between">
-                  <Trophy className="w-4 h-4 text-amber-400" />
+                <div className="flex items-center justify-between w-full">
+                  <Trophy className="w-4 h-4 text-amber-400" aria-hidden="true" />
                   <span className="text-[10px] font-mono text-amber-300 font-semibold">
                     {isId ? 'Ujian Praktik' : 'Challenges'}
                   </span>
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-white">
+                  <div className="text-xs font-bold text-ink">
                     {isId ? 'Misi Praktikum' : 'Lab Missions'}
                   </div>
                   <div className="text-[11px] text-slate-400 mt-0.5 leading-snug">
@@ -167,16 +147,16 @@ export const MobileHubModal: React.FC<MobileHubModalProps> = ({
               <button
                 type="button"
                 onClick={() => handleLaunchModal('oscilloscope')}
-                className="text-left p-3 rounded-xl bg-void-900 hover:bg-void-850 border border-emerald-500/35 transition-all active:scale-95 cursor-pointer flex flex-col justify-between space-y-1.5"
+                className="text-left p-3 min-h-[76px] rounded-xl bg-void-900 hover:bg-void-850 border border-emerald-500/45 transition-colors active:scale-95 cursor-pointer flex flex-col justify-between space-y-1.5"
               >
-                <div className="flex items-center justify-between">
-                  <Activity className="w-4 h-4 text-emerald-400" />
+                <div className="flex items-center justify-between w-full">
+                  <Activity className="w-4 h-4 text-emerald-400" aria-hidden="true" />
                   <span className="text-[10px] font-mono text-emerald-300 font-semibold">
                     Scope V/I/P
                   </span>
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-white">
+                  <div className="text-xs font-bold text-ink">
                     {isId ? 'Oskiloskop Live' : 'Live Oscilloscope'}
                   </div>
                   <div className="text-[11px] text-slate-400 mt-0.5 leading-snug">
@@ -188,16 +168,16 @@ export const MobileHubModal: React.FC<MobileHubModalProps> = ({
               <button
                 type="button"
                 onClick={() => handleLaunchModal('tutor')}
-                className="text-left p-3 rounded-xl bg-void-900 hover:bg-void-850 border border-white/10 transition-all active:scale-95 cursor-pointer flex flex-col justify-between space-y-1.5"
+                className="text-left p-3 min-h-[76px] rounded-xl bg-void-900 hover:bg-void-850 border border-control transition-colors active:scale-95 cursor-pointer flex flex-col justify-between space-y-1.5"
               >
-                <div className="flex items-center justify-between">
-                  <Cpu className="w-4 h-4 text-electric-400" />
+                <div className="flex items-center justify-between w-full">
+                  <Cpu className="w-4 h-4 text-electric-400" aria-hidden="true" />
                   <span className="text-[10px] font-mono text-slate-400">
                     KCL & KVL
                   </span>
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-white">
+                  <div className="text-xs font-bold text-ink">
                     {isId ? 'Tutor Rumus Fisika' : 'Physics Formula Tutor'}
                   </div>
                   <div className="text-[11px] text-slate-400 mt-0.5 leading-snug">
@@ -209,16 +189,16 @@ export const MobileHubModal: React.FC<MobileHubModalProps> = ({
               <button
                 type="button"
                 onClick={() => handleLaunchModal('troubleshooting')}
-                className="text-left p-3 rounded-xl bg-void-900 hover:bg-void-850 border border-white/10 transition-all active:scale-95 cursor-pointer flex flex-col justify-between space-y-1.5"
+                className="text-left p-3 min-h-[76px] rounded-xl bg-void-900 hover:bg-void-850 border border-control transition-colors active:scale-95 cursor-pointer flex flex-col justify-between space-y-1.5"
               >
-                <div className="flex items-center justify-between">
-                  <Wrench className="w-4 h-4 text-slate-300" />
+                <div className="flex items-center justify-between w-full">
+                  <Wrench className="w-4 h-4 text-slate-300" aria-hidden="true" />
                   <span className="text-[10px] font-mono text-slate-400">
-                    6 Kasus
+                    {isId ? '6 Kasus' : '6 Cases'}
                   </span>
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-white">
+                  <div className="text-xs font-bold text-ink">
                     {isId ? 'Lab Korsleting' : 'Fault Diagnosis Lab'}
                   </div>
                   <div className="text-[11px] text-slate-400 mt-0.5 leading-snug">
@@ -230,14 +210,14 @@ export const MobileHubModal: React.FC<MobileHubModalProps> = ({
               <button
                 type="button"
                 onClick={() => handleLaunchModal('renewable')}
-                className="col-span-2 text-left p-3 rounded-xl bg-void-900 hover:bg-void-850 border border-white/10 transition-all active:scale-95 cursor-pointer flex items-center justify-between gap-3"
+                className="col-span-2 text-left p-3 min-h-[60px] rounded-xl bg-void-900 hover:bg-void-850 border border-control transition-colors active:scale-95 cursor-pointer flex items-center justify-between gap-3"
               >
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center shrink-0">
-                    <Sun className="w-4 h-4 text-emerald-400" />
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center shrink-0">
+                    <Sun className="w-4 h-4 text-emerald-400" aria-hidden="true" />
                   </div>
                   <div className="min-w-0">
-                    <div className="text-xs font-bold text-white truncate">
+                    <div className="text-xs font-bold text-ink truncate">
                       {isId
                         ? 'Simulasi Panel Microgrid Energi Terbarukan'
                         : 'Renewable Microgrid Digital Twin'}
@@ -268,11 +248,11 @@ export const MobileHubModal: React.FC<MobileHubModalProps> = ({
               <button
                 type="button"
                 onClick={handleOpenSaveModal}
-                className="flex items-center gap-2.5 p-3 rounded-xl bg-void-900 hover:bg-void-850 border border-white/10 text-left transition-all active:scale-95 cursor-pointer"
+                className="flex items-center gap-2.5 p-3 min-h-[56px] rounded-xl bg-void-900 hover:bg-void-850 border border-control text-left transition-colors active:scale-95 cursor-pointer"
               >
-                <BookmarkPlus className="w-4 h-4 text-electric-400 shrink-0" />
+                <BookmarkPlus className="w-4 h-4 text-electric-400 shrink-0" aria-hidden="true" />
                 <div className="min-w-0">
-                  <div className="text-xs font-semibold text-slate-100 truncate">
+                  <div className="text-xs font-semibold text-ink truncate">
                     {isId ? 'Simpan Rangkaian' : 'Save Circuit'}
                   </div>
                   <div className="text-[10px] text-slate-400 truncate">
@@ -284,11 +264,11 @@ export const MobileHubModal: React.FC<MobileHubModalProps> = ({
               <button
                 type="button"
                 onClick={() => handleLaunchModal('share')}
-                className="flex items-center gap-2.5 p-3 rounded-xl bg-void-900 hover:bg-void-850 border border-white/10 text-left transition-all active:scale-95 cursor-pointer"
+                className="flex items-center gap-2.5 p-3 min-h-[56px] rounded-xl bg-void-900 hover:bg-void-850 border border-control text-left transition-colors active:scale-95 cursor-pointer"
               >
-                <Share2 className="w-4 h-4 text-electric-400 shrink-0" />
+                <Share2 className="w-4 h-4 text-electric-400 shrink-0" aria-hidden="true" />
                 <div className="min-w-0">
-                  <div className="text-xs font-semibold text-slate-100 truncate">
+                  <div className="text-xs font-semibold text-ink truncate">
                     {isId ? 'Bagikan & QR' : 'Share & QR'}
                   </div>
                   <div className="text-[10px] text-slate-400 truncate">
@@ -300,15 +280,15 @@ export const MobileHubModal: React.FC<MobileHubModalProps> = ({
               <button
                 type="button"
                 onClick={toggleTheme}
-                className="flex items-center gap-2.5 p-3 rounded-xl bg-void-900 hover:bg-void-850 border border-white/10 text-left transition-all active:scale-95 cursor-pointer"
+                className="flex items-center gap-2.5 p-3 min-h-[56px] rounded-xl bg-void-900 hover:bg-void-850 border border-control text-left transition-colors active:scale-95 cursor-pointer"
               >
                 {theme === 'dark' ? (
-                  <Sun className="w-4 h-4 text-amber-400 shrink-0" />
+                  <Sun className="w-4 h-4 text-amber-400 shrink-0" aria-hidden="true" />
                 ) : (
-                  <Moon className="w-4 h-4 text-electric-400 shrink-0" />
+                  <Moon className="w-4 h-4 text-electric-400 shrink-0" aria-hidden="true" />
                 )}
                 <div className="min-w-0">
-                  <div className="text-xs font-semibold text-slate-100 truncate">
+                  <div className="text-xs font-semibold text-ink truncate">
                     {theme === 'dark'
                       ? isId
                         ? 'Mode Terang'
@@ -320,11 +300,11 @@ export const MobileHubModal: React.FC<MobileHubModalProps> = ({
                   <div className="text-[10px] text-slate-400 truncate">
                     {theme === 'dark'
                       ? isId
-                        ? 'Ganti ke warna kertas'
+                        ? 'Ganti ke kertas buku lab'
                         : 'Switch to lab paper'
                       : isId
-                      ? 'Ganti ke layar gelap'
-                      : 'Switch to dark slate'}
+                      ? 'Ganti ke meja gelap'
+                      : 'Switch to dark bench'}
                   </div>
                 </div>
               </button>
@@ -332,11 +312,11 @@ export const MobileHubModal: React.FC<MobileHubModalProps> = ({
               <button
                 type="button"
                 onClick={() => setLanguage(language === 'id' ? 'en' : 'id')}
-                className="flex items-center gap-2.5 p-3 rounded-xl bg-void-900 hover:bg-void-850 border border-white/10 text-left transition-all active:scale-95 cursor-pointer"
+                className="flex items-center gap-2.5 p-3 min-h-[56px] rounded-xl bg-void-900 hover:bg-void-850 border border-control text-left transition-colors active:scale-95 cursor-pointer"
               >
-                <Globe className="w-4 h-4 text-electric-400 shrink-0" />
+                <Globe className="w-4 h-4 text-electric-400 shrink-0" aria-hidden="true" />
                 <div className="min-w-0">
-                  <div className="text-xs font-semibold text-slate-100 truncate">
+                  <div className="text-xs font-semibold text-ink truncate">
                     {isId ? 'Bahasa: Indonesia' : 'Language: English'}
                   </div>
                   <div className="text-[10px] text-slate-400 truncate">
@@ -348,11 +328,11 @@ export const MobileHubModal: React.FC<MobileHubModalProps> = ({
               <button
                 type="button"
                 onClick={handleOpenGuide}
-                className="flex items-center gap-2.5 p-3 rounded-xl bg-void-900 hover:bg-void-850 border border-white/10 text-left transition-all active:scale-95 cursor-pointer"
+                className="flex items-center gap-2.5 p-3 min-h-[56px] rounded-xl bg-void-900 hover:bg-void-850 border border-control text-left transition-colors active:scale-95 cursor-pointer"
               >
-                <HelpCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+                <HelpCircle className="w-4 h-4 text-emerald-400 shrink-0" aria-hidden="true" />
                 <div className="min-w-0">
-                  <div className="text-xs font-semibold text-slate-100 truncate">
+                  <div className="text-xs font-semibold text-ink truncate">
                     {isId ? 'Contekan Guru' : 'Teacher Guide'}
                   </div>
                   <div className="text-[10px] text-slate-400 truncate">
@@ -364,11 +344,11 @@ export const MobileHubModal: React.FC<MobileHubModalProps> = ({
               <button
                 type="button"
                 onClick={handleResetSimpleLamp}
-                className="flex items-center gap-2.5 p-3 rounded-xl bg-void-900 hover:bg-void-850 border border-white/10 text-left transition-all active:scale-95 cursor-pointer"
+                className="flex items-center gap-2.5 p-3 min-h-[56px] rounded-xl bg-void-900 hover:bg-void-850 border border-control text-left transition-colors active:scale-95 cursor-pointer"
               >
-                <RotateCcw className="w-4 h-4 text-slate-300 shrink-0" />
+                <RotateCcw className="w-4 h-4 text-slate-300 shrink-0" aria-hidden="true" />
                 <div className="min-w-0">
-                  <div className="text-xs font-semibold text-slate-100 truncate">
+                  <div className="text-xs font-semibold text-ink truncate">
                     {isId ? 'Muat Lampu Dasar' : 'Load Basic Lamp'}
                   </div>
                   <div className="text-[10px] text-slate-400 truncate">

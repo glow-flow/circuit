@@ -430,12 +430,12 @@ export const TransmissionWireEdge: React.FC<EdgeProps> = memo(({
           {/* Main Telemetry Badge */}
           {physicsLensMode === 'thermal' && lensVisual.thermalBadgeText ? (
             <div
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border shadow-md whitespace-nowrap font-mono text-[10px] font-bold ${
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border shadow-md whitespace-nowrap font-mono text-[10px] font-bold tabular-nums ${
                 lensVisual.thermal?.heatBand === 'critical'
-                  ? 'bg-red-950/95 border-red-400 text-red-100'
+                  ? 'bg-danger-950 border-danger-500 text-danger-200'
                   : lensVisual.thermal?.heatBand === 'hot'
-                  ? 'bg-amber-950/95 border-amber-400 text-amber-100'
-                  : 'bg-slate-950/95 border-teal-400/60 text-teal-200'
+                  ? 'bg-amber-950 border-amber-500 text-amber-200'
+                  : 'bg-void-950 border-teal-500/60 text-teal-300'
               }`}
             >
               <span>{lensVisual.thermalBadgeText}</span>
@@ -444,40 +444,40 @@ export const TransmissionWireEdge: React.FC<EdgeProps> = memo(({
             <div
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border shadow-md whitespace-nowrap font-mono text-[10px] font-bold ${
                 lensVisual.probeRole === 'A'
-                  ? 'bg-cyan-950/95 border-cyan-400 text-cyan-100'
-                  : 'bg-amber-950/95 border-amber-400 text-amber-100'
+                  ? 'bg-cyan-950 border-cyan-500 text-cyan-200'
+                  : 'bg-amber-950 border-amber-500 text-amber-200'
               }`}
             >
               <span>Probe {lensVisual.probeRole}</span>
             </div>
           ) : hasCurrent || isWireSelected || isHovered ? (
             <div
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border shadow-lg backdrop-blur-md transition-all ${
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border shadow-md transition-colors tabular-nums ${
                 isBranchShortCircuit
-                  ? 'bg-red-950/95 border-red-500 text-red-300 animate-pulse'
+                  ? 'bg-danger-950 border-danger-500 text-danger-200'
                   : isOverheated
-                  ? 'bg-red-950/95 border-red-500/80 text-red-200 ring-2 ring-red-500/40 animate-pulse shadow-[0_0_14px_rgba(239,68,68,0.5)]'
+                  ? 'bg-danger-950 border-danger-500 text-danger-200 ring-2 ring-danger-500/35'
                   : isTransmissionWire && isStepUp
-                  ? 'bg-slate-950/95 border-cyan-400/60 text-cyan-200 shadow-[0_0_14px_rgba(56,189,248,0.4)]'
+                  ? 'bg-void-950 border-cyan-500/70 text-cyan-300'
                   : isWireSelected
-                  ? 'bg-void-950 border-amber-400 text-amber-300 ring-2 ring-amber-400/20'
+                  ? 'bg-void-950 border-amber-500 text-amber-300 ring-2 ring-amber-500/20'
                   : polarity === 'positive'
-                  ? 'bg-void-950/95 border-orange-400/50 text-orange-300'
-                  : 'bg-void-950/95 border-sky-400/50 text-sky-300'
+                  ? 'bg-void-950 border-orange-500/60 text-orange-300'
+                  : 'bg-void-950 border-sky-500/60 text-sky-300'
               }`}
             >
               {/* Status Indicator Dot */}
               <div
                 className={`w-1.5 h-1.5 rounded-full shrink-0 ${
                   isBranchShortCircuit || isOverheated
-                    ? 'bg-red-500 animate-ping'
+                    ? 'bg-danger-500'
                     : isTransmissionWire && isStepUp
                     ? 'bg-cyan-400'
                     : hasCurrent
                     ? polarity === 'positive'
                       ? 'bg-orange-400'
                       : 'bg-sky-400'
-                    : 'bg-slate-500'
+                    : 'bg-slate-400'
                 }`}
               />
 
@@ -488,12 +488,12 @@ export const TransmissionWireEdge: React.FC<EdgeProps> = memo(({
                     : 'Short!'
                   : isOverheated
                   ? isId
-                    ? `🔥 12V Panas (${jouleLoss.toFixed(1)}W Rugi)`
-                    : `🔥 12V Hot (${jouleLoss.toFixed(1)}W Loss)`
+                    ? `12V Panas (${jouleLoss.toFixed(1)}W Rugi)`
+                    : `12V Hot (${jouleLoss.toFixed(1)}W Loss)`
                   : isTransmissionWire && isStepUp
                   ? isId
-                    ? `❄️ 240V Dingin (${Math.round(transmittedCurrent * 1000)}mA)`
-                    : `❄️ 240V Cool (${Math.round(transmittedCurrent * 1000)}mA)`
+                    ? `240V Dingin (${Math.round(transmittedCurrent * 1000)}mA)`
+                    : `240V Cool (${Math.round(transmittedCurrent * 1000)}mA)`
                   : wireCurrent < 1
                   ? `${Math.round(wireCurrent * 1000)} mA`
                   : `${wireCurrent.toFixed(2)} A`}
@@ -503,18 +503,18 @@ export const TransmissionWireEdge: React.FC<EdgeProps> = memo(({
 
           {/* Hover Tooltip with Physics Details */}
           {physicsLensMode === 'normal' && (isWireSelected || isHovered) && isTransmissionWire && (
-            <div className="mt-1 px-2.5 py-1 rounded-md bg-slate-950/95 border border-white/20 text-[9px] font-sans text-slate-200 shadow-2xl whitespace-nowrap">
+            <div className="mt-1 px-2.5 py-1 rounded-md bg-void-950 border border-control text-[9px] font-sans text-ink shadow-xl whitespace-nowrap">
               {isOverheated ? (
-                <span className="text-red-300 font-semibold">
+                <span className="text-danger-300 font-semibold">
                   {isId
-                    ? '⚠️ Rugi Panas I²R Tinggi! Aktifkan Gardu Trafo Step-Up 240V'
-                    : '⚠️ High I²R Loss! Enable Step-Up 240V on Tower Substation'}
+                    ? 'Rugi Panas I²R Tinggi: Aktifkan Gardu Trafo Step-Up 240V'
+                    : 'High I²R Loss: Enable Step-Up 240V on Tower Substation'}
                 </span>
               ) : isStepUp ? (
                 <span className="text-cyan-300 font-semibold">
                   {isId
-                    ? '✓ Transmisi Tegangan Tinggi 240V: Rugi Turun 400×, Kabel Dingin'
-                    : '✓ High-Voltage 240V: 400× Loss Reduction, Cool Conductor'}
+                    ? 'Transmisi 240V: Rugi Turun 400×, Kabel Aman'
+                    : 'High-Voltage 240V: 400× Loss Reduction, Safe Conductor'}
                 </span>
               ) : (
                 <span className="text-slate-300">

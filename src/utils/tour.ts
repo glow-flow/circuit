@@ -3,10 +3,10 @@
  *
  * Guides students and teachers step-by-step across the real Circuit Sandbox UI
  * elements in both:
- * 1. **Indoor Lab Mode (`TOUR_STEPS`, 10 steps)** — Covers presets, component box,
+ * 1. **Indoor Lab Mode (`TOUR_STEPS`, 10 steps):** Covers presets, component box,
  *    inspector, PLN electricity bill calculator, wire anchor bends, saving custom
  *    presets to browser cache, and going outside to nature.
- * 2. **Outdoor Nature Mode (`OUTDOOR_TOUR_STEPS`, 6 steps)** — Covers the 40x20
+ * 2. **Outdoor Nature Mode (`OUTDOOR_TOUR_STEPS`, 6 steps):** Covers the 40x20
  *    gravity terrain brushes (Dirt, Water, Dig), 1-click 12V Power Station spawn,
  *    component gravity & water short-circuit explosions, outdoor generator palette,
  *    weather/PLN savings inspector, and transmitting clean energy back to the Lab.
@@ -337,7 +337,7 @@ export function resolveTourStepsForViewport(
         : 1280;
 
     const isMobileOrTabletHeaderCompact = currentWidth < 1024;
-    const isMobileBottomNavVisible = currentWidth < 768;
+    const isMobileBottomNavVisible = currentWidth < 1024;
 
     return steps.map((step) => {
       const selectorKey = typeof step.element === 'string' ? step.element : '';
@@ -438,7 +438,7 @@ export function prepareViewportForTourStep(stepIndex: number): void {
     if (!registeredMobileSheetController) return;
 
     const isMobileViewport =
-      typeof window !== 'undefined' && window.innerWidth < 768;
+      typeof window !== 'undefined' && window.innerWidth < 1024;
 
     if (!isMobileViewport) {
       registeredMobileSheetController('none');
@@ -487,7 +487,7 @@ export function prepareOutdoorViewportForTourStep(stepIndex: number): void {
     if (!registeredMobileSheetController) return;
 
     const isMobileViewport =
-      typeof window !== 'undefined' && window.innerWidth < 768;
+      typeof window !== 'undefined' && window.innerWidth < 1024;
 
     if (!isMobileViewport) {
       registeredMobileSheetController('none');

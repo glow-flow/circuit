@@ -62,20 +62,20 @@ export const WindTurbineNode: React.FC<NodeProps<CircuitElementData>> = memo(
 
     return (
       <div
-        className={`relative flex flex-col items-center justify-end select-none transition-all duration-200 group w-[144px] overflow-visible ${
-          selected ? 'filter drop-shadow-[0_0_14px_rgba(34,211,238,0.5)]' : ''
+        className={`relative flex flex-col items-center justify-end select-none transition-colors duration-200 group w-[144px] overflow-visible ${
+          selected ? 'ring-2 ring-electric-400 rounded-xl' : ''
         }`}
         style={{ height: '260px' }}
       >
         {/* Top Floating Control & Voltage Pill */}
-        <div className="nodrag mb-1 w-full px-2 py-1.5 rounded-xl bg-void-950/95 backdrop-blur-md border border-white/15 shadow-[0_8px_20px_rgba(0,0,0,0.45)] flex flex-col gap-1 z-30">
+        <div className="nodrag mb-1 w-full px-2 py-1.5 rounded-xl bg-void-950 border border-control shadow-lg text-ink flex flex-col gap-1 z-30">
           <div className="flex items-center justify-between text-[10px] font-mono">
-            <span className="flex items-center gap-1 font-bold text-cyan-300 truncate">
-              <Wind className="w-3 h-3 text-cyan-400 shrink-0" />
+            <span className="flex items-center gap-1 font-bold text-electric-400 truncate">
+              <Wind className="w-3 h-3 text-electric-400 shrink-0" aria-hidden="true" />
               <span>{isId ? 'Turbin' : 'Turbine'}</span>
             </span>
-            <span className="flex items-center gap-1 font-bold text-amber-300 shrink-0 tabular-nums">
-              <Zap className="w-2.5 h-2.5 text-amber-400" />
+            <span className="flex items-center gap-1 font-bold text-amber-400 shrink-0 tabular-nums">
+              <Zap className="w-2.5 h-2.5 text-amber-400" aria-hidden="true" />
               {outputVoltage.toFixed(1)}V
               {powerWatts > 0.01 ? ` · ${powerWatts.toFixed(1)}W` : ''}
             </span>
@@ -90,10 +90,10 @@ export const WindTurbineNode: React.FC<NodeProps<CircuitElementData>> = memo(
               value={baseSpeed}
               onChange={handleSpeedChange}
               onPointerDown={(e) => e.stopPropagation()}
-              className="w-full h-1.5 bg-void-900 rounded-lg appearance-none cursor-pointer accent-cyan-400 focus:outline-none"
-              aria-label="Wind Turbine Speed"
+              className="w-full h-2 bg-void-900 rounded-lg cursor-pointer accent-electric-500"
+              aria-label={isId ? 'Kecepatan Putaran Turbin Angin' : 'Wind Turbine Speed'}
             />
-            <span className="text-[9px] font-mono font-bold text-cyan-200 w-7 text-right shrink-0 tabular-nums">
+            <span className="text-[9px] font-mono font-bold text-electric-300 w-7 text-right shrink-0 tabular-nums">
               {baseSpeed}%
             </span>
           </div>
@@ -102,9 +102,9 @@ export const WindTurbineNode: React.FC<NodeProps<CircuitElementData>> = memo(
           {elevationBonus > 0 && (
             <div
               id="turbine-elevation-bonus"
-              className="px-1.5 py-0.5 rounded bg-cyan-950/90 border border-cyan-400/50 text-[8px] font-mono font-bold text-cyan-300 text-center flex items-center justify-center gap-1 shadow-sm"
+              className="px-1.5 py-0.5 rounded bg-cyan-950 border border-cyan-500/60 text-[8px] font-mono font-bold text-cyan-200 text-center flex items-center justify-center gap-1 shadow-sm"
             >
-              <Mountain className="w-2.5 h-2.5 text-cyan-400 shrink-0" />
+              <Mountain className="w-2.5 h-2.5 text-cyan-400 shrink-0" aria-hidden="true" />
               <span className="truncate">
                 {isId
                   ? `Puncak Bukit +${elevationBonus}% RPM & Daya`
@@ -115,9 +115,9 @@ export const WindTurbineNode: React.FC<NodeProps<CircuitElementData>> = memo(
           {elevationBonus < 0 && (
             <div
               id="turbine-elevation-penalty"
-              className="px-1.5 py-0.5 rounded bg-slate-900/90 border border-amber-500/40 text-[8px] font-mono font-bold text-amber-300 text-center flex items-center justify-center gap-1 shadow-sm"
+              className="px-1.5 py-0.5 rounded bg-void-900 border border-amber-500/50 text-[8px] font-mono font-bold text-amber-300 text-center flex items-center justify-center gap-1 shadow-sm"
             >
-              <TrendingDown className="w-2.5 h-2.5 text-amber-400 shrink-0" />
+              <TrendingDown className="w-2.5 h-2.5 text-amber-400 shrink-0" aria-hidden="true" />
               <span className="truncate">
                 {isId
                   ? `Lembah ${elevationBonus}% RPM & Daya`
@@ -126,11 +126,11 @@ export const WindTurbineNode: React.FC<NodeProps<CircuitElementData>> = memo(
             </div>
           )}
 
-          <div className="flex items-center justify-between text-[8px] font-mono text-slate-400 pt-0.5 border-t border-white/10">
-            <span className="text-cyan-300/90">AC→DC Rectifier</span>
+          <div className="flex items-center justify-between text-[8px] font-mono text-slate-400 pt-0.5 border-t border-ink/15">
+            <span className="text-electric-400">AC→DC Rectifier</span>
             {data.isBlockingDiodeActive ? (
-              <span className="text-emerald-300 font-bold flex items-center gap-0.5">
-                <ShieldCheck className="w-2.5 h-2.5 text-emerald-400 shrink-0" />
+              <span className="text-emerald-400 font-bold flex items-center gap-0.5">
+                <ShieldCheck className="w-2.5 h-2.5 text-emerald-400 shrink-0" aria-hidden="true" />
                 {isId ? 'Anti-Arus Balik' : 'Diode Active'}
               </span>
             ) : (
@@ -141,11 +141,12 @@ export const WindTurbineNode: React.FC<NodeProps<CircuitElementData>> = memo(
 
         {/* Physical Wind Turbine Assembly: Mast Base Anchored at Bottom-0 */}
         <div className="relative w-[144px] h-[184px] flex items-end justify-center overflow-visible shrink-0">
-          {/* Stationary Tapered Tower Mast (height 144px, hub center at 7.54% from top = 133.1px from bottom) */}
           <img
             src="/assets/wind-turbine-mast.png"
             alt="Turbine Mast"
-            className="h-[144px] w-auto object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.45)] pointer-events-none select-none z-10"
+            width={144}
+            height={144}
+            className="h-[144px] w-full object-contain drop-shadow-md pointer-events-none select-none z-10"
             draggable={false}
           />
 
@@ -158,7 +159,6 @@ export const WindTurbineNode: React.FC<NodeProps<CircuitElementData>> = memo(
               transform: 'translate(-50%, 50%)',
             }}
           >
-            {/* Dynamic Motion-Blur Smear Frame Disc */}
             {effectiveSpeed >= 25 && (
               <div
                 className="absolute inset-2 rounded-full pointer-events-none transition-opacity duration-300"
@@ -172,7 +172,6 @@ export const WindTurbineNode: React.FC<NodeProps<CircuitElementData>> = memo(
               />
             )}
 
-            {/* High-Speed Radial Streak Smear Layer */}
             {effectiveSpeed >= 50 && (
               <div
                 className="absolute inset-3 rounded-full pointer-events-none animate-spin-turbine transition-opacity duration-300"
@@ -187,30 +186,30 @@ export const WindTurbineNode: React.FC<NodeProps<CircuitElementData>> = memo(
               />
             )}
 
-            {/* Spinning 3-Blade Rotor Image */}
             <img
               src="/assets/wind-turbine-rotor.png"
               alt="Turbine Rotor"
+              width={142}
+              height={142}
               className={`w-full h-full object-contain pointer-events-none select-none ${
                 effectiveSpeed > 0 ? 'animate-spin-turbine' : ''
               }`}
               style={{
                 animationDuration: `${animationDurationSec}s`,
                 animationPlayState: effectiveSpeed === 0 ? 'paused' : 'running',
-                filter: `blur(${bladeBlurPx}px) drop-shadow(0 4px 6px rgba(0,0,0,0.3))`,
+                filter: `blur(${bladeBlurPx}px)`,
               }}
               draggable={false}
             />
           </div>
 
-          {/* High-Visibility Terminals (+ and -) Positioned at Lower Service Box ABOVE Grass Line! */}
           <Handle
             type="source"
             position={Position.Bottom}
             id="pos"
             style={{ left: '34%', bottom: '30px', transform: 'translateX(-50%)' }}
-            className={`!w-6 !h-6 md:!w-5 md:!h-5 !bg-red-500 !border-2 !border-white !rounded-full shadow-[0_0_12px_rgba(239,68,68,0.95)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center ${
-              pendingPinHandle === 'pos' ? '!ring-4 !ring-emerald-300/95 !scale-125 animate-pulse' : ''
+            className={`!w-6 !h-6 md:!w-5 md:!h-5 !bg-red-600 !border-2 !border-white !rounded-full shadow-sm hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center ${
+              pendingPinHandle === 'pos' ? '!ring-4 !ring-emerald-400 !scale-125' : ''
             }`}
             title={isId ? 'Kutub Positif (+)' : 'Positive Terminal (+)'}
           >
@@ -223,8 +222,8 @@ export const WindTurbineNode: React.FC<NodeProps<CircuitElementData>> = memo(
             position={Position.Bottom}
             id="neg"
             style={{ left: '66%', bottom: '30px', transform: 'translateX(-50%)' }}
-            className={`!w-6 !h-6 md:!w-5 md:!h-5 !bg-sky-500 !border-2 !border-white !rounded-full shadow-[0_0_12px_rgba(56,189,248,0.95)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center ${
-              pendingPinHandle === 'neg' ? '!ring-4 !ring-emerald-300/95 !scale-125 animate-pulse' : ''
+            className={`!w-6 !h-6 md:!w-5 md:!h-5 !bg-sky-600 !border-2 !border-white !rounded-full shadow-sm hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center ${
+              pendingPinHandle === 'neg' ? '!ring-4 !ring-emerald-400 !scale-125' : ''
             }`}
             title={isId ? 'Kutub Negatif (-)' : 'Negative Terminal (-)'}
           >

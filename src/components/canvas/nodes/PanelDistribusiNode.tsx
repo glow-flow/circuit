@@ -91,8 +91,8 @@ export const PanelDistribusiNode: React.FC<NodeProps<CircuitElementData>> = memo
         notify(
           nextMcbState
             ? isId
-              ? '✓ Tuas MCB Panel Distribusi Lab: ON (Aliran Listrik Terhubung)'
-              : '✓ Lab Distribution Panel MCB: ON (Grid Connected)'
+              ? 'Tuas MCB Panel Distribusi Lab: ON (Aliran Listrik Terhubung)'
+              : 'Lab Distribution Panel MCB: ON (Grid Connected)'
             : isId
             ? 'Tuas MCB Panel Distribusi Lab: OFF (Aliran Listrik Diputus)'
             : 'Lab Distribution Panel MCB: OFF (Grid Disconnected)'
@@ -132,66 +132,61 @@ export const PanelDistribusiNode: React.FC<NodeProps<CircuitElementData>> = memo
           isShaking ? 'animate-shake' : ''
         }`}
       >
-        {/* Teks Judul Kecil (di luar kotak gambar) */}
-        <div className="text-center font-bold text-slate-300 text-[10px] tracking-wide mb-1 uppercase select-none pointer-events-none drop-shadow-sm flex items-center justify-center gap-1.5">
+        <div className="text-center font-bold text-ink text-[10px] tracking-wide mb-1 uppercase select-none pointer-events-none flex items-center justify-center gap-1.5">
           <span
             className={`w-1.5 h-1.5 rounded-full ${
               isMcbTripped
-                ? 'bg-red-500 animate-ping'
+                ? 'bg-danger-500'
                 : isGridConnected
-                ? 'bg-emerald-400 animate-pulse'
-                : 'bg-slate-500'
+                ? 'bg-emerald-500'
+                : 'bg-slate-400'
             }`}
           />
           <span>{isId ? 'Panel Distribusi' : 'Distribution Panel'}</span>
-          <span className="text-[9px] font-mono text-cyan-400 font-normal">
+          <span className="text-[9px] font-mono text-electric-400 font-normal">
             ({stepDownVoltage ? `${stepDownVoltage}V` : 'Auto'})
           </span>
         </div>
 
-        {/* Photorealistic Panel Image Container (Clean, no CSS borders or dark box background) */}
+        {/* Photorealistic Panel Image Container */}
         <div
-          className={`relative w-[230px] h-[309px] overflow-visible transition-all duration-200 ${
+          className={`relative w-[230px] h-[309px] overflow-visible rounded-xl transition-all duration-200 ${
             selected
-              ? 'filter drop-shadow-[0_0_14px_rgba(34,211,238,0.55)]'
+              ? 'ring-2 ring-electric-400'
               : isMcbTripped
-              ? 'filter drop-shadow-[0_0_14px_rgba(239,68,68,0.55)]'
-              : 'filter drop-shadow-[0_8px_16px_rgba(0,0,0,0.45)]'
+              ? 'ring-2 ring-danger-500'
+              : ''
           }`}
           style={{ width: 230, height: 309 }}
         >
           <img
             src="/assets/distribution-panel.png"
             alt={isId ? 'Panel Distribusi Lab' : 'Lab Distribution Panel'}
-            className="w-full h-full object-contain pointer-events-none select-none block"
+            width={230}
+            height={309}
+            className="w-full h-full object-contain pointer-events-none select-none block drop-shadow-md"
             draggable={false}
             onLoad={() => updateNodeInternals(id)}
           />
 
-          {/* Layar Display (Tegangan & Arus Overlay di atas layar hitam) */}
-          <div
-            className="absolute top-[22%] left-1/2 -translate-x-1/2 w-[80%] h-[21%] px-3 py-1 flex flex-col justify-between font-mono select-none pointer-events-none"
-            style={{
-              textShadow: '0 0 6px rgba(34,211,238,0.4)',
-            }}
-          >
-            {/* Baris Status Layar Atas */}
+          {/* Fixed bright inks over dark PNG LCD window (never invert in Light Mode) */}
+          <div className="absolute top-[22%] left-1/2 -translate-x-1/2 w-[80%] h-[21%] px-3 py-1 flex flex-col justify-between font-mono select-none pointer-events-none tabular-nums">
             <div className="flex items-center justify-between text-[8px] font-bold uppercase tracking-wider">
               <span
                 className={`truncate ${
                   isMcbTripped
-                    ? 'text-red-400 animate-pulse font-black'
+                    ? 'text-[#FCA5A5] font-black'
                     : !isMcbOn
-                    ? 'text-slate-400'
+                    ? 'text-[#94A3B8]'
                     : isGridConnected
-                    ? 'text-emerald-400'
-                    : 'text-sky-300/80'
+                    ? 'text-[#6EE7B7]'
+                    : 'text-[#7DD3FC]'
                 }`}
               >
                 {isMcbTripped
                   ? isId
-                    ? '⚠️ TRIP KORSLET'
-                    : '⚠️ SHORT TRIP'
+                    ? 'TRIP KORSLET'
+                    : 'SHORT TRIP'
                   : !isMcbOn
                   ? isId
                     ? 'MCB MATI (OFF)'
@@ -204,32 +199,31 @@ export const PanelDistribusiNode: React.FC<NodeProps<CircuitElementData>> = memo
                   ? 'CATU DAYA LAB'
                   : 'LAB DC SUPPLY'}
               </span>
-              <span className="text-cyan-400 text-[8px] font-black">DC</span>
+              <span className="text-[#38BDF8] text-[8px] font-black">DC</span>
             </div>
 
-            {/* Telemetri Digital: Tegangan (Kiri, Cyan) & Arus (Kanan, Amber) */}
             <div className="flex items-baseline justify-between">
               <div className="flex items-baseline gap-0.5">
                 <span
                   className={`text-sm font-black tracking-tight ${
                     isMcbTripped
-                      ? 'text-red-400'
+                      ? 'text-[#FCA5A5]'
                       : isMcbOn
-                      ? 'text-cyan-300 drop-shadow-[0_0_8px_rgba(34,211,238,0.7)]'
-                      : 'text-slate-400'
+                      ? 'text-[#7DD3FC]'
+                      : 'text-[#94A3B8]'
                   }`}
                 >
                   {busVoltage.toFixed(1)}
                 </span>
-                <span className="text-[9px] text-cyan-400/80 font-bold">V</span>
+                <span className="text-[9px] text-[#38BDF8] font-bold">V</span>
               </div>
 
               <div className="flex items-baseline gap-0.5">
                 <span
                   className={`text-xs font-black tracking-tight ${
                     currentAmperes > 0.001
-                      ? 'text-amber-300 drop-shadow-[0_0_8px_rgba(252,211,77,0.7)]'
-                      : 'text-slate-500'
+                      ? 'text-[#FCD34D]'
+                      : 'text-[#94A3B8]'
                   }`}
                 >
                   {currentDisplay}
@@ -238,9 +232,10 @@ export const PanelDistribusiNode: React.FC<NodeProps<CircuitElementData>> = memo
             </div>
           </div>
 
-          {/* Tombol MCB Interaktif (di atas tombol hijau di tengah gambar) */}
+          {/* Interactive MCB toggle button on PNG panel bezel */}
           <button
             type="button"
+            aria-pressed={isMcbOn}
             onPointerDown={(e) => e.stopPropagation()}
             onClick={handleToggleMcb}
             title={
@@ -252,22 +247,22 @@ export const PanelDistribusiNode: React.FC<NodeProps<CircuitElementData>> = memo
                 ? `Klik untuk mengubah MCB ke ${isMcbOn ? 'OFF' : 'ON'}`
                 : `Click to toggle MCB ${isMcbOn ? 'OFF' : 'ON'}`
             }
-            className={`nodrag absolute top-[50.5%] right-[9%] w-[25%] h-[9%] rounded-md font-mono text-[10px] font-black flex items-center justify-center transition-all duration-150 active:scale-95 cursor-pointer shadow-sm select-none ${
+            className={`nodrag absolute top-[50.5%] right-[9%] w-[25%] h-[9%] rounded-md font-mono text-[10px] font-black flex items-center justify-center transition-colors active:scale-95 cursor-pointer shadow-sm select-none ${
               isMcbTripped
-                ? 'bg-red-600/90 hover:bg-red-500 text-white border border-red-400 animate-pulse shadow-[0_0_12px_rgba(239,68,68,0.8)]'
+                ? 'bg-[#DC2626] hover:bg-[#B91C1C] text-white border border-[#FCA5A5]'
                 : isMcbOn
-                ? 'bg-emerald-500/30 hover:bg-emerald-500/40 text-emerald-100 border border-emerald-400/60 shadow-[0_0_8px_rgba(16,185,129,0.4)]'
-                : 'bg-black/60 hover:bg-black/75 text-slate-300 border border-slate-600'
+                ? 'bg-[#047857] hover:bg-[#065F46] text-white border border-[#6EE7B7]'
+                : 'bg-[#0F172A] hover:bg-[#1E293B] text-[#E2E8F0] border border-[#64748B]'
             }`}
           >
             {isMcbTripped ? 'TRIP' : isMcbOn ? 'ON' : 'OFF'}
           </button>
 
-          {/* 5 Tombol Tegangan (Auto, 3V, 6V, 9V, 12V) di atas 5 slot kotak */}
+          {/* 5 Step-Down voltage buttons on dark panel bezel */}
           <div
             className="absolute top-[65.8%] left-[8%] w-[84%] h-[9.4%] flex items-center justify-between"
             role="group"
-            aria-label="Pemilih Tegangan Step-Down"
+            aria-label={isId ? 'Pemilih Tegangan Step-Down' : 'Step-Down Voltage Selector'}
           >
             {STEP_DOWN_OPTIONS.map((opt) => {
               const isSelected = stepDownVoltage === opt.value;
@@ -275,6 +270,7 @@ export const PanelDistribusiNode: React.FC<NodeProps<CircuitElementData>> = memo
                 <button
                   key={opt.label}
                   type="button"
+                  aria-pressed={isSelected}
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={(e) => handleSelectStepDown(e, opt.value)}
                   title={
@@ -286,10 +282,10 @@ export const PanelDistribusiNode: React.FC<NodeProps<CircuitElementData>> = memo
                       ? `Atur batas tegangan output ke ${opt.value}V DC`
                       : `Set output voltage ceiling to ${opt.value}V DC`
                   }
-                  className={`nodrag w-[17.5%] h-full rounded-md font-mono text-[9px] font-black flex items-center justify-center transition-all duration-150 active:scale-95 cursor-pointer select-none ${
+                  className={`nodrag w-[17.5%] h-full rounded-md font-mono text-[9px] font-black flex items-center justify-center transition-colors active:scale-95 cursor-pointer select-none tabular-nums ${
                     isSelected
-                      ? 'bg-cyan-500/35 text-cyan-200 border border-cyan-400/90 shadow-[0_0_8px_rgba(34,211,238,0.6)]'
-                      : 'bg-black/25 hover:bg-white/10 text-slate-400 hover:text-slate-100 border border-transparent'
+                      ? 'bg-[#1D4ED8] text-white border border-[#7DD3FC]'
+                      : 'bg-[#0F172A] hover:bg-[#1E293B] text-[#CBD5E1] hover:text-white border border-[#334155]'
                   }`}
                 >
                   {opt.label}
@@ -298,13 +294,13 @@ export const PanelDistribusiNode: React.FC<NodeProps<CircuitElementData>> = memo
             })}
           </div>
 
-          {/* Handle (+) Terminal Baut Merah */}
+          {/* Handle (+) Red Banana Binding Post */}
           <Handle
             type="source"
             position={Position.Bottom}
             id="pos"
             style={{ left: '32.5%', top: '90.7%', bottom: 'auto', transform: 'translate(-50%, -50%)' }}
-            className="!w-5 !h-5 !bg-red-500 !border-2 !border-white !rounded-full shadow-[0_0_12px_rgba(239,68,68,0.95)] hover:!scale-125 transition-transform cursor-crosshair z-50 flex items-center justify-center pointer-events-auto before:absolute before:-inset-3.5 before:content-[''] before:rounded-full before:z-50"
+            className="!w-5 !h-5 !bg-red-600 !border-2 !border-white !rounded-full shadow-sm hover:!scale-125 transition-transform cursor-crosshair z-50 flex items-center justify-center pointer-events-auto before:absolute before:-inset-3.5 before:content-[''] before:rounded-full before:z-50"
             title={isId ? 'Terminal Output Positif (+) DC Lab' : 'Positive (+) Lab DC Output'}
           >
             <span className="text-[10px] font-mono font-black text-white leading-none pointer-events-none">
@@ -312,13 +308,13 @@ export const PanelDistribusiNode: React.FC<NodeProps<CircuitElementData>> = memo
             </span>
           </Handle>
 
-          {/* Handle (-) Terminal Baut Hitam */}
+          {/* Handle (-) Negative Binding Post */}
           <Handle
             type="source"
             position={Position.Bottom}
             id="neg"
             style={{ left: '67.2%', top: '89.1%', bottom: 'auto', transform: 'translate(-50%, -50%)' }}
-            className="!w-5 !h-5 !bg-sky-500 !border-2 !border-white !rounded-full shadow-[0_0_12px_rgba(56,189,248,0.95)] hover:!scale-125 transition-transform cursor-crosshair z-50 flex items-center justify-center pointer-events-auto before:absolute before:-inset-3.5 before:content-[''] before:rounded-full before:z-50"
+            className="!w-5 !h-5 !bg-sky-600 !border-2 !border-white !rounded-full shadow-sm hover:!scale-125 transition-transform cursor-crosshair z-50 flex items-center justify-center pointer-events-auto before:absolute before:-inset-3.5 before:content-[''] before:rounded-full before:z-50"
             title={isId ? 'Terminal Output Negatif (-) DC Lab' : 'Negative (-) Lab DC Output'}
           >
             <span className="text-[11px] font-mono font-black text-white leading-none pointer-events-none">
@@ -327,11 +323,11 @@ export const PanelDistribusiNode: React.FC<NodeProps<CircuitElementData>> = memo
           </Handle>
         </div>
 
-        {/* Notifikasi & Tombol Pemulihan Cepat Korsleting */}
+        {/* Short-circuit guidance & quick reset */}
         {isMcbTripped && (
           <div className="nodrag mt-2 w-full flex flex-col gap-1 z-30">
-            <div className="text-[8px] font-mono font-semibold text-red-200 bg-red-950/90 border border-red-500/50 rounded-lg p-1.5 leading-tight flex items-start gap-1 shadow-lg">
-              <AlertTriangle className="w-3 h-3 text-red-400 shrink-0 mt-0.5" />
+            <div className="text-[9px] font-mono font-semibold text-danger-200 bg-danger-950 border border-danger-500 rounded-lg p-1.5 leading-tight flex items-start gap-1 shadow-md">
+              <AlertTriangle className="w-3 h-3 text-danger-400 shrink-0 mt-0.5" aria-hidden="true" />
               <span>
                 {shortCircuitGuidance ||
                   (isId
@@ -344,9 +340,9 @@ export const PanelDistribusiNode: React.FC<NodeProps<CircuitElementData>> = memo
               type="button"
               onPointerDown={(e) => e.stopPropagation()}
               onClick={handleDisconnectAndReset}
-              className="w-full py-1 px-2 rounded-lg bg-red-900/80 hover:bg-red-800 text-red-100 font-mono text-[9px] font-bold border border-red-400/60 flex items-center justify-center gap-1 active:scale-95 transition-all shadow-md cursor-pointer"
+              className="w-full min-h-[36px] py-1.5 px-2 rounded-lg bg-danger-600 hover:bg-danger-700 text-white font-mono text-[9px] font-bold flex items-center justify-center gap-1 active:scale-95 transition-colors shadow-md cursor-pointer"
             >
-              <Scissors className="w-2.5 h-2.5" />
+              <Scissors className="w-3 h-3" aria-hidden="true" />
               <span>{isId ? 'Putus Kabel Korslet & Reset MCB' : 'Cut Shorting Wire & Reset MCB'}</span>
             </button>
           </div>

@@ -58,12 +58,14 @@ export const ResistorNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data
         <img
           src="/assets/processed/resistor.png"
           alt="Axial Resistor"
+          width={136}
+          height={44}
           draggable={false}
           className="w-full h-full object-contain pointer-events-none select-none drop-shadow-sm"
         />
 
         {/* Value Label Pill */}
-        <span className="absolute -bottom-2.5 px-1.5 py-0.2 rounded bg-void-950/90 border border-white/10 text-[9px] font-mono font-bold text-amber-300 pointer-events-none select-none">
+        <span className="absolute -bottom-2.5 px-1.5 py-0.2 rounded bg-void-950 border border-control text-[9px] font-mono font-bold text-amber-300 pointer-events-none select-none tabular-nums">
           {formattedResistance}
         </span>
       </div>
@@ -79,30 +81,28 @@ export const ResistorNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data
       {/* Detailed Telemetry: ONLY when selected */}
       {selected && (
         <NodeInfoPopover placement="bottom" width={200}>
-          {/* Header */}
           <div className="mb-2 flex items-center justify-between gap-1.5">
             <div className="flex items-center gap-1.5 min-w-0">
-              <div className="p-1 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                <Activity className="w-3.5 h-3.5" />
+              <div className="p-1 rounded-md bg-amber-500/15 text-amber-400 border border-amber-500/35">
+                <Activity className="w-3.5 h-3.5" aria-hidden="true" />
               </div>
-              <div className="truncate text-xs font-bold text-slate-100">
+              <div className="truncate text-xs font-bold text-ink">
                 {t.title}
               </div>
             </div>
-            <span className="text-[10px] font-mono font-bold text-amber-300">
+            <span className="text-[10px] font-mono font-bold text-amber-300 tabular-nums">
               {formattedResistance}
             </span>
           </div>
 
-          {/* Electrical Readout */}
-          <div className="rounded-lg bg-void-950 p-1.5 border border-white/10 font-mono text-xs space-y-1">
+          <div className="rounded-lg bg-void-950 p-1.5 border border-control font-mono text-xs space-y-1 tabular-nums">
             <div className="flex justify-between items-center">
               <span className="text-slate-400 text-[10px]">{t.resistance}</span>
               <span className="text-amber-300 font-semibold">{resistance} Ω</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-slate-400 text-[10px]">{t.voltageDrop}</span>
-              <span className="text-slate-100">{voltageDrop.toFixed(2)} V</span>
+              <span className="text-ink">{voltageDrop.toFixed(2)} V</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-slate-400 text-[10px]">{t.current}</span>

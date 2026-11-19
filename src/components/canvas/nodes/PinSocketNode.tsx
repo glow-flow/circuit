@@ -205,6 +205,8 @@ export const PinSocketNode: React.FC<NodeProps<CircuitElementData>> = ({
         <img
           src="/assets/socket-pin.png"
           alt={isIndonesian ? 'Fiting keramik bi-pin' : 'Ceramic bi-pin socket'}
+          width={PIN_SOCKET_NODE_SIZE.width}
+          height={PIN_SOCKET_NODE_SIZE.height}
           draggable={false}
           className="pointer-events-none block h-full w-full select-none object-contain"
         />
@@ -295,6 +297,8 @@ export const PinSocketNode: React.FC<NodeProps<CircuitElementData>> = ({
           <img
             src={installedSpec.image}
             alt={isIndonesian ? installedSpec.label : installedSpec.labelEn}
+            width={BULB_NODE_SIZE.width}
+            height={BULB_NODE_SIZE.height}
             draggable={false}
             className="pointer-events-none relative h-full w-full select-none object-contain transition-all duration-300"
             style={{
@@ -304,7 +308,7 @@ export const PinSocketNode: React.FC<NodeProps<CircuitElementData>> = ({
           />
 
           {effectiveIsBlown && (
-            <span className="absolute right-2 top-2 z-30 h-2.5 w-2.5 animate-pulse rounded-full bg-red-500 shadow-glow-danger" />
+            <span className="absolute right-2 top-2 z-30 h-2.5 w-2.5 rounded-full bg-danger-500 border border-pure-white" />
           )}
         </div>
       )}
@@ -319,6 +323,8 @@ export const PinSocketNode: React.FC<NodeProps<CircuitElementData>> = ({
             src="/assets/socket-pin.png"
             alt=""
             aria-hidden="true"
+            width={PIN_SOCKET_NODE_SIZE.width}
+            height={PIN_SOCKET_NODE_SIZE.height}
             draggable={false}
             className="pointer-events-none block h-full w-full select-none object-contain"
             style={{
@@ -361,10 +367,10 @@ export const PinSocketNode: React.FC<NodeProps<CircuitElementData>> = ({
       {/* REVERSE-BIASED LED POLARITY WARNING BADGE */}
       {data.isReverseBiased && installedSpec && (
         <div
-          className="pointer-events-none absolute left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-amber-400/60 bg-amber-950/95 px-2 py-0.5 font-mono text-[9px] font-bold text-amber-200 shadow-[0_4px_12px_rgba(0,0,0,0.65)] animate-pulse"
+          className="pointer-events-none absolute left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-amber-500/70 bg-amber-950 px-2 py-0.5 font-mono text-[9px] font-bold text-amber-200 shadow-md"
           style={{ bottom: -22, zIndex: 45 }}
         >
-          {isIndonesian ? '⚠️ Kutub LED Terbalik (+/-)' : '⚠️ LED Reverse Polarity'}
+          {isIndonesian ? 'Kutub LED Terbalik (+/-)' : 'LED Reverse Polarity'}
         </div>
       )}
 
@@ -373,9 +379,9 @@ export const PinSocketNode: React.FC<NodeProps<CircuitElementData>> = ({
         <NodeInfoPopover placement="bottom">
           <div className="mb-1.5 flex items-center justify-between gap-1.5">
             <div className="min-w-0">
-              <div className="truncate text-xs font-bold tracking-tight text-slate-100">
+              <div className="truncate text-xs font-bold tracking-tight text-ink">
                 {isIndonesian ? 'Fiting Keramik Pin' : 'Ceramic Pin Socket'}
-                <span className="ml-1 font-mono text-[10px] text-amber-300">
+                <span className="ml-1 font-mono text-[10px] text-amber-400">
                   {installedSpec?.type === 'led_green'
                     ? (isIndonesian ? '(LED Indikator)' : '(Indicator LED)')
                     : (isIndonesian ? '(G4 / Halogen)' : '(G4 / Halogen)')}
@@ -395,29 +401,29 @@ export const PinSocketNode: React.FC<NodeProps<CircuitElementData>> = ({
                 <span
                   className={`flex shrink-0 items-center gap-0.5 rounded border px-1.5 py-0.5 font-mono text-[9px] ${
                     heatLevel === 'hot'
-                      ? 'border-orange-500/30 bg-orange-500/15 text-orange-300'
-                      : 'border-amber-500/25 bg-amber-500/10 text-amber-300'
+                      ? 'border-orange-500/45 bg-orange-500/15 text-orange-300'
+                      : 'border-amber-500/40 bg-amber-500/15 text-amber-300'
                   }`}
                 >
-                  <Flame className="h-2.5 w-2.5" />
+                  <Flame className="h-2.5 w-2.5" aria-hidden="true" />
                   {heatLevel === 'hot' ? (isIndonesian ? 'Panas' : 'Hot') : isIndonesian ? 'Hangat' : 'Warm'}
                 </span>
               ) : (
-                <span className="flex shrink-0 items-center gap-0.5 rounded border border-sky-500/20 bg-sky-500/10 px-1.5 py-0.5 font-mono text-[9px] text-sky-300">
-                  <Snowflake className="h-2.5 w-2.5" />
+                <span className="flex shrink-0 items-center gap-0.5 rounded border border-sky-500/40 bg-sky-500/15 px-1.5 py-0.5 font-mono text-[9px] text-sky-300">
+                  <Snowflake className="h-2.5 w-2.5" aria-hidden="true" />
                   {isIndonesian ? 'Dingin' : 'Cool'}
                 </span>
               )
             )}
           </div>
 
-          <div className="space-y-1 rounded-lg border border-white/5 bg-void-950/85 p-2 font-mono text-[10px]">
+          <div className="space-y-1 rounded-lg border border-control bg-void-950 p-2 font-mono text-[10px] tabular-nums">
             <div className="flex items-baseline justify-between gap-2">
               <span className="font-sans text-slate-400">{isIndonesian ? 'Status Lampu:' : 'Bulb State:'}</span>
-              <span className={installedSpec ? 'truncate font-bold text-amber-300' : 'text-slate-500'}>
+              <span className={installedSpec ? 'truncate font-bold text-amber-300' : 'text-slate-400'}>
                 {installedSpec
                   ? effectiveIsBlown
-                    ? `💥 ${bulbTranslations.overloaded}`
+                    ? bulbTranslations.overloaded
                     : `${(brightness * 100).toFixed(0)}% ${bulbTranslations.brightness}`
                   : isIndonesian
                   ? 'Kosong (Tidak Menghantar)'
@@ -426,7 +432,7 @@ export const PinSocketNode: React.FC<NodeProps<CircuitElementData>> = ({
             </div>
             <div className="flex items-baseline justify-between">
               <span className="font-sans text-slate-400">{isIndonesian ? 'Tegangan (V):' : 'Voltage (V):'}</span>
-              <span className="text-slate-200">{voltageDrop.toFixed(2)} V</span>
+              <span className="text-ink">{voltageDrop.toFixed(2)} V</span>
             </div>
             <div className="flex items-baseline justify-between">
               <span className="font-sans text-slate-400">{isIndonesian ? 'Kuat Arus (I):' : 'Current (I):'}</span>
@@ -434,7 +440,7 @@ export const PinSocketNode: React.FC<NodeProps<CircuitElementData>> = ({
             </div>
             <div className="flex items-baseline justify-between">
               <span className="font-sans text-slate-400">{isIndonesian ? 'Daya Disipasi:' : 'Power:'}</span>
-              <span className="text-slate-200">{formatPowerWatts(powerWatts)}</span>
+              <span className="text-ink">{formatPowerWatts(powerWatts)}</span>
             </div>
           </div>
 
@@ -463,17 +469,17 @@ export const PinSocketNode: React.FC<NodeProps<CircuitElementData>> = ({
                       updateComponentData(id, { isBlown: false });
                     }
                   }}
-                  className="flex flex-1 cursor-pointer items-center justify-center gap-1 rounded border border-red-500/50 bg-red-950/90 px-1.5 py-1 text-[10px] font-bold text-red-200 transition-colors hover:bg-red-900 active:scale-95"
+                  className="flex flex-1 cursor-pointer items-center justify-center gap-1 rounded-lg bg-danger-600 hover:bg-danger-700 px-2 py-1.5 text-[10px] font-bold text-white transition-colors active:scale-95"
                 >
-                  <RotateCcw className="h-3 w-3" /> {isIndonesian ? 'Reset' : 'Reset'}
+                  <RotateCcw className="h-3 w-3" aria-hidden="true" /> {isIndonesian ? 'Reset' : 'Reset'}
                 </button>
               )}
               <button
                 type="button"
                 onClick={() => detachBulbFromSocket(id)}
-                className="flex flex-1 cursor-pointer items-center justify-center gap-1 rounded border border-amber-400/40 bg-amber-500/10 px-1.5 py-1 text-[10px] font-bold text-amber-200 transition-colors hover:bg-amber-500/20 active:scale-95"
+                className="flex flex-1 cursor-pointer items-center justify-center gap-1 rounded-lg bg-electric-600 hover:bg-electric-700 px-2 py-1.5 text-[10px] font-bold text-white transition-colors active:scale-95"
               >
-                <Unplug className="h-3 w-3" /> {isIndonesian ? 'Lepas Lampu' : 'Detach Bulb'}
+                <Unplug className="h-3 w-3" aria-hidden="true" /> {isIndonesian ? 'Lepas Lampu' : 'Detach Bulb'}
               </button>
             </div>
           )}

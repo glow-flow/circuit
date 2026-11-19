@@ -36,13 +36,13 @@ export const InspectorGlobalView: React.FC<InspectorGlobalViewProps> = ({
   return (
     <div className="flex flex-col h-full overflow-hidden select-none">
       {/* Top Header */}
-      <div className="p-3.5 border-b border-white/10 flex items-center justify-between shrink-0 bg-void-850">
+      <div className="p-3.5 border-b border-ink/15 flex items-center justify-between shrink-0 bg-void-850">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-electric-500/15 border border-electric-500/30 flex items-center justify-center text-electric-400 shrink-0">
-            <Cpu className="w-4 h-4" />
+          <div className="w-8 h-8 rounded-xl bg-electric-500/15 border border-electric-500/35 flex items-center justify-center text-electric-400 shrink-0">
+            <Cpu className="w-4 h-4" aria-hidden="true" />
           </div>
           <div>
-            <h2 className="text-xs font-bold text-slate-100 uppercase tracking-wider">
+            <h2 className="text-xs font-bold text-ink uppercase tracking-wider">
               {t.title}
             </h2>
             <p className="text-[10px] text-slate-400">
@@ -55,10 +55,10 @@ export const InspectorGlobalView: React.FC<InspectorGlobalViewProps> = ({
           <button
             type="button"
             onClick={onCloseMobile}
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-void-900 text-slate-400 hover:text-white border border-white/10 active:scale-95 cursor-pointer"
-            aria-label="Tutup"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-void-900 text-slate-400 hover:text-ink border border-control active:scale-95 transition-colors cursor-pointer"
+            aria-label={language === 'id' ? 'Tutup' : 'Close'}
           >
-            <X className="w-4 h-4" />
+            <X className="w-4 h-4" aria-hidden="true" />
           </button>
         )}
       </div>
@@ -69,17 +69,17 @@ export const InspectorGlobalView: React.FC<InspectorGlobalViewProps> = ({
         <div
           className={`rounded-2xl p-3.5 border ${
             simulation.isShortCircuit
-              ? 'bg-danger-500/10 border-danger-500/30'
-              : 'bg-void-950 border-white/5'
+              ? 'bg-danger-500/10 border-danger-500/40'
+              : 'bg-void-950 border-ink/15'
           }`}
         >
           <div className="flex items-center gap-2 mb-1.5">
             {simulation.isShortCircuit ? (
-              <AlertTriangle className="w-4 h-4 text-danger-500" />
+              <AlertTriangle className="w-4 h-4 text-danger-500" aria-hidden="true" />
             ) : (
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <ShieldCheck className="w-4 h-4 text-emerald-400" aria-hidden="true" />
             )}
-            <span className="text-xs font-semibold text-slate-200">
+            <span className="text-xs font-semibold text-ink">
               {simulation.isShortCircuit ? t.hazardTitle : t.normalTitle}
             </span>
           </div>
@@ -89,14 +89,14 @@ export const InspectorGlobalView: React.FC<InspectorGlobalViewProps> = ({
         </div>
 
         {/* Telemetry Metrics */}
-        <div className="bg-void-950 rounded-xl p-3 border border-white/5 space-y-2 font-mono text-xs">
+        <div className="bg-void-950 rounded-xl p-3 border border-ink/15 space-y-2 font-mono tabular-nums text-xs">
           <div className="flex justify-between items-center">
             <span className="text-slate-400 font-sans text-[11px]">{t.totalComponents}</span>
-            <span className="text-slate-200 font-bold">{nodes.length}</span>
+            <span className="text-ink font-bold">{nodes.length}</span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-slate-400 font-sans text-[11px]">{t.totalWires}</span>
-            <span className="text-slate-200 font-bold">{countVisibleWires(edges)}</span>
+            <span className="text-ink font-bold">{countVisibleWires(edges)}</span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-slate-400 font-sans text-[11px]">{t.totalPower}</span>
@@ -116,24 +116,24 @@ export const InspectorGlobalView: React.FC<InspectorGlobalViewProps> = ({
         <PlnCostCalculatorCard />
 
         {/* Grade 9 Physics Cheat Sheet */}
-        <div className="p-3 rounded-xl bg-electric-500/5 border border-electric-500/20 text-[11px] space-y-1.5">
+        <div className="p-3 rounded-xl bg-electric-500/5 border border-electric-500/25 text-[11px] space-y-1.5">
           <div className="flex items-center gap-1.5 font-semibold text-electric-400">
-            <BookOpen className="w-3.5 h-3.5" />
+            <BookOpen className="w-3.5 h-3.5" aria-hidden="true" />
             <span>{t.formulaTitle}</span>
           </div>
-          <div className="font-mono text-[10px] text-slate-200 bg-void-950/80 px-2 py-1 rounded border border-white/5">
+          <div className="font-mono tabular-nums text-[10px] text-ink bg-void-950 px-2 py-1 rounded border border-ink/15">
             {t.formulaOhm}
           </div>
-          <div className="font-mono text-[10px] text-slate-200 bg-void-950/80 px-2 py-1 rounded border border-white/5">
+          <div className="font-mono tabular-nums text-[10px] text-ink bg-void-950 px-2 py-1 rounded border border-ink/15">
             {t.formulaPower}
           </div>
-          <div className="font-mono text-[10px] text-emerald-300 bg-void-950/80 px-2 py-1 rounded border border-white/5">
+          <div className="font-mono tabular-nums text-[10px] text-emerald-400 bg-void-950 px-2 py-1 rounded border border-ink/15">
             {t.formulaSeries}
           </div>
         </div>
 
         {/* Educational Note */}
-        <div className="p-3 rounded-xl bg-void-950/50 border border-white/5 text-[11px] text-slate-400 space-y-1">
+        <div className="p-3 rounded-xl bg-void-950 border border-ink/15 text-[11px] text-slate-400 space-y-1">
           <div className="font-semibold text-slate-300">{t.quickTipTitle}</div>
           <p className="leading-relaxed">{t.quickTipDesc}</p>
         </div>

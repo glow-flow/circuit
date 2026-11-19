@@ -195,16 +195,18 @@ export const MissionTopologyPreview: React.FC<MissionTopologyPreviewProps> = ({
   };
 
   return (
-    <div className="rounded-xl bg-void-950 border border-white/10 p-2.5 space-y-1.5">
+    <div className="rounded-xl bg-void-950 border border-control p-2.5 space-y-2">
       <div className="flex items-center justify-between gap-2 px-1">
-        <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
+        <span className="text-[11px] font-mono text-slate-400">
           {isId ? 'Skema Target Misi' : 'Target Blueprint'}
         </span>
-        <span className="text-[10px] font-mono font-semibold text-electric-300">
+        <span className="text-[11px] font-mono font-semibold text-electric-400">
           {isId ? meta.targetBadgeId : meta.targetBadgeEn}
         </span>
       </div>
-      {renderSvgDiagram()}
+      <div className="rounded-lg bg-[#0B0F14] border border-control p-1.5">
+        {renderSvgDiagram()}
+      </div>
     </div>
   );
 };

@@ -42,7 +42,7 @@ export const NodeInfoPopover: React.FC<NodeInfoPopoverProps> = ({
       style={{ width }}
       onPointerDown={(event) => event.stopPropagation()}
     >
-      <div className="node-info-pop rounded-xl border border-white/20 bg-void-900/98 p-2.5 shadow-xl backdrop-blur-md text-slate-100">
+      <div className="node-info-pop rounded-xl border border-control bg-void-900 p-2.5 shadow-xl text-ink">
         {children}
       </div>
     </div>

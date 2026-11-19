@@ -2713,11 +2713,11 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       get().notify(
         merged.spawnedNewStation
           ? isId
-            ? '⚡ Listrik Alam tersambung! Lihat Panel Distribusi sedang mengecas baterai 9V di Lab.'
-            : '⚡ Outdoor power connected! Watch the Distribution Panel recharge the 9V Lab battery.'
+            ? 'Listrik Alam tersambung! Lihat Panel Distribusi sedang mengecas baterai 9V di Lab.'
+            : 'Outdoor power connected! Watch the Distribution Panel recharge the 9V Lab battery.'
           : isId
-          ? '⚡ Panel Distribusi Lab sudah aktif mengisi daya baterai dari pembangkit alammu.'
-          : '⚡ Lab Distribution Panel is actively charging your Lab battery from the outdoor grid.'
+          ? 'Panel Distribusi Lab sudah aktif mengisi daya baterai dari pembangkit alammu.'
+          : 'Lab Distribution Panel is actively charging your Lab battery from the outdoor grid.'
       );
     } catch (error) {
       console.warn('[useCircuitStore] Failed to deploy outdoor charging station in Lab:', error);

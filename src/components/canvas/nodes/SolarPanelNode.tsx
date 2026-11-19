@@ -44,7 +44,6 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
   const current = Math.abs(simulation.branchCurrents[id] ?? 0);
   const isShorted = simulation.shortCircuitBranches.includes(id);
 
-  const isGenerating = nominalVoltage > 0 && current > 0;
   const isDark = nominalVoltage <= 0.1;
   const isSunny = nominalVoltage >= 9.0;
 
@@ -88,38 +87,38 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
 
   return (
     <div
-      className={`relative flex flex-col items-center justify-end select-none transition-all duration-200 w-[144px] group overflow-visible ${
-        selected ? 'filter drop-shadow-[0_0_14px_rgba(245,158,11,0.45)]' : ''
+      className={`relative flex flex-col items-center justify-end select-none transition-colors duration-200 w-[144px] group overflow-visible ${
+        selected ? 'ring-2 ring-amber-400 rounded-xl' : ''
       }`}
       style={{ height: '156px' }}
     >
       {/* Top Floating Control & Weather Pill */}
       <div
-        className={`nodrag mb-1 w-full px-2 py-1.5 rounded-xl backdrop-blur-md border shadow-[0_8px_20px_rgba(0,0,0,0.45)] flex flex-col gap-1 z-30 ${
+        className={`nodrag mb-1 w-full px-2 py-1.5 rounded-xl border shadow-lg flex flex-col gap-1 z-30 ${
           isShorted
-            ? 'bg-red-950/95 border-danger-500 animate-pulse'
-            : 'bg-void-950/95 border-white/15'
+            ? 'bg-danger-950 border-danger-500 text-danger-200'
+            : 'bg-void-950 border-control text-ink'
         }`}
       >
         <div className="flex items-center justify-between gap-1 text-[10px] font-mono">
-          <span className="flex items-center gap-1 font-bold text-slate-100 truncate">
+          <span className="flex items-center gap-1 font-bold text-ink truncate">
             {isShorted ? (
-              <AlertTriangle className="w-3 h-3 text-danger-500 shrink-0" />
+              <AlertTriangle className="w-3 h-3 text-danger-400 shrink-0" aria-hidden="true" />
             ) : isSunny ? (
-              <Sun className="w-3 h-3 text-amber-400 shrink-0" />
+              <Sun className="w-3 h-3 text-amber-400 shrink-0" aria-hidden="true" />
             ) : !isDark ? (
-              <CloudSun className="w-3 h-3 text-sky-400 shrink-0" />
+              <CloudSun className="w-3 h-3 text-sky-400 shrink-0" aria-hidden="true" />
             ) : (
-              <Moon className="w-3 h-3 text-slate-400 shrink-0" />
+              <Moon className="w-3 h-3 text-slate-400 shrink-0" aria-hidden="true" />
             )}
             <span className="truncate">{t.title}</span>
           </span>
           <span
             className={`font-bold shrink-0 tabular-nums ${
               isSunny
-                ? 'text-amber-300'
+                ? 'text-amber-400'
                 : !isDark
-                ? 'text-sky-300'
+                ? 'text-electric-400'
                 : 'text-slate-400'
             }`}
           >
@@ -132,41 +131,44 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
         <div className="grid grid-cols-3 gap-1">
           <button
             type="button"
+            aria-pressed={sunlight >= 90}
             onPointerDown={(e) => e.stopPropagation()}
             onClick={() => applyWeatherPreset(12.0, 100)}
-            className={`px-1 py-0.5 rounded text-[9px] font-mono font-bold border transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-0.5 ${
+            className={`px-1 py-0.5 rounded text-[9px] font-mono font-bold border transition-colors active:scale-95 cursor-pointer flex items-center justify-center gap-0.5 ${
               sunlight >= 90
-                ? 'bg-amber-500/20 text-amber-300 border-amber-400/50'
-                : 'bg-void-900 text-slate-400 border-white/10 hover:text-white'
+                ? 'bg-[#B45309] text-white border-amber-500'
+                : 'bg-void-900 text-slate-300 border-control hover:text-ink'
             }`}
           >
-            <Sun className="w-2.5 h-2.5 shrink-0" />
+            <Sun className="w-2.5 h-2.5 shrink-0" aria-hidden="true" />
             <span>12V</span>
           </button>
           <button
             type="button"
+            aria-pressed={sunlight >= 30 && sunlight < 90}
             onPointerDown={(e) => e.stopPropagation()}
             onClick={() => applyWeatherPreset(5.0, 42)}
-            className={`px-1 py-0.5 rounded text-[9px] font-mono font-bold border transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-0.5 ${
+            className={`px-1 py-0.5 rounded text-[9px] font-mono font-bold border transition-colors active:scale-95 cursor-pointer flex items-center justify-center gap-0.5 ${
               sunlight >= 30 && sunlight < 90
-                ? 'bg-sky-500/20 text-sky-300 border-sky-400/50'
-                : 'bg-void-900 text-slate-400 border-white/10 hover:text-white'
+                ? 'bg-electric-600 text-white border-electric-500'
+                : 'bg-void-900 text-slate-300 border-control hover:text-ink'
             }`}
           >
-            <CloudSun className="w-2.5 h-2.5 shrink-0" />
+            <CloudSun className="w-2.5 h-2.5 shrink-0" aria-hidden="true" />
             <span>5V</span>
           </button>
           <button
             type="button"
+            aria-pressed={sunlight < 30}
             onPointerDown={(e) => e.stopPropagation()}
             onClick={() => applyWeatherPreset(0.0, 0)}
-            className={`px-1 py-0.5 rounded text-[9px] font-mono font-bold border transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-0.5 ${
+            className={`px-1 py-0.5 rounded text-[9px] font-mono font-bold border transition-colors active:scale-95 cursor-pointer flex items-center justify-center gap-0.5 ${
               sunlight < 30
-                ? 'bg-slate-700/60 text-slate-200 border-slate-400/40'
-                : 'bg-void-900 text-slate-400 border-white/10 hover:text-white'
+                ? 'bg-slate-600 text-white border-control'
+                : 'bg-void-900 text-slate-300 border-control hover:text-ink'
             }`}
           >
-            <Moon className="w-2.5 h-2.5 shrink-0" />
+            <Moon className="w-2.5 h-2.5 shrink-0" aria-hidden="true" />
             <span>0V</span>
           </button>
         </div>
@@ -179,13 +181,13 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
           value={baseSunlight}
           onChange={handleSunlightChange}
           onPointerDown={(e) => e.stopPropagation()}
-          className="w-full h-1.5 bg-void-900 rounded-lg appearance-none cursor-pointer accent-amber-400 focus:outline-none"
-          aria-label="Solar Irradiance"
+          className="w-full h-2 bg-void-900 rounded-lg cursor-pointer accent-amber-500"
+          aria-label={isId ? 'Intensitas Cahaya Panel Surya' : 'Solar Irradiance'}
         />
 
         {isOutdoor && (
-          <div className="flex items-center justify-between px-1.5 py-0.5 rounded bg-void-900/90 border border-white/10 text-[8.5px] font-mono text-slate-300">
-            <span className="font-semibold text-amber-300">
+          <div className="flex items-center justify-between px-1.5 py-0.5 rounded bg-void-900 border border-control text-[8.5px] font-mono text-slate-300">
+            <span className="font-semibold text-amber-400">
               {sunTimeOfDay === 'morning'
                 ? isId ? 'Pagi (35°)' : 'Morning (35°)'
                 : sunTimeOfDay === 'noon'
@@ -205,8 +207,8 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
         )}
 
         {data.isBlockingDiodeActive && (
-          <div className="px-1.5 py-0.5 rounded bg-emerald-950/90 border border-emerald-400/50 text-[8px] font-mono font-bold text-emerald-300 text-center flex items-center justify-center gap-1">
-            <ShieldCheck className="w-2.5 h-2.5 text-emerald-400 shrink-0" />
+          <div className="px-1.5 py-0.5 rounded bg-emerald-950 border border-emerald-500/60 text-[8px] font-mono font-bold text-emerald-300 text-center flex items-center justify-center gap-1">
+            <ShieldCheck className="w-2.5 h-2.5 text-emerald-400 shrink-0" aria-hidden="true" />
             <span>{isId ? 'Dioda Penahan Arus Balik' : 'Blocking Diode Active'}</span>
           </div>
         )}
@@ -214,9 +216,9 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
         {data.isShaded && (
           <div
             id="solar-shadow-warning"
-            className="px-1.5 py-0.5 rounded bg-amber-950/90 border border-amber-500/70 text-[8px] font-mono font-bold text-amber-300 text-center flex items-center justify-center gap-1 shadow-sm"
+            className="px-1.5 py-0.5 rounded bg-amber-950 border border-amber-500/70 text-[8px] font-mono font-bold text-amber-300 text-center flex items-center justify-center gap-1 shadow-sm"
           >
-            <AlertTriangle className="w-2.5 h-2.5 text-amber-400 shrink-0" />
+            <AlertTriangle className="w-2.5 h-2.5 text-amber-400 shrink-0" aria-hidden="true" />
             <span className="truncate">
               {isId
                 ? 'Terhalang Bayangan Tebing - Daya 15%'
@@ -226,7 +228,7 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
         )}
       </div>
 
-      {/* Physical Photovoltaic Panel + Ground Support Stand (Anchored flush at bottom-0 = 156px!) */}
+      {/* Physical Photovoltaic Panel + Ground Support Stand */}
       <div className="relative w-[136px] h-[82px] flex flex-col items-center justify-end pb-1 overflow-visible shrink-0">
         {data.isShaded && (
           <div
@@ -237,17 +239,15 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
         <img
           src="/assets/solar-panel.png"
           alt={t.title}
+          width={136}
+          height={72}
           draggable={false}
-          className={`w-full h-[72px] object-contain pointer-events-none select-none transition-all duration-300 z-10 ${
-            isDark ? 'opacity-60 grayscale-[0.45]' : ''
-          } ${
-            isGenerating
-              ? 'drop-shadow-[0_6px_14px_rgba(245,158,11,0.45)]'
-              : 'drop-shadow-[0_6px_10px_rgba(0,0,0,0.55)]'
+          className={`w-full h-[72px] object-contain pointer-events-none select-none transition-opacity duration-300 z-10 drop-shadow-md ${
+            isDark ? 'opacity-65 grayscale-[0.45]' : ''
           }`}
         />
 
-        {/* Metallic Ground Support Stakes (resting flush on terrain surface) */}
+        {/* Metallic Ground Support Stakes */}
         <div className="w-[46%] flex justify-between px-1 -mt-1 pointer-events-none z-0">
           <div className="w-2 h-3 bg-gradient-to-b from-slate-300 to-slate-600 rounded-b-sm shadow" />
           <div className="w-2 h-3 bg-gradient-to-b from-slate-300 to-slate-600 rounded-b-sm shadow" />
@@ -255,20 +255,19 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
 
         {isDark && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
-            <span className="bg-void-950/90 text-slate-300 border border-white/15 text-[9px] font-mono font-semibold px-2 py-0.5 rounded shadow">
+            <span className="bg-void-950 text-ink border border-control text-[9px] font-mono font-semibold px-2 py-0.5 rounded shadow">
               {isId ? '0V / Gelap' : '0V / Dark'}
             </span>
           </div>
         )}
 
-        {/* Elevated, High-Visibility Terminals (+ and -) Clearly Above the Grass Line */}
         <Handle
           type="source"
           position={Position.Bottom}
           id="pos"
           style={{ left: '38%', bottom: '22px', transform: 'translateX(-50%)' }}
-          className={`!w-6 !h-6 md:!w-5 md:!h-5 !bg-red-500 !border-2 !border-white !rounded-full shadow-[0_0_10px_rgba(239,68,68,0.85)] hover:!scale-125 active:!scale-90 transition-transform cursor-crosshair z-40 flex items-center justify-center ${
-            pendingPinHandle === 'pos' ? '!ring-4 !ring-emerald-300/95 !scale-125 animate-pulse' : ''
+          className={`!w-6 !h-6 md:!w-5 md:!h-5 !bg-red-600 !border-2 !border-white !rounded-full shadow-sm hover:!scale-125 active:!scale-90 transition-transform cursor-crosshair z-40 flex items-center justify-center ${
+            pendingPinHandle === 'pos' ? '!ring-4 !ring-emerald-400 !scale-125' : ''
           }`}
           title={isId ? 'Kutub Positif (+)' : 'Positive Terminal (+)'}
         >
@@ -281,8 +280,8 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
           position={Position.Bottom}
           id="neg"
           style={{ left: '62%', bottom: '22px', transform: 'translateX(-50%)' }}
-          className={`!w-6 !h-6 md:!w-5 md:!h-5 !bg-sky-500 !border-2 !border-white !rounded-full shadow-[0_0_10px_rgba(56,189,248,0.85)] hover:!scale-125 active:!scale-90 transition-transform cursor-crosshair z-40 flex items-center justify-center ${
-            pendingPinHandle === 'neg' ? '!ring-4 !ring-emerald-300/95 !scale-125 animate-pulse' : ''
+          className={`!w-6 !h-6 md:!w-5 md:!h-5 !bg-sky-600 !border-2 !border-white !rounded-full shadow-sm hover:!scale-125 active:!scale-90 transition-transform cursor-crosshair z-40 flex items-center justify-center ${
+            pendingPinHandle === 'neg' ? '!ring-4 !ring-emerald-400 !scale-125' : ''
           }`}
           title={`${formattedCurrent} (-)`}
         >

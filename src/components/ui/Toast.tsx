@@ -30,16 +30,16 @@ export const Toast: React.FC = () => {
       aria-live="assertive"
       className="pointer-events-none fixed inset-x-0 top-16 md:top-auto md:bottom-8 z-[70] flex justify-center px-4 animate-in fade-in slide-in-from-top-2 md:slide-in-from-bottom-2 duration-200"
     >
-      <div className="node-info-pop pointer-events-auto flex max-w-sm items-start gap-2.5 rounded-2xl border border-amber-400/40 bg-void-950/95 px-4 py-3 text-xs font-medium text-amber-100 shadow-2xl backdrop-blur-md">
-        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
-        <span className="leading-snug">{notification.message}</span>
+      <div className="node-info-pop pointer-events-auto flex max-w-sm items-center gap-2.5 rounded-2xl border border-copper bg-void-900 px-3.5 py-2.5 text-xs font-medium text-ink shadow-2xl">
+        <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400" aria-hidden="true" />
+        <span className="leading-snug flex-1">{notification.message}</span>
         <button
           type="button"
           onClick={dismissNotification}
-          aria-label="Tutup"
-          className="-mr-1 shrink-0 cursor-pointer rounded-lg p-1 text-amber-200/70 hover:text-white hover:bg-white/10 active:scale-90 transition-all"
+          aria-label="Tutup notifikasi"
+          className="-mr-1 shrink-0 cursor-pointer rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-slate-400 hover:text-ink hover:bg-ink/10 active:scale-90 transition-colors"
         >
-          <X className="h-3.5 w-3.5" />
+          <X className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
       </div>
     </div>

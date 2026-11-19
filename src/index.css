@@ -6,9 +6,85 @@
 
 :root {
   color-scheme: dark;
+  --cs-bg: #0b0f14;
+  --cs-panel: #111722;
+  --cs-ink: #f1f5f9;
+  --cs-ink-muted: #94a3b8;
+  --cs-scroll-track: #0b0f14;
+  --cs-scroll-thumb: #334155;
+  --cs-scroll-thumb-hover: #475569;
+  --cs-focus-ring: #38bdf8;
 }
 
-html, body, #root {
+:root.theme-light {
+  color-scheme: light;
+  --cs-bg: #f5f7fa;
+  --cs-panel: #ffffff;
+  --cs-ink: #0f172a;
+  --cs-ink-muted: #475569;
+  --cs-scroll-track: #eef2f6;
+  --cs-scroll-thumb: #94a3b8;
+  --cs-scroll-thumb-hover: #64748b;
+  --cs-focus-ring: #1d4ed8;
+}
+
+@layer base {
+  a[href],
+  button,
+  summary,
+  select,
+  label[for],
+  label:has(> input[type='checkbox'], > input[type='radio']),
+  [role='button'],
+  [role='link'],
+  [role='tab'],
+  [role='menuitem'],
+  [role='option'],
+  [role='switch'],
+  input[type='checkbox'],
+  input[type='radio'],
+  input[type='file'],
+  input[type='submit'],
+  input[type='button'],
+  input[type='reset'],
+  input[type='range'],
+  input[type='color'] {
+    cursor: pointer;
+  }
+
+  :disabled,
+  [aria-disabled='true'] {
+    cursor: not-allowed;
+  }
+
+  *:focus-visible {
+    outline: 2px solid var(--cs-focus-ring);
+    outline-offset: 2px;
+  }
+}
+
+/* Skip link for keyboard navigation */
+.skip-link {
+  position: absolute;
+  top: -48px;
+  left: 8px;
+  background: #1d4ed8;
+  color: #ffffff;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  z-index: 10000;
+  border: 2px solid #ffffff;
+}
+
+.skip-link:focus {
+  top: 8px;
+}
+
+html,
+body,
+#root {
   margin: 0;
   padding: 0;
   width: 100%;
@@ -16,21 +92,21 @@ html, body, #root {
   height: 100%;
   max-height: 100dvh;
   min-height: 100dvh;
-  background-color: #09090b;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--cs-bg);
+  color: var(--cs-ink);
+  font-family: 'Plus Jakarta Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
   overflow: hidden !important;
   touch-action: pan-x pan-y;
   overscroll-behavior: none;
 }
 
-/* Prevent browser pinch-zoom inside Lab ReactFlow canvas so multi-touch routes strictly to circuit zoom */
+/* Preserve strict touch routing inside Lab ReactFlow canvas */
 .circuit-lab-canvas,
 .circuit-lab-canvas .react-flow,
 .circuit-lab-canvas .react-flow * {
   touch-action: none !important;
 }
 
-/* React Flow customizations */
 .react-flow,
 .react-flow__pane,
 .react-flow__viewport,
@@ -52,13 +128,16 @@ html, body, #root {
 }
 
 @keyframes shake-mcb {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateX(0);
   }
-  20%, 60% {
+  20%,
+  60% {
     transform: translateX(-4px);
   }
-  40%, 80% {
+  40%,
+  80% {
     transform: translateX(4px);
   }
 }
@@ -68,34 +147,35 @@ html, body, #root {
 }
 
 .react-flow__handle {
-  width: 10px;
-  height: 10px;
+  width: 11px;
+  height: 11px;
   border-radius: 9999px;
-  background-color: #18181b;
-  border: 2px solid #3b82f6;
-  transition: all 0.15s ease-in-out;
+  background-color: #192231;
+  border: 2px solid #2563eb;
+  transition: transform 0.15s ease-in-out, background-color 0.15s ease-in-out;
+}
+
+:root.theme-light .react-flow__handle {
+  background-color: #ffffff;
 }
 
 .react-flow__handle:hover {
-  background-color: #3b82f6;
-  transform: scale(1.3);
-  box-shadow: 0 0 10px rgba(59, 130, 246, 0.8);
+  background-color: #2563eb;
+  transform: scale(1.25);
 }
 
 .react-flow__handle.handle-positive {
-  border-color: #ef4444;
+  border-color: #dc2626;
 }
 .react-flow__handle.handle-positive:hover {
-  background-color: #ef4444;
-  box-shadow: 0 0 10px rgba(239, 68, 68, 0.8);
+  background-color: #dc2626;
 }
 
 .react-flow__handle.handle-negative {
-  border-color: #3b82f6;
+  border-color: #2563eb;
 }
 .react-flow__handle.handle-negative:hover {
-  background-color: #3b82f6;
-  box-shadow: 0 0 10px rgba(59, 130, 246, 0.8);
+  background-color: #2563eb;
 }
 
 .react-flow__edge-path {
@@ -113,42 +193,46 @@ html, body, #root {
   fill: none !important;
 }
 
-/* Custom scrollbars */
+:root.theme-light .react-flow__connection-path {
+  stroke: #1d4ed8 !important;
+}
+
+/* Custom scrollbars per active theme */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #09090b;
+  background: var(--cs-scroll-track);
 }
 ::-webkit-scrollbar-thumb {
-  background: #27272a;
+  background: var(--cs-scroll-thumb);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #3f3f46;
+  background: var(--cs-scroll-thumb-hover);
 }
 
-/* Ensure bottom bar targets (#tour-btn-tambah & #tour-btn-info) remain visible during desktop spotlight tour */
+/* Keep mobile tour nav visible while driver spotlight runs */
 body.driver-active nav.tour-mobile-nav {
   display: flex !important;
 }
 
-/* Driver.js Void Dark Mode & Neon Cyan Spotlight Overrides */
+/* Driver.js Dual-Theme Spotlight Popover */
 .driver-popover,
 .driver-popover.circuit-tour-popover {
-  background-color: #121214 !important;
-  color: #f8fafc !important;
-  border: 1px solid rgba(34, 211, 238, 0.5) !important;
+  background-color: #111722 !important;
+  color: #f1f5f9 !important;
+  border: 1px solid #38bdf8 !important;
   border-radius: 14px !important;
   padding: 16px !important;
   max-width: min(340px, calc(100vw - 24px)) !important;
-  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.85), 0 0 24px rgba(34, 211, 238, 0.18) !important;
-  font-family: 'Geist', 'Inter', system-ui, -apple-system, sans-serif !important;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.72) !important;
+  font-family: 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif !important;
 }
 
 .driver-popover .driver-popover-title {
-  color: #ffffff !important;
+  color: #f1f5f9 !important;
   font-size: 15px !important;
   font-weight: 700 !important;
   letter-spacing: -0.02em !important;
@@ -163,15 +247,14 @@ body.driver-active nav.tour-mobile-nav {
 }
 
 .driver-popover .driver-popover-progress-text {
-  color: #22d3ee !important;
-  font-family: 'JetBrains Mono', monospace !important;
+  color: #38bdf8 !important;
+  font-family: 'IBM Plex Mono', monospace !important;
   font-size: 11px !important;
   font-weight: 600 !important;
 }
 
 .driver-popover .driver-popover-close-btn {
   color: #94a3b8 !important;
-  transition: color 0.15s ease !important;
 }
 
 .driver-popover .driver-popover-close-btn:hover {
@@ -179,69 +262,124 @@ body.driver-active nav.tour-mobile-nav {
 }
 
 .driver-popover .driver-popover-prev-btn {
-  background-color: #09090b !important;
-  color: #67e8f9 !important;
-  border: 1px solid rgba(34, 211, 238, 0.35) !important;
-  border-radius: 10px !important;
+  background-color: #192231 !important;
+  color: #93c5fd !important;
+  border: 1px solid #64748b !important;
+  border-radius: 8px !important;
   padding: 6px 12px !important;
   font-size: 12px !important;
   font-weight: 600 !important;
   text-shadow: none !important;
-  transition: all 0.15s ease !important;
 }
 
 .driver-popover .driver-popover-prev-btn:hover {
-  background-color: rgba(34, 211, 238, 0.12) !important;
-  border-color: #22d3ee !important;
+  background-color: #222e42 !important;
+  border-color: #38bdf8 !important;
 }
 
 .driver-popover .driver-popover-next-btn {
-  background-color: #22d3ee !important;
-  color: #09090b !important;
-  border: 1px solid #67e8f9 !important;
-  border-radius: 10px !important;
+  background-color: #1d4ed8 !important;
+  color: #ffffff !important;
+  border: 1px solid #38bdf8 !important;
+  border-radius: 8px !important;
   padding: 6px 14px !important;
   font-size: 12px !important;
   font-weight: 700 !important;
   text-shadow: none !important;
-  box-shadow: 0 0 14px rgba(34, 211, 238, 0.35) !important;
-  transition: all 0.15s ease !important;
 }
 
 .driver-popover .driver-popover-next-btn:hover {
-  background-color: #67e8f9 !important;
+  background-color: #2563eb !important;
 }
 
 .driver-popover-arrow-side-left.driver-popover-arrow {
-  border-left-color: #121214 !important;
+  border-left-color: #111722 !important;
 }
 .driver-popover-arrow-side-right.driver-popover-arrow {
-  border-right-color: #121214 !important;
+  border-right-color: #111722 !important;
 }
 .driver-popover-arrow-side-top.driver-popover-arrow {
-  border-top-color: #121214 !important;
+  border-top-color: #111722 !important;
 }
 .driver-popover-arrow-side-bottom.driver-popover-arrow {
-  border-bottom-color: #121214 !important;
+  border-bottom-color: #111722 !important;
 }
 
+/* Light Mode Driver.js Popover ("Lab Notebook Paper") */
+:root.theme-light .driver-popover,
+:root.theme-light .driver-popover.circuit-tour-popover {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #1d4ed8 !important;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.2) !important;
+}
 
-/* Minimal canvas nodes: info panel pop-in (shown only while a node is selected) */
+:root.theme-light .driver-popover .driver-popover-title {
+  color: #0f172a !important;
+}
+
+:root.theme-light .driver-popover .driver-popover-description {
+  color: #334155 !important;
+}
+
+:root.theme-light .driver-popover .driver-popover-progress-text {
+  color: #1d4ed8 !important;
+}
+
+:root.theme-light .driver-popover .driver-popover-close-btn {
+  color: #475569 !important;
+}
+
+:root.theme-light .driver-popover .driver-popover-close-btn:hover {
+  color: #0f172a !important;
+}
+
+:root.theme-light .driver-popover .driver-popover-prev-btn {
+  background-color: #eef2f6 !important;
+  color: #0f172a !important;
+  border: 1px solid #64748b !important;
+}
+
+:root.theme-light .driver-popover .driver-popover-prev-btn:hover {
+  background-color: #e2e8f0 !important;
+}
+
+:root.theme-light .driver-popover .driver-popover-next-btn {
+  background-color: #1d4ed8 !important;
+  color: #ffffff !important;
+  border: 1px solid #1e40af !important;
+}
+
+:root.theme-light .driver-popover-arrow-side-left.driver-popover-arrow {
+  border-left-color: #ffffff !important;
+}
+:root.theme-light .driver-popover-arrow-side-right.driver-popover-arrow {
+  border-right-color: #ffffff !important;
+}
+:root.theme-light .driver-popover-arrow-side-top.driver-popover-arrow {
+  border-top-color: #ffffff !important;
+}
+:root.theme-light .driver-popover-arrow-side-bottom.driver-popover-arrow {
+  border-bottom-color: #ffffff !important;
+}
+
+/* Node info pop-in */
 @keyframes nodeInfoPop {
-  from { opacity: 0; transform: translateY(-6px) scale(0.92); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
+
 .node-info-pop {
   animation: nodeInfoPop 160ms ease-out both;
   transform-origin: top center;
 }
-@media (prefers-reduced-motion: reduce) {
-  .node-info-pop { animation: none; }
-}
 
-/* ============================================================================
-   2-Second Pure CSS Cloud World Transition (0-0.5s In, 0.5-1.5s Hold, 1.5-2.0s Out)
-   ============================================================================ */
 @keyframes cloudOverlayTimeline {
   0% {
     opacity: 0;
@@ -249,7 +387,7 @@ body.driver-active nav.tour-mobile-nav {
   }
   25% {
     opacity: 1;
-    transform: scale(1.0);
+    transform: scale(1);
   }
   75% {
     opacity: 1;
@@ -311,9 +449,6 @@ body.driver-active nav.tour-mobile-nav {
   animation: cloudSweepRight 2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
-/* ============================================================================
-   Water Short-Circuit Explosion Animation (Scale-up + Fade-out + Particle Burst)
-   ============================================================================ */
 @keyframes waterExplodeCore {
   0% {
     opacity: 1;
@@ -348,23 +483,35 @@ body.driver-active nav.tour-mobile-nav {
   animation: waterExplodeParticle 0.85s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* ============================================================================
-   Physics X-Ray Lens & Touch Probe Canvas Modes
-   ============================================================================ */
-.react-flow[data-physics-lens="thermal"] .react-flow__nodes {
+.react-flow[data-physics-lens='thermal'] .react-flow__nodes {
   filter: saturate(0.75) brightness(0.88);
   transition: filter 0.2s ease;
 }
 
-.react-flow[data-physics-lens="probe"] .react-flow__pane {
+.react-flow[data-physics-lens='probe'] .react-flow__pane {
   cursor: crosshair;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .node-info-pop,
+  .animate-spin-turbine,
+  .animate-shake,
+  .animate-cloud-overlay,
+  .animate-cloud-left,
+  .animate-cloud-right,
   .animate-wire-flow,
+  .animate-pulse-glow,
+  .animate-pulse,
+  .animate-bounce,
+  .animate-ping,
   .animate-water-explode-core,
   .animate-water-explode-particle {
     animation: none !important;
   }
-}
 
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+  }
+}

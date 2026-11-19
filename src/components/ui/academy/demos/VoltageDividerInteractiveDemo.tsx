@@ -39,7 +39,7 @@ export const VoltageDividerInteractiveDemo: React.FC = () => {
       isChallengeMet={isHalfSplit}
     >
       {/* Visual SVG Ladder + Dual Voltage Tanks */}
-      <div className="rounded-xl bg-void-900 border border-white/10 p-2.5">
+      <div className="rounded-xl bg-[#0B0F14] border border-control p-2.5">
         <svg
           viewBox="0 0 360 144"
           className="w-full h-auto max-h-44 select-none"

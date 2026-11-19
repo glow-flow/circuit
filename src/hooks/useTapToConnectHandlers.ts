@@ -3,6 +3,7 @@ import { Connection, OnConnectEnd, OnConnectStart } from 'reactflow';
 import { useCircuitStore } from '../store/useCircuitStore';
 import { WorldMode } from '../types/circuit';
 import { extractPointerClientPoint } from '../utils/canvasWireAssist';
+import { getComponentDisplayName } from '../utils/nodeLocalization';
 
 const TAP_MAX_DISTANCE_PX = 16;
 
@@ -117,7 +118,9 @@ export function useTapToConnectHandlers(
       const sourceNode = useCircuitStore
         .getState()
         .nodes.find((n) => n.id === attempt.nodeId);
-      const label = sourceNode?.data?.label || attempt.nodeId;
+      const label = sourceNode
+        ? getComponentDisplayName(sourceNode.data, language)
+        : attempt.nodeId;
       notify(
         isId
           ? `Pin ${label} (${attempt.handleId === 'neg' ? '-' : attempt.handleId === 'pos' ? '+' : attempt.handleId}) dipilih. Ketuk pin tujuan atau tombol sambung cepat!`

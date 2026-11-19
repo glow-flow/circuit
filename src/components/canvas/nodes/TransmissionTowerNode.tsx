@@ -1,11 +1,11 @@
-import React, { memo, useCallback, useState } from 'react';
+import React, { memo, useCallback, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Handle, Position, NodeProps } from 'reactflow';
 import { CircuitElementData } from '../../../types/circuit';
 import { Flame, Radio, X, Zap } from 'lucide-react';
 import { useCircuitStore } from '../../../store/useCircuitStore';
 import { PanelDistribusiNode } from './PanelDistribusiNode';
-import { useModalKeyboardClose } from '../../../hooks/useModalKeyboardClose';
+import { useModalFocusTrap } from '../../../hooks/useModalKeyboardClose';
 import { computeTransmissionTelemetry } from '../../../physics/transmissionPhysics';
 import { usePendingPinHandleForNode } from '../../../hooks/useTapToConnectHandlers';
 
@@ -49,7 +49,10 @@ const OutdoorTowerView: React.FC<NodeProps<CircuitElementData>> = memo(({ id, da
 
   // Tap-to-inspect Gardu Trafo modal state
   const [isInspectorOpen, setIsInspectorOpen] = useState(false);
-  useModalKeyboardClose(isInspectorOpen, () => setIsInspectorOpen(false));
+  const modalRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  const modeGroupId = useId();
+  useModalFocusTrap(isInspectorOpen, modalRef, () => setIsInspectorOpen(false));
 
   const isMcbOn = data.isMcbOn !== false && !data.isMcbTripped;
   const connectedCount = data.towerConnectedCount ?? 1;
@@ -101,21 +104,21 @@ const OutdoorTowerView: React.FC<NodeProps<CircuitElementData>> = memo(({ id, da
 
   return (
     <div
-      className={`relative flex flex-col items-center justify-end select-none transition-all duration-200 group w-[132px] overflow-visible pointer-events-none ${
-        selected ? 'filter drop-shadow-[0_0_14px_rgba(34,211,238,0.45)]' : ''
+      className={`relative flex flex-col items-center justify-end select-none transition-transform duration-200 group w-[132px] overflow-visible pointer-events-none ${
+        selected ? 'ring-2 ring-cyan-400/90 rounded-2xl' : ''
       }`}
       style={{ height: '226px' }}
     >
       {/* Top Floating Status & Telemetry Pill (Above Pylon) */}
       <div
-        className={`mb-1 px-2.5 py-1 rounded-xl text-[10px] font-mono font-bold tracking-tight shadow-[0_8px_20px_rgba(0,0,0,0.45)] backdrop-blur-md border transition-all duration-300 z-30 pointer-events-auto cursor-grab active:cursor-grabbing ${
+        className={`mb-1 px-2.5 py-1 rounded-xl text-[10px] font-mono font-bold tracking-tight shadow-md border transition-colors duration-200 z-30 pointer-events-auto cursor-grab active:cursor-grabbing ${
           isGridConnected
             ? isLineOverheated
-              ? 'bg-red-950/90 text-red-200 border-red-500/80 shadow-[0_0_14px_rgba(239,68,68,0.45)] animate-pulse'
+              ? 'bg-red-950 text-red-200 border-red-500/80'
               : isStepUp
-              ? 'bg-cyan-950/90 text-cyan-200 border-cyan-400/60'
-              : 'bg-emerald-950/90 text-emerald-300 border-emerald-400/50'
-            : 'bg-void-950/95 text-slate-200 border-white/15'
+              ? 'bg-cyan-950 text-cyan-200 border-cyan-500/70'
+              : 'bg-emerald-950 text-emerald-200 border-emerald-500/60'
+            : 'bg-void-950 text-ink border-control'
         }`}
       >
         <div className="flex items-center gap-1 whitespace-nowrap">
@@ -123,7 +126,7 @@ const OutdoorTowerView: React.FC<NodeProps<CircuitElementData>> = memo(({ id, da
             <>
               <span
                 className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                  isLineOverheated ? 'bg-red-400 animate-ping' : isStepUp ? 'bg-cyan-400' : 'bg-emerald-400'
+                  isLineOverheated ? 'bg-red-400' : isStepUp ? 'bg-cyan-400' : 'bg-emerald-400'
                 }`}
               />
               <Zap className={`w-3 h-3 shrink-0 ${isLineOverheated ? 'text-red-400' : isStepUp ? 'text-cyan-400' : 'text-emerald-400'}`} />
@@ -159,33 +162,11 @@ const OutdoorTowerView: React.FC<NodeProps<CircuitElementData>> = memo(({ id, da
         <img
           src="/assets/transmission-tower.png"
           alt={isId ? 'Menara Transmisi' : 'Transmission Tower'}
-          className="w-full h-full object-contain pointer-events-none select-none drop-shadow-[0_6px_10px_rgba(0,0,0,0.55)]"
+          width={112}
+          height={198}
+          className="w-full h-full object-contain pointer-events-none select-none"
           draggable={false}
         />
-
-        {/* High-Voltage Corona Glow on Top & Middle Cross-Arm Ceramic Insulators when active */}
-        {isGridConnected && (
-          <>
-            <span
-              className="absolute w-2.5 h-2.5 rounded-full bg-cyan-300/80 blur-[2px] animate-ping pointer-events-none"
-              style={{ left: '19.1%', top: '22%', transform: 'translate(-50%, -50%)' }}
-            />
-            <span
-              className="absolute w-2.5 h-2.5 rounded-full bg-cyan-300/80 blur-[2px] animate-ping pointer-events-none"
-              style={{ left: '80.7%', top: '22%', transform: 'translate(-50%, -50%)' }}
-            />
-          </>
-        )}
-
-        {/* Electrical Current Flow Glow Indicator */}
-        {currentAmperes > 0.001 && (
-          <div
-            className={`absolute inset-x-5 top-6 bottom-6 rounded-full pointer-events-none blur-xl animate-pulse ${
-              isLineOverheated ? 'bg-red-500/25' : isStepUp ? 'bg-cyan-400/20' : 'bg-emerald-400/15'
-            }`}
-            aria-hidden="true"
-          />
-        )}
 
         {/* ====================================================================
             GARDU TRAFO CANTOL SUTET (SNAP-ON POLE TRANSFORMER SUBSTATION)
@@ -221,19 +202,21 @@ const OutdoorTowerView: React.FC<NodeProps<CircuitElementData>> = memo(({ id, da
             <img
               src="/assets/transformer-pole.png"
               alt={isId ? 'Gardu Trafo Cantol' : 'Mounted Transformer'}
-              className="w-9 h-9 object-contain drop-shadow-[0_4px_8px_rgba(0,0,0,0.7)] pointer-events-none select-none transition-transform group-hover/trafo:scale-105"
+              width={36}
+              height={36}
+              className="w-9 h-9 object-contain pointer-events-none select-none transition-transform group-hover/trafo:scale-105"
               draggable={false}
             />
 
             {/* Live Transformer Status LED Dot */}
             <span
-              className={`w-2 h-2 rounded-full absolute -top-1 -right-1 border border-white/50 shadow-sm transition-colors duration-300 ${
+              className={`w-2 h-2 rounded-full absolute -top-1 -right-1 border border-white/60 shadow-sm transition-colors duration-300 ${
                 isGridConnected
                   ? isStepUp
-                    ? 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.95)] animate-pulse'
+                    ? 'bg-cyan-400'
                     : isLineOverheated
-                    ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.95)] animate-ping'
-                    : 'bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.85)]'
+                    ? 'bg-red-500'
+                    : 'bg-amber-400'
                   : 'bg-slate-500'
               }`}
             />
@@ -241,12 +224,12 @@ const OutdoorTowerView: React.FC<NodeProps<CircuitElementData>> = memo(({ id, da
 
           {/* Micro Telemetry Pill under Transformer */}
           <span
-            className={`mt-0.5 px-1.5 py-0.2 rounded-full text-[8px] font-mono font-bold tracking-tight border shadow-xs transition-colors whitespace-nowrap pointer-events-none ${
+            className={`mt-0.5 px-1.5 py-0.2 rounded-full text-[8px] font-mono font-bold tracking-tight border shadow-xs transition-colors whitespace-nowrap pointer-events-none tabular-nums ${
               isStepUp
-                ? 'bg-cyan-950/90 text-cyan-200 border-cyan-400/50 shadow-[0_0_6px_rgba(34,211,238,0.3)]'
+                ? 'bg-cyan-950 text-cyan-200 border-cyan-500/60'
                 : isLineOverheated
-                ? 'bg-red-950/90 text-red-200 border-red-500/70 shadow-[0_0_6px_rgba(239,68,68,0.4)]'
-                : 'bg-slate-900/90 text-slate-300 border-white/20'
+                ? 'bg-red-950 text-red-200 border-red-500/70'
+                : 'bg-void-950 text-ink border-control'
             }`}
           >
             {isStepUp ? '240V' : '12V'}
@@ -268,8 +251,8 @@ const OutdoorTowerView: React.FC<NodeProps<CircuitElementData>> = memo(({ id, da
             bottom: 'auto',
             transform: 'translate(-50%, -50%)',
           }}
-          className={`!w-6 !h-6 md:!w-5 md:!h-5 !bg-red-500 !border-2 !border-white !rounded-full shadow-[0_0_14px_rgba(239,68,68,0.95)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center pointer-events-auto ${
-            pendingPinHandle === 'pos' ? '!ring-4 !ring-emerald-300/95 !scale-125 animate-pulse' : ''
+          className={`!w-6 !h-6 md:!w-5 md:!h-5 !bg-red-500 !border-2 !border-white !rounded-full shadow-md hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center pointer-events-auto ${
+            pendingPinHandle === 'pos' ? '!ring-4 !ring-emerald-400 !scale-125' : ''
           }`}
           title={isId ? 'Isolator Kutub Positif (+)' : 'Positive Insulator Terminal (+)'}
         >
@@ -288,8 +271,8 @@ const OutdoorTowerView: React.FC<NodeProps<CircuitElementData>> = memo(({ id, da
             bottom: 'auto',
             transform: 'translate(-50%, -50%)',
           }}
-          className={`!w-6 !h-6 md:!w-5 md:!h-5 !bg-sky-500 !border-2 !border-white !rounded-full shadow-[0_0_14px_rgba(56,189,248,0.95)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center pointer-events-auto ${
-            pendingPinHandle === 'neg' ? '!ring-4 !ring-emerald-300/95 !scale-125 animate-pulse' : ''
+          className={`!w-6 !h-6 md:!w-5 md:!h-5 !bg-sky-500 !border-2 !border-white !rounded-full shadow-md hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center pointer-events-auto ${
+            pendingPinHandle === 'neg' ? '!ring-4 !ring-emerald-400 !scale-125' : ''
           }`}
           title={isId ? 'Isolator Kutub Negatif (-)' : 'Negative Insulator Terminal (-)'}
         >
@@ -308,27 +291,34 @@ const OutdoorTowerView: React.FC<NodeProps<CircuitElementData>> = memo(({ id, da
         typeof document !== 'undefined' &&
         createPortal(
           <div
-            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 pointer-events-auto animate-fade-in"
+            className="fixed inset-0 z-50 bg-scrim/75 flex items-center justify-center p-4 pointer-events-auto"
             onClick={() => setIsInspectorOpen(false)}
           >
             <div
-              className="max-w-md w-full bg-slate-900/95 border border-slate-700/80 rounded-2xl shadow-[0_25px_60px_rgba(0,0,0,0.85)] p-5 text-slate-100 font-sans select-none animate-scale-up"
+              ref={modalRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={titleId}
+              className="max-w-md w-full bg-void-900 border border-control rounded-2xl shadow-2xl p-5 text-ink font-sans select-none"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header with High-Detail Transformer Icon */}
-              <div className="flex items-start justify-between pb-4 border-b border-white/10">
+              <div className="flex items-start justify-between pb-4 border-b border-control">
                 <div className="flex items-center gap-3">
-                  <div className="w-14 h-14 rounded-xl bg-slate-800/80 border border-white/15 flex items-center justify-center p-1.5 shadow-inner shrink-0">
+                  <div className="w-14 h-14 rounded-xl bg-void-950 border border-control flex items-center justify-center p-1.5 shrink-0">
                     <img
                       src="/assets/transformer-pole.png"
                       alt="Gardu Trafo Cantol"
-                      className="w-full h-full object-contain filter drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]"
+                      width={44}
+                      height={44}
+                      className="w-11 h-11 object-contain"
+                      draggable={false}
                     />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-white flex items-center gap-1.5 leading-tight">
+                    <h3 id={titleId} className="text-base font-bold text-ink flex items-center gap-1.5 leading-tight">
                       <span>{isId ? 'Gardu Trafo Cantol SUTET' : 'Tower Transformer Substation'}</span>
-                      <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-400/40">
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
                         PUIL/PLN
                       </span>
                     </h3>
@@ -343,7 +333,7 @@ const OutdoorTowerView: React.FC<NodeProps<CircuitElementData>> = memo(({ id, da
                 <button
                   type="button"
                   onClick={() => setIsInspectorOpen(false)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 active:scale-95 transition-all"
+                  className="min-w-[44px] min-h-[44px] rounded-xl bg-void-950 border border-control text-slate-300 hover:text-ink active:scale-95 transition-colors flex items-center justify-center cursor-pointer shrink-0"
                   aria-label={isId ? 'Tutup' : 'Close'}
                 >
                   <X className="w-4 h-4" />
@@ -351,24 +341,25 @@ const OutdoorTowerView: React.FC<NodeProps<CircuitElementData>> = memo(({ id, da
               </div>
 
               {/* Interactive Voltage Mode Selector (Tactile Buttons) */}
-              <div className="my-4">
-                <label className="block text-xs font-semibold text-slate-300 mb-2">
+              <div className="my-4" role="group" aria-labelledby={modeGroupId}>
+                <p id={modeGroupId} className="block text-xs font-semibold text-slate-200 mb-2">
                   {isId ? 'Mode Tegangan Saluran Transmisi:' : 'Transmission Line Voltage Mode:'}
-                </label>
+                </p>
                 <div className="grid grid-cols-2 gap-2.5">
                   {/* Button 1: 12V Langsung (Direct LV) */}
                   <button
                     type="button"
+                    aria-pressed={!isStepUp}
                     onClick={() => handleToggleVoltageMode('direct')}
-                    className={`p-3 rounded-xl border text-left transition-all active:scale-95 ${
+                    className={`min-h-[44px] p-3 rounded-xl border text-left transition-colors active:scale-95 cursor-pointer ${
                       !isStepUp
-                        ? 'bg-amber-500/20 border-amber-400 text-amber-100 shadow-[0_0_12px_rgba(245,158,11,0.25)] ring-2 ring-amber-400/30'
-                        : 'bg-slate-800/50 border-slate-700/70 text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+                        ? 'bg-amber-500/20 border-amber-500 text-amber-200 ring-2 ring-amber-400/40'
+                        : 'bg-void-950 border-control text-slate-300 hover:bg-void-850 hover:text-ink'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-bold font-mono">12V Langsung</span>
-                      <Flame className={`w-4 h-4 ${!isStepUp ? 'text-amber-400' : 'text-slate-500'}`} />
+                      <span className="text-sm font-bold font-mono tabular-nums">12V Langsung</span>
+                      <Flame className={`w-4 h-4 ${!isStepUp ? 'text-amber-400' : 'text-slate-400'}`} />
                     </div>
                     <span className="text-[10px] block text-slate-400 leading-tight">
                       {isId ? 'Tegangan rendah: Arus tinggi & rugi panas I²R besar' : 'Low voltage: High current & heavy Joule loss'}
@@ -378,16 +369,17 @@ const OutdoorTowerView: React.FC<NodeProps<CircuitElementData>> = memo(({ id, da
                   {/* Button 2: 240V Step-Up (HV SUTET) */}
                   <button
                     type="button"
+                    aria-pressed={isStepUp}
                     onClick={() => handleToggleVoltageMode('step_up')}
-                    className={`p-3 rounded-xl border text-left transition-all active:scale-95 ${
+                    className={`min-h-[44px] p-3 rounded-xl border text-left transition-colors active:scale-95 cursor-pointer ${
                       isStepUp
-                        ? 'bg-cyan-500/20 border-cyan-400 text-cyan-100 shadow-[0_0_14px_rgba(34,211,238,0.3)] ring-2 ring-cyan-400/40'
-                        : 'bg-slate-800/50 border-slate-700/70 text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+                        ? 'bg-cyan-500/20 border-cyan-400 text-cyan-200 ring-2 ring-cyan-400/40'
+                        : 'bg-void-950 border-control text-slate-300 hover:bg-void-850 hover:text-ink'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-bold font-mono">240V Step-Up</span>
-                      <Zap className={`w-4 h-4 ${isStepUp ? 'text-cyan-300' : 'text-slate-500'}`} />
+                      <span className="text-sm font-bold font-mono tabular-nums">240V Step-Up</span>
+                      <Zap className={`w-4 h-4 ${isStepUp ? 'text-cyan-400' : 'text-slate-400'}`} />
                     </div>
                     <span className="text-[10px] block text-slate-400 leading-tight">
                       {isId ? 'Tegangan tinggi: Rugi turun 400×, kabel dingin' : 'High voltage: 400× loss reduction, cool wires'}
@@ -399,12 +391,12 @@ const OutdoorTowerView: React.FC<NodeProps<CircuitElementData>> = memo(({ id, da
               {/* Real-Time Telemetry Dashboard (2x2 Grid) */}
               <div className="grid grid-cols-2 gap-2 mb-4">
                 {/* Metric 1: Transmission Voltage */}
-                <div className="p-2.5 rounded-xl bg-slate-800/60 border border-slate-700/70">
+                <div className="p-2.5 rounded-xl bg-void-950 border border-control">
                   <span className="text-[10px] text-slate-400 block font-medium">
                     {isId ? 'Tegangan Transmisi' : 'Line Voltage'}
                   </span>
-                  <div className="flex items-baseline gap-1 mt-0.5">
-                    <span className="text-lg font-mono font-bold text-white">
+                  <div className="flex items-baseline gap-1 mt-0.5 tabular-nums">
+                    <span className="text-lg font-mono font-bold text-ink">
                       {stepUpVoltage}
                     </span>
                     <span className="text-xs font-mono text-slate-400">V</span>
@@ -415,29 +407,29 @@ const OutdoorTowerView: React.FC<NodeProps<CircuitElementData>> = memo(({ id, da
                 </div>
 
                 {/* Metric 2: Line Current */}
-                <div className="p-2.5 rounded-xl bg-slate-800/60 border border-slate-700/70">
+                <div className="p-2.5 rounded-xl bg-void-950 border border-control">
                   <span className="text-[10px] text-slate-400 block font-medium">
                     {isId ? 'Arus Kawat (Line Current)' : 'Line Current'}
                   </span>
-                  <div className="flex items-baseline gap-1 mt-0.5">
-                    <span className={`text-lg font-mono font-bold ${isLineOverheated ? 'text-red-400' : 'text-white'}`}>
+                  <div className="flex items-baseline gap-1 mt-0.5 tabular-nums">
+                    <span className={`text-lg font-mono font-bold ${isLineOverheated ? 'text-red-400' : 'text-ink'}`}>
                       {lineCurrent.toFixed(2)}
                     </span>
                     <span className="text-xs font-mono text-slate-400">A</span>
                   </div>
-                  <span className="text-[9px] font-mono text-slate-400">
+                  <span className="text-[9px] font-mono text-slate-400 tabular-nums">
                     {isId ? `Beban Lab: ${currentDisplay}` : `Lab Load: ${currentDisplay}`}
                   </span>
                 </div>
 
                 {/* Metric 3: Joule Loss P = I^2 * R */}
-                <div className="p-2.5 rounded-xl bg-slate-800/60 border border-slate-700/70">
+                <div className="p-2.5 rounded-xl bg-void-950 border border-control">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] text-slate-400 font-medium">
                       {isId ? 'Rugi Panas (I² · R)' : 'Joule Heat Loss'}
                     </span>
                     {isLineOverheated ? (
-                      <span className="text-[8px] font-mono px-1 rounded bg-red-500/20 text-red-300 border border-red-500/40 animate-pulse">
+                      <span className="text-[8px] font-mono px-1 rounded bg-red-500/20 text-red-300 border border-red-500/40">
                         Panas!
                       </span>
                     ) : isStepUp ? (
@@ -446,23 +438,23 @@ const OutdoorTowerView: React.FC<NodeProps<CircuitElementData>> = memo(({ id, da
                       </span>
                     ) : null}
                   </div>
-                  <div className="flex items-baseline gap-1 mt-0.5">
-                    <span className={`text-lg font-mono font-bold ${isLineOverheated ? 'text-red-400' : 'text-white'}`}>
+                  <div className="flex items-baseline gap-1 mt-0.5 tabular-nums">
+                    <span className={`text-lg font-mono font-bold ${isLineOverheated ? 'text-red-400' : 'text-ink'}`}>
                       {jouleLoss.toFixed(2)}
                     </span>
                     <span className="text-xs font-mono text-slate-400">W</span>
                   </div>
-                  <span className="text-[9px] font-mono text-slate-400">
+                  <span className="text-[9px] font-mono text-slate-400 tabular-nums">
                     R_line = {lineResistance.toFixed(1)} Ω
                   </span>
                 </div>
 
                 {/* Metric 4: Transmission Efficiency */}
-                <div className="p-2.5 rounded-xl bg-slate-800/60 border border-slate-700/70">
+                <div className="p-2.5 rounded-xl bg-void-950 border border-control">
                   <span className="text-[10px] text-slate-400 block font-medium">
                     {isId ? 'Efisiensi Transmisi' : 'Efficiency'}
                   </span>
-                  <div className="flex items-baseline gap-1 mt-0.5">
+                  <div className="flex items-baseline gap-1 mt-0.5 tabular-nums">
                     <span
                       className={`text-lg font-mono font-bold ${
                         efficiency >= 95
@@ -476,7 +468,7 @@ const OutdoorTowerView: React.FC<NodeProps<CircuitElementData>> = memo(({ id, da
                     </span>
                   </div>
                   {/* Mini Progress Bar */}
-                  <div className="w-full bg-slate-700/50 h-1.5 rounded-full mt-1 overflow-hidden">
+                  <div className="w-full bg-void-800 h-1.5 rounded-full mt-1 overflow-hidden">
                     <div
                       className={`h-full transition-all duration-300 rounded-full ${
                         efficiency >= 95
@@ -492,26 +484,26 @@ const OutdoorTowerView: React.FC<NodeProps<CircuitElementData>> = memo(({ id, da
               </div>
 
               {/* Educational Insight Card */}
-              <div className="p-3 rounded-xl bg-cyan-950/40 border border-cyan-500/30 text-cyan-100 flex items-start gap-2.5 text-xs">
+              <div className="p-3 rounded-xl bg-cyan-950/60 border border-cyan-500/35 text-cyan-100 flex items-start gap-2.5 text-xs">
                 <Zap className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
                 <div className="leading-relaxed">
                   <span className="font-bold text-cyan-200 block mb-0.5">
                     {isId ? 'Hukum Joule & Prinsip SUTET PLN:' : 'Joule\'s Law & Utility Grid Principle:'}
                   </span>
-                  <p className="text-[11px] text-cyan-100/90">
+                  <p className="text-[11px] text-cyan-100">
                     {isId
-                      ? 'Rugi daya panas pada kabel adalah P_loss = I² · R. Dengan menaikkan tegangan transmisi 20× (12V → 240V), arus kawat berkurang 20× sehingga rugi panas kawat berkurang drastis sebesar 20² = 400 kali lipat!'
-                      : 'Conductor thermal loss follows P_loss = I² · R. Stepping up transmission voltage 20× (12V → 240V) drops line current 20×, slashing conductor heat dissipation by 20² = 400 times!'}
+                      ? 'Rugi daya panas pada kabel adalah P_loss = I² · R. Dengan menaikkan tegangan transmisi 20× (12V -> 240V), arus kawat berkurang 20× sehingga rugi panas kawat berkurang drastis sebesar 20² = 400 kali lipat!'
+                      : 'Conductor thermal loss follows P_loss = I² · R. Stepping up transmission voltage 20× (12V -> 240V) drops line current 20×, slashing conductor heat dissipation by 20² = 400 times!'}
                   </p>
                 </div>
               </div>
 
               {/* Footer Close Action */}
-              <div className="mt-4 pt-3 border-t border-white/10 flex justify-end">
+              <div className="mt-4 pt-3 border-t border-control flex justify-end">
                 <button
                   type="button"
                   onClick={() => setIsInspectorOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white active:scale-95 transition-all"
+                  className="min-h-[44px] px-4 py-2 rounded-xl text-xs font-semibold bg-void-850 border border-control text-ink hover:bg-void-800 active:scale-95 transition-colors cursor-pointer"
                 >
                   {isId ? 'Tutup Pengaturan' : 'Close Settings'}
                 </button>

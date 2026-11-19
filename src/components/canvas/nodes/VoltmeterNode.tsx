@@ -74,17 +74,17 @@ export const VoltmeterNode: React.FC<NodeProps<CircuitElementData>> = ({ id, sel
             className="w-full h-full object-contain pointer-events-none select-none drop-shadow-md"
           />
         ) : (
-          <div className="w-full h-full rounded-xl bg-void-900 border border-white/15" />
+          <div className="w-full h-full rounded-xl bg-void-900 border border-control" />
         )}
 
-        {/* Recessed LCD Screen Digital Overlay */}
-        <div className="absolute top-[13%] left-[13%] right-[13%] h-[40%] flex flex-col items-center justify-center pointer-events-none px-1">
-          <span className="text-[7px] font-mono font-semibold text-slate-400 uppercase tracking-widest leading-none mb-0.5">
+        {/* Fixed bright inks over dark photorealistic PNG LCD window (never invert in Light Mode) */}
+        <div className="absolute top-[13%] left-[13%] right-[13%] h-[40%] flex flex-col items-center justify-center pointer-events-none px-1 tabular-nums">
+          <span className="text-[7px] font-mono font-semibold text-[#94A3B8] uppercase tracking-widest leading-none mb-0.5">
             DC VOLT
           </span>
-          <div className="text-[13px] font-mono font-bold text-sky-300 tracking-tight leading-none">
+          <div className="text-[13px] font-mono font-bold text-[#7DD3FC] tracking-tight leading-none">
             {displayVoltage}
-            <span className="text-[9px] text-sky-400/80 ml-0.5">V</span>
+            <span className="text-[9px] text-[#38BDF8] ml-0.5">V</span>
           </div>
         </div>
       </div>
@@ -112,20 +112,20 @@ export const VoltmeterNode: React.FC<NodeProps<CircuitElementData>> = ({ id, sel
         <NodeInfoPopover placement="top" width={190}>
           <div className="mb-2 flex items-center justify-between gap-1.5">
             <div className="flex items-center gap-1.5 min-w-0">
-              <div className="p-1 rounded-md bg-void-950 text-electric-400 border border-white/10">
-                <Gauge className="w-3.5 h-3.5" />
+              <div className="p-1 rounded-md bg-void-950 text-electric-400 border border-control">
+                <Gauge className="w-3.5 h-3.5" aria-hidden="true" />
               </div>
-              <div className="truncate text-xs font-bold text-slate-100">
+              <div className="truncate text-xs font-bold text-ink">
                 {t.title}
               </div>
             </div>
-            <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-void-950 border border-white/10 text-slate-300">
+            <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-void-950 border border-control text-slate-300">
               PARALEL
             </span>
           </div>
 
-          <div className="rounded-lg bg-void-950 p-2 border border-white/10 font-mono text-center mb-1.5">
-            <div className="text-base font-bold text-sky-300">
+          <div className="rounded-lg bg-void-950 p-2 border border-control font-mono text-center mb-1.5 tabular-nums">
+            <div className="text-base font-bold text-electric-400">
               {displayVoltage} V
             </div>
             <div className="text-[9px] text-slate-400 font-sans mt-0.5">

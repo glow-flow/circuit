@@ -21,7 +21,7 @@ export const WelcomeQuickCardVisual: React.FC<WelcomeQuickCardVisualProps> = ({
     return (
       <svg
         viewBox="0 0 160 48"
-        className="w-full h-11 rounded-lg bg-void-900/90 border border-electric-500/20 p-1"
+        className="w-full h-11 rounded-lg bg-[#0B0F14] border border-electric-500/35 p-1"
         aria-hidden="true"
       >
         {/* 9V Battery */}
@@ -75,7 +75,7 @@ export const WelcomeQuickCardVisual: React.FC<WelcomeQuickCardVisualProps> = ({
         {/* Return bottom wire */}
         <path
           d="M 34 30 L 122 30"
-          stroke="#475569"
+          stroke="#64748b"
           strokeWidth="1.75"
           strokeDasharray="3 2"
         />
@@ -97,7 +97,7 @@ export const WelcomeQuickCardVisual: React.FC<WelcomeQuickCardVisualProps> = ({
     return (
       <svg
         viewBox="0 0 160 48"
-        className="w-full h-11 rounded-lg bg-void-900/90 border border-amber-500/20 p-1"
+        className="w-full h-11 rounded-lg bg-[#0B0F14] border border-amber-500/35 p-1"
         aria-hidden="true"
       >
         {/* Source node */}
@@ -177,7 +177,7 @@ export const WelcomeQuickCardVisual: React.FC<WelcomeQuickCardVisualProps> = ({
     return (
       <svg
         viewBox="0 0 160 48"
-        className="w-full h-11 rounded-lg bg-void-900/90 border border-emerald-500/20 p-1"
+        className="w-full h-11 rounded-lg bg-[#0B0F14] border border-emerald-500/35 p-1"
         aria-hidden="true"
       >
         {/* Sun icon */}
@@ -230,7 +230,7 @@ export const WelcomeQuickCardVisual: React.FC<WelcomeQuickCardVisualProps> = ({
   return (
     <svg
       viewBox="0 0 160 48"
-      className="w-full h-11 rounded-lg bg-void-900/90 border border-rose-500/25 p-1"
+      className="w-full h-11 rounded-lg bg-[#0B0F14] border border-danger-500/40 p-1"
       aria-hidden="true"
     >
       {/* Battery at 0.0V */}
@@ -308,37 +308,40 @@ export const WelcomeMiniCircuitDemo: React.FC<WelcomeMiniCircuitDemoProps> = ({
   const isLampLit = !isOpen;
 
   return (
-    <div
+    <button
+      type="button"
       onClick={onToggle}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onToggle();
-        }
-      }}
-      className={`flex items-center justify-between gap-2.5 px-3 py-2 rounded-xl border cursor-pointer transition-all active:scale-98 ${
+      aria-pressed={isLampLit}
+      aria-label={
+        isOpen
+          ? isId
+            ? 'Saklar demo terbuka, arus 0 ampere. Ketuk untuk menutup saklar.'
+            : 'Demo switch open, 0 ampere. Tap to close switch.'
+          : isId
+          ? 'Saklar demo tertutup, lampu menyala. Ketuk untuk membuka saklar.'
+          : 'Demo switch closed, bulb lit. Tap to open switch.'
+      }
+      className={`w-full text-left flex items-center justify-between gap-2.5 px-3 py-2 rounded-xl border cursor-pointer transition-colors active:scale-[0.99] ${
         isLampLit
-          ? 'bg-emerald-950/25 border-emerald-400/45 shadow-[0_0_20px_rgba(16,185,129,0.15)]'
-          : 'bg-void-900 hover:bg-void-850 border-white/10'
+          ? 'bg-void-900 border-emerald-500/60'
+          : 'bg-void-900 hover:bg-void-850 border-control'
       }`}
     >
       {/* Left: 9V Battery + Knife Switch + Interactive Lamp */}
       <div className="flex items-center gap-1.5 shrink-0">
         {/* Mini 9V Battery Badge */}
         <div
-          className={`px-1.5 py-1 rounded-lg border font-mono text-[10px] font-bold transition-colors ${
+          className={`px-1.5 py-1 rounded-lg border font-mono text-[11px] font-bold transition-colors ${
             isLampLit
-              ? 'bg-electric-500/20 border-electric-400 text-electric-200'
-              : 'bg-void-950 border-white/15 text-slate-400'
+              ? 'bg-electric-600 border-electric-700 text-white'
+              : 'bg-void-950 border-control text-slate-300'
           }`}
         >
           9V
         </div>
 
         {/* Pure-Code Knife Switch */}
-        <div className="w-16 h-11 shrink-0 flex items-center justify-center">
+        <div className="w-16 h-11 shrink-0 flex items-center justify-center rounded-lg bg-[#0B0F14] px-1">
           <KnifeSwitchGraphic isOpen={isOpen} isCurrentFlowing={isLampLit} />
         </div>
 
@@ -384,10 +387,10 @@ export const WelcomeMiniCircuitDemo: React.FC<WelcomeMiniCircuitDemoProps> = ({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
           <span
-            className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold ${
+            className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold tabular-nums ${
               isOpen
-                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                ? 'bg-[#B45309] text-white'
+                : 'bg-emerald-600 text-white'
             }`}
           >
             {isOpen
@@ -399,7 +402,7 @@ export const WelcomeMiniCircuitDemo: React.FC<WelcomeMiniCircuitDemoProps> = ({
               : 'SWITCH ON · LAMP LIT!'}
           </span>
         </div>
-        <p className="text-[11px] text-slate-300 mt-1 leading-snug">
+        <p className="text-xs text-slate-300 mt-1 leading-snug">
           {isOpen
             ? isId
               ? 'Ketuk saklar di samping untuk menyalakan lampu!'
@@ -409,6 +412,6 @@ export const WelcomeMiniCircuitDemo: React.FC<WelcomeMiniCircuitDemoProps> = ({
             : 'Circuit closed! Every part on the canvas is touchable.'}
         </p>
       </div>
-    </div>
+    </button>
   );
 };

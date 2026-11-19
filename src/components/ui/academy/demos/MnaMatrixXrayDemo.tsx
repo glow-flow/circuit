@@ -38,18 +38,18 @@ export const MnaMatrixXrayDemo: React.FC = () => {
     >
       {/* Matrix + Telemetry Side-by-Side */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-        <div className="rounded-xl bg-void-900 border border-white/10 p-3 flex flex-col justify-center">
+        <div className="rounded-xl bg-void-900 border border-control p-3 flex flex-col justify-center">
           <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400 mb-2">
             {isId ? 'Stempel Matriks MNA (2x2)' : '2x2 MNA Stamp'}
           </div>
-          <div className="font-mono text-xs bg-void-950 rounded-lg border border-white/10 p-2.5 space-y-1">
+          <div className="font-mono text-xs tabular-nums bg-void-950 rounded-lg border border-control p-2.5 space-y-1">
             <div className="flex justify-between text-sky-300">
               <span>[ {gLoad.toFixed(3)}</span>
               <span>1.000 ]</span>
               <span className="text-slate-400">·</span>
               <span className="text-emerald-300">[ V₁ ]</span>
               <span className="text-slate-400">=</span>
-              <span className="text-slate-200">[ 0 ]</span>
+              <span className="text-ink">[ 0 ]</span>
             </div>
             <div className="flex justify-between text-sky-300">
               <span>[ 1.000</span>
@@ -57,7 +57,7 @@ export const MnaMatrixXrayDemo: React.FC = () => {
               <span className="text-slate-400">·</span>
               <span className="text-amber-300">[ I_s ]</span>
               <span className="text-slate-400">=</span>
-              <span className="text-slate-200">[ {eSource.toFixed(0)} ]</span>
+              <span className="text-ink">[ {eSource.toFixed(0)} ]</span>
             </div>
           </div>
           <p className="text-[10px] text-slate-400 mt-2 leading-relaxed">
@@ -67,26 +67,26 @@ export const MnaMatrixXrayDemo: React.FC = () => {
           </p>
         </div>
 
-        <div className="rounded-xl bg-void-900 border border-white/10 p-3 space-y-2">
+        <div className="rounded-xl bg-void-900 border border-control p-3 space-y-2">
           <div className="flex items-center justify-between text-[11px]">
             <span className="text-slate-400">{isId ? 'Tegangan Terminal (V₁)' : 'Terminal Voltage (V₁)'}</span>
-            <span className="font-mono font-bold text-emerald-400">{vTerminal.toFixed(2)} V</span>
+            <span className="font-mono font-bold tabular-nums text-emerald-400">{vTerminal.toFixed(2)} V</span>
           </div>
-          <div className="w-full h-2 rounded-full bg-void-950 overflow-hidden">
+          <div className="w-full h-2 rounded-full bg-void-950 border border-control overflow-hidden">
             <div
-              className="h-full bg-emerald-400 transition-all duration-150"
+              className="h-full bg-emerald-500 transition-all duration-150"
               style={{ width: `${Math.min(100, (vTerminal / eSource) * 100)}%` }}
             />
           </div>
 
           <div className="flex items-center justify-between text-[11px] pt-1">
             <span className="text-slate-400">{isId ? 'Arus Keluar Baterai (I_s)' : 'Source Current (I_s)'}</span>
-            <span className="font-mono font-bold text-amber-400">{currentA.toFixed(2)} A</span>
+            <span className="font-mono font-bold tabular-nums text-amber-400">{currentA.toFixed(2)} A</span>
           </div>
 
           <div className="flex items-center justify-between text-[11px]">
             <span className="text-slate-400">{isId ? 'Rugi Dalam Baterai' : 'Internal Drop'}</span>
-            <span className="font-mono font-bold text-rose-400">
+            <span className="font-mono font-bold tabular-nums text-rose-400">
               -{(eSource - vTerminal).toFixed(2)} V
             </span>
           </div>

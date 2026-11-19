@@ -48,14 +48,14 @@ export const InspectorOverviewTab: React.FC<InspectorOverviewTabProps> = ({
       <div
         className={`p-3.5 rounded-2xl border ${
           isShort
-            ? 'bg-red-500/10 border-red-500/30'
+            ? 'bg-red-500/10 border-red-500/35'
             : isBlown
-            ? 'bg-amber-500/10 border-amber-500/30'
+            ? 'bg-amber-500/10 border-amber-500/35'
             : isReverseBiased
-            ? 'bg-sky-500/10 border-sky-500/30'
+            ? 'bg-sky-500/10 border-sky-500/35'
             : isMcbTripped
-            ? 'bg-red-500/10 border-red-500/30'
-            : 'bg-void-950 border-white/5'
+            ? 'bg-red-500/10 border-red-500/35'
+            : 'bg-void-950 border-ink/15'
         }`}
       >
         <div className="flex items-center gap-2 mb-1.5">
@@ -68,11 +68,12 @@ export const InspectorOverviewTab: React.FC<InspectorOverviewTabProps> = ({
                   ? 'text-amber-400'
                   : 'text-sky-400'
               }`}
+              aria-hidden="true"
             />
           ) : (
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            <ShieldCheck className="w-4 h-4 text-emerald-400" aria-hidden="true" />
           )}
-          <span className="font-bold text-slate-100 text-xs sm:text-sm">
+          <span className="font-bold text-ink text-xs sm:text-sm">
             {isShort
               ? isId
                 ? 'Peringatan Bahaya Korsleting'
@@ -119,49 +120,49 @@ export const InspectorOverviewTab: React.FC<InspectorOverviewTabProps> = ({
       </div>
 
       {/* Component Identity Details */}
-      <div className="p-3 rounded-xl bg-void-950 border border-white/5 space-y-2 font-mono text-xs">
+      <div className="p-3 rounded-xl bg-void-950 border border-ink/15 space-y-2 font-mono text-xs">
         <div className="text-[10px] text-slate-400 font-sans uppercase tracking-wider font-semibold">
           {isId ? 'Identitas Komponen' : 'Component Identity'}
         </div>
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center gap-2">
           <span className="text-slate-400 font-sans text-[11px]">{isId ? 'Nama Label' : 'Label'}</span>
-          <span className="text-slate-200 font-bold">{componentData.label}</span>
+          <span className="text-ink font-bold truncate">{componentData.label}</span>
         </div>
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center gap-2">
           <span className="text-slate-400 font-sans text-[11px]">{isId ? 'Tipe Model' : 'Type'}</span>
           <span className="text-electric-400 uppercase">{componentData.type}</span>
         </div>
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center gap-2">
           <span className="text-slate-400 font-sans text-[11px]">ID Node</span>
-          <span className="text-slate-400 text-[10px]">{nodeId}</span>
+          <span className="text-slate-400 text-[10px] truncate">{nodeId}</span>
         </div>
       </div>
 
       {/* Pin Connection Status */}
-      <div className="p-3 rounded-xl bg-void-950 border border-white/5 space-y-2">
+      <div className="p-3 rounded-xl bg-void-950 border border-ink/15 space-y-2">
         <div className="text-[10px] text-slate-400 font-sans uppercase tracking-wider font-semibold">
           {isId ? 'Koneksi Terminal Kawat Kabel' : 'Terminal Connections'}
         </div>
         <div className="flex items-center justify-between text-[11px]">
           <span className="text-slate-400">{isId ? 'Jumlah Kabel Terhubung:' : 'Connected Wires:'}</span>
-          <span className="font-mono text-slate-200 font-bold">{connectedEdges.length}</span>
+          <span className="font-mono tabular-nums text-ink font-bold">{connectedEdges.length}</span>
         </div>
         <div className="pt-1 space-y-1">
           {connectedEdges.length === 0 ? (
-            <p className="text-[11px] text-slate-500 italic">
+            <p className="text-[11px] text-slate-400">
               {isId ? 'Belum ada kabel yang terhubung.' : 'No wires currently attached.'}
             </p>
           ) : (
             connectedEdges.map((edge) => (
               <div
                 key={edge.id}
-                className="flex items-center gap-2 p-1.5 rounded-lg bg-void-900 border border-white/5 font-mono text-[10px] text-slate-300"
+                className="flex items-center gap-2 p-1.5 rounded-lg bg-void-900 border border-ink/15 font-mono text-[10px] text-slate-300"
               >
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" aria-hidden="true" />
                 <span className="truncate">
                   {edge.source === nodeId
-                    ? `Pin ${edge.sourceHandle ?? 'p1'} → Node ${edge.target}`
-                    : `Node ${edge.source} → Pin ${edge.targetHandle ?? 'p2'}`}
+                    ? `Pin ${edge.sourceHandle ?? 'p1'} -> Node ${edge.target}`
+                    : `Node ${edge.source} -> Pin ${edge.targetHandle ?? 'p2'}`}
                 </span>
               </div>
             ))

@@ -1,19 +1,21 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
-  BookOpen,
-  Search,
+  Bookmark,
   Clock,
   Gauge,
-  X,
   Play,
+  Search,
   Trash2,
+  X,
 } from 'lucide-react';
 import { useCircuitStore } from '../../../store/useCircuitStore';
+import { useModalFocusTrap } from '../../../hooks/useModalKeyboardClose';
 import {
   BUILTIN_PRESET_CATALOG,
   PresetCategory,
   PresetDifficulty,
 } from '../../../constants/presetCatalog';
+import { LabModalHeader } from '../common/LabModalHeader';
 import { PresetThumbnail } from './PresetThumbnail';
 import { PresetConfirmDialog } from './PresetConfirmDialog';
 
@@ -48,24 +50,24 @@ export const PresetGalleryModal: React.FC<PresetGalleryModalProps> = ({ isOpen, 
     isCustom: boolean;
   } | null>(null);
 
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useModalFocusTrap(isOpen && !pendingLoadTarget, dialogRef, onClose);
+
   // Filtered presets calculation
   const filteredPresets = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
 
     // 1. Process Built-in Presets
     const builtinMatches = BUILTIN_PRESET_CATALOG.filter((preset) => {
-      // Category filter
       if (selectedCategory !== 'all' && selectedCategory !== 'custom' && preset.category !== selectedCategory) {
         return false;
       }
       if (selectedCategory === 'custom') {
         return false;
       }
-      // Difficulty filter
       if (selectedDifficulty !== 'all' && preset.difficulty !== selectedDifficulty) {
         return false;
       }
-      // Search query
       if (query) {
         const title = (isId ? preset.titleId : preset.titleEn).toLowerCase();
         const desc = (isId ? preset.descriptionId : preset.descriptionEn).toLowerCase();
@@ -119,7 +121,6 @@ export const PresetGalleryModal: React.FC<PresetGalleryModalProps> = ({ isOpen, 
   if (!isOpen) return null;
 
   const handleRequestLoad = (target: { id: string; title: string; isCustom: boolean }) => {
-    // If canvas already contains active components, ask for confirmation first
     if (nodes.length > 0) {
       setPendingLoadTarget(target);
     } else {
@@ -140,72 +141,69 @@ export const PresetGalleryModal: React.FC<PresetGalleryModalProps> = ({ isOpen, 
     switch (diff) {
       case 'beginner':
         return (
-          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-void-900 text-emerald-400 border border-emerald-500/45">
             {isId ? 'Pemula' : 'Beginner'}
           </span>
         );
       case 'intermediate':
         return (
-          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">
+          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-void-900 text-amber-400 border border-amber-500/45">
             {isId ? 'Menengah' : 'Intermediate'}
           </span>
         );
       case 'advanced':
         return (
-          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-400 border border-sky-500/30">
+          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-void-900 text-electric-400 border border-electric-500/45">
             {isId ? 'Mahir' : 'Advanced'}
           </span>
         );
     }
   };
 
+  const countPill = (
+    <span className="text-xs font-mono font-semibold tabular-nums px-2.5 py-1 rounded-lg bg-void-900 text-electric-400 border border-control">
+      {filteredPresets.length} {isId ? 'Rangkaian' : 'Circuits'}
+    </span>
+  );
+
   return (
     <>
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-5"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/75 p-3 sm:p-5"
         role="dialog"
         aria-modal="true"
-        aria-label="Galeri Rangkaian"
+        aria-labelledby="preset-gallery-title"
+        onClick={onClose}
       >
-        <div className="w-full max-w-4xl max-h-[92dvh] rounded-2xl bg-void-900 border border-white/15 shadow-2xl flex flex-col overflow-hidden animate-in fade-in duration-150">
-          {/* Header */}
-          <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between bg-void-850 shrink-0 select-none">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-electric-500/15 border border-electric-500/30 flex items-center justify-center text-electric-400">
-                <BookOpen className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className="text-sm sm:text-base font-bold text-slate-100 flex items-center gap-2">
-                  <span>{isId ? 'Galeri Rangkaian Interaktif' : 'Interactive Preset Gallery'}</span>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-electric-500/10 text-electric-400 border border-electric-500/20">
-                    {filteredPresets.length} {isId ? 'Rangkaian' : 'Circuits'}
-                  </span>
-                </h2>
-                <p className="text-xs text-slate-400 hidden sm:block">
-                  {isId
-                    ? 'Eksplorasi blueprint standar kurikulum IPA Kelas 9 dan rangkaian kustom Anda'
-                    : 'Explore curriculum-aligned Grade 9 DC blueprints and your custom circuits'}
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={onClose}
-              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-void-900 text-slate-400 hover:text-white border border-white/10 active:scale-95 transition-all cursor-pointer"
-              aria-label="Tutup Galeri"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
+        <div
+          ref={dialogRef}
+          className="w-full max-w-4xl max-h-[92dvh] rounded-2xl bg-void-900 border border-control shadow-2xl text-ink flex flex-col overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <LabModalHeader
+            titleId="preset-gallery-title"
+            title={isId ? 'Galeri Rangkaian Interaktif' : 'Interactive Preset Gallery'}
+            subtitle={
+              isId
+                ? 'Eksplorasi blueprint standar kurikulum IPA Kelas 9 dan rangkaian kustom Anda'
+                : 'Explore curriculum-aligned Grade 9 DC blueprints and your custom circuits'
+            }
+            rightSlot={countPill}
+            onClose={onClose}
+            closeLabel={isId ? 'Tutup Galeri' : 'Close Gallery'}
+          />
 
           {/* Filter & Search Bar */}
-          <div className="p-4 border-b border-white/10 bg-void-950/60 space-y-3 shrink-0">
+          <div className="p-4 border-b border-ink/15 bg-void-950 space-y-3 shrink-0">
             <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center justify-between">
               {/* Search Field */}
               <div className="relative flex-1 min-w-0">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <label htmlFor="preset-search-input" className="sr-only">
+                  {isId ? 'Cari rangkaian preset' : 'Search circuit presets'}
+                </label>
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true" />
                 <input
+                  id="preset-search-input"
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -214,26 +212,31 @@ export const PresetGalleryModal: React.FC<PresetGalleryModalProps> = ({ isOpen, 
                       ? 'Cari nama rangkaian, lampu, saklar, baterai...'
                       : 'Search circuits, bulbs, switches, batteries...'
                   }
-                  className="w-full pl-10 pr-4 py-2 rounded-xl bg-void-900 border border-white/10 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-electric-500 transition-colors"
+                  className="w-full min-h-[44px] pl-10 pr-10 py-2 rounded-lg bg-void-900 border border-control text-xs text-ink placeholder-slate-400 focus:border-electric-500 transition-colors"
                 />
                 {searchQuery && (
                   <button
                     type="button"
                     onClick={() => setSearchQuery('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                    aria-label={isId ? 'Hapus pencarian' : 'Clear search'}
+                    className="min-w-[36px] min-h-[36px] flex items-center justify-center absolute right-1.5 top-1/2 -translate-y-1/2 rounded-lg text-slate-400 hover:text-ink cursor-pointer"
                   >
-                    <X className="w-3.5 h-3.5" />
+                    <X className="w-4 h-4" aria-hidden="true" />
                   </button>
                 )}
               </div>
 
               {/* Difficulty Dropdown */}
-              <div className="flex items-center gap-2 shrink-0">
-                <Gauge className="w-4 h-4 text-slate-400 hidden sm:block" />
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 sm:gap-2 shrink-0 min-w-0">
+                <label htmlFor="preset-difficulty-select" className="sr-only">
+                  {isId ? 'Filter tingkat kesulitan' : 'Filter difficulty level'}
+                </label>
+                <Gauge className="w-4 h-4 text-slate-400 hidden sm:block shrink-0" aria-hidden="true" />
                 <select
+                  id="preset-difficulty-select"
                   value={selectedDifficulty}
                   onChange={(e) => setSelectedDifficulty(e.target.value)}
-                  className="px-3 py-2 rounded-xl bg-void-900 border border-white/10 text-xs text-slate-200 focus:outline-none cursor-pointer"
+                  className="w-full sm:w-auto min-w-0 truncate min-h-[44px] px-3 py-2 rounded-lg bg-void-900 border border-control text-xs text-ink cursor-pointer"
                 >
                   <option value="all">{isId ? 'Semua Tingkat' : 'All Levels'}</option>
                   <option value="beginner">{isId ? 'Pemula (Dasar)' : 'Beginner'}</option>
@@ -257,10 +260,10 @@ export const PresetGalleryModal: React.FC<PresetGalleryModalProps> = ({ isOpen, 
                   key={category.id}
                   type="button"
                   onClick={() => setSelectedCategory(category.id as PresetCategory)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all active:scale-95 cursor-pointer ${
+                  className={`min-h-[44px] sm:min-h-[38px] px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors active:scale-95 cursor-pointer border ${
                     selectedCategory === category.id
-                      ? 'bg-electric-500 text-void-950 font-bold shadow-glow'
-                      : 'bg-void-900 hover:bg-white/5 text-slate-300 border border-white/10'
+                      ? 'bg-electric-600 border-electric-700 text-white font-bold'
+                      : 'bg-void-900 hover:bg-void-850 text-ink border-control'
                   }`}
                 >
                   {isId ? category.labelId : category.labelEn}
@@ -272,12 +275,12 @@ export const PresetGalleryModal: React.FC<PresetGalleryModalProps> = ({ isOpen, 
           {/* Cards Grid */}
           <div className="flex-1 p-4 sm:p-5 overflow-y-auto overscroll-contain">
             {filteredPresets.length === 0 ? (
-              <div className="h-64 flex flex-col items-center justify-center text-center p-6 bg-void-950/50 rounded-2xl border border-white/5 space-y-2">
-                <Search className="w-8 h-8 text-slate-600 mb-1" />
-                <p className="text-sm font-semibold text-slate-300">
+              <div className="h-64 flex flex-col items-center justify-center text-center p-6 bg-void-950 rounded-2xl border border-ink/15 space-y-2">
+                <Search className="w-8 h-8 text-slate-400 mb-1" aria-hidden="true" />
+                <p className="text-sm font-semibold text-ink">
                   {isId ? 'Tidak ada rangkaian yang cocok' : 'No matching circuits found'}
                 </p>
-                <p className="text-xs text-slate-500 max-w-sm">
+                <p className="text-xs text-slate-400 max-w-sm">
                   {isId
                     ? 'Coba ganti kata kunci pencarian atau pilih kategori filter yang berbeda.'
                     : 'Try modifying your search terms or selecting a different category filter.'}
@@ -292,11 +295,11 @@ export const PresetGalleryModal: React.FC<PresetGalleryModalProps> = ({ isOpen, 
                   return (
                     <div
                       key={preset.id}
-                      className="group bg-void-850 hover:bg-void-800 border border-white/10 hover:border-electric-500/40 rounded-2xl p-4 flex flex-col justify-between transition-all shadow-lg hover:shadow-electric-500/5"
+                      className="group bg-void-850 hover:bg-void-800 border border-control hover:border-electric-500 rounded-2xl p-4 flex flex-col justify-between transition-colors shadow-sm"
                     >
                       <div className="space-y-3">
                         {/* Thumbnail Viewport */}
-                        <div className="w-full h-28 overflow-hidden rounded-xl bg-void-950 border border-white/5 flex items-center justify-center relative">
+                        <div className="w-full h-28 overflow-hidden rounded-xl bg-void-950 border border-ink/15 flex items-center justify-center relative">
                           <PresetThumbnail presetId={preset.id} category={preset.category} />
                           <div className="absolute top-2 right-2">
                             {getDifficultyBadge(preset.difficulty)}
@@ -306,25 +309,26 @@ export const PresetGalleryModal: React.FC<PresetGalleryModalProps> = ({ isOpen, 
                         {/* Title & Duration */}
                         <div>
                           <div className="flex items-center justify-between gap-1.5 mb-1">
-                            <h3 className="text-xs sm:text-sm font-bold text-slate-100 group-hover:text-electric-300 transition-colors line-clamp-1">
+                            <h3 className="text-xs sm:text-sm font-bold text-ink line-clamp-1">
                               {title}
                             </h3>
                           </div>
-                          <div className="flex items-center gap-2 text-[10px] text-slate-400 font-mono">
+                          <div className="flex items-center gap-2 text-[11px] text-slate-400 font-mono tabular-nums">
                             <span className="flex items-center gap-1">
-                              <Clock className="w-3 h-3 text-electric-400" />
+                              <Clock className="w-3 h-3 text-electric-400" aria-hidden="true" />
                               {preset.durationMinutes} {isId ? 'menit' : 'mins'}
                             </span>
                             {!preset.isBuiltin && (
-                              <span className="text-amber-400 font-sans font-semibold">
-                                ★ {isId ? 'Kustom' : 'Custom'}
+                              <span className="inline-flex items-center gap-1 text-amber-400 font-sans font-semibold">
+                                <Bookmark className="w-3 h-3" aria-hidden="true" />
+                                {isId ? 'Kustom' : 'Custom'}
                               </span>
                             )}
                           </div>
                         </div>
 
                         {/* Description */}
-                        <p className="text-[11px] text-slate-400 leading-relaxed line-clamp-3">
+                        <p className="text-[11px] text-slate-300 leading-relaxed line-clamp-3">
                           {desc}
                         </p>
 
@@ -333,7 +337,7 @@ export const PresetGalleryModal: React.FC<PresetGalleryModalProps> = ({ isOpen, 
                           {preset.componentSummary.map((item, idx) => (
                             <span
                               key={idx}
-                              className="text-[10px] px-2 py-0.5 rounded-md bg-void-950 text-slate-300 border border-white/5 font-mono"
+                              className="text-[11px] px-2 py-0.5 rounded-md bg-void-950 text-slate-300 border border-ink/15 font-mono"
                             >
                               {isId ? item.labelId : item.labelEn}
                             </span>
@@ -342,7 +346,7 @@ export const PresetGalleryModal: React.FC<PresetGalleryModalProps> = ({ isOpen, 
                       </div>
 
                       {/* Card Action Buttons */}
-                      <div className="pt-4 mt-3 border-t border-white/10 flex items-center gap-2">
+                      <div className="pt-4 mt-3 border-t border-ink/15 flex items-center gap-2">
                         <button
                           type="button"
                           onClick={() =>
@@ -352,9 +356,9 @@ export const PresetGalleryModal: React.FC<PresetGalleryModalProps> = ({ isOpen, 
                               isCustom: !preset.isBuiltin,
                             })
                           }
-                          className="flex-1 min-h-[44px] px-4 py-2 rounded-xl text-xs font-bold bg-electric-500 hover:bg-electric-400 text-void-950 flex items-center justify-center gap-2 shadow-glow active:scale-95 transition-all cursor-pointer"
+                          className="flex-1 min-h-[44px] px-4 py-2 rounded-xl text-xs font-bold bg-electric-600 hover:bg-electric-700 text-white flex items-center justify-center gap-2 active:scale-95 transition-colors cursor-pointer"
                         >
-                          <Play className="w-3.5 h-3.5 fill-void-950" />
+                          <Play className="w-3.5 h-3.5 fill-white" aria-hidden="true" />
                           <span>{isId ? 'Muat Rangkaian' : 'Load Circuit'}</span>
                         </button>
 
@@ -363,9 +367,10 @@ export const PresetGalleryModal: React.FC<PresetGalleryModalProps> = ({ isOpen, 
                             type="button"
                             onClick={() => deleteCustomPreset(preset.id)}
                             title={isId ? 'Hapus preset ini' : 'Delete this preset'}
-                            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-500/30 active:scale-95 transition-all cursor-pointer shrink-0"
+                            aria-label={isId ? `Hapus preset ${title}` : `Delete preset ${title}`}
+                            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-void-950 hover:bg-danger-600 text-danger-400 hover:text-white border border-danger-500/45 active:scale-95 transition-colors cursor-pointer shrink-0"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-4 h-4" aria-hidden="true" />
                           </button>
                         )}
                       </div>

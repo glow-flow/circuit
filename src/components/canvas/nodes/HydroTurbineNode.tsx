@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Handle, Position, NodeProps } from 'reactflow';
 import { Waves, Info, X, Droplets } from 'lucide-react';
@@ -9,7 +9,7 @@ import {
   HYDRO_RUNNER_CENTER_RATIO,
 } from '../../../physics/hydroPhysics';
 import { COMPONENT_DIMENSIONS } from '../../../physics/terrainGrid';
-import { useModalKeyboardClose } from '../../../hooks/useModalKeyboardClose';
+import { useModalFocusTrap } from '../../../hooks/useModalKeyboardClose';
 import { usePendingPinHandleForNode } from '../../../hooks/useTapToConnectHandlers';
 
 /** Rendered node edge length (px), kept identical to the physics footprint. */
@@ -37,7 +37,10 @@ export const HydroTurbineNode: React.FC<NodeProps<CircuitElementData>> = ({
   const updateComponentData = useCircuitStore((state) => state.updateComponentData);
 
   const [isInspectOpen, setIsInspectOpen] = useState(false);
-  useModalKeyboardClose(isInspectOpen, () => setIsInspectOpen(false));
+  const modalRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  const flowInputId = useId();
+  useModalFocusTrap(isInspectOpen, modalRef, () => setIsInspectOpen(false));
   const pendingPinHandle = usePendingPinHandleForNode(id);
   const isId = language === 'id';
 
@@ -106,8 +109,8 @@ export const HydroTurbineNode: React.FC<NodeProps<CircuitElementData>> = ({
           }}
           className={`nodrag px-2.5 py-0.5 rounded-full border text-[9.5px] font-mono font-bold flex items-center gap-1 shadow-md cursor-pointer transition-colors active:scale-95 tabular-nums ${
             isGenerating
-              ? 'bg-cyan-950/95 border-cyan-400/70 text-cyan-200'
-              : 'bg-slate-900/95 border-white/15 text-slate-300'
+              ? 'bg-cyan-950 border-cyan-500/70 text-cyan-200'
+              : 'bg-void-950 border-control text-ink'
           }`}
         >
           {isGenerating ? (
@@ -144,6 +147,8 @@ export const HydroTurbineNode: React.FC<NodeProps<CircuitElementData>> = ({
         <img
           src="/assets/hydro-runner.png"
           alt="Hydro Runner Rotor"
+          width={Math.round(HYDRO_NODE_SIZE_PX * 0.47)}
+          height={Math.round(HYDRO_NODE_SIZE_PX * 0.47)}
           draggable={false}
           className="w-full h-full object-contain pointer-events-none select-none drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]"
           style={{
@@ -158,6 +163,8 @@ export const HydroTurbineNode: React.FC<NodeProps<CircuitElementData>> = ({
       <img
         src="/assets/hydro-frame.png"
         alt="Micro-Hydro A-Frame Stator"
+        width={HYDRO_NODE_SIZE_PX}
+        height={HYDRO_NODE_SIZE_PX}
         draggable={false}
         className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none z-20 drop-shadow-[0_6px_14px_rgba(0,0,0,0.5)]"
       />
@@ -179,10 +186,11 @@ export const HydroTurbineNode: React.FC<NodeProps<CircuitElementData>> = ({
           e.stopPropagation();
           setIsInspectOpen(true);
         }}
-        className="nodrag absolute top-1 right-1 z-30 w-6 h-6 rounded-full bg-slate-900/90 border border-white/20 text-slate-300 hover:text-white flex items-center justify-center shadow hover:scale-110 active:scale-95 transition-transform cursor-pointer"
+        className="nodrag absolute top-1 right-1 z-30 w-6 h-6 rounded-full bg-void-950 border border-control text-cyan-400 hover:text-ink flex items-center justify-center shadow hover:scale-110 active:scale-95 transition-transform cursor-pointer"
         title={isId ? 'Detail Mikrohidro' : 'Micro-Hydro Details'}
+        aria-label={isId ? 'Detail Mikrohidro' : 'Micro-Hydro Details'}
       >
-        <Info className="w-3.5 h-3.5 text-cyan-400" />
+        <Info className="w-3.5 h-3.5" />
       </button>
 
       {/* Elevated Dry Upper-Bridge Binding Post Terminals (Never Submerged or Dock-Covered!) */}
@@ -191,8 +199,8 @@ export const HydroTurbineNode: React.FC<NodeProps<CircuitElementData>> = ({
         position={Position.Bottom}
         id="pos"
         style={{ left: '34%', top: '44%', bottom: 'auto', transform: 'translate(-50%, -50%)' }}
-        className={`!w-7 !h-7 md:!w-6 md:!h-6 !bg-red-500 !border-2 !border-white !rounded-full shadow-[0_0_12px_rgba(239,68,68,0.95)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center ${
-          pendingPinHandle === 'pos' ? '!ring-4 !ring-emerald-300/95 !scale-125 animate-pulse' : ''
+        className={`!w-7 !h-7 md:!w-6 md:!h-6 !bg-red-500 !border-2 !border-white !rounded-full shadow-md hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center ${
+          pendingPinHandle === 'pos' ? '!ring-4 !ring-emerald-400 !scale-125' : ''
         }`}
         title={isId ? 'Kutub Positif Generator (+)' : 'Hydro Positive (+)'}
       >
@@ -206,8 +214,8 @@ export const HydroTurbineNode: React.FC<NodeProps<CircuitElementData>> = ({
         position={Position.Bottom}
         id="neg"
         style={{ left: '66%', top: '44%', bottom: 'auto', transform: 'translate(-50%, -50%)' }}
-        className={`!w-7 !h-7 md:!w-6 md:!h-6 !bg-sky-500 !border-2 !border-white !rounded-full shadow-[0_0_12px_rgba(56,189,248,0.95)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center ${
-          pendingPinHandle === 'neg' ? '!ring-4 !ring-emerald-300/95 !scale-125 animate-pulse' : ''
+        className={`!w-7 !h-7 md:!w-6 md:!h-6 !bg-sky-500 !border-2 !border-white !rounded-full shadow-md hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center ${
+          pendingPinHandle === 'neg' ? '!ring-4 !ring-emerald-400 !scale-125' : ''
         }`}
         title={isId ? 'Kutub Negatif Generator (-)' : 'Hydro Negative (-)'}
       >
@@ -222,20 +230,24 @@ export const HydroTurbineNode: React.FC<NodeProps<CircuitElementData>> = ({
         createPortal(
           <div
             onClick={() => setIsInspectOpen(false)}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm p-4 pointer-events-auto"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/75 p-4 pointer-events-auto"
           >
             <div
+              ref={modalRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={titleId}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-sm rounded-2xl bg-slate-900 border border-white/15 p-5 shadow-2xl text-white font-sans select-none"
+              className="w-full max-w-sm rounded-2xl bg-void-900 border border-control p-5 shadow-2xl text-ink font-sans select-none"
             >
               {/* Modal Header */}
-              <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <div className="flex items-center justify-between pb-3 border-b border-control">
                 <div className="flex items-center gap-2.5">
                   <div className="w-9 h-9 rounded-xl bg-cyan-500/15 border border-cyan-500/35 flex items-center justify-center">
                     <Waves className="w-5 h-5 text-cyan-400" />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-white leading-tight">
+                    <h3 id={titleId} className="text-base font-bold text-ink leading-tight">
                       {isId ? 'Pembangkit Mikrohidro' : 'Micro-Hydro Turbine'}
                     </h3>
                     <p className="text-xs text-slate-400 font-mono">
@@ -246,8 +258,8 @@ export const HydroTurbineNode: React.FC<NodeProps<CircuitElementData>> = ({
                 <button
                   type="button"
                   onClick={() => setIsInspectOpen(false)}
-                  className="w-8 h-8 rounded-lg bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center active:scale-95 transition-transform cursor-pointer"
-                  aria-label="Close"
+                  className="min-w-[44px] min-h-[44px] rounded-xl bg-void-950 border border-control text-slate-300 hover:text-ink flex items-center justify-center active:scale-95 transition-colors cursor-pointer"
+                  aria-label={isId ? 'Tutup' : 'Close'}
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -255,7 +267,7 @@ export const HydroTurbineNode: React.FC<NodeProps<CircuitElementData>> = ({
 
               {/* Metrics Grid */}
               <div className="grid grid-cols-2 gap-2.5 my-4">
-                <div className="p-3 rounded-xl bg-slate-800/70 border border-white/5">
+                <div className="p-3 rounded-xl bg-void-950 border border-control">
                   <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
                     {isId ? 'Tinggi Jatuh (Head H)' : 'Hydraulic Head (H)'}
                   </span>
@@ -264,7 +276,7 @@ export const HydroTurbineNode: React.FC<NodeProps<CircuitElementData>> = ({
                   </p>
                 </div>
 
-                <div className="p-3 rounded-xl bg-slate-800/70 border border-white/5">
+                <div className="p-3 rounded-xl bg-void-950 border border-control">
                   <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
                     {isId ? 'Kecepatan Kincir (RPM)' : 'Rotor Speed (RPM)'}
                   </span>
@@ -273,16 +285,16 @@ export const HydroTurbineNode: React.FC<NodeProps<CircuitElementData>> = ({
                   </p>
                 </div>
 
-                <div className="p-3 rounded-xl bg-slate-800/70 border border-white/5">
+                <div className="p-3 rounded-xl bg-void-950 border border-control">
                   <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
                     {isId ? 'Tegangan GGL (V)' : 'Generated EMF (V)'}
                   </span>
-                  <p className="text-sm font-bold font-mono text-amber-300 mt-0.5 tabular-nums">
+                  <p className="text-sm font-bold font-mono text-amber-400 mt-0.5 tabular-nums">
                     {nominalVoltage.toFixed(1)} V
                   </p>
                 </div>
 
-                <div className="p-3 rounded-xl bg-slate-800/70 border border-white/5">
+                <div className="p-3 rounded-xl bg-void-950 border border-control">
                   <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
                     {isId ? 'Daya Beban / Kapasitas (W)' : 'Load Power / Cap (W)'}
                   </span>
@@ -293,24 +305,25 @@ export const HydroTurbineNode: React.FC<NodeProps<CircuitElementData>> = ({
               </div>
 
               {/* Interactive Flow Rate Slider */}
-              <div className="space-y-2 mb-4 bg-slate-800/50 p-3 rounded-xl border border-white/5">
+              <div className="space-y-2 mb-4 bg-void-950 p-3 rounded-xl border border-control">
                 <div className="flex justify-between items-center text-xs">
-                  <span className="font-semibold text-slate-300">
+                  <label htmlFor={flowInputId} className="font-semibold text-slate-200">
                     {isId ? 'Debit Aliran Air (Q):' : 'Water Flow Rate (Q):'}
-                  </span>
+                  </label>
                   <span className="font-mono font-bold text-sm text-cyan-400 tabular-nums">
                     {flowPercentage}% ({(hydroPoint.flowRateM3S * 1000).toFixed(1)} L/s)
                   </span>
                 </div>
                 <input
+                  id={flowInputId}
                   type="range"
                   min="0"
                   max="100"
                   value={flowPercentage}
                   onChange={handleFlowSliderChange}
-                  className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                  className="w-full h-2 bg-void-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
                 />
-                <div className="flex justify-between text-[10px] font-mono text-slate-400">
+                <div className="flex justify-between text-[10px] font-mono text-slate-400 tabular-nums">
                   <span>0% ({isId ? 'Kering' : 'Dry'})</span>
                   <span>50%</span>
                   <span>100% ({isId ? 'Maksimal' : 'Max'})</span>
@@ -318,7 +331,7 @@ export const HydroTurbineNode: React.FC<NodeProps<CircuitElementData>> = ({
               </div>
 
               {/* Educational Insight for SMP Students */}
-              <div className="p-2.5 rounded-xl bg-cyan-950/40 border border-cyan-500/20 text-[11px] text-cyan-200/90 leading-relaxed mb-4">
+              <div className="p-2.5 rounded-xl bg-cyan-950/60 border border-cyan-500/35 text-[11px] text-cyan-200 leading-relaxed mb-4">
                 {isId
                   ? 'Semakin tinggi tebing air terjun (Head H) dan semakin deras debit air (Q), semakin besar energi potensial gravitasi yang diubah menjadi listrik oleh sudu Pelton.'
                   : 'Higher waterfall drop (Head H) and larger flow volume (Q) produce greater gravitational potential energy converted into electricity by the Pelton runner.'}
@@ -328,7 +341,7 @@ export const HydroTurbineNode: React.FC<NodeProps<CircuitElementData>> = ({
               <button
                 type="button"
                 onClick={() => setIsInspectOpen(false)}
-                className="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 text-xs font-semibold transition-transform cursor-pointer"
+                className="w-full min-h-[44px] py-2.5 px-4 rounded-xl bg-void-850 hover:bg-void-800 border border-control active:scale-95 text-ink text-xs font-semibold transition-colors cursor-pointer"
               >
                 {isId ? 'Tutup' : 'Close'}
               </button>

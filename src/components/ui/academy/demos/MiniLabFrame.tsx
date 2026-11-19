@@ -1,5 +1,5 @@
-import React from 'react';
-import { CheckCircle2, Sparkles } from 'lucide-react';
+import React, { useId } from 'react';
+import { CheckCircle2, Target } from 'lucide-react';
 
 export interface MiniLabFrameProps {
   title: string;
@@ -23,13 +23,13 @@ export const MiniLabFrame: React.FC<MiniLabFrameProps> = ({
   children,
 }) => {
   return (
-    <div className="rounded-2xl bg-void-950 border border-electric-500/30 p-3.5 sm:p-4 space-y-3 text-xs font-sans">
-      <div className="flex items-center justify-between gap-2 pb-2 border-b border-white/10">
-        <div className="font-bold text-slate-100 text-xs sm:text-sm tracking-tight truncate">
+    <div className="rounded-2xl bg-void-950 border border-control p-3.5 sm:p-4 space-y-3 text-xs font-sans">
+      <div className="flex items-center justify-between gap-2 pb-2 border-b border-ink/15">
+        <div className="font-bold text-ink text-xs sm:text-sm tracking-tight truncate">
           {title}
         </div>
         {formula && (
-          <span className="px-2 py-0.5 rounded-md bg-electric-500/15 border border-electric-500/30 text-electric-300 font-mono text-[11px] font-bold shrink-0">
+          <span className="px-2 py-0.5 rounded-md bg-electric-500/15 border border-electric-500/40 text-electric-300 font-mono text-[11px] font-bold tabular-nums shrink-0">
             {formula}
           </span>
         )}
@@ -39,14 +39,14 @@ export const MiniLabFrame: React.FC<MiniLabFrameProps> = ({
         <div
           className={`flex items-center gap-2 px-2.5 py-1.5 rounded-xl border text-[11px] font-medium transition-colors ${
             isChallengeMet
-              ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-200'
-              : 'bg-void-900 border-white/10 text-slate-300'
+              ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-200'
+              : 'bg-void-900 border-control text-slate-300'
           }`}
         >
           {isChallengeMet ? (
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" aria-hidden="true" />
           ) : (
-            <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <Target className="w-3.5 h-3.5 text-amber-400 shrink-0" aria-hidden="true" />
           )}
           <span className="leading-snug">{challengeText}</span>
         </div>
@@ -71,10 +71,10 @@ export interface MiniSliderControlProps {
 const SLIDER_STYLE_MAP: Readonly<
   Record<NonNullable<MiniSliderControlProps['accentClass']>, { value: string; accent: string }>
 > = {
-  sky: { value: 'text-sky-400', accent: 'accent-sky-400' },
-  amber: { value: 'text-amber-400', accent: 'accent-amber-400' },
-  emerald: { value: 'text-emerald-400', accent: 'accent-emerald-400' },
-  rose: { value: 'text-rose-400', accent: 'accent-rose-400' },
+  sky: { value: 'text-sky-400', accent: 'accent-sky-500' },
+  amber: { value: 'text-amber-400', accent: 'accent-amber-500' },
+  emerald: { value: 'text-emerald-400', accent: 'accent-emerald-500' },
+  rose: { value: 'text-rose-400', accent: 'accent-rose-500' },
 };
 
 /**
@@ -91,17 +91,21 @@ export const MiniSliderControl: React.FC<MiniSliderControlProps> = ({
   accentClass = 'sky',
   onChange,
 }) => {
+  const sliderId = useId();
   const colors = SLIDER_STYLE_MAP[accentClass];
 
   return (
-    <div className="p-2.5 rounded-xl bg-void-900 border border-white/10 space-y-1.5">
+    <div className="p-2.5 rounded-xl bg-void-900 border border-control space-y-1.5">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[11px] font-medium text-slate-300">{label}</span>
-        <span className={`font-mono text-xs font-bold ${colors.value}`}>
+        <label htmlFor={sliderId} className="text-[11px] font-medium text-slate-300">
+          {label}
+        </label>
+        <span className={`font-mono text-xs font-bold tabular-nums ${colors.value}`}>
           {valueDisplay}
         </span>
       </div>
       <input
+        id={sliderId}
         type="range"
         min={min}
         max={max}
@@ -111,7 +115,7 @@ export const MiniSliderControl: React.FC<MiniSliderControlProps> = ({
           const parsed = Number.parseFloat(e.target.value);
           if (Number.isFinite(parsed)) onChange(parsed);
         }}
-        className={`w-full cursor-pointer ${colors.accent}`}
+        className={`w-full min-h-[28px] cursor-pointer ${colors.accent}`}
       />
     </div>
   );

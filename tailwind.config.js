@@ -11,14 +11,13 @@ export default {
   ],
   darkMode: 'class',
   theme: {
-    // Fully themeable palette (dark default, mirrored light under `.theme-light`).
     colors,
     extend: {
       fontFamily: {
-        sans: ['Geist', 'Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
-        mono: ['"JetBrains Mono"', 'monospace'],
+        sans: ['"Plus Jakarta Sans"', '"Segoe UI"', 'system-ui', '-apple-system', 'sans-serif'],
+        mono: ['"IBM Plex Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
-      // Glow shadows intentionally neutralised: flat, solid UI (no neon halos).
+      // Glow shadows intentionally neutralised: crisp matte elevation over glowing blur.
       boxShadow: {
         glow: 'none',
         'glow-blue': 'none',
@@ -37,8 +36,8 @@ export default {
         wireFlow: {
           '0%': { strokeDashoffset: '24' },
           '100%': { strokeDashoffset: '0' },
-        }
-      }
+        },
+      },
     },
   },
   plugins: [

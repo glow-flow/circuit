@@ -44,31 +44,31 @@ export const MicrogridBalancePanel: React.FC<MicrogridBalancePanelProps> = ({
 
   const statusBadgeClass =
     microgridBalance.status === 'self_sufficient_surplus'
-      ? 'bg-electric-500/15 text-electric-300 border-electric-500/35'
+      ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/45'
       : microgridBalance.status === 'bess_supporting'
-      ? 'bg-void-950 text-slate-200 border-white/20'
-      : 'bg-red-500/15 text-red-300 border-red-500/35';
+      ? 'bg-amber-500/15 text-amber-300 border-amber-500/45'
+      : 'bg-danger-500/15 text-danger-300 border-danger-500/45';
 
   return (
     <section
       aria-label={isId ? 'Keseimbangan Daya Microgrid' : 'Microgrid Power Flow Balance'}
-      className="rounded-2xl bg-void-900 border border-white/10 p-4 sm:p-5 space-y-4"
+      className="rounded-2xl bg-void-900 border border-control p-4 sm:p-5 space-y-4"
     >
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-white/10 pb-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-ink/15 pb-3">
         <div>
-          <h3 className="text-xs sm:text-sm font-bold text-slate-100 uppercase tracking-wider font-mono">
+          <h3 className="text-xs sm:text-sm font-bold text-ink uppercase tracking-wider font-mono">
             {isId
               ? 'Keseimbangan Daya Microgrid (Power Flow Balance)'
               : 'Microgrid Power Flow Balance'}
           </h3>
         </div>
-        <div className="flex flex-wrap items-center gap-2.5 text-xs font-mono">
+        <div className="flex flex-wrap items-center gap-2.5 text-xs font-mono tabular-nums">
           <span className={`px-2.5 py-1 rounded-md font-semibold border ${statusBadgeClass}`}>
             {statusLabel}
           </span>
           <span className="text-slate-400">
             {isId ? 'Otonomi Cadangan:' : 'Backup Autonomy:'}{' '}
-            <strong className="text-slate-100">
+            <strong className="text-ink">
               {microgridBalance.autonomyHours >= 900
                 ? isId
                   ? 'Mandiri Penuh'
@@ -80,49 +80,49 @@ export const MicrogridBalancePanel: React.FC<MicrogridBalancePanelProps> = ({
       </div>
 
       {/* 5-Column Hardware Instrument Readout Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 tabular-nums">
         {/* 1. Solar PV Generation */}
-        <div className="rounded-xl bg-void-950 border border-white/10 p-3.5 flex flex-col justify-between">
+        <div className="rounded-xl bg-void-950 border border-control p-3.5 flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-200">
+            <span className="text-xs font-semibold text-ink">
               {isId ? 'Surya (PV)' : 'Solar PV'}
             </span>
             <span className="text-[10px] font-mono text-slate-400 uppercase">GEN</span>
           </div>
           <div className="my-2">
-            <span className="text-2xl font-mono font-bold text-slate-100 tracking-tight">
+            <span className="text-2xl font-mono font-bold text-ink tracking-tight">
               {solarPoint.pmpp}
             </span>
             <span className="text-xs font-mono text-slate-400 ml-1">W</span>
           </div>
-          <div className="text-[11px] text-slate-400 font-mono flex justify-between border-t border-white/5 pt-1.5">
+          <div className="text-[11px] text-slate-400 font-mono flex justify-between border-t border-ink/15 pt-1.5">
             <span>Voc: {solarPoint.openCircuitVoltage}V</span>
             <span>Isc: {solarPoint.shortCircuitCurrent}A</span>
           </div>
         </div>
 
         {/* 2. Wind Turbine Generation */}
-        <div className="rounded-xl bg-void-950 border border-white/10 p-3.5 flex flex-col justify-between">
+        <div className="rounded-xl bg-void-950 border border-control p-3.5 flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-200">
+            <span className="text-xs font-semibold text-ink">
               {isId ? 'Turbin Angin' : 'Wind Turbine'}
             </span>
             <span className="text-[10px] font-mono text-slate-400 uppercase">GEN</span>
           </div>
           <div className="my-2">
-            <span className="text-2xl font-mono font-bold text-slate-100 tracking-tight">
+            <span className="text-2xl font-mono font-bold text-ink tracking-tight">
               {windPoint.electricalOutputWatts}
             </span>
             <span className="text-xs font-mono text-slate-400 ml-1">W</span>
           </div>
-          <div className="text-[11px] text-slate-400 font-mono flex justify-between border-t border-white/5 pt-1.5">
+          <div className="text-[11px] text-slate-400 font-mono flex justify-between border-t border-ink/15 pt-1.5">
             <span>RPM: {windPoint.estimatedRpm}</span>
             <span>Cp: {windPoint.effectiveCp}</span>
           </div>
         </div>
 
         {/* 3. Common DC Bus & Net Balance */}
-        <div className="rounded-xl bg-void-950 border border-electric-500/35 p-3.5 flex flex-col justify-between">
+        <div className="rounded-xl bg-void-950 border border-electric-500/45 p-3.5 flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-electric-400">
               {isId ? 'DC Bus Bersama' : 'Common DC Bus'}
@@ -134,7 +134,7 @@ export const MicrogridBalancePanel: React.FC<MicrogridBalancePanelProps> = ({
               className={`text-2xl font-mono font-bold tracking-tight ${
                 microgridBalance.netPowerWatts >= 0
                   ? 'text-electric-400'
-                  : 'text-red-400'
+                  : 'text-danger-400'
               }`}
             >
               {microgridBalance.netPowerWatts >= 0 ? '+' : ''}
@@ -142,16 +142,16 @@ export const MicrogridBalancePanel: React.FC<MicrogridBalancePanelProps> = ({
             </span>
             <span className="text-xs font-mono text-slate-400 ml-1">W</span>
           </div>
-          <div className="text-[11px] text-slate-400 font-mono flex justify-between border-t border-white/5 pt-1.5">
+          <div className="text-[11px] text-slate-400 font-mono flex justify-between border-t border-ink/15 pt-1.5">
             <span>Gen: {microgridBalance.totalGenerationWatts}W</span>
             <span>Load: {microgridBalance.totalLoadWatts}W</span>
           </div>
         </div>
 
         {/* 4. BESS Battery Storage */}
-        <div className="rounded-xl bg-void-950 border border-white/10 p-3.5 flex flex-col justify-between">
+        <div className="rounded-xl bg-void-950 border border-control p-3.5 flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-200">
+            <span className="text-xs font-semibold text-ink">
               {isId ? 'Penyimpanan BESS' : 'BESS Storage'}
             </span>
             <span className="text-[10px] font-mono text-electric-400 font-bold">
@@ -159,33 +159,33 @@ export const MicrogridBalancePanel: React.FC<MicrogridBalancePanelProps> = ({
             </span>
           </div>
           <div className="my-2">
-            <span className="text-2xl font-mono font-bold text-slate-100 tracking-tight">
+            <span className="text-2xl font-mono font-bold text-ink tracking-tight">
               {bessState.activePowerWatts > 0 ? '+' : ''}
               {bessState.activePowerWatts}
             </span>
             <span className="text-xs font-mono text-slate-400 ml-1">W</span>
           </div>
-          <div className="text-[11px] text-slate-400 font-mono flex justify-between border-t border-white/5 pt-1.5">
+          <div className="text-[11px] text-slate-400 font-mono flex justify-between border-t border-ink/15 pt-1.5">
             <span>{bessState.mode.toUpperCase()}</span>
             <span>{bessState.currentEnergyWh} Wh</span>
           </div>
         </div>
 
         {/* 5. Connected Community Load */}
-        <div className="rounded-xl bg-void-950 border border-white/10 p-3.5 flex flex-col justify-between">
+        <div className="rounded-xl bg-void-950 border border-control p-3.5 flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-200">
+            <span className="text-xs font-semibold text-ink">
               {isId ? 'Beban Konsumen' : 'Consumer Load'}
             </span>
             <span className="text-[10px] font-mono text-slate-400 uppercase">DEMAND</span>
           </div>
           <div className="my-2">
-            <span className="text-2xl font-mono font-bold text-slate-100 tracking-tight">
+            <span className="text-2xl font-mono font-bold text-ink tracking-tight">
               {loadDemandWatts}
             </span>
             <span className="text-xs font-mono text-slate-400 ml-1">W</span>
           </div>
-          <div className="text-[11px] text-slate-400 font-mono flex justify-between border-t border-white/5 pt-1.5">
+          <div className="text-[11px] text-slate-400 font-mono flex justify-between border-t border-ink/15 pt-1.5">
             <span>
               {isId ? 'Ekspor' : 'Export'}: {microgridBalance.gridExportWatts}W
             </span>

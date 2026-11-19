@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   BookOpen,
   Compass,
@@ -9,6 +9,7 @@ import {
 import { markTutorialAsSeen } from '../../utils/presetStorage';
 import { startTour } from '../../utils/tour';
 import { useCircuitStore } from '../../store/useCircuitStore';
+import { useModalFocusTrap } from '../../hooks/useModalKeyboardClose';
 import {
   TEACHER_QUICK_CARDS,
   TeacherQuickCard,
@@ -49,6 +50,14 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
   const language = useCircuitStore((state) => state.language);
   const isId = language === 'id';
   const [previewSwitchOpen, setPreviewSwitchOpen] = useState<boolean>(true);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  const handleSkip = () => {
+    markTutorialAsSeen();
+    onClose();
+  };
+
+  useModalFocusTrap(isOpen, dialogRef, handleSkip);
 
   if (!isOpen) return null;
 
@@ -79,34 +88,29 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
     onClose();
   };
 
-  const handleSkip = () => {
-    markTutorialAsSeen();
-    onClose();
-  };
-
   const getAccentBorderClass = (accent: TeacherQuickCard['accentColor']) => {
     switch (accent) {
       case 'cyan':
-        return 'border-electric-500/35 hover:border-electric-400';
+        return 'border-electric-500/45 hover:border-electric-400';
       case 'amber':
-        return 'border-amber-500/35 hover:border-amber-400';
+        return 'border-amber-500/45 hover:border-amber-400';
       case 'emerald':
-        return 'border-emerald-500/35 hover:border-emerald-400';
+        return 'border-emerald-500/45 hover:border-emerald-400';
       case 'rose':
-        return 'border-rose-500/35 hover:border-rose-400';
+        return 'border-danger-500/45 hover:border-danger-400';
     }
   };
 
   const getAccentTextClass = (accent: TeacherQuickCard['accentColor']) => {
     switch (accent) {
       case 'cyan':
-        return 'text-electric-300';
+        return 'text-electric-400';
       case 'amber':
-        return 'text-amber-300';
+        return 'text-amber-400';
       case 'emerald':
-        return 'text-emerald-300';
+        return 'text-emerald-400';
       case 'rose':
-        return 'text-rose-300';
+        return 'text-danger-400';
     }
   };
 
@@ -115,17 +119,18 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="welcome-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4 select-none"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/75 p-3 sm:p-4 select-none"
       onClick={handleSkip}
     >
       <div
-        className="w-full max-w-lg max-h-[90dvh] overflow-y-auto rounded-2xl bg-void-900 border border-white/15 shadow-2xl text-slate-100 flex flex-col"
+        ref={dialogRef}
+        className="w-full max-w-lg max-h-[90dvh] overflow-y-auto rounded-2xl bg-void-900 border border-control shadow-2xl text-ink flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top Header & Interactive Pure-Code Switch Preview */}
-        <div className="relative px-4 sm:px-5 pt-4 pb-3.5 border-b border-white/10 bg-void-950 shrink-0">
+        <div className="relative px-4 sm:px-5 pt-4 pb-3.5 border-b border-ink/15 bg-void-950 shrink-0">
           <div className="flex items-center justify-between gap-2 mb-3">
-            <div className="flex items-center gap-2 min-w-0">
+            <div className="flex items-center gap-2.5 min-w-0">
               <img
                 src="/assets/logo-circuit-sandbox.png"
                 alt="Circuit Sandbox"
@@ -135,14 +140,14 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
                 className="w-7 h-7 object-contain shrink-0"
               />
               <div className="min-w-0">
-                <span className="block text-[10px] font-mono font-semibold text-electric-400 tracking-wider uppercase truncate">
+                <span className="block text-[11px] font-mono font-semibold text-electric-400 truncate">
                   {isId
                     ? 'Panduan Cepat Guru & Siswa · IPA Kelas 9'
                     : 'Teacher & Student Quick-Start Guide'}
                 </span>
                 <h2
                   id="welcome-modal-title"
-                  className="text-base sm:text-lg font-bold text-white tracking-tight leading-[1.15] truncate"
+                  className="text-base sm:text-lg font-bold text-ink tracking-tight leading-[1.15] truncate"
                 >
                   {isId
                     ? 'Selamat Datang di Circuit Sandbox'
@@ -154,13 +159,13 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
               type="button"
               onClick={handleSkip}
               aria-label={isId ? 'Tutup' : 'Close'}
-              className="w-10 h-10 rounded-xl bg-void-900 hover:bg-void-850 border border-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-all active:scale-95 cursor-pointer shrink-0"
+              className="min-w-[44px] min-h-[44px] w-11 h-11 rounded-xl bg-void-900 hover:bg-void-850 border border-control text-slate-300 hover:text-ink flex items-center justify-center transition-colors active:scale-95 cursor-pointer shrink-0"
             >
-              <X className="w-4 h-4" />
+              <X className="w-4 h-4" aria-hidden="true" />
             </button>
           </div>
 
-          {/* Interactive Mini Demo: Tap the Pure-Code Saklar + Lamp right here! */}
+          {/* Interactive Mini Demo */}
           <WelcomeMiniCircuitDemo
             isOpen={previewSwitchOpen}
             onToggle={() => setPreviewSwitchOpen((prev) => !prev)}
@@ -175,9 +180,9 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
             <button
               type="button"
               onClick={handleStartHandsOnPractice}
-              className="w-full min-h-[44px] flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl bg-electric-600 hover:bg-electric-500 text-white text-xs sm:text-sm font-bold transition-all active:scale-95 cursor-pointer shadow-sm"
+              className="w-full min-h-[44px] flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl bg-electric-600 hover:bg-electric-700 text-white text-xs sm:text-sm font-bold transition-colors active:scale-95 cursor-pointer shadow-sm"
             >
-              <Hand className="w-4 h-4 shrink-0" />
+              <Hand className="w-4 h-4 shrink-0" aria-hidden="true" />
               <span>
                 {isId
                   ? 'Praktikum 3 Langkah (Langsung Coba)'
@@ -189,16 +194,16 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
               <button
                 type="button"
                 onClick={handleStartSpotlightTour}
-                className="min-h-[40px] px-3 py-1.5 rounded-xl bg-void-950 hover:bg-void-850 border border-white/10 text-slate-200 hover:text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                className="min-h-[44px] px-3 py-1.5 rounded-xl bg-void-950 hover:bg-void-850 border border-control text-ink text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors active:scale-95 cursor-pointer"
               >
-                <Compass className="w-3.5 h-3.5 text-electric-400 shrink-0" />
+                <Compass className="w-3.5 h-3.5 text-electric-400 shrink-0" aria-hidden="true" />
                 <span>{isId ? 'Tur Sorot Tombol' : 'Button Spotlight'}</span>
               </button>
 
               <button
                 type="button"
                 onClick={handleSkip}
-                className="min-h-[40px] px-3 py-1.5 rounded-xl bg-void-950 hover:bg-void-850 border border-white/10 text-slate-300 hover:text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                className="min-h-[44px] px-3 py-1.5 rounded-xl bg-void-950 hover:bg-void-850 border border-control text-ink text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors active:scale-95 cursor-pointer"
               >
                 <span>{isId ? 'Langsung Rakit' : 'Skip to Canvas'}</span>
               </button>
@@ -206,10 +211,10 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
           </div>
 
           {/* 2x2 Visual Schematic Quick-Start Grid */}
-          <div className="space-y-2 pt-1 border-t border-white/10">
+          <div className="space-y-2 pt-2 border-t border-ink/15">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-slate-300 font-bold flex items-center gap-1.5">
-                <BookOpen className="w-3.5 h-3.5 text-electric-400" />
+              <span className="text-[11px] font-mono text-slate-300 font-bold flex items-center gap-1.5">
+                <BookOpen className="w-3.5 h-3.5 text-electric-400" aria-hidden="true" />
                 {isId
                   ? 'Pilih Skema 1-Klik (Siap Pakai)'
                   : '1-Click Visual Circuit Presets'}
@@ -222,7 +227,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
                   key={card.id}
                   type="button"
                   onClick={() => handleSelectTeacherCard(card.id)}
-                  className={`text-left p-2.5 rounded-xl bg-void-950 hover:bg-void-850 border transition-all active:scale-95 cursor-pointer flex flex-col justify-between gap-1.5 ${getAccentBorderClass(
+                  className={`text-left p-2.5 rounded-xl bg-void-950 hover:bg-void-850 border transition-colors active:scale-[0.99] cursor-pointer flex flex-col justify-between gap-1.5 ${getAccentBorderClass(
                     card.accentColor
                   )}`}
                 >
@@ -231,33 +236,33 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
 
                     <div>
                       <span
-                        className={`block text-[8px] font-mono font-bold uppercase tracking-wider truncate ${getAccentTextClass(
+                        className={`block text-[10px] font-mono font-bold truncate ${getAccentTextClass(
                           card.accentColor
                         )}`}
                       >
                         {isId ? card.badgeId : card.badgeEn}
                       </span>
-                      <div className="text-[11px] sm:text-xs font-bold text-white leading-tight mt-0.5">
+                      <div className="text-xs font-bold text-ink leading-tight mt-0.5">
                         {isId ? card.titleId : card.titleEn}
                       </div>
-                      <p className="text-[10px] text-slate-400 leading-tight mt-0.5 line-clamp-2">
+                      <p className="text-[11px] text-slate-400 leading-tight mt-0.5 line-clamp-2">
                         {isId ? card.descriptionId : card.descriptionEn}
                       </p>
                     </div>
                   </div>
 
-                  <div className="pt-1 border-t border-white/5 flex items-center justify-between text-[10px] font-bold text-slate-200">
+                  <div className="pt-1 border-t border-ink/10 flex items-center justify-between text-[11px] font-bold text-ink">
                     <span className={`truncate ${getAccentTextClass(card.accentColor)}`}>
                       {isId ? card.actionLabelId : card.actionLabelEn}
                     </span>
-                    <Play className="w-2.5 h-2.5 fill-current opacity-80 shrink-0" />
+                    <Play className="w-3 h-3 fill-current opacity-85 shrink-0" aria-hidden="true" />
                   </div>
                 </button>
               ))}
             </div>
           </div>
 
-          <div className="pt-1.5 border-t border-white/10 flex items-center justify-between gap-2 text-[10px] font-mono text-slate-400">
+          <div className="pt-2 border-t border-ink/15 flex items-center justify-between gap-2 text-[11px] font-mono text-slate-400">
             <span>
               {isId
                 ? 'Karya Orisinal: Kenzie Raka Romero (SMPN 12 Surabaya)'

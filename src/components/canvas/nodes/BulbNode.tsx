@@ -65,6 +65,8 @@ export const BulbNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, se
         <img
           src={bulbSpec.image}
           alt={displayLabel}
+          width={bulbSpec.imageRotated ? 106 : BULB_NODE_SIZE.width}
+          height={bulbSpec.imageRotated ? 76 : BULB_NODE_SIZE.height}
           draggable={false}
           className={`pointer-events-none z-10 select-none object-contain transition-all duration-300 ${
             bulbSpec.imageRotated
@@ -79,13 +81,13 @@ export const BulbNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, se
 
         {/* Hazard indicator when filament is burnt out */}
         {isBlown && (
-          <span className="absolute right-1 top-1 z-20 h-2.5 w-2.5 animate-pulse rounded-full bg-red-500 shadow-glow-danger" />
+          <span className="absolute right-1 top-1 z-20 h-2.5 w-2.5 rounded-full bg-danger-500 border border-pure-white" />
         )}
 
         {/* Anti-confusion helper badge: indicates bulb needs socket */}
         <div className="absolute -bottom-2.5 inset-x-0 flex justify-center pointer-events-none z-30">
-          <span className="bg-slate-950/95 border border-amber-500/70 text-amber-300 text-[8px] font-mono font-bold px-1.5 py-0.5 rounded-full shadow-md flex items-center gap-1 backdrop-blur-sm whitespace-nowrap">
-            ⚠️ {isPinBase ? (isIndonesian ? 'Butuh Fiting Pin' : 'Needs Pin Socket') : (isIndonesian ? 'Butuh Fiting' : 'Needs Socket')}
+          <span className="bg-void-950 border border-amber-500/70 text-amber-300 text-[8px] font-mono font-bold px-1.5 py-0.5 rounded-full shadow-md flex items-center gap-1 whitespace-nowrap">
+            {isPinBase ? (isIndonesian ? 'Butuh Fiting Pin' : 'Needs Pin Socket') : (isIndonesian ? 'Butuh Fiting' : 'Needs Socket')}
           </span>
         </div>
       </div>
@@ -109,18 +111,18 @@ export const BulbNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, se
         <NodeInfoPopover placement="bottom">
           <div className="mb-1.5 flex items-center justify-between gap-1.5">
             <div className="min-w-0">
-              <div className="truncate text-xs font-bold tracking-tight text-slate-100">
-                {displayLabel} <span className="font-mono text-cyan-300">({resistance}Ω)</span>
+              <div className="truncate text-xs font-bold tracking-tight text-ink">
+                {displayLabel} <span className="font-mono text-electric-400 tabular-nums">({resistance}Ω)</span>
               </div>
               <div className="truncate text-[10px] text-slate-400" title={displayTraits}>
-                {bulbSpec.category} • {isPinBase ? (isIndonesian ? 'Pin (Butuh Fiting Keramik)' : 'Pin Base (Needs Ceramic Socket)') : (isIndonesian ? 'Ulir E27 (Butuh Fiting)' : 'Screw E27 (Needs Socket)')}
+                {bulbSpec.category} · {isPinBase ? (isIndonesian ? 'Pin (Butuh Fiting Keramik)' : 'Pin Base (Needs Ceramic Socket)') : (isIndonesian ? 'Ulir E27 (Butuh Fiting)' : 'Screw E27 (Needs Socket)')}
               </div>
             </div>
           </div>
 
-          <div className="space-y-1 rounded-lg border border-white/5 bg-void-950/85 p-2 font-mono text-[10px]">
-            <div className="flex items-center gap-1.5 text-slate-400 text-[10px]">
-              <Info className="h-3 w-3 text-cyan-400 shrink-0" />
+          <div className="space-y-1 rounded-lg border border-control bg-void-950 p-2 font-mono text-[10px]">
+            <div className="flex items-center gap-1.5 text-slate-300 text-[10px]">
+              <Info className="h-3 w-3 text-electric-400 shrink-0" aria-hidden="true" />
               <span>
                 {isPinBase
                   ? isIndonesian
@@ -138,9 +140,9 @@ export const BulbNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, se
               <button
                 type="button"
                 onClick={() => updateComponentData(id, { isBlown: false })}
-                className="flex w-full cursor-pointer items-center justify-center gap-1 rounded border border-red-500/50 bg-red-950/90 px-1.5 py-1 text-[10px] font-bold text-red-200 transition-colors hover:bg-red-900 active:scale-95"
+                className="flex w-full cursor-pointer items-center justify-center gap-1 rounded-lg bg-danger-600 hover:bg-danger-700 px-2 py-1.5 text-[10px] font-bold text-white transition-colors active:scale-95"
               >
-                <RotateCcw className="h-3 w-3" /> {isIndonesian ? 'Ganti Filamen' : 'Reset Filament'}
+                <RotateCcw className="h-3 w-3" aria-hidden="true" /> {isIndonesian ? 'Ganti Filamen' : 'Reset Filament'}
               </button>
             </div>
           )}

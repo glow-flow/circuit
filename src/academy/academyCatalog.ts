@@ -143,7 +143,7 @@ export const ACADEMY_LESSONS: AcademyLesson[] = [
     summaryId: 'Kenali mengapa kabel tipis memanas drastis saat arusnya berlipat ganda.',
     summaryEn: 'Discover why thin wires overheat dramatically when current doubles.',
     analogyId: 'Kenaikan arus 2x lipat bukan bikin panas 2x, tapi 4x lipat karena kuadrat (I²)!',
-    analogyEn: 'Doubling current does not double wire heat—it quadruples heat because of I squared (I²)!',
+    analogyEn: 'Doubling current does not double wire heat: it quadruples heat because of I squared (I²)!',
     estimatedMinutes: 3,
     difficulty: 'beginner',
     xpReward: 110,
@@ -157,11 +157,11 @@ export const ACADEMY_LESSONS: AcademyLesson[] = [
     ],
     theoryContentId: [
       'Daya listrik (Watt) mengukur seberapa cepat energi diubah menjadi cahaya atau panas tiap detik.',
-      'Di kawat berhambatan R, panas muncul sebesar I² × R — musuh utama instalasi kelebihan beban!',
+      'Di kawat berhambatan R, panas muncul sebesar I² × R, musuh utama instalasi kelebihan beban!',
     ],
     theoryContentEn: [
       'Power (Watts) measures how fast electrical energy converts to light or heat.',
-      'Along a wire of resistance R, heat jumps with I² × R—the main culprit behind overloads!',
+      'Along a wire of resistance R, heat jumps with I² × R: the main culprit behind overloads!',
     ],
     equations: [
       {
@@ -595,7 +595,7 @@ export const ACADEMY_LESSONS: AcademyLesson[] = [
     titleEn: 'Cable Sizing (PUIL) & Ampacity',
     summaryId: 'Kenapa kabel kecil tidak boleh menanggung beban pompa atau pemanas berdaya besar.',
     summaryEn: 'Discover why thin wires melt under heavy appliances and why copper gauge matters.',
-    analogyId: 'Kabel tipis 0.5mm² yang dialiri 15A ibarat ratusan orang berdesakan di pintu sempit — panas dan macet!',
+    analogyId: 'Kabel tipis 0.5mm² yang dialiri 15A ibarat ratusan orang berdesakan di pintu sempit, panas dan macet!',
     analogyEn: 'Pushing 15A through thin 0.5mm² copper is like cramming a stadium crowd through one narrow door!',
     estimatedMinutes: 4,
     difficulty: 'intermediate',

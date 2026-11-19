@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   Mail,
   Phone,
   ShieldCheck,
 } from 'lucide-react';
 import { useCircuitStore } from '../../store/useCircuitStore';
-import { useModalKeyboardClose } from '../../hooks/useModalKeyboardClose';
+import { useModalFocusTrap } from '../../hooks/useModalKeyboardClose';
 import { LabModalHeader } from './common/LabModalHeader';
 import { CreditsScienceReferenceSection } from './credits/CreditsScienceReferenceSection';
 
@@ -109,7 +109,8 @@ export const AI_TOOLS_AND_HARNESS: ReadonlyArray<string> = AI_TOOLS_AND_HARNESS_
  * Time Complexity: O(N) over static contributor and citation lists.
  */
 export const CreditsModal: React.FC<CreditsModalProps> = ({ isOpen, onClose }) => {
-  useModalKeyboardClose(isOpen, onClose);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useModalFocusTrap(isOpen, dialogRef, onClose);
   const language = useCircuitStore((state) => state.language);
   const isId = language === 'id';
 
@@ -120,11 +121,12 @@ export const CreditsModal: React.FC<CreditsModalProps> = ({ isOpen, onClose }) =
       role="dialog"
       aria-modal="true"
       aria-labelledby="credits-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-void-950/80 backdrop-blur-md p-3 sm:p-4 select-none"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/75 p-3 sm:p-4 select-none"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg max-h-[90dvh] flex flex-col rounded-2xl bg-void-900 border border-white/10 shadow-2xl text-slate-100 overflow-hidden font-sans"
+        ref={dialogRef}
+        className="w-full max-w-lg max-h-[90dvh] flex flex-col rounded-2xl bg-void-900 border border-control shadow-2xl text-ink overflow-hidden font-sans"
         onClick={(e) => e.stopPropagation()}
       >
         <LabModalHeader
@@ -138,9 +140,9 @@ export const CreditsModal: React.FC<CreditsModalProps> = ({ isOpen, onClose }) =
         {/* Scrollable Body */}
         <div className="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1">
           {/* School & Advisor Banner */}
-          <div className="rounded-xl bg-void-950 border border-white/10 p-3.5 flex flex-wrap items-center justify-between gap-2.5">
+          <div className="rounded-xl bg-void-950 border border-control p-3.5 flex flex-wrap items-center justify-between gap-2.5">
             <div>
-              <div className="text-xs font-bold text-slate-100">
+              <div className="text-xs font-bold text-ink">
                 SMP Negeri 12 Surabaya
               </div>
               <div className="text-[11px] text-slate-400 mt-0.5">
@@ -149,14 +151,14 @@ export const CreditsModal: React.FC<CreditsModalProps> = ({ isOpen, onClose }) =
                   : 'Virtual Physics Lab & Renewable Energy Innovation'}
               </div>
             </div>
-            <span className="px-2.5 py-1 rounded-md bg-void-900 border border-white/10 text-[10px] font-mono font-semibold text-slate-300">
+            <span className="px-2.5 py-1 rounded-md bg-void-900 border border-control text-[11px] font-mono font-semibold text-slate-300">
               {isId ? 'Pembimbing: Ibu Uki' : 'Advisor: Mrs. Uki'}
             </span>
           </div>
 
           {/* Contributors Editorial Roster */}
           <div className="space-y-2.5">
-            <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-semibold px-0.5">
+            <div className="text-[11px] font-mono text-slate-400 font-semibold px-0.5">
               {isId
                 ? 'Daftar Developer & Kontributor'
                 : 'Developer & Contributor Roster'}
@@ -168,30 +170,30 @@ export const CreditsModal: React.FC<CreditsModalProps> = ({ isOpen, onClose }) =
                   key={member.name}
                   className={`rounded-xl p-3.5 border transition-colors ${
                     member.isLead
-                      ? 'bg-void-950 border-electric-500/35'
-                      : 'bg-void-950/80 border-white/10'
+                      ? 'bg-void-950 border-electric-500/50'
+                      : 'bg-void-950 border-control'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="text-xs sm:text-sm font-bold text-slate-100 flex items-center gap-2 flex-wrap">
+                      <div className="text-xs sm:text-sm font-bold text-ink flex items-center gap-2 flex-wrap">
                         <span>{member.name}</span>
                         {member.isLead && (
-                          <span className="px-2 py-0.5 rounded-md bg-electric-500/15 border border-electric-500/30 text-[9px] font-mono font-semibold text-electric-300 uppercase">
+                          <span className="px-2 py-0.5 rounded-md bg-electric-600 text-[10px] font-mono font-semibold text-white">
                             {isId ? 'Ketua & Kreator Utama' : 'Lead Creator'}
                           </span>
                         )}
                         {member.isMassiveContributor && (
-                          <span className="px-2 py-0.5 rounded-md bg-void-900 border border-white/15 text-[9px] font-mono font-semibold text-slate-300 uppercase">
+                          <span className="px-2 py-0.5 rounded-md bg-void-900 border border-control text-[10px] font-mono font-semibold text-slate-300">
                             {isId ? 'Kontributor Utama' : 'Massive Contributor'}
                           </span>
                         )}
                       </div>
-                      <div className="text-[11px] text-slate-300 mt-1 font-medium">
+                      <div className="text-xs text-slate-300 mt-1 font-medium">
                         {isId ? member.roleId : member.roleEn}
                       </div>
                       {member.noteId && (
-                        <div className="text-[11px] text-slate-400 mt-2 leading-relaxed border-l-2 border-electric-500/40 pl-2.5">
+                        <div className="text-[11px] text-slate-400 mt-2 leading-relaxed">
                           {isId ? member.noteId : member.noteEn}
                         </div>
                       )}
@@ -199,14 +201,14 @@ export const CreditsModal: React.FC<CreditsModalProps> = ({ isOpen, onClose }) =
                   </div>
 
                   {member.isLead && (
-                    <div className="mt-3 pt-2.5 border-t border-white/10 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] font-mono text-slate-300">
+                    <div className="mt-3 pt-2.5 border-t border-ink/15 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] font-mono text-slate-300">
                       <span>NISN: {member.nisn}</span>
                       <span className="inline-flex items-center gap-1 text-slate-300">
-                        <Mail className="w-3 h-3 text-electric-400" />
+                        <Mail className="w-3 h-3 text-electric-400" aria-hidden="true" />
                         {member.email}
                       </span>
                       <span className="inline-flex items-center gap-1 text-slate-300">
-                        <Phone className="w-3 h-3 text-electric-400" />
+                        <Phone className="w-3 h-3 text-electric-400" aria-hidden="true" />
                         {member.phone}
                       </span>
                     </div>
@@ -217,9 +219,9 @@ export const CreditsModal: React.FC<CreditsModalProps> = ({ isOpen, onClose }) =
           </div>
 
           {/* Originality & Zero-Plagiarism Declaration */}
-          <div className="rounded-xl bg-void-950 border border-white/10 p-3.5 space-y-1.5">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-100">
-              <ShieldCheck className="w-4 h-4 text-electric-400 shrink-0" />
+          <div className="rounded-xl bg-void-950 border border-control p-3.5 space-y-1.5">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-ink">
+              <ShieldCheck className="w-4 h-4 text-electric-400 shrink-0" aria-hidden="true" />
               <span>
                 {isId
                   ? 'Pernyataan Orisinalitas & Bebas Plagiarisme'
@@ -227,17 +229,17 @@ export const CreditsModal: React.FC<CreditsModalProps> = ({ isOpen, onClose }) =
               </span>
             </div>
             {isId ? (
-              <p className="text-[11px] text-slate-300 leading-relaxed">
+              <p className="text-xs text-slate-300 leading-relaxed">
                 Proyek ini dirancang dan dibangun secara orisinal oleh{' '}
-                <strong className="text-slate-100">KENZIE RAKA ROMERO</strong> (SMPN 12
+                <strong className="text-ink">KENZIE RAKA ROMERO</strong> (SMPN 12
                 Surabaya) tanpa plagiarisme terhadap karya pihak mana pun. Seluruh
                 konsep kreatif, mekanika fisika dua dunia, dan skenario interaktif
                 berasal murni dari gagasan penulis.
               </p>
             ) : (
-              <p className="text-[11px] text-slate-300 leading-relaxed">
+              <p className="text-xs text-slate-300 leading-relaxed">
                 This project was originally conceived, designed, and built by{' '}
-                <strong className="text-slate-100">KENZIE RAKA ROMERO</strong> with
+                <strong className="text-ink">KENZIE RAKA ROMERO</strong> with
                 zero plagiarism of any other projects. All creative concepts, dual-world
                 physics mechanics, and interactive scenarios originate from the author&apos;s
                 own vision.
@@ -246,31 +248,31 @@ export const CreditsModal: React.FC<CreditsModalProps> = ({ isOpen, onClose }) =
           </div>
 
           {/* Tools, Technologies & AI Harness Section */}
-          <div className="rounded-xl bg-void-950 border border-white/10 p-3.5 space-y-2.5">
+          <div className="rounded-xl bg-void-950 border border-control p-3.5 space-y-2.5">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-bold text-slate-100">
+              <span className="text-xs font-bold text-ink">
                 {isId
                   ? 'Teknologi & Harness Pengembangan'
                   : 'Tools, Technologies & Harness'}
               </span>
-              <span className="text-[10px] font-mono text-electric-400">
+              <span className="text-[11px] font-mono text-electric-400">
                 Google Antigravity
               </span>
             </div>
 
-            <p className="text-[11px] text-slate-400 leading-relaxed">
+            <p className="text-xs text-slate-400 leading-relaxed">
               {isId ? (
                 <>
                   Beberapa perangkat dan teknologi digunakan untuk membantu
                   mewujudkan proyek ini. Harness pengembangan yang digunakan
                   untuk membangun aplikasi ini adalah{' '}
-                  <strong className="text-slate-200">Google Antigravity</strong>:
+                  <strong className="text-ink">Google Antigravity</strong>:
                 </>
               ) : (
                 <>
                   Some tools and technologies were used to assist in realizing this
                   project. The development harness used to build this is{' '}
-                  <strong className="text-slate-200">Google Antigravity</strong>:
+                  <strong className="text-ink">Google Antigravity</strong>:
                 </>
               )}
             </p>
@@ -279,7 +281,7 @@ export const CreditsModal: React.FC<CreditsModalProps> = ({ isOpen, onClose }) =
               {AI_TOOLS_AND_HARNESS_BADGES.map((badge) => (
                 <span
                   key={badge.labelEn}
-                  className="inline-flex items-center px-2.5 py-1 rounded-md bg-void-900 border border-white/10 text-[10px] font-mono text-slate-300"
+                  className="inline-flex items-center px-2.5 py-1 rounded-md bg-void-900 border border-control text-[11px] font-mono text-slate-300"
                 >
                   {isId ? badge.labelId : badge.labelEn}
                 </span>
@@ -292,14 +294,14 @@ export const CreditsModal: React.FC<CreditsModalProps> = ({ isOpen, onClose }) =
         </div>
 
         {/* Footer */}
-        <div className="px-4 sm:px-5 py-3 border-t border-white/10 bg-void-950 flex items-center justify-between gap-2 shrink-0">
-          <span className="text-[10px] font-mono text-slate-400">
+        <div className="px-4 sm:px-5 py-3 border-t border-ink/15 bg-void-950 flex items-center justify-between gap-2 shrink-0">
+          <span className="text-[11px] font-mono text-slate-400">
             © 2026 Kenzie Raka Romero · SMPN 12 Surabaya
           </span>
           <button
             type="button"
             onClick={onClose}
-            className="min-h-[38px] px-4 py-1.5 rounded-xl bg-electric-500 hover:bg-electric-400 text-void-950 text-xs font-bold transition-all active:scale-95 cursor-pointer"
+            className="min-h-[44px] px-4 py-2 rounded-xl bg-electric-600 hover:bg-electric-700 text-white text-xs font-bold transition-colors active:scale-95 cursor-pointer"
           >
             {isId ? 'Tutup' : 'Close'}
           </button>

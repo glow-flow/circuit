@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   CheckCircle2,
   ChevronDown,
@@ -6,7 +6,6 @@ import {
   ChevronUp,
   Flame,
   Play,
-  Sparkles,
   Trophy,
   ArrowLeft,
   Award,
@@ -41,7 +40,7 @@ import { LedPolarityInteractiveDemo } from './demos/LedPolarityInteractiveDemo';
 import { ShortCircuitMcbInteractiveDemo } from './demos/ShortCircuitMcbInteractiveDemo';
 import { SutetLossInteractiveDemo } from './demos/SutetLossInteractiveDemo';
 import { MnaMatrixXrayDemo } from './demos/MnaMatrixXrayDemo';
-import { useModalKeyboardClose } from '../../../hooks/useModalKeyboardClose';
+import { useModalFocusTrap } from '../../../hooks/useModalKeyboardClose';
 import { LabModalHeader } from '../common/LabModalHeader';
 import { MascotCoachBubble, MascotMood } from '../common/MascotAvatar';
 
@@ -105,7 +104,7 @@ function getCurriculumMascotCoach(
       mood: 'proud',
       message: isId
         ? 'Hai! Aku Watt. Belajar listrik cukup 3 menit per modul, mainkan Lab SVG-nya & kumpulkan XP!'
-        : 'Hi! I am Watt. Each micro-lesson takes 3 minutes—play the SVG lab & earn XP!',
+        : 'Hi! I am Watt. Each micro-lesson takes 3 minutes: play the SVG lab & earn XP!',
     };
   }
   if (completedCount >= totalLessons) {
@@ -120,18 +119,19 @@ function getCurriculumMascotCoach(
     mood: 'celebrate',
     message: isId
       ? `Mantap! ${completedCount}/${totalLessons} modul selesai (${totalXp} XP). Lanjut ke materi berikutnya!`
-      : `Awesome! ${completedCount}/${totalLessons} done (${totalXp} XP). Pick your next spark!`,
+      : `Awesome! ${completedCount}/${totalLessons} done (${totalXp} XP). Pick your next lesson!`,
   };
 }
 
 /**
- * AcademyModal renders a Duolingo-inspired gamified curriculum with the Watt CFL mascot,
+ * AcademyModal renders a micro-lesson curriculum with the Watt CFL mascot,
  * slim sticky XP bar, 3-step micro-lesson flow, and 8 interactive SVG micro-labs.
  *
  * Time Complexity: O(L) where L = number of catalog lessons (14 constants), O(1) lookups via Set.
  */
 export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) => {
-  useModalKeyboardClose(isOpen, onClose);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useModalFocusTrap(isOpen, dialogRef, onClose);
   const language = useCircuitStore((state) => state.language);
   const loadPreset = useCircuitStore((state) => state.loadPreset);
   const notify = useCircuitStore((state) => state.notify);
@@ -325,28 +325,30 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
     : null;
 
   const switcherSlot = (
-    <div className="flex items-center bg-void-950 p-1 rounded-xl border border-white/10">
+    <div className="flex items-center bg-void-950 p-1 rounded-xl border border-control">
       <button
         type="button"
+        aria-pressed={viewMode === 'curriculum'}
         onClick={() => setViewMode('curriculum')}
-        className={`min-h-[38px] px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer active:scale-95 ${
+        className={`min-h-[44px] sm:min-h-[38px] px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer active:scale-95 ${
           viewMode === 'curriculum'
-            ? 'bg-electric-500 text-void-950 font-bold'
-            : 'text-slate-400 hover:text-slate-200'
+            ? 'bg-electric-600 hover:bg-electric-700 text-white font-bold'
+            : 'text-slate-300 hover:text-ink'
         }`}
       >
         {isId ? 'Materi' : 'Learn'}
       </button>
       <button
         type="button"
+        aria-pressed={viewMode === 'badges'}
         onClick={() => setViewMode('badges')}
-        className={`min-h-[38px] px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer active:scale-95 flex items-center gap-1.5 ${
+        className={`min-h-[44px] sm:min-h-[38px] px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer active:scale-95 flex items-center gap-1.5 tabular-nums ${
           viewMode === 'badges'
-            ? 'bg-electric-500 text-void-950 font-bold'
-            : 'text-slate-400 hover:text-slate-200'
+            ? 'bg-electric-600 hover:bg-electric-700 text-white font-bold'
+            : 'text-slate-300 hover:text-ink'
         }`}
       >
-        <Trophy className="w-3.5 h-3.5" />
+        <Trophy className="w-3.5 h-3.5" aria-hidden="true" />
         <span>
           {isId ? 'Lencana' : 'Badges'} ({progress.unlockedBadgeIds.length})
         </span>
@@ -356,29 +358,35 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-2 sm:p-4 font-sans"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/75 p-0 sm:p-4 overflow-y-auto min-h-[100dvh] font-sans"
       role="dialog"
       aria-modal="true"
       aria-labelledby="academy-modal-title"
+      onClick={onClose}
     >
-      <div className="relative w-full max-w-6xl h-[92dvh] max-h-[860px] flex flex-col rounded-2xl bg-void-900 border border-white/15 shadow-2xl overflow-hidden text-slate-200">
+      <div
+        ref={dialogRef}
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-6xl h-[100dvh] sm:h-[92dvh] max-h-[860px] flex flex-col rounded-none sm:rounded-2xl bg-void-900 border-0 sm:border sm:border-control shadow-2xl overflow-hidden text-ink"
+      >
         <LabModalHeader
           titleId="academy-modal-title"
+          eyebrow={isId ? 'MODUL PEMBELAJARAN · FISIKA LISTRIK' : 'CURRICULUM · CIRCUIT PHYSICS'}
           title={isId ? 'Akademi Kelistrikan' : 'Circuit Academy'}
           rightSlot={switcherSlot}
           onClose={onClose}
           closeLabel={isId ? 'Tutup Akademi' : 'Close Academy'}
         />
 
-        {/* Slim Sticky Progress Strip (Replaces old bulky 4-card telemetry wall) */}
-        <div className="px-4 py-2 bg-void-950 border-b border-white/10 flex flex-wrap items-center justify-between gap-3 text-xs shrink-0">
+        {/* Slim sticky XP progress strip */}
+        <div className="px-4 py-2 bg-void-950 border-b border-ink/15 flex flex-wrap items-center justify-between gap-3 text-xs shrink-0 tabular-nums">
           <div className="flex items-center gap-2.5 flex-1 min-w-[180px]">
-            <span className="px-2 py-0.5 rounded-lg bg-electric-500/20 border border-electric-500/40 text-electric-300 font-mono font-bold text-[11px] shrink-0">
+            <span className="px-2 py-0.5 rounded-lg bg-electric-500/20 border border-electric-500/45 text-electric-300 font-mono font-bold text-[11px] shrink-0">
               Lv.{progress.currentLevel}
             </span>
-            <div className="flex-1 max-w-[180px] h-2 rounded-full bg-void-900 border border-white/10 overflow-hidden">
+            <div className="flex-1 max-w-[180px] h-2 rounded-full bg-void-900 border border-control overflow-hidden">
               <div
-                className="h-full bg-electric-500 transition-all duration-300"
+                className="h-full bg-electric-600 transition-all duration-300"
                 style={{ width: `${xpProgress.percent}%` }}
               />
             </div>
@@ -389,10 +397,10 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
 
           <div className="flex items-center gap-3 font-mono text-[11px]">
             <span className="inline-flex items-center gap-1 text-amber-300 font-semibold">
-              <Flame className="w-3.5 h-3.5 text-amber-400" />
+              <Flame className="w-3.5 h-3.5 text-amber-400" aria-hidden="true" />
               {progress.streakDays}d
             </span>
-            <span className="text-slate-500">|</span>
+            <span className="text-slate-400" aria-hidden="true">|</span>
             <span className="text-emerald-300 font-semibold">
               {progress.completedLessonIds.length}/{ACADEMY_LESSONS.length}{' '}
               {isId ? 'Modul' : 'Done'}
@@ -403,23 +411,23 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
         {/* Main Content */}
         {viewMode === 'curriculum' ? (
           <div className="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden">
-            {/* LEFT PANE: Level Stepper & Curriculum Nodes */}
+            {/* Left pane: level stepper & curriculum nodes */}
             <div
               className={`${
                 mobileScreen === 'detail' ? 'hidden md:flex' : 'flex'
-              } w-full md:w-[340px] lg:w-[370px] border-r border-white/10 bg-void-900 flex-col min-h-0 shrink-0`}
+              } w-full md:w-[340px] lg:w-[370px] border-b md:border-b-0 md:border-r border-ink/15 bg-void-900 flex-col min-h-0 shrink-0`}
             >
-              <div className="p-3.5 border-b border-white/10 space-y-3 shrink-0">
+              <div className="p-3.5 border-b border-ink/15 space-y-3 shrink-0">
                 <MascotCoachBubble
                   mood={pathCoach.mood}
-                  eyebrow={isId ? 'Coach Watt' : 'Coach Watt'}
+                  eyebrow="Coach Watt"
                   message={pathCoach.message}
                   accent={progress.completedLessonIds.length > 0 ? 'emerald' : 'electric'}
                   size="sm"
                 />
 
                 {/* 6-Level Selector Pills */}
-                <div className="grid grid-cols-6 gap-1.5">
+                <div className="grid grid-cols-6 gap-1.5 tabular-nums">
                   {ACADEMY_LEVELS.map((lvl) => {
                     const isSelected = selectedLevel === lvl.level;
                     const lessonsInLvl = getLessonsByLevel(lvl.level);
@@ -430,20 +438,21 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
                       <button
                         key={lvl.level}
                         type="button"
+                        aria-pressed={isSelected}
                         onClick={() => {
                           setSelectedLevel(lvl.level);
                           if (lessonsInLvl[0]) setSelectedLessonId(lessonsInLvl[0].id);
                         }}
-                        className={`min-h-[44px] py-1.5 rounded-xl font-mono text-xs font-bold border flex flex-col items-center justify-center transition-all cursor-pointer active:scale-95 ${
+                        className={`min-h-[44px] py-1.5 rounded-xl font-mono text-xs font-bold border flex flex-col items-center justify-center transition-colors cursor-pointer active:scale-95 ${
                           isSelected
-                            ? 'bg-electric-500 text-void-950 border-electric-400'
+                            ? 'bg-electric-600 hover:bg-electric-700 text-white border-electric-500'
                             : isLvlDone
-                            ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
-                            : 'bg-void-950 border-white/10 text-slate-400 hover:text-white'
+                            ? 'bg-emerald-500/15 border-emerald-500/45 text-emerald-300'
+                            : 'bg-void-950 border-control text-slate-300 hover:text-ink hover:border-electric-500/50'
                         }`}
                       >
                         <span>{lvl.level}</span>
-                        <span className="text-[9px] font-normal opacity-80">
+                        <span className="text-[10px] font-normal tabular-nums">
                           {doneInLvl}/{lessonsInLvl.length}
                         </span>
                       </button>
@@ -452,7 +461,7 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
                 </div>
 
                 <div className="flex items-center justify-between gap-2 px-1">
-                  <div className="text-xs font-bold text-slate-100 truncate">
+                  <div className="text-xs font-bold text-ink truncate">
                     {isId ? activeLevelInfo.titleId : activeLevelInfo.titleEn}
                   </div>
                   <div className="text-[11px] text-slate-400 truncate">
@@ -462,7 +471,7 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
               </div>
 
               {/* Micro-Lesson Cards */}
-              <div className="flex-1 overflow-y-auto p-3.5 space-y-2.5">
+              <div className="flex-1 overflow-y-auto p-3.5 space-y-2.5 overscroll-contain">
                 {levelLessons.map((lesson, idx) => {
                   const isDone = completedSet.has(lesson.id);
                   const isSelected = lesson.id === activeLesson.id;
@@ -472,28 +481,28 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
                       key={lesson.id}
                       type="button"
                       onClick={() => selectLesson(lesson)}
-                      className={`w-full text-left p-3.5 rounded-xl border transition-all cursor-pointer active:scale-[0.98] flex items-center gap-3 ${
+                      className={`w-full min-h-[44px] text-left p-3.5 rounded-xl border transition-colors cursor-pointer active:scale-[0.98] flex items-center gap-3 ${
                         isSelected
-                          ? 'bg-electric-500/15 border-electric-500/50'
+                          ? 'bg-electric-500/15 border-electric-500'
                           : isDone
-                          ? 'bg-void-950 border-emerald-500/30 hover:border-emerald-500/50'
-                          : 'bg-void-950 border-white/10 hover:border-white/25'
+                          ? 'bg-void-950 border-emerald-500/40 hover:border-emerald-500/60'
+                          : 'bg-void-950 border-control hover:border-electric-500/50'
                       }`}
                     >
                       <div
-                        className={`w-9 h-9 rounded-full flex items-center justify-center font-mono text-xs font-bold shrink-0 border ${
+                        className={`w-9 h-9 rounded-full flex items-center justify-center font-mono text-xs font-bold shrink-0 border tabular-nums ${
                           isDone
                             ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300'
                             : isSelected
-                            ? 'bg-electric-500 text-void-950 border-electric-400'
-                            : 'bg-void-900 border-white/15 text-slate-300'
+                            ? 'bg-electric-600 text-white border-electric-500'
+                            : 'bg-void-900 border-control text-slate-300'
                         }`}
                       >
-                        {isDone ? <CheckCircle2 className="w-4 h-4" /> : idx + 1}
+                        {isDone ? <CheckCircle2 className="w-4 h-4" aria-hidden="true" /> : idx + 1}
                       </div>
 
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2 mb-0.5">
+                        <div className="flex items-center justify-between gap-2 mb-0.5 tabular-nums">
                           <span className="text-[11px] font-mono text-slate-400">
                             {lesson.estimatedMinutes} {isId ? 'mnt' : 'min'} · +{lesson.xpReward} XP
                           </span>
@@ -507,7 +516,7 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
                             </span>
                           ) : null}
                         </div>
-                        <div className="font-bold text-sm text-slate-100 leading-snug">
+                        <div className="font-bold text-sm text-ink leading-snug">
                           {isId ? lesson.titleId : lesson.titleEn}
                         </div>
                         <p className="text-xs text-slate-400 line-clamp-1 mt-0.5">
@@ -515,18 +524,18 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
                         </p>
                       </div>
 
-                      <ChevronRight className="w-4 h-4 text-slate-500 shrink-0" />
+                      <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" aria-hidden="true" />
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            {/* RIGHT PANE: 3-Step Interactive Micro-Lesson */}
+            {/* Right pane: 3-step interactive micro-lesson */}
             <div
               className={`${
                 mobileScreen === 'list' ? 'hidden md:flex' : 'flex'
-              } flex-1 flex-col min-h-0 bg-void-950 overflow-y-auto`}
+              } flex-1 flex-col min-h-0 bg-void-950 overflow-y-auto overscroll-contain`}
             >
               <div className="p-4 sm:p-6 max-w-3xl mx-auto w-full space-y-4">
                 {/* Back button (Mobile) & Compact Lesson Heading */}
@@ -534,14 +543,14 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
                   <button
                     type="button"
                     onClick={() => setMobileScreen('list')}
-                    className="md:hidden min-h-[44px] px-3 py-1.5 rounded-xl bg-void-900 border border-white/15 text-slate-200 text-xs font-semibold flex items-center gap-1.5 active:scale-95"
+                    className="md:hidden min-h-[44px] px-3 py-1.5 rounded-xl bg-void-900 border border-control text-ink text-xs font-semibold flex items-center gap-1.5 active:scale-95 cursor-pointer"
                   >
-                    <ArrowLeft className="w-4 h-4" />
+                    <ArrowLeft className="w-4 h-4" aria-hidden="true" />
                     <span>{isId ? 'Peta' : 'Path'}</span>
                   </button>
 
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 text-[11px] font-mono text-slate-400">
+                    <div className="flex items-center gap-2 text-[11px] font-mono text-slate-400 tabular-nums">
                       <span className="text-electric-400 font-bold">
                         Level {activeLesson.level}
                       </span>
@@ -556,7 +565,7 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
                         </>
                       )}
                     </div>
-                    <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight truncate">
+                    <h2 className="text-lg sm:text-xl font-bold text-ink tracking-tight truncate">
                       {isId ? activeLesson.titleId : activeLesson.titleEn}
                     </h2>
                   </div>
@@ -578,7 +587,11 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
                 />
 
                 {/* 3-Tab Micro-Step Bar */}
-                <div className="grid grid-cols-3 gap-2 p-1 rounded-xl bg-void-900 border border-white/10">
+                <div
+                  role="tablist"
+                  aria-label={isId ? 'Tahapan modul belajar' : 'Lesson steps'}
+                  className="grid grid-cols-3 gap-2 p-1 rounded-xl bg-void-900 border border-control"
+                >
                   {(
                     [
                       ['learn', isId ? '1. Intisari' : '1. Basics', BookOpen],
@@ -591,21 +604,23 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
                       <button
                         key={stepId}
                         type="button"
+                        role="tab"
+                        aria-selected={isActive}
                         onClick={() => setLessonStep(stepId)}
-                        className={`min-h-[42px] px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 ${
+                        className={`min-h-[44px] px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer active:scale-95 ${
                           isActive
-                            ? 'bg-electric-500 text-void-950 font-bold'
-                            : 'text-slate-400 hover:text-slate-200'
+                            ? 'bg-electric-600 text-white font-bold'
+                            : 'text-slate-300 hover:text-ink'
                         }`}
                       >
-                        <Icon className="w-3.5 h-3.5 shrink-0" />
+                        <Icon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                         <span className="truncate">{label}</span>
                       </button>
                     );
                   })}
                 </div>
 
-                {/* STEP 1: BITE-SIZED THEORY */}
+                {/* Step 1: bite-sized theory */}
                 {lessonStep === 'learn' && (
                   <div className="space-y-3.5">
                     <div className="space-y-2.5">
@@ -613,46 +628,47 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
                         (point, idx) => (
                           <div
                             key={idx}
-                            className="p-3.5 rounded-xl bg-void-900 border border-white/10 flex items-start gap-3"
+                            className="p-3.5 rounded-xl bg-void-900 border border-ink/15 flex items-start gap-3"
                           >
-                            <span className="w-6 h-6 rounded-full bg-electric-500/20 text-electric-300 font-mono font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
+                            <span className="w-6 h-6 rounded-full bg-electric-500/20 text-electric-300 font-mono font-bold text-xs flex items-center justify-center shrink-0 mt-0.5 tabular-nums">
                               {idx + 1}
                             </span>
-                            <p className="text-sm text-slate-200 leading-relaxed">{point}</p>
+                            <p className="text-sm text-ink leading-relaxed">{point}</p>
                           </div>
                         )
                       )}
                     </div>
 
-                    {/* Collapsible Formulas & Objectives (Keeps default UI clean) */}
-                    <div className="rounded-xl bg-void-900 border border-white/10 overflow-hidden">
+                    {/* Collapsible formulas and learning goals */}
+                    <div className="rounded-xl bg-void-900 border border-control overflow-hidden">
                       <button
                         type="button"
+                        aria-expanded={showFormulaDrawer}
                         onClick={() => setShowFormulaDrawer((v) => !v)}
-                        className="w-full min-h-[44px] px-3.5 py-2.5 flex items-center justify-between text-xs font-semibold text-slate-300 hover:text-white cursor-pointer"
+                        className="w-full min-h-[44px] px-3.5 py-2.5 flex items-center justify-between text-xs font-semibold text-slate-200 hover:text-ink cursor-pointer"
                       >
                         <span>
                           {isId ? 'Lihat Rumus & Target Belajar' : 'Show Formulas & Goals'}
                         </span>
                         {showFormulaDrawer ? (
-                          <ChevronUp className="w-4 h-4 text-slate-400" />
+                          <ChevronUp className="w-4 h-4 text-slate-400" aria-hidden="true" />
                         ) : (
-                          <ChevronDown className="w-4 h-4 text-slate-400" />
+                          <ChevronDown className="w-4 h-4 text-slate-400" aria-hidden="true" />
                         )}
                       </button>
 
                       {showFormulaDrawer && (
-                        <div className="px-3.5 pb-3.5 pt-1 border-t border-white/10 space-y-3">
+                        <div className="px-3.5 pb-3.5 pt-2 border-t border-ink/15 space-y-3">
                           {activeLesson.equations.map((eq, idx) => (
                             <div
                               key={idx}
-                              className="p-3 rounded-lg bg-void-950 border border-electric-500/25 space-y-1"
+                              className="p-3 rounded-lg bg-void-950 border border-electric-500/35 space-y-1"
                             >
                               <div className="flex items-center justify-between gap-2">
                                 <span className="text-[11px] font-semibold text-electric-300">
                                   {isId ? eq.nameId : eq.nameEn}
                                 </span>
-                                <span className="font-mono font-bold text-xs text-white">
+                                <span className="font-mono font-bold text-xs text-ink">
                                   {eq.formula}
                                 </span>
                               </div>
@@ -669,9 +685,9 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
                             ).map((obj, idx) => (
                               <li
                                 key={idx}
-                                className="flex items-start gap-2 text-xs text-slate-300"
+                                className="flex items-start gap-2 text-xs text-slate-200"
                               >
-                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" aria-hidden="true" />
                                 <span>{obj}</span>
                               </li>
                             ))}
@@ -683,15 +699,15 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
                     <button
                       type="button"
                       onClick={() => setLessonStep('lab')}
-                      className="w-full min-h-[46px] px-4 py-2.5 rounded-xl bg-electric-500 hover:bg-electric-400 text-void-950 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer"
+                      className="w-full min-h-[46px] px-4 py-2.5 rounded-xl bg-electric-600 hover:bg-electric-700 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-colors active:scale-95 cursor-pointer"
                     >
                       <span>{isId ? 'Lanjut: Uji di Lab Mini SVG' : 'Next: Play SVG Micro-Lab'}</span>
-                      <ChevronRight className="w-4 h-4" />
+                      <ChevronRight className="w-4 h-4" aria-hidden="true" />
                     </button>
                   </div>
                 )}
 
-                {/* STEP 2: INTERACTIVE SVG MICRO-LAB + MAIN CANVAS JUMP */}
+                {/* Step 2: interactive SVG micro-lab and main canvas action */}
                 {lessonStep === 'lab' && (
                   <div className="space-y-3.5">
                     {ActiveDemoComponent && <ActiveDemoComponent />}
@@ -701,9 +717,9 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
                         <button
                           type="button"
                           onClick={handleTryInLab}
-                          className="flex-1 min-h-[44px] px-4 py-2 rounded-xl bg-void-900 hover:bg-void-850 border border-white/15 text-slate-100 font-semibold text-xs flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer"
+                          className="flex-1 min-h-[44px] px-4 py-2 rounded-xl bg-void-900 hover:bg-void-850 border border-control hover:border-electric-500/50 text-ink font-semibold text-xs flex items-center justify-center gap-2 transition-colors active:scale-95 cursor-pointer"
                         >
-                          <Play className="w-3.5 h-3.5 text-electric-400 fill-current" />
+                          <Play className="w-3.5 h-3.5 text-electric-400 fill-current" aria-hidden="true" />
                           <span>{isId ? 'Muat di Kanvas Lab Utama' : 'Open in Main Lab Canvas'}</span>
                         </button>
                       )}
@@ -711,20 +727,20 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
                       <button
                         type="button"
                         onClick={() => setLessonStep('quiz')}
-                        className="flex-1 min-h-[44px] px-4 py-2 rounded-xl bg-electric-500 hover:bg-electric-400 text-void-950 font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer"
+                        className="flex-1 min-h-[44px] px-4 py-2 rounded-xl bg-electric-600 hover:bg-electric-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors active:scale-95 cursor-pointer tabular-nums"
                       >
                         <span>
                           {isId
                             ? `Siap! Mulai Kuis (+${activeLesson.xpReward} XP)`
                             : `Ready! Take Quiz (+${activeLesson.xpReward} XP)`}
                         </span>
-                        <ChevronRight className="w-4 h-4" />
+                        <ChevronRight className="w-4 h-4" aria-hidden="true" />
                       </button>
                     </div>
                   </div>
                 )}
 
-                {/* STEP 3: QUICK GAMIFIED QUIZ */}
+                {/* Step 3: quick quiz */}
                 {lessonStep === 'quiz' && (
                   <div className="space-y-4">
                     {activeLesson.quiz.map((question, qIdx) => {
@@ -732,9 +748,9 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
                       return (
                         <div
                           key={question.id}
-                          className="p-4 rounded-xl bg-void-900 border border-white/10 space-y-3"
+                          className="p-4 rounded-xl bg-void-900 border border-control space-y-3"
                         >
-                          <div className="font-bold text-sm text-slate-100 leading-snug">
+                          <div className="font-bold text-sm text-ink leading-snug">
                             {qIdx + 1}. {isId ? question.questionId : question.questionEn}
                           </div>
 
@@ -742,31 +758,32 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
                             {question.options.map((opt) => {
                               const isPicked = pickedOptionId === opt.id;
                               let style =
-                                'bg-void-950 border-white/10 text-slate-300 hover:border-white/25';
+                                'bg-void-950 border-control text-slate-200 hover:border-electric-500/50';
 
                               if (quizSubmitted) {
                                 if (opt.isCorrect) {
                                   style =
-                                    'bg-emerald-500/20 border-emerald-500/60 text-emerald-200 font-semibold';
+                                    'bg-emerald-500/15 border-emerald-500/60 text-emerald-200 font-semibold';
                                 } else if (isPicked && !opt.isCorrect) {
                                   style =
-                                    'bg-rose-500/20 border-rose-500/60 text-rose-200';
+                                    'bg-danger-500/15 border-danger-500/60 text-danger-300';
                                 }
                               } else if (isPicked) {
                                 style =
-                                  'bg-electric-500/20 border-electric-500 text-electric-200 font-semibold';
+                                  'bg-electric-500/15 border-electric-500 text-electric-200 font-semibold';
                               }
 
                               return (
                                 <button
                                   key={opt.id}
                                   type="button"
+                                  aria-pressed={isPicked}
                                   onClick={() => handleSelectOption(question.id, opt.id)}
-                                  className={`w-full min-h-[44px] text-left px-3.5 py-2.5 rounded-xl border text-xs transition-all cursor-pointer active:scale-[0.99] flex items-center justify-between gap-2 ${style}`}
+                                  className={`w-full min-h-[44px] text-left px-3.5 py-2.5 rounded-xl border text-xs transition-colors cursor-pointer active:scale-[0.99] flex items-center justify-between gap-2 ${style}`}
                                 >
                                   <span>{isId ? opt.textId : opt.textEn}</span>
                                   {quizSubmitted && opt.isCorrect && (
-                                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" aria-hidden="true" />
                                   )}
                                 </button>
                               );
@@ -774,7 +791,7 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
                           </div>
 
                           {quizSubmitted && (
-                            <div className="p-2.5 rounded-lg bg-void-950 border border-white/10 text-xs text-slate-300 leading-relaxed">
+                            <div className="p-2.5 rounded-lg bg-void-950 border border-ink/15 text-xs text-slate-200 leading-relaxed">
                               <span className="font-bold text-electric-300">
                                 {isId ? 'Kata Watt: ' : 'Watt Tip: '}
                               </span>
@@ -792,9 +809,9 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
                           type="button"
                           disabled={!isAllQuizAnswered}
                           onClick={handleSubmitQuiz}
-                          className="w-full min-h-[46px] px-5 py-2.5 rounded-xl bg-electric-500 hover:bg-electric-400 disabled:bg-void-850 disabled:text-slate-500 text-void-950 font-bold text-xs sm:text-sm transition-all cursor-pointer disabled:cursor-not-allowed active:scale-95 flex items-center justify-center gap-2"
+                          className="w-full min-h-[46px] px-5 py-2.5 rounded-xl bg-electric-600 hover:bg-electric-700 disabled:bg-void-850 disabled:text-slate-400 text-white font-bold text-xs sm:text-sm transition-colors cursor-pointer disabled:cursor-not-allowed active:scale-95 flex items-center justify-center gap-2 tabular-nums"
                         >
-                          <Sparkles className="w-4 h-4" />
+                          <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
                           <span>
                             {isId
                               ? `Periksa & Klaim +${activeLesson.xpReward} XP`
@@ -803,8 +820,8 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
                         </button>
                       ) : isQuizPassed ? (
                         <>
-                          <div className="px-3.5 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-200 font-bold text-xs flex items-center gap-2">
-                            <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
+                          <div className="px-3.5 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/45 text-emerald-200 font-bold text-xs flex items-center gap-2 tabular-nums">
+                            <Award className="w-4 h-4 text-emerald-400 shrink-0" aria-hidden="true" />
                             <span>
                               {isId
                                 ? `Skor ${quizScore?.correct}/${quizScore?.total} Sempurna!`
@@ -815,10 +832,10 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
                             <button
                               type="button"
                               onClick={() => selectLesson(nextLesson)}
-                              className="min-h-[44px] px-4 py-2 rounded-xl bg-electric-500 hover:bg-electric-400 text-void-950 font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                              className="min-h-[44px] px-4 py-2 rounded-xl bg-electric-600 hover:bg-electric-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors active:scale-95 cursor-pointer"
                             >
                               <span>{isId ? 'Modul Berikutnya' : 'Next Lesson'}</span>
-                              <ChevronRight className="w-4 h-4" />
+                              <ChevronRight className="w-4 h-4" aria-hidden="true" />
                             </button>
                           )}
                         </>
@@ -826,7 +843,7 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
                         <button
                           type="button"
                           onClick={handleRetryQuiz}
-                          className="w-full min-h-[44px] px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-200 font-bold text-xs transition-all active:scale-95 cursor-pointer"
+                          className="w-full min-h-[44px] px-4 py-2 rounded-xl bg-[#B45309] hover:bg-[#92400E] text-white font-bold text-xs transition-colors active:scale-95 cursor-pointer"
                         >
                           {isId ? 'Ulangi Kuis Sekarang' : 'Retry Quiz'}
                         </button>
@@ -838,8 +855,8 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
             </div>
           </div>
         ) : (
-          /* BADGES TAB */
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-void-950">
+          /* Badges tab */
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-void-950 overscroll-contain">
             <div className="max-w-4xl mx-auto space-y-5">
               <MascotCoachBubble
                 mood={progress.unlockedBadgeIds.length > 0 ? 'love' : 'bored'}
@@ -850,8 +867,8 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
                       ? `Hebat! Kamu sudah mengoleksi ${progress.unlockedBadgeIds.length}/${ACADEMY_BADGES.length} lencana resmi Akademi.`
                       : `Nice! You have unlocked ${progress.unlockedBadgeIds.length}/${ACADEMY_BADGES.length} official Academy badges.`
                     : isId
-                    ? 'Belum ada lencana nih. Yuk selesaikan modul pertamamu agar dapat First Spark!'
-                    : 'No badges yet. Complete your first lesson to unlock First Spark!'
+                    ? 'Belum ada lencana terbuka. Selesaikan modul pertamamu untuk membuka lencana pertama!'
+                    : 'No badges yet. Complete your first lesson to unlock your first badge!'
                 }
                 accent={progress.unlockedBadgeIds.length > 0 ? 'emerald' : 'amber'}
                 size="sm"
@@ -863,10 +880,10 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
                   return (
                     <div
                       key={badge.id}
-                      className={`p-4 rounded-xl border transition-all flex flex-col justify-between gap-3 ${
+                      className={`p-4 rounded-xl border transition-colors flex flex-col justify-between gap-3 ${
                         isUnlocked
-                          ? 'bg-void-900 border-emerald-500/40'
-                          : 'bg-void-900/50 border-white/10 opacity-70'
+                          ? 'bg-void-900 border-emerald-500/45'
+                          : 'bg-void-900 border-control'
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
@@ -874,16 +891,16 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
                           className={`w-10 h-10 rounded-xl flex items-center justify-center border ${
                             isUnlocked
                               ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300'
-                              : 'bg-void-950 border-white/10 text-slate-500'
+                              : 'bg-void-950 border-control text-slate-400'
                           }`}
                         >
-                          <Award className="w-5 h-5" />
+                          <Award className="w-5 h-5" aria-hidden="true" />
                         </div>
                         <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold border ${
                             isUnlocked
-                              ? 'bg-emerald-500/20 text-emerald-300'
-                              : 'bg-void-950 text-slate-500'
+                              ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
+                              : 'bg-void-950 border-control text-slate-400'
                           }`}
                         >
                           {isUnlocked
@@ -893,7 +910,7 @@ export const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) =
                       </div>
 
                       <div>
-                        <h4 className="font-bold text-sm text-slate-100">
+                        <h4 className="font-bold text-sm text-ink">
                           {isId ? badge.titleId : badge.titleEn}
                         </h4>
                         <p className="text-xs text-slate-400 mt-1 leading-relaxed">

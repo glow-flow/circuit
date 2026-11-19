@@ -11,7 +11,7 @@ import { KnifeSwitchGraphic } from '../../ui/common/KnifeSwitchGraphic';
  * SPST Knife Switch Node (`type: 'switch'`).
  *
  * Renders a 100% code-driven vector SPST Knife Switch (`KnifeSwitchGraphic`)
- * with left (`p1`) and right (`p2`) brass terminals—zero external PNG assets.
+ * with left (`p1`) and right (`p2`) brass terminals, using zero external PNG assets.
  * Clicking or tapping the switch directly toggles its state between OPEN and CLOSED.
  *
  * Time Complexity: O(1) render and interaction handler.
@@ -80,12 +80,12 @@ export const SwitchNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, 
           className="w-full h-full drop-shadow-md"
         />
 
-        {/* Single Clear Status & Tap-Hint Chip */}
+        {/* Single Clear Status Badge */}
         <span
           className={`absolute -bottom-2 px-2 py-0.5 rounded-md text-[9px] font-mono font-bold border shadow-sm whitespace-nowrap transition-colors ${
             isOpen
-              ? 'bg-void-950/95 text-amber-300 border-amber-500/40'
-              : 'bg-emerald-950/95 text-emerald-300 border-emerald-400/50'
+              ? 'bg-void-950 text-amber-300 border-amber-500/50'
+              : 'bg-emerald-950 text-emerald-300 border-emerald-500/55'
           }`}
         >
           {isOpen ? t.openBadge : t.closedBadge}
@@ -109,25 +109,25 @@ export const SwitchNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, 
               <div
                 className={`p-1 rounded-md border ${
                   isOpen
-                    ? 'bg-void-950 text-slate-300 border-white/15'
-                    : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                    ? 'bg-void-950 text-slate-300 border-control'
+                    : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/35'
                 }`}
               >
                 {isOpen ? (
-                  <ToggleLeft className="w-3.5 h-3.5" />
+                  <ToggleLeft className="w-3.5 h-3.5" aria-hidden="true" />
                 ) : (
-                  <ToggleRight className="w-3.5 h-3.5" />
+                  <ToggleRight className="w-3.5 h-3.5" aria-hidden="true" />
                 )}
               </div>
-              <div className="truncate text-xs font-bold text-slate-100">
+              <div className="truncate text-xs font-bold text-ink">
                 {t.title}
               </div>
             </div>
             <span
-              className={`rounded px-1.5 py-0.5 font-mono text-[9px] font-semibold ${
+              className={`rounded px-1.5 py-0.5 font-mono text-[9px] font-semibold border ${
                 isOpen
-                  ? 'bg-void-950 text-slate-300 border border-white/10'
-                  : 'bg-emerald-500/15 text-emerald-300'
+                  ? 'bg-void-950 text-slate-300 border-control'
+                  : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40'
               }`}
             >
               {isOpen ? t.openBadge : t.closedBadge}
@@ -137,7 +137,7 @@ export const SwitchNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, 
           <button
             type="button"
             onClick={handleToggle}
-            className="w-full py-1.5 px-2.5 rounded-lg text-[11px] font-semibold transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer bg-electric-600 hover:bg-electric-500 text-white"
+            className="w-full py-1.5 px-2.5 rounded-lg text-[11px] font-semibold transition-colors active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer bg-electric-600 hover:bg-electric-700 text-white"
           >
             {isOpen
               ? isIndonesian
@@ -149,11 +149,11 @@ export const SwitchNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, 
           </button>
 
           {!isOpen && (
-            <div className="mt-2 pt-1.5 border-t border-white/10 flex items-center justify-between text-[10px] font-mono">
+            <div className="mt-2 pt-1.5 border-t border-ink/15 flex items-center justify-between text-[10px] font-mono tabular-nums">
               <span className="text-slate-400">
                 {isIndonesian ? 'Arus:' : 'Current:'}
               </span>
-              <span className={isShorted ? 'text-red-400 font-bold' : 'text-emerald-400 font-bold'}>
+              <span className={isShorted ? 'text-danger-400 font-bold' : 'text-emerald-400 font-bold'}>
                 {branchCurrentAmpere < 1
                   ? `${(branchCurrentAmpere * 1000).toFixed(0)} mA`
                   : `${branchCurrentAmpere.toFixed(2)} A`}

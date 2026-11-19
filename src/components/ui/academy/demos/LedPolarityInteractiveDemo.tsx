@@ -67,8 +67,13 @@ export const LedPolarityInteractiveDemo: React.FC = () => {
       isChallengeMet={isChallengeMet}
     >
       {/* Interactive SVG Circuit */}
-      <div className="rounded-xl bg-void-900 border border-white/10 p-2.5">
-        <svg viewBox="0 0 360 140" className="w-full h-auto max-h-40 select-none">
+      <div className="rounded-xl bg-[#0B0F14] border border-control p-2.5">
+        <svg
+          viewBox="0 0 360 140"
+          className="w-full h-auto max-h-40 select-none"
+          role="img"
+          aria-label={isId ? 'Diagram polaritas LED dan alat ukur' : 'LED polarity and multimeter diagram'}
+        >
           {/* Wire Loop */}
           <path
             d="M 48 42 L 310 42 L 310 108 L 48 108 Z"
@@ -128,7 +133,20 @@ export const LedPolarityInteractiveDemo: React.FC = () => {
           </text>
 
           {/* Clickable Diode / LED Symbol */}
-          <g onClick={() => setIsForwardBias((v) => !v)} className="cursor-pointer">
+          <g
+            onClick={() => setIsForwardBias((v) => !v)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setIsForwardBias((v) => !v);
+              }
+            }}
+            role="button"
+            tabIndex={0}
+            aria-pressed={isForwardBias}
+            aria-label={isId ? 'Balik polaritas kaki LED' : 'Flip LED polarity'}
+            className="cursor-pointer"
+          >
             {isForwardBias && !isMeterShort && (
               <circle
                 cx="236"
@@ -221,29 +239,33 @@ export const LedPolarityInteractiveDemo: React.FC = () => {
       </div>
 
       {/* Controls */}
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <button
           type="button"
+          aria-pressed={isForwardBias}
           onClick={() => setIsForwardBias((v) => !v)}
-          className={`min-h-[42px] rounded-xl border px-3 py-1.5 flex items-center justify-center gap-1.5 font-semibold text-xs transition-all active:scale-95 ${
+          className={`min-h-[44px] rounded-xl border px-3 py-1.5 flex items-center justify-center gap-1.5 font-semibold text-xs transition-colors active:scale-95 cursor-pointer ${
             isForwardBias
-              ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-200'
-              : 'bg-rose-500/15 border-rose-500/40 text-rose-200'
+              ? 'bg-emerald-600 border-emerald-700 text-white'
+              : 'bg-danger-600 border-danger-700 text-white'
           }`}
         >
-          <RefreshCw className="w-3.5 h-3.5" />
-          {isForwardBias
-            ? isId ? 'Forward Bias (+ ke +)' : 'Forward Bias'
-            : isId ? 'Balik Kaki LED' : 'Flip LED Polarity'}
+          <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
+          <span>
+            {isForwardBias
+              ? isId ? 'Forward Bias (+ ke +)' : 'Forward Bias'
+              : isId ? 'Balik Kaki LED' : 'Flip LED Polarity'}
+          </span>
         </button>
 
         <button
           type="button"
+          aria-pressed={hasResistor}
           onClick={() => setHasResistor((v) => !v)}
-          className={`min-h-[42px] rounded-xl border px-3 py-1.5 font-semibold text-xs transition-all active:scale-95 ${
+          className={`min-h-[44px] rounded-xl border px-3 py-1.5 font-semibold text-xs transition-colors active:scale-95 cursor-pointer ${
             hasResistor
-              ? 'bg-amber-500/20 border-amber-500/50 text-amber-200'
-              : 'bg-void-900 border-white/10 text-slate-400 hover:text-slate-200'
+              ? 'bg-[#B45309] border-[#92400E] text-white'
+              : 'bg-void-900 border-control text-ink hover:bg-void-850'
           }`}
         >
           {hasResistor
@@ -252,7 +274,7 @@ export const LedPolarityInteractiveDemo: React.FC = () => {
         </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-1.5">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
         {(
           [
             ['voltmeter_parallel', isId ? 'Voltmeter Paralel' : 'Parallel Volt'],
@@ -263,16 +285,17 @@ export const LedPolarityInteractiveDemo: React.FC = () => {
           <button
             key={mode}
             type="button"
+            aria-pressed={meterMode === mode}
             onClick={() => {
               setMeterMode(mode);
               if (mode === 'ammeter_series') setTestedSafeMeter(true);
             }}
-            className={`min-h-[38px] rounded-lg border px-2 py-1 text-[11px] font-semibold transition-all active:scale-95 ${
+            className={`min-h-[44px] rounded-lg border px-2 py-1 text-[11px] font-semibold transition-colors active:scale-95 cursor-pointer ${
               meterMode === mode
                 ? mode === 'ammeter_parallel_short'
-                  ? 'bg-rose-500/25 border-rose-500/60 text-rose-200'
-                  : 'bg-electric-500/20 border-electric-500/50 text-electric-200'
-                : 'bg-void-900 border-white/10 text-slate-400 hover:text-slate-200'
+                  ? 'bg-danger-600 border-danger-700 text-white font-bold'
+                  : 'bg-electric-600 border-electric-700 text-white font-bold'
+                : 'bg-void-900 border-control text-ink hover:bg-void-850'
             }`}
           >
             {label}

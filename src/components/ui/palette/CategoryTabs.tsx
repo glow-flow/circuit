@@ -128,16 +128,16 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = ({
   };
 
   return (
-    <div className="relative group border-b border-white/10 bg-void-950/40 select-none">
+    <div className="relative group border-b border-ink/15 bg-void-950 select-none">
       {/* Left Scroll Chevron (Desktop & Tablet) */}
       {canScrollLeft && (
         <button
           type="button"
           onClick={() => scrollByDelta(-140)}
           aria-label={language === 'id' ? 'Gulir kategori ke kiri' : 'Scroll categories left'}
-          className="absolute left-0 top-0 bottom-0 z-10 w-8 flex items-center justify-center bg-gradient-to-r from-void-950 via-void-950/90 to-transparent text-slate-300 hover:text-white transition-all active:scale-90 cursor-pointer"
+          className="absolute left-0 top-0 bottom-0 z-10 w-8 flex items-center justify-center bg-gradient-to-r from-void-950 via-void-950/90 to-transparent text-slate-300 hover:text-ink transition-colors active:scale-90 cursor-pointer"
         >
-          <ChevronLeft className="w-4 h-4 drop-shadow" />
+          <ChevronLeft className="w-4 h-4" aria-hidden="true" />
         </button>
       )}
 
@@ -163,18 +163,18 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = ({
               role="tab"
               aria-selected={isActive}
               onClick={() => onChange(category.id)}
-              className={`shrink-0 flex items-center gap-1.5 h-9 px-3 rounded-lg border text-xs font-semibold transition-all duration-150 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-electric-400 cursor-pointer ${
+              className={`shrink-0 flex items-center gap-1.5 min-h-[38px] px-3 rounded-lg border text-xs font-semibold transition-colors duration-150 active:scale-95 cursor-pointer ${
                 isActive
-                  ? 'bg-electric-500/15 border-electric-500/60 text-electric-400 shadow-sm'
-                  : 'bg-void-950/60 border-white/10 text-slate-300 hover:border-white/25 hover:text-slate-100'
+                  ? 'bg-electric-500/15 border-electric-500 text-electric-400 shadow-sm'
+                  : 'bg-void-900 border-control/60 text-slate-300 hover:border-control hover:text-ink'
               }`}
             >
               <span>{language === 'id' ? category.label : category.labelEn}</span>
               <span
-                className={`font-mono text-[10px] px-1 py-0.2 rounded ${
+                className={`font-mono text-[10px] px-1.5 py-0.5 rounded ${
                   isActive
-                    ? 'text-electric-300 bg-electric-500/20 font-bold'
-                    : 'text-slate-400 bg-white/5'
+                    ? 'bg-electric-600 text-white font-bold'
+                    : 'text-slate-400 bg-ink/10'
                 }`}
               >
                 {countByCategory[category.id] ?? 0}
@@ -190,9 +190,9 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = ({
           type="button"
           onClick={() => scrollByDelta(140)}
           aria-label={language === 'id' ? 'Gulir kategori ke kanan' : 'Scroll categories right'}
-          className="absolute right-0 top-0 bottom-0 z-10 w-8 flex items-center justify-center bg-gradient-to-l from-void-950 via-void-950/90 to-transparent text-slate-300 hover:text-white transition-all active:scale-90 cursor-pointer"
+          className="absolute right-0 top-0 bottom-0 z-10 w-8 flex items-center justify-center bg-gradient-to-l from-void-950 via-void-950/90 to-transparent text-slate-300 hover:text-ink transition-colors active:scale-90 cursor-pointer"
         >
-          <ChevronRight className="w-4 h-4 drop-shadow" />
+          <ChevronRight className="w-4 h-4" aria-hidden="true" />
         </button>
       )}
     </div>

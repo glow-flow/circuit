@@ -45,31 +45,38 @@ export const SutetLossInteractiveDemo: React.FC = () => {
       <div className="grid grid-cols-2 gap-2">
         <button
           type="button"
+          aria-pressed={!useSutet}
           onClick={() => setUseSutet(false)}
-          className={`min-h-[40px] rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all active:scale-95 ${
+          className={`min-h-[44px] rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors active:scale-95 cursor-pointer ${
             !useSutet
-              ? 'bg-rose-500/20 border-rose-500/60 text-rose-200'
-              : 'bg-void-900 border-white/10 text-slate-400 hover:text-slate-200'
+              ? 'bg-danger-600 border-danger-700 text-white font-bold'
+              : 'bg-void-900 border-control text-ink hover:bg-void-850'
           }`}
         >
           {isId ? 'Langsung 12V (Tanpa SUTET)' : 'Direct 12V (No SUTET)'}
         </button>
         <button
           type="button"
+          aria-pressed={useSutet}
           onClick={() => setUseSutet(true)}
-          className={`min-h-[40px] rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all active:scale-95 ${
+          className={`min-h-[44px] rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors active:scale-95 cursor-pointer ${
             useSutet
-              ? 'bg-emerald-500/20 border-emerald-500/60 text-emerald-200'
-              : 'bg-void-900 border-white/10 text-slate-400 hover:text-slate-200'
+              ? 'bg-emerald-600 border-emerald-700 text-white font-bold'
+              : 'bg-void-900 border-control text-ink hover:bg-void-850'
           }`}
         >
-          {isId ? 'Step-Up SUTET 240V' : 'Step-Up SUTET 240V'}
+          Step-Up SUTET 240V
         </button>
       </div>
 
       {/* SVG Pylon -> Lab Diagram */}
-      <div className="rounded-xl bg-void-900 border border-white/10 p-2.5">
-        <svg viewBox="0 0 360 124" className="w-full h-auto max-h-36 select-none">
+      <div className="rounded-xl bg-[#0B0F14] border border-control p-2.5">
+        <svg
+          viewBox="0 0 360 124"
+          className="w-full h-auto max-h-36 select-none"
+          role="img"
+          aria-label={isId ? 'Diagram efisiensi transmisi SUTET' : 'SUTET transmission efficiency diagram'}
+        >
           {/* SUTET Line */}
           <line
             x1="82"

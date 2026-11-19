@@ -52,49 +52,50 @@ export const OutdoorGenerationMiniHud: React.FC = () => {
   const totalOutdoorWatts = Math.round((solarWatts + windWatts + hydroWatts) * 10) / 10;
 
   return (
-    <div
+    <button
+      type="button"
       onClick={() => setWorldMode('outside')}
       title={isId ? 'Klik untuk melihat Alam Terbuka' : 'Click to view Outdoor Sandbox'}
-      className="absolute bottom-14 left-4 z-30 flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-void-950/90 backdrop-blur-md border border-emerald-500/40 text-white shadow-[0_8px_24px_rgba(0,0,0,0.65)] hover:border-emerald-400 active:scale-95 transition-all cursor-pointer group"
+      className="absolute bottom-[58px] left-14 sm:bottom-3 sm:left-16 z-30 min-h-[38px] flex items-center gap-2 sm:gap-2.5 px-3 py-1.5 rounded-full bg-void-900 border border-emerald-500/60 text-ink shadow-lg hover:bg-void-850 hover:border-emerald-500 active:scale-95 transition-colors cursor-pointer group"
     >
       <div className="flex items-center gap-1.5">
-        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-        <span className="text-[11px] font-bold text-emerald-300 font-mono tabular-nums flex items-center gap-1">
-          <Zap className="w-3 h-3 text-emerald-400" />
+        <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" aria-hidden="true" />
+        <span className="text-[11px] font-bold text-emerald-400 font-mono tabular-nums flex items-center gap-1">
+          <Zap className="w-3 h-3 text-emerald-400" aria-hidden="true" />
           {totalOutdoorWatts}W
         </span>
       </div>
 
-      <div className="h-3 w-px bg-white/15" />
+      <div className="hidden sm:block h-3 w-px bg-ink/15" />
 
       {/* Mini Metric Icons */}
-      <div className="flex items-center gap-2 text-[10px] font-mono tabular-nums text-slate-300">
+      <div className="hidden sm:flex items-center gap-2 text-[10px] font-mono tabular-nums text-slate-300">
         <span className="flex items-center gap-0.5" title="Solar PV">
-          <Sun className="w-3 h-3 text-amber-400" />
+          <Sun className="w-3 h-3 text-amber-400" aria-hidden="true" />
           {Math.round(solarWatts)}W
         </span>
         <span className="flex items-center gap-0.5" title="Wind Turbine">
-          <Wind className="w-3 h-3 text-sky-400" />
+          <Wind className="w-3 h-3 text-sky-400" aria-hidden="true" />
           {Math.round(windWatts)}W
         </span>
         <span className="flex items-center gap-0.5" title="Micro-Hydro">
-          <Waves className="w-3 h-3 text-cyan-400" />
+          <Waves className="w-3 h-3 text-cyan-400" aria-hidden="true" />
           {Math.round(hydroWatts)}W
         </span>
         {bessSoc !== null && (
           <span className="flex items-center gap-0.5" title="BESS Storage">
-            <BatteryCharging className="w-3 h-3 text-emerald-400" />
+            <BatteryCharging className="w-3 h-3 text-emerald-400" aria-hidden="true" />
             {bessSoc}%
           </span>
         )}
       </div>
 
-      <div className="h-3 w-px bg-white/15" />
+      <div className="h-3 w-px bg-ink/15" />
 
-      <span className="text-[10px] font-semibold text-slate-300 group-hover:text-emerald-300 flex items-center gap-1">
+      <span className="text-[10px] font-semibold text-slate-300 group-hover:text-emerald-400 flex items-center gap-1">
         {isId ? 'Ke Alam' : 'To Outdoor'}
-        <ExternalLink className="w-2.5 h-2.5" />
+        <ExternalLink className="w-2.5 h-2.5" aria-hidden="true" />
       </span>
-    </div>
+    </button>
   );
 };

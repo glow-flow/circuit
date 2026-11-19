@@ -105,23 +105,23 @@ export const InteractiveTutorialBanner: React.FC<InteractiveTutorialBannerProps>
       onPointerDown={(e) => e.stopPropagation()}
       className="absolute top-2.5 left-2 right-2 sm:left-1/2 sm:-translate-x-1/2 sm:max-w-xl z-30 pointer-events-auto"
     >
-      <div className="rounded-2xl bg-void-950/95 backdrop-blur-xl border border-electric-500/45 shadow-[0_12px_36px_rgba(0,0,0,0.75)] px-3.5 py-2.5 text-slate-100">
+      <div className="rounded-2xl bg-void-900 border border-electric-500/60 shadow-2xl px-3.5 py-2.5 text-ink">
         {isAllCompleted ? (
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-400/50 flex items-center justify-center shrink-0">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/45 flex items-center justify-center shrink-0">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" aria-hidden="true" />
               </div>
               <div className="min-w-0">
-                <div className="text-xs font-bold text-emerald-300">
+                <div className="text-xs font-bold text-emerald-400">
                   {isId
                     ? 'Selamat! 3 Misi Praktikum Dasar Selesai!'
                     : 'Congratulations! All 3 Hands-On Missions Complete!'}
                 </div>
                 <p className="text-[11px] text-slate-300 leading-snug">
                   {isId
-                    ? 'Gunakan tombol [Akademi] atau [Contoh] di bawah untuk materi mengajar lengkap.'
-                    : 'Use [Academy] or [Examples] below for full classroom lessons.'}
+                    ? 'Gunakan tombol Akademi atau Contoh di bawah untuk materi mengajar lengkap.'
+                    : 'Use Academy or Presets below for full classroom lessons.'}
                 </p>
               </div>
             </div>
@@ -130,14 +130,14 @@ export const InteractiveTutorialBanner: React.FC<InteractiveTutorialBannerProps>
               <button
                 type="button"
                 onClick={onOpenFullGuide}
-                className="px-3 py-1.5 rounded-xl bg-void-900 hover:bg-void-800 border border-white/15 text-slate-200 text-[11px] font-semibold active:scale-95 transition-all cursor-pointer"
+                className="min-h-[38px] px-3 py-1.5 rounded-xl bg-void-950 hover:bg-void-850 border border-control text-ink text-[11px] font-semibold active:scale-95 transition-colors cursor-pointer"
               >
                 {isId ? 'Contekan Guru' : 'Teacher Guide'}
               </button>
               <button
                 type="button"
                 onClick={handleFinishAndClose}
-                className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold active:scale-95 transition-all cursor-pointer"
+                className="min-h-[38px] px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold active:scale-95 transition-colors cursor-pointer"
               >
                 {isId ? 'Tutup Panduan' : 'Finish'}
               </button>
@@ -148,12 +148,12 @@ export const InteractiveTutorialBanner: React.FC<InteractiveTutorialBannerProps>
             {/* Header Row: Step Progress Pills + Quick Actions */}
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-1.5 min-w-0">
-                <span className="px-2 py-0.5 rounded-md bg-electric-500/20 border border-electric-400/40 text-electric-300 font-mono text-[10px] font-bold shrink-0">
+                <span className="px-2 py-0.5 rounded-md bg-electric-500/15 border border-electric-500/40 text-electric-400 font-mono tabular-nums text-[10px] font-bold shrink-0">
                   {isId
                     ? `LANGKAH ${activeMission.stepNumber}/3`
                     : `STEP ${activeMission.stepNumber}/3`}
                 </span>
-                <h3 className="text-xs font-bold text-white truncate">
+                <h3 className="text-xs font-bold text-ink truncate">
                   {isId ? activeMission.titleId : activeMission.titleEn}
                 </h3>
               </div>
@@ -163,18 +163,18 @@ export const InteractiveTutorialBanner: React.FC<InteractiveTutorialBannerProps>
                   type="button"
                   onClick={onOpenFullGuide}
                   title={isId ? 'Buka Kartu Contekan Guru' : 'Open Teacher Cheat-Sheet'}
-                  className="flex items-center gap-1 px-2 py-1 rounded-lg bg-void-900 hover:bg-void-800 border border-white/10 text-slate-300 hover:text-white text-[10px] font-semibold active:scale-95 transition-all cursor-pointer"
+                  className="flex items-center gap-1 min-h-[34px] px-2.5 py-1 rounded-lg bg-void-950 hover:bg-void-850 border border-control text-slate-300 hover:text-ink text-[10px] font-semibold active:scale-95 transition-colors cursor-pointer"
                 >
-                  <HelpCircle className="w-3 h-3 text-electric-400" />
+                  <HelpCircle className="w-3 h-3 text-electric-400" aria-hidden="true" />
                   <span>{isId ? 'Contekan' : 'Cards'}</span>
                 </button>
                 <button
                   type="button"
                   onClick={handleFinishAndClose}
                   aria-label={isId ? 'Tutup Panduan' : 'Close Guide'}
-                  className="p-1 rounded-lg bg-void-900 hover:bg-void-800 border border-white/10 text-slate-400 hover:text-white active:scale-95 transition-all cursor-pointer"
+                  className="min-w-[34px] min-h-[34px] p-1 rounded-lg bg-void-950 hover:bg-void-850 border border-control text-slate-400 hover:text-ink flex items-center justify-center active:scale-95 transition-colors cursor-pointer"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <X className="w-3.5 h-3.5" aria-hidden="true" />
                 </button>
               </div>
             </div>
@@ -183,7 +183,7 @@ export const InteractiveTutorialBanner: React.FC<InteractiveTutorialBannerProps>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-0.5">
               <p
                 className={`text-[11px] leading-snug ${
-                  isCurrentStepDone ? 'text-emerald-300 font-semibold' : 'text-slate-300'
+                  isCurrentStepDone ? 'text-emerald-400 font-semibold' : 'text-slate-300'
                 }`}
               >
                 {isCurrentStepDone
@@ -200,9 +200,9 @@ export const InteractiveTutorialBanner: React.FC<InteractiveTutorialBannerProps>
                   <button
                     type="button"
                     onClick={() => executeMissionOneClickAssist(activeMission.id)}
-                    className="flex-1 sm:flex-initial min-h-[36px] px-3 py-1.5 rounded-xl bg-electric-600 hover:bg-electric-500 text-white text-[11px] font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer shadow-sm"
+                    className="flex-1 sm:flex-initial min-h-[38px] px-3 py-1.5 rounded-xl bg-electric-600 hover:bg-electric-700 text-white text-[11px] font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-colors cursor-pointer"
                   >
-                    <Hand className="w-3.5 h-3.5 shrink-0" />
+                    <Hand className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                     <span>
                       {isId
                         ? activeMission.assistButtonLabelId
@@ -214,20 +214,20 @@ export const InteractiveTutorialBanner: React.FC<InteractiveTutorialBannerProps>
                 <button
                   type="button"
                   onClick={handleNextStep}
-                  className={`min-h-[36px] px-3 py-1.5 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 active:scale-95 transition-all cursor-pointer ${
+                  className={`min-h-[38px] px-3 py-1.5 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 active:scale-95 transition-colors cursor-pointer ${
                     isCurrentStepDone
-                      ? 'flex-1 sm:flex-initial bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm'
-                      : 'bg-void-900 hover:bg-void-800 border border-white/15 text-slate-300 hover:text-white'
+                      ? 'flex-1 sm:flex-initial bg-emerald-600 hover:bg-emerald-700 text-white'
+                      : 'bg-void-950 hover:bg-void-850 border border-control text-slate-300 hover:text-ink'
                   }`}
                 >
                   {isCurrentStepDone ? (
                     <>
-                      <Play className="w-3 h-3 fill-current" />
+                      <Play className="w-3 h-3 fill-current" aria-hidden="true" />
                       <span>
                         {activeStepIndex === INTERACTIVE_TUTORIAL_MISSIONS.length - 1
                           ? isId
-                            ? 'Selesai!'
-                            : 'Finish!'
+                            ? 'Selesai'
+                            : 'Finish'
                           : isId
                           ? 'Lanjut Misi Berikutnya'
                           : 'Next Mission'}
@@ -236,7 +236,7 @@ export const InteractiveTutorialBanner: React.FC<InteractiveTutorialBannerProps>
                   ) : (
                     <>
                       <span>{isId ? 'Lewati' : 'Skip'}</span>
-                      <ChevronRight className="w-3.5 h-3.5" />
+                      <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
                     </>
                   )}
                 </button>

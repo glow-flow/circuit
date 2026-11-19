@@ -1,14 +1,15 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Flame,
   Lightbulb,
   RotateCcw,
-  Sparkles,
   X,
 } from 'lucide-react';
 import { useCircuitStore } from '../../../store/useCircuitStore';
 import { detectShortCircuitZeroVoltState } from '../../../physics/shortCircuitZeroVoltAdvisor';
 import { MascotAvatar } from '../common/MascotAvatar';
+import { useModalFocusTrap } from '../../../hooks/useModalKeyboardClose';
+import { LabModalHeader } from '../common/LabModalHeader';
 
 /**
  * Floating Bottom-Right Short-Circuit `0V` Battery Pop-Up & Interactive Visual Explainer
@@ -55,6 +56,9 @@ export const ShortCircuitZeroVoltPopup: React.FC = () => {
   const [visualComparisonMode, setVisualComparisonMode] = useState<
     'short' | 'normal'
   >('short');
+
+  const explainerModalRef = useRef<HTMLDivElement | null>(null);
+  useModalFocusTrap(isExplainerModalOpen, explainerModalRef, () => setIsExplainerModalOpen(false));
 
   // Reset dismissal automatically whenever the short-circuit state clears and re-triggers
   useEffect(() => {
@@ -109,18 +113,16 @@ export const ShortCircuitZeroVoltPopup: React.FC = () => {
 
   return (
     <>
-      {/* ====================================================================
-          FLOATING BOTTOM-RIGHT POP-UP CALLOUT ("Samping Kanan Agak Bawah")
-         ==================================================================== */}
+      {/* Floating bottom-right short-circuit alert callout */}
       {!isDismissedForCurrentEvent && (
         <div
           id="short-circuit-zero-volt-popup"
           role="status"
           aria-live="polite"
           onPointerDown={(e) => e.stopPropagation()}
-          className="absolute bottom-[66px] right-3 lg:bottom-5 lg:right-5 z-30 max-w-[295px] sm:max-w-xs pointer-events-auto animate-fade-in"
+          className="absolute bottom-[66px] right-3 lg:bottom-5 lg:right-5 z-30 max-w-[295px] sm:max-w-xs pointer-events-auto"
         >
-          <div className="relative flex items-center gap-2.5 p-2.5 pr-8 rounded-2xl bg-void-950/95 backdrop-blur-xl border-2 border-rose-500/70 shadow-[0_12px_34px_rgba(244,63,94,0.35)] text-slate-100">
+          <div className="relative flex items-center gap-2.5 p-2.5 pr-10 rounded-2xl bg-void-900 border-2 border-danger-500 shadow-2xl text-ink">
             <button
               type="button"
               onClick={() => {
@@ -129,20 +131,18 @@ export const ShortCircuitZeroVoltPopup: React.FC = () => {
               }}
               className="flex items-center gap-2.5 text-left group cursor-pointer active:scale-95 transition-transform"
             >
-              {/* Animated Watt Angry + 0.0V Pill */}
-              <div className="relative w-11 h-11 rounded-xl bg-rose-500/15 border border-rose-400/60 flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(244,63,94,0.35)]">
+              <div className="relative w-11 h-11 rounded-xl bg-danger-950 border border-danger-500/60 flex items-center justify-center shrink-0">
                 <MascotAvatar mood="angry" size="xs" alt="Watt Panics at 0V" />
-                <span className="absolute -bottom-1 -right-1 px-1 rounded bg-rose-600 text-[8px] font-mono font-extrabold text-white border border-rose-300/60 leading-tight">
+                <span className="absolute -bottom-1 -right-1 px-1 rounded bg-danger-600 text-[8px] font-mono font-extrabold tabular-nums text-white border border-danger-700 leading-tight">
                   0.0V
                 </span>
               </div>
 
               <div className="min-w-0">
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-rose-500/25 border border-rose-400/40 text-[9px] font-mono font-bold text-rose-200 uppercase tracking-wider">
-                  <Sparkles className="w-2.5 h-2.5 text-amber-300" />
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-danger-600 text-[9px] font-mono font-bold text-white uppercase tracking-wider">
                   {isId ? 'Deteksi Korsleting' : 'Short-Circuit Alert'}
                 </span>
-                <p className="text-xs font-bold text-white group-hover:text-amber-200 leading-snug mt-0.5 transition-colors">
+                <p className="text-xs font-bold text-ink group-hover:text-amber-400 leading-snug mt-0.5 transition-colors">
                   {advisory.teaserPrompt}
                 </p>
               </div>
@@ -152,17 +152,15 @@ export const ShortCircuitZeroVoltPopup: React.FC = () => {
               type="button"
               onClick={() => setIsDismissedForCurrentEvent(true)}
               aria-label={isId ? 'Tutup notifikasi 0V' : 'Dismiss 0V alert'}
-              className="absolute top-2 right-2 p-1 rounded-lg bg-void-900/90 hover:bg-void-800 text-slate-400 hover:text-white border border-white/10 active:scale-95 transition-all cursor-pointer"
+              className="absolute top-2 right-2 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg bg-void-950 hover:bg-void-850 text-slate-300 hover:text-ink border border-control active:scale-95 transition-colors cursor-pointer"
             >
-              <X className="w-3 h-3" />
+              <X className="w-3.5 h-3.5" aria-hidden="true" />
             </button>
           </div>
         </div>
       )}
 
-      {/* ====================================================================
-          CREATIVE VISUAL X-RAY EXPLAINER MODAL
-         ==================================================================== */}
+      {/* Visual X-Ray explainer modal */}
       {isExplainerModalOpen && (
         <div
           role="dialog"
@@ -170,60 +168,42 @@ export const ShortCircuitZeroVoltPopup: React.FC = () => {
           aria-labelledby="zero-volt-explainer-title"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={() => setIsExplainerModalOpen(false)}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4 select-none"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/75 p-3 sm:p-4 select-none"
         >
           <div
+            ref={explainerModalRef}
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md max-h-[90dvh] overflow-y-auto rounded-2xl bg-void-900 border border-rose-500/40 shadow-2xl text-slate-100 flex flex-col"
+            className="w-full max-w-md max-h-[90dvh] overflow-y-auto rounded-2xl bg-void-900 border border-danger-500/60 shadow-2xl text-ink flex flex-col"
           >
-            {/* Header */}
-            <div className="flex items-center justify-between gap-2 px-4 pt-3.5 pb-3 border-b border-white/10 bg-void-950">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <MascotAvatar
-                  mood={visualComparisonMode === 'short' ? 'angry' : 'proud'}
-                  size="sm"
-                  alt="Watt Explainer Mood"
-                />
-                <div className="min-w-0">
-                  <span className="block text-[9px] font-mono font-bold uppercase tracking-wider text-rose-300">
-                    {isId
-                      ? 'Bedah Fisika · Hambatan Dalam Baterai'
-                      : 'Physics X-Ray · Battery Internal Resistance'}
-                  </span>
-                  <h3
-                    id="zero-volt-explainer-title"
-                    className="text-sm sm:text-base font-bold text-white leading-tight truncate"
-                  >
-                    {isId
-                      ? 'Kenapa Baterai Tiba-Tiba Jadi 0.0V?'
-                      : 'Why Did the Battery Drop to 0.0V?'}
-                  </h3>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setIsExplainerModalOpen(false)}
-                aria-label={isId ? 'Tutup' : 'Close'}
-                className="w-8 h-8 rounded-xl bg-void-900 hover:bg-void-800 border border-white/10 text-slate-400 hover:text-white flex items-center justify-center active:scale-95 transition-all cursor-pointer shrink-0"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+            <LabModalHeader
+              titleId="zero-volt-explainer-title"
+              eyebrow={
+                isId
+                  ? 'BEDAH FISIKA · HAMBATAN DALAM BATERAI'
+                  : 'PHYSICS X-RAY · BATTERY INTERNAL RESISTANCE'
+              }
+              title={
+                isId
+                  ? 'Kenapa Baterai Tiba-Tiba Jadi 0.0V?'
+                  : 'Why Did the Battery Drop to 0.0V?'
+              }
+              onClose={() => setIsExplainerModalOpen(false)}
+              closeLabel={isId ? 'Tutup' : 'Close'}
+            />
 
             <div className="p-3.5 sm:p-4 space-y-3 overflow-y-auto">
               {/* Interactive Comparison Switcher: [Korsleting 0V] vs [Normal + Lampu] */}
-              <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-void-950 border border-white/10">
+              <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-void-950 border border-ink/15">
                 <button
                   type="button"
                   onClick={() => setVisualComparisonMode('short')}
-                  className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[11px] font-bold transition-all active:scale-95 cursor-pointer ${
+                  className={`min-h-[38px] flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[11px] font-bold transition-colors active:scale-95 cursor-pointer ${
                     visualComparisonMode === 'short'
-                      ? 'bg-rose-600 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-white'
+                      ? 'bg-danger-600 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-ink'
                   }`}
                 >
-                  <Flame className="w-3.5 h-3.5 shrink-0" />
+                  <Flame className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                   <span>
                     {isId ? 'Saat Korsleting (0.0V)' : 'Short-Circuit (0.0V)'}
                   </span>
@@ -232,21 +212,21 @@ export const ShortCircuitZeroVoltPopup: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setVisualComparisonMode('normal')}
-                  className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[11px] font-bold transition-all active:scale-95 cursor-pointer ${
+                  className={`min-h-[38px] flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[11px] font-bold transition-colors active:scale-95 cursor-pointer ${
                     visualComparisonMode === 'normal'
                       ? 'bg-emerald-600 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-white'
+                      : 'text-slate-400 hover:text-ink'
                   }`}
                 >
-                  <Lightbulb className="w-3.5 h-3.5 shrink-0" />
+                  <Lightbulb className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                   <span>
                     {isId ? 'Saat Normal (Ada Lampu)' : 'Normal (With Lamp)'}
                   </span>
                 </button>
               </div>
 
-              {/* Creative X-Ray Battery Diagram SVG */}
-              <div className="rounded-xl bg-void-950 border border-white/10 p-2.5">
+              {/* Creative X-Ray Battery Diagram SVG on permanent dark oscilloscope backing */}
+              <div className="rounded-xl bg-[#0B0F14] border border-control p-2.5">
                 <svg
                   viewBox="0 0 340 148"
                   className="w-full h-auto"
@@ -364,21 +344,23 @@ export const ShortCircuitZeroVoltPopup: React.FC = () => {
                     fontFamily="monospace"
                     fontWeight="bold"
                   >
-                    r_dalam ({internalROhms}Ω)
+                    {isId ? `r_dalam (${internalROhms}Ω)` : `r_in (${internalROhms}Ω)`}
                   </text>
                   <text
                     x="151"
                     y="72"
                     textAnchor="middle"
                     fill={
-                      visualComparisonMode === 'short' ? '#fecdd3' : '#94a3b8'
+                      visualComparisonMode === 'short' ? '#fecdd3' : '#cbd5e1'
                     }
                     fontSize="11"
                     fontFamily="monospace"
                     fontWeight="bold"
                   >
                     {visualComparisonMode === 'short'
-                      ? `-${nominalV.toFixed(1)}V (PANAS!)`
+                      ? isId
+                        ? `-${nominalV.toFixed(1)}V (PANAS!)`
+                        : `-${nominalV.toFixed(1)}V (HOT!)`
                       : `-${normalInternalDropV.toFixed(1)}V`}
                   </text>
 
@@ -428,7 +410,7 @@ export const ShortCircuitZeroVoltPopup: React.FC = () => {
                         fontFamily="monospace"
                         fontWeight="bold"
                       >
-                        R_luar = 0 Ω
+                        {isId ? 'R_luar = 0 Ω' : 'R_ext = 0 Ω'}
                       </text>
                     </g>
                   ) : (
@@ -457,7 +439,7 @@ export const ShortCircuitZeroVoltPopup: React.FC = () => {
                         fontFamily="monospace"
                         fontWeight="bold"
                       >
-                        Lampu 10Ω
+                        {isId ? 'Lampu 10Ω' : 'Bulb 10Ω'}
                       </text>
                     </g>
                   )}
@@ -507,15 +489,23 @@ export const ShortCircuitZeroVoltPopup: React.FC = () => {
               </div>
 
               {/* Live Formula Strip */}
-              <div className="px-3 py-2 rounded-xl bg-void-950 border border-white/10 flex items-center justify-between gap-2 font-mono text-xs">
+              <div className="px-3 py-2 rounded-xl bg-void-950 border border-ink/15 flex items-center justify-between gap-2 font-mono text-xs tabular-nums">
                 <span className="text-slate-400">
-                  V<sub>kutub</sub> = E - (I × r<sub>dalam</sub>)
+                  {isId ? (
+                    <>
+                      V<sub>kutub</sub> = E - (I × r<sub>dalam</sub>)
+                    </>
+                  ) : (
+                    <>
+                      V<sub>term</sub> = E - (I × r<sub>in</sub>)
+                    </>
+                  )}
                 </span>
                 <span
                   className={`font-bold ${
                     visualComparisonMode === 'short'
-                      ? 'text-rose-300'
-                      : 'text-emerald-300'
+                      ? 'text-danger-400'
+                      : 'text-emerald-400'
                   }`}
                 >
                   {visualComparisonMode === 'short'
@@ -524,16 +514,16 @@ export const ShortCircuitZeroVoltPopup: React.FC = () => {
                 </span>
               </div>
 
-              {/* 3 Short, Punchy Takeaway Cards */}
-              <div className="space-y-1.5 text-xs">
-                <div className="p-2.5 rounded-xl bg-void-950/90 border border-rose-500/25 flex items-start gap-2">
-                  <span className="px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 font-mono text-[10px] font-bold shrink-0">
+              {/* 2 Punchy Takeaway Cards */}
+              <div className="space-y-1.5 text-xs tabular-nums">
+                <div className="p-2.5 rounded-xl bg-void-950 border border-danger-500/40 flex items-start gap-2">
+                  <span className="px-1.5 py-0.5 rounded bg-danger-600 text-white font-mono text-[10px] font-bold shrink-0">
                     1
                   </span>
-                  <p className="text-slate-200 leading-snug">
+                  <p className="text-slate-300 leading-snug">
                     {isId ? (
                       <>
-                        <strong className="text-white">
+                        <strong className="text-ink">
                           Tegangan Habis di Dalam:
                         </strong>{' '}
                         Karena kabel langsung terhubung tanpa lampu (R = 0 Ω),
@@ -542,7 +532,7 @@ export const ShortCircuitZeroVoltPopup: React.FC = () => {
                       </>
                     ) : (
                       <>
-                        <strong className="text-white">
+                        <strong className="text-ink">
                           Swallowed Inside:
                         </strong>{' '}
                         With zero external load (R = 0 Ω), 100% of the{' '}
@@ -553,14 +543,14 @@ export const ShortCircuitZeroVoltPopup: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="p-2.5 rounded-xl bg-void-950/90 border border-amber-500/25 flex items-start gap-2">
-                  <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono text-[10px] font-bold shrink-0">
+                <div className="p-2.5 rounded-xl bg-void-950 border border-amber-500/40 flex items-start gap-2">
+                  <span className="px-1.5 py-0.5 rounded bg-[#B45309] text-white font-mono text-[10px] font-bold shrink-0">
                     2
                   </span>
-                  <p className="text-slate-200 leading-snug">
+                  <p className="text-slate-300 leading-snug">
                     {isId ? (
                       <>
-                        <strong className="text-white">
+                        <strong className="text-ink">
                           Energi Kimia Terkuras Jadi Panas:
                         </strong>{' '}
                         Arus bocor {shortCurrentA}A mengubah kimia baterai menjadi
@@ -569,7 +559,7 @@ export const ShortCircuitZeroVoltPopup: React.FC = () => {
                       </>
                     ) : (
                       <>
-                        <strong className="text-white">
+                        <strong className="text-ink">
                           Drained Into Heat:
                         </strong>{' '}
                         A {shortCurrentA}A surge turns chemical energy into heat (
@@ -586,9 +576,9 @@ export const ShortCircuitZeroVoltPopup: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleRechargeAndOpenSwitches}
-                  className="min-h-[42px] px-3 py-2 rounded-xl bg-electric-600 hover:bg-electric-500 text-white text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer shadow-sm"
+                  className="min-h-[42px] px-3 py-2 rounded-xl bg-electric-600 hover:bg-electric-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-colors cursor-pointer shadow-sm"
                 >
-                  <RotateCcw className="w-3.5 h-3.5 shrink-0" />
+                  <RotateCcw className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                   <span>
                     {isId
                       ? 'Isi Ulang 100% & Buka Saklar'
@@ -599,9 +589,9 @@ export const ShortCircuitZeroVoltPopup: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleLoadSafeLampCircuit}
-                  className="min-h-[42px] px-3 py-2 rounded-xl bg-void-950 hover:bg-void-850 border border-emerald-500/40 text-emerald-300 text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+                  className="min-h-[42px] px-3 py-2 rounded-xl bg-void-950 hover:bg-void-850 border border-emerald-500/60 text-emerald-400 hover:text-ink text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-colors cursor-pointer"
                 >
-                  <Lightbulb className="w-3.5 h-3.5 shrink-0" />
+                  <Lightbulb className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                   <span>
                     {isId ? 'Pasang Lampu Pengaman' : 'Load Safe Lamp Circuit'}
                   </span>

@@ -39,10 +39,10 @@ export const InspectorPropertiesTab: React.FC<InspectorPropertiesTabProps> = ({
 
   return (
     <div className="p-4 space-y-4 text-xs font-sans">
-      <div className="rounded-xl bg-void-950/90 border border-electric-500/30 p-3.5 space-y-3.5 shadow-[0_0_20px_rgba(14,165,233,0.08)]">
-        <div className="flex items-center justify-between border-b border-white/10 pb-2">
+      <div className="rounded-xl bg-void-950 border border-control p-3.5 space-y-3.5">
+        <div className="flex items-center justify-between border-b border-ink/15 pb-2">
           <span className="text-[10px] font-bold uppercase tracking-wider text-electric-400 flex items-center gap-1.5">
-            <Sliders className="w-3 h-3" />
+            <Sliders className="w-3 h-3" aria-hidden="true" />
             {isId ? 'Ubah Properti & Pengaturan' : 'Adjust Component Properties'}
           </span>
           <span className="text-[10px] font-mono text-slate-400">
@@ -54,10 +54,10 @@ export const InspectorPropertiesTab: React.FC<InspectorPropertiesTabProps> = ({
         {(componentData.type === 'battery' || componentData.type === 'battery9v') && (
           <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <label className="text-xs font-semibold text-slate-200">
+              <span className="text-xs font-semibold text-ink">
                 {t.batteryVoltageLabel}
-              </label>
-              <span className="text-xs font-mono font-bold text-electric-400">
+              </span>
+              <span className="text-xs font-mono tabular-nums font-bold text-electric-400">
                 {(
                   componentData.voltage ?? (componentData.type === 'battery9v' ? 9.0 : 1.5)
                 ).toFixed(1)}{' '}
@@ -65,6 +65,7 @@ export const InspectorPropertiesTab: React.FC<InspectorPropertiesTabProps> = ({
               </span>
             </div>
             <Slider.Root
+              aria-label={t.batteryVoltageLabel}
               className="relative flex items-center select-none touch-none w-full h-6 cursor-pointer"
               value={[
                 componentData.voltage ?? (componentData.type === 'battery9v' ? 9.0 : 1.5),
@@ -74,15 +75,15 @@ export const InspectorPropertiesTab: React.FC<InspectorPropertiesTabProps> = ({
               step={0.5}
               onValueChange={([val]) => updateComponentData(nodeId, { voltage: val })}
             >
-              <Slider.Track className="bg-void-900 relative grow rounded-full h-2 border border-white/10">
-                <Slider.Range className="absolute bg-electric-500 rounded-full h-full" />
+              <Slider.Track className="bg-void-900 relative grow rounded-full h-2 border border-control">
+                <Slider.Range className="absolute bg-electric-600 rounded-full h-full" />
               </Slider.Track>
-              <Slider.Thumb className="block w-5 h-5 bg-white rounded-full shadow-md focus:outline-none focus:ring-2 focus:ring-electric-500 transition-transform active:scale-125" />
+              <Slider.Thumb className="block w-5 h-5 bg-pure-white rounded-full border-2 border-electric-600 shadow-sm transition-transform active:scale-110" />
             </Slider.Root>
 
             {componentData.type === 'battery9v' && (
-              <div className="p-2.5 rounded-xl bg-void-900/80 border border-white/5 text-[11px] text-slate-400 space-y-1">
-                <div className="flex justify-between font-mono text-xs">
+              <div className="p-2.5 rounded-xl bg-void-900 border border-ink/15 text-[11px] text-slate-400 space-y-1">
+                <div className="flex justify-between font-mono tabular-nums text-xs">
                   <span>{isId ? 'Hambatan Dalam (R_in):' : 'Internal Resistance:'}</span>
                   <span className="text-amber-400 font-bold">
                     {(componentData.internalResistance ?? 2.0).toFixed(1)} Ω
@@ -97,14 +98,14 @@ export const InspectorPropertiesTab: React.FC<InspectorPropertiesTabProps> = ({
             )}
 
             {/* State of Charge (SoC) Controls & Recharge Action */}
-            <div className="p-3 rounded-xl bg-void-950/70 border border-white/5 space-y-2.5">
+            <div className="p-3 rounded-xl bg-void-900 border border-ink/15 space-y-2.5">
               <div className="flex justify-between items-center">
-                <span className="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
-                  <BatteryCharging className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="text-xs font-semibold text-ink flex items-center gap-1.5">
+                  <BatteryCharging className="w-3.5 h-3.5 text-emerald-400" aria-hidden="true" />
                   {t.batteryChargeLabel}
                 </span>
                 <span
-                  className={`text-xs font-mono font-bold ${
+                  className={`text-xs font-mono tabular-nums font-bold ${
                     (componentData.currentCharge ?? 100) < 20
                       ? 'text-red-400'
                       : (componentData.currentCharge ?? 100) < 50
@@ -117,22 +118,22 @@ export const InspectorPropertiesTab: React.FC<InspectorPropertiesTabProps> = ({
               </div>
 
               {/* Visual Progress Bar */}
-              <div className="w-full h-2 rounded-full bg-void-900 border border-white/10 overflow-hidden relative">
+              <div className="w-full h-2 rounded-full bg-void-950 border border-ink/15 overflow-hidden relative">
                 <div
                   className={`h-full rounded-full transition-all duration-300 ${
                     (componentData.currentCharge ?? 100) < 20
-                      ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.7)]'
+                      ? 'bg-red-500'
                       : (componentData.currentCharge ?? 100) < 50
-                      ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]'
-                      : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]'
+                      ? 'bg-amber-500'
+                      : 'bg-emerald-500'
                   }`}
                   style={{ width: `${Math.max(0, Math.min(100, componentData.currentCharge ?? 100))}%` }}
                 />
               </div>
 
-              <div className="flex justify-between items-center text-[11px] font-mono text-slate-400">
+              <div className="flex justify-between items-center text-[11px] font-mono tabular-nums text-slate-400">
                 <span>{t.batteryCapacityLabel}</span>
-                <span className="text-slate-200">
+                <span className="text-ink font-semibold">
                   {Math.round(((componentData.currentCharge ?? 100) * (componentData.capacity ?? 1000)) / 100)} / {componentData.capacity ?? 1000} mAh
                 </span>
               </div>
@@ -143,26 +144,34 @@ export const InspectorPropertiesTab: React.FC<InspectorPropertiesTabProps> = ({
                   {isId ? 'Status Aliran:' : 'Flow State:'}
                 </span>
                 <span
-                  className={`px-2 py-0.5 rounded font-mono font-bold text-[10px] border ${
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded font-mono font-bold text-[10px] border ${
                     componentData.chargeState === 'charging'
-                      ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 animate-pulse'
+                      ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40'
                       : componentData.chargeState === 'discharging'
-                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                      : 'bg-white/5 text-slate-400 border-white/10'
+                      ? 'bg-amber-500/15 text-amber-400 border-amber-500/40'
+                      : 'bg-ink/5 text-slate-400 border-ink/15'
                   }`}
                 >
-                  {componentData.chargeState === 'charging'
-                    ? '⚡ CHARGING'
-                    : componentData.chargeState === 'discharging'
-                    ? '🔋 DISCHARGING'
-                    : 'IDLE (STANDBY)'}
+                  {componentData.chargeState === 'charging' ? (
+                    <>
+                      <Zap className="w-3 h-3 shrink-0" aria-hidden="true" />
+                      <span>CHARGING</span>
+                    </>
+                  ) : componentData.chargeState === 'discharging' ? (
+                    <>
+                      <BatteryCharging className="w-3 h-3 shrink-0" aria-hidden="true" />
+                      <span>DISCHARGING</span>
+                    </>
+                  ) : (
+                    <span>IDLE (STANDBY)</span>
+                  )}
                 </span>
               </div>
 
               {/* Voltage Sag Warning */}
               {(componentData.currentCharge ?? 100) < 20 && (
-                <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/30 text-[10px] text-red-300 leading-relaxed flex items-start gap-1.5">
-                  <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
+                <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/35 text-[10px] text-red-400 leading-relaxed flex items-start gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" aria-hidden="true" />
                   <span>{t.batterySagNotice}</span>
                 </div>
               )}
@@ -171,9 +180,9 @@ export const InspectorPropertiesTab: React.FC<InspectorPropertiesTabProps> = ({
               <button
                 type="button"
                 onClick={() => rechargeBattery(nodeId)}
-                className="w-full py-2 px-3 rounded-lg text-xs font-bold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                className="w-full min-h-[42px] py-2 px-3 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white active:scale-95 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <Zap className="w-3.5 h-3.5" />
+                <Zap className="w-3.5 h-3.5" aria-hidden="true" />
                 <span>{t.batteryRechargeBtn}</span>
               </button>
             </div>
@@ -184,12 +193,12 @@ export const InspectorPropertiesTab: React.FC<InspectorPropertiesTabProps> = ({
         {componentData.type === 'battery-holder' && (
           <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <span className="text-xs font-semibold text-slate-200">{t.holderCellsLabel}</span>
-              <span className="text-xs font-mono font-bold text-emerald-400">
+              <span className="text-xs font-semibold text-ink">{t.holderCellsLabel}</span>
+              <span className="text-xs font-mono tabular-nums font-bold text-emerald-400">
                 {componentData.batteryCount ?? (componentData.hasBattery ? 2 : 0)} / 2 AA
               </span>
             </div>
-            <div className="flex justify-between items-center text-xs font-mono">
+            <div className="flex justify-between items-center text-xs font-mono tabular-nums">
               <span className="text-slate-400 font-sans text-[11px]">{t.holderOutputLabel}</span>
               <span className="text-electric-400 font-bold">
                 {(
@@ -215,7 +224,7 @@ export const InspectorPropertiesTab: React.FC<InspectorPropertiesTabProps> = ({
                     cellCharges: inserted.cellCharges,
                   });
                 }}
-                className="py-2 px-2.5 rounded-lg text-xs font-semibold bg-electric-500/15 text-electric-400 border border-electric-500/30 hover:bg-electric-500/25 disabled:opacity-40 active:scale-95 transition-all cursor-pointer"
+                className="min-h-[40px] py-2 px-2.5 rounded-lg text-xs font-semibold bg-electric-500/15 text-electric-400 border border-electric-500/35 hover:bg-electric-500/25 disabled:opacity-40 active:scale-95 transition-colors cursor-pointer"
               >
                 {t.holderInsertBtn}
               </button>
@@ -223,7 +232,7 @@ export const InspectorPropertiesTab: React.FC<InspectorPropertiesTabProps> = ({
                 type="button"
                 disabled={(componentData.batteryCount ?? 0) <= 0}
                 onClick={() => ejectBatteryFromHolder(nodeId)}
-                className="py-2 px-2.5 rounded-lg text-xs font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30 hover:bg-amber-500/25 disabled:opacity-40 active:scale-95 transition-all cursor-pointer"
+                className="min-h-[40px] py-2 px-2.5 rounded-lg text-xs font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/35 hover:bg-amber-500/25 disabled:opacity-40 active:scale-95 transition-colors cursor-pointer"
               >
                 {t.holderEjectBtn}
               </button>
@@ -235,12 +244,13 @@ export const InspectorPropertiesTab: React.FC<InspectorPropertiesTabProps> = ({
         {componentData.type === 'resistor' && (
           <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <label className="text-xs font-semibold text-slate-200">{t.resistorLabel}</label>
-              <span className="text-xs font-mono font-bold text-amber-400">
+              <span className="text-xs font-semibold text-ink">{t.resistorLabel}</span>
+              <span className="text-xs font-mono tabular-nums font-bold text-copper-text">
                 {componentData.resistance ?? 100} Ω
               </span>
             </div>
             <Slider.Root
+              aria-label={t.resistorLabel}
               className="relative flex items-center select-none touch-none w-full h-6 cursor-pointer"
               value={[componentData.resistance ?? 100]}
               min={1}
@@ -248,10 +258,10 @@ export const InspectorPropertiesTab: React.FC<InspectorPropertiesTabProps> = ({
               step={1}
               onValueChange={([val]) => updateComponentData(nodeId, { resistance: val })}
             >
-              <Slider.Track className="bg-void-900 relative grow rounded-full h-2 border border-white/10">
-                <Slider.Range className="absolute bg-amber-500 rounded-full h-full" />
+              <Slider.Track className="bg-void-900 relative grow rounded-full h-2 border border-control">
+                <Slider.Range className="absolute bg-copper rounded-full h-full" />
               </Slider.Track>
-              <Slider.Thumb className="block w-5 h-5 bg-white rounded-full shadow-md focus:outline-none focus:ring-2 focus:ring-amber-500 transition-transform active:scale-125" />
+              <Slider.Thumb className="block w-5 h-5 bg-pure-white rounded-full border-2 border-copper shadow-sm transition-transform active:scale-110" />
             </Slider.Root>
 
             {/* Quick Resistance Presets */}
@@ -261,10 +271,10 @@ export const InspectorPropertiesTab: React.FC<InspectorPropertiesTabProps> = ({
                   key={res}
                   type="button"
                   onClick={() => updateComponentData(nodeId, { resistance: res })}
-                  className={`flex-1 py-1 rounded-md text-[10px] font-mono border transition-all active:scale-95 ${
+                  className={`flex-1 min-h-[36px] py-1 rounded-md text-[10px] font-mono tabular-nums border transition-colors active:scale-95 ${
                     (componentData.resistance ?? 100) === res
-                      ? 'bg-amber-500/25 text-amber-300 border-amber-500/50 font-bold'
-                      : 'bg-void-900 text-slate-400 border-white/10 hover:text-white'
+                      ? 'bg-amber-500/20 text-copper-text border-copper font-bold'
+                      : 'bg-void-900 text-slate-400 border-control hover:text-ink hover:bg-void-850'
                   }`}
                 >
                   {res}Ω
@@ -300,7 +310,10 @@ export const InspectorPropertiesTab: React.FC<InspectorPropertiesTabProps> = ({
               return (
                 <>
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-200 block">
+                    <label
+                      htmlFor="inspector-bulb-type-select"
+                      className="text-xs font-semibold text-ink block"
+                    >
                       {componentData.type === 'socket'
                         ? isId
                           ? 'Pilih Lampu Ulir (5 Tipe E27)'
@@ -310,16 +323,17 @@ export const InspectorPropertiesTab: React.FC<InspectorPropertiesTabProps> = ({
                         : 'Select Bulb Type (7 Types)'}
                     </label>
                     <select
+                      id="inspector-bulb-type-select"
                       value={activeBulbType}
                       onChange={(e) => setBulbType(nodeId, e.target.value as BulbType)}
-                      className="w-full px-3 py-2 rounded-xl bg-void-900 border border-electric-500/40 text-xs font-medium text-slate-100 focus:outline-none focus:border-electric-400 cursor-pointer"
+                      className="w-full min-h-[40px] px-3 py-2 rounded-xl bg-void-900 border border-control text-xs font-medium text-ink cursor-pointer"
                     >
                       {BULB_CATALOG.filter(
                         (spec) =>
                           componentData.type !== 'socket' || spec.baseType === 'screw'
                       ).map((spec) => (
                         <option key={spec.type} value={spec.type}>
-                          {isId ? spec.label : spec.labelEn} · {spec.resistance}Ω (Maks {spec.maxPower}W)
+                          {isId ? spec.label : spec.labelEn} · {spec.resistance}Ω ({isId ? 'Maks' : 'Max'} {spec.maxPower}W)
                         </option>
                       ))}
                     </select>
@@ -328,16 +342,17 @@ export const InspectorPropertiesTab: React.FC<InspectorPropertiesTabProps> = ({
                     </p>
                   </div>
 
-                  <div className="space-y-2 pt-2 border-t border-white/10">
+                  <div className="space-y-2 pt-2 border-t border-ink/15">
                     <div className="flex justify-between items-center">
-                      <label className="text-xs font-semibold text-slate-200">
+                      <span className="text-xs font-semibold text-ink">
                         {t.bulbResistanceLabel}
-                      </label>
-                      <span className="text-xs font-mono font-bold text-yellow-300">
+                      </span>
+                      <span className="text-xs font-mono tabular-nums font-bold text-copper-text">
                         {activeResistance} Ω
                       </span>
                     </div>
                     <Slider.Root
+                      aria-label={t.bulbResistanceLabel}
                       className="relative flex items-center select-none touch-none w-full h-6 cursor-pointer"
                       value={[activeResistance]}
                       min={50}
@@ -361,10 +376,10 @@ export const InspectorPropertiesTab: React.FC<InspectorPropertiesTabProps> = ({
                         }
                       }}
                     >
-                      <Slider.Track className="bg-void-900 relative grow rounded-full h-2 border border-white/10">
-                        <Slider.Range className="absolute bg-yellow-400 rounded-full h-full" />
+                      <Slider.Track className="bg-void-900 relative grow rounded-full h-2 border border-control">
+                        <Slider.Range className="absolute bg-copper rounded-full h-full" />
                       </Slider.Track>
-                      <Slider.Thumb className="block w-5 h-5 bg-white rounded-full shadow-md focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-transform active:scale-125" />
+                      <Slider.Thumb className="block w-5 h-5 bg-pure-white rounded-full border-2 border-copper shadow-sm transition-transform active:scale-110" />
                     </Slider.Root>
                   </div>
                 </>
@@ -376,14 +391,14 @@ export const InspectorPropertiesTab: React.FC<InspectorPropertiesTabProps> = ({
         {/* Switch Controls */}
         {componentData.type === 'switch' && (
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-200">{t.switchStateLabel}</label>
+            <span className="block text-xs font-semibold text-ink">{t.switchStateLabel}</span>
             <button
               type="button"
               onClick={() => toggleSwitch(nodeId)}
-              className={`w-full py-2.5 rounded-xl font-medium text-xs transition-all active:scale-95 border cursor-pointer ${
+              className={`w-full min-h-[42px] py-2.5 rounded-xl font-medium text-xs transition-colors active:scale-95 border cursor-pointer ${
                 componentData.isOpen
-                  ? 'bg-amber-500/10 text-amber-300 border-amber-500/30 hover:bg-amber-500/20'
-                  : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/20'
+                  ? 'bg-amber-500/15 text-copper-text border-copper hover:bg-amber-500/25'
+                  : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/45 hover:bg-emerald-500/25'
               }`}
             >
               {componentData.isOpen ? t.switchOpenBtn : t.switchClosedBtn}
@@ -395,16 +410,17 @@ export const InspectorPropertiesTab: React.FC<InspectorPropertiesTabProps> = ({
         {(componentData.type === 'solar-panel' || componentData.type === 'solar_panel') && (
           <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <span className="text-xs font-semibold text-slate-200">
+              <span className="text-xs font-semibold text-ink">
                 {isId ? 'Intensitas Cahaya Surya' : 'Solar Irradiance'}
               </span>
-              <span className="text-xs font-mono font-bold text-amber-400">
+              <span className="text-xs font-mono tabular-nums font-bold text-copper-text">
                 {componentData.baseSunlight ?? componentData.sunlight ?? 100}% (
                 {(componentData.voltage ?? 12.0).toFixed(1)} V)
               </span>
             </div>
 
             <Slider.Root
+              aria-label={isId ? 'Intensitas Cahaya Surya' : 'Solar Irradiance'}
               className="relative flex items-center select-none touch-none w-full h-6 cursor-pointer"
               value={[componentData.baseSunlight ?? componentData.sunlight ?? 100]}
               min={0}
@@ -419,10 +435,10 @@ export const InspectorPropertiesTab: React.FC<InspectorPropertiesTabProps> = ({
                 })
               }
             >
-              <Slider.Track className="bg-void-900 relative grow rounded-full h-2 border border-white/10">
-                <Slider.Range className="absolute bg-amber-400 rounded-full h-full" />
+              <Slider.Track className="bg-void-900 relative grow rounded-full h-2 border border-control">
+                <Slider.Range className="absolute bg-copper rounded-full h-full" />
               </Slider.Track>
-              <Slider.Thumb className="block w-5 h-5 bg-white rounded-full shadow-md focus:outline-none focus:ring-2 focus:ring-amber-400 transition-transform active:scale-125" />
+              <Slider.Thumb className="block w-5 h-5 bg-pure-white rounded-full border-2 border-copper shadow-sm transition-transform active:scale-110" />
             </Slider.Root>
           </div>
         )}
@@ -431,15 +447,16 @@ export const InspectorPropertiesTab: React.FC<InspectorPropertiesTabProps> = ({
         {(componentData.type === 'wind-turbine' || componentData.type === 'wind_turbine') && (
           <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <span className="text-xs font-semibold text-slate-200">
+              <span className="text-xs font-semibold text-ink">
                 {isId ? 'Kecepatan Baling-Baling' : 'Rotor Speed'}
               </span>
-              <span className="text-xs font-mono font-bold text-cyan-400">
+              <span className="text-xs font-mono tabular-nums font-bold text-cyan-400">
                 {componentData.speed ?? 50}% ({(((componentData.speed ?? 50) / 100) * 12.0).toFixed(1)} V)
               </span>
             </div>
 
             <Slider.Root
+              aria-label={isId ? 'Kecepatan Baling-Baling' : 'Rotor Speed'}
               className="relative flex items-center select-none touch-none w-full h-6 cursor-pointer"
               value={[componentData.speed ?? 50]}
               min={0}
@@ -452,10 +469,10 @@ export const InspectorPropertiesTab: React.FC<InspectorPropertiesTabProps> = ({
                 })
               }
             >
-              <Slider.Track className="bg-void-900 relative grow rounded-full h-2 border border-white/10">
-                <Slider.Range className="absolute bg-cyan-400 rounded-full h-full" />
+              <Slider.Track className="bg-void-900 relative grow rounded-full h-2 border border-control">
+                <Slider.Range className="absolute bg-cyan-500 rounded-full h-full" />
               </Slider.Track>
-              <Slider.Thumb className="block w-5 h-5 bg-white rounded-full shadow-md focus:outline-none focus:ring-2 focus:ring-cyan-400 transition-transform active:scale-125" />
+              <Slider.Thumb className="block w-5 h-5 bg-pure-white rounded-full border-2 border-cyan-600 shadow-sm transition-transform active:scale-110" />
             </Slider.Root>
           </div>
         )}
@@ -464,16 +481,17 @@ export const InspectorPropertiesTab: React.FC<InspectorPropertiesTabProps> = ({
         {(componentData.type === 'bess-substation' || componentData.type === 'bess_substation') && (
           <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <span className="text-xs font-semibold text-slate-200">
+              <span className="text-xs font-semibold text-ink">
                 {isId ? 'Status Muatan Baterai (SoC)' : 'State of Charge (SoC)'}
               </span>
-              <span className="text-xs font-mono font-bold text-emerald-400">
+              <span className="text-xs font-mono tabular-nums font-bold text-emerald-400">
                 {Math.round(componentData.socPercent ?? componentData.currentCharge ?? 80)}% (
                 {Math.round(componentData.storedEnergyWh ?? 800)} Wh)
               </span>
             </div>
 
             <Slider.Root
+              aria-label={isId ? 'Status Muatan Baterai (SoC)' : 'State of Charge (SoC)'}
               className="relative flex items-center select-none touch-none w-full h-6 cursor-pointer"
               value={[Math.round(componentData.socPercent ?? componentData.currentCharge ?? 80)]}
               min={0}
@@ -488,18 +506,18 @@ export const InspectorPropertiesTab: React.FC<InspectorPropertiesTabProps> = ({
                 });
               }}
             >
-              <Slider.Track className="bg-void-900 relative grow rounded-full h-2 border border-white/10">
-                <Slider.Range className="absolute bg-emerald-400 rounded-full h-full" />
+              <Slider.Track className="bg-void-900 relative grow rounded-full h-2 border border-control">
+                <Slider.Range className="absolute bg-emerald-500 rounded-full h-full" />
               </Slider.Track>
-              <Slider.Thumb className="block w-5 h-5 bg-white rounded-full shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-transform active:scale-125" />
+              <Slider.Thumb className="block w-5 h-5 bg-pure-white rounded-full border-2 border-emerald-600 shadow-sm transition-transform active:scale-110" />
             </Slider.Root>
 
             <button
               type="button"
               onClick={() => rechargeBattery(nodeId)}
-              className="w-full py-2 rounded-xl font-bold text-xs bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+              className="w-full min-h-[42px] py-2 rounded-xl font-bold text-xs bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-1.5 transition-colors active:scale-95 cursor-pointer"
             >
-              <BatteryCharging className="w-3.5 h-3.5" />
+              <BatteryCharging className="w-3.5 h-3.5" aria-hidden="true" />
               {isId ? 'Isi Penuh BESS (100% / 1000 Wh)' : 'Recharge BESS Full (100% / 1000 Wh)'}
             </button>
           </div>
@@ -509,15 +527,16 @@ export const InspectorPropertiesTab: React.FC<InspectorPropertiesTabProps> = ({
         {(componentData.type === 'hydro-turbine' || componentData.type === 'hydro_turbine') && (
           <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <span className="text-xs font-semibold text-slate-200">
+              <span className="text-xs font-semibold text-ink">
                 {isId ? 'Debit Aliran Air (Katup Q)' : 'Water Flow Rate (Valve Q)'}
               </span>
-              <span className="text-xs font-mono font-bold text-cyan-400">
+              <span className="text-xs font-mono tabular-nums font-bold text-cyan-400">
                 {componentData.waterFlowRate ?? 0}% ({(componentData.voltage ?? 0).toFixed(1)} V)
               </span>
             </div>
 
             <Slider.Root
+              aria-label={isId ? 'Debit Aliran Air (Katup Q)' : 'Water Flow Rate (Valve Q)'}
               className="relative flex items-center select-none touch-none w-full h-6 cursor-pointer"
               value={[componentData.waterFlowRate ?? 0]}
               min={0}
@@ -531,22 +550,23 @@ export const InspectorPropertiesTab: React.FC<InspectorPropertiesTabProps> = ({
                 })
               }
             >
-              <Slider.Track className="bg-void-900 relative grow rounded-full h-2 border border-white/10">
-                <Slider.Range className="absolute bg-cyan-400 rounded-full h-full" />
+              <Slider.Track className="bg-void-900 relative grow rounded-full h-2 border border-control">
+                <Slider.Range className="absolute bg-cyan-500 rounded-full h-full" />
               </Slider.Track>
-              <Slider.Thumb className="block w-5 h-5 bg-white rounded-full shadow-md focus:outline-none focus:ring-2 focus:ring-cyan-400 transition-transform active:scale-125" />
+              <Slider.Thumb className="block w-5 h-5 bg-pure-white rounded-full border-2 border-cyan-600 shadow-sm transition-transform active:scale-110" />
             </Slider.Root>
 
             <div className="flex justify-between items-center pt-1">
-              <span className="text-xs font-semibold text-slate-200">
+              <span className="text-xs font-semibold text-ink">
                 {isId ? 'Tinggi Jatuh Air (Head H)' : 'Hydraulic Head (H)'}
               </span>
-              <span className="text-xs font-mono font-bold text-sky-400">
+              <span className="text-xs font-mono tabular-nums font-bold text-sky-400">
                 {(componentData.hydraulicHeadMeters ?? 2.0).toFixed(1)} m
               </span>
             </div>
 
             <Slider.Root
+              aria-label={isId ? 'Tinggi Jatuh Air (Head H)' : 'Hydraulic Head (H)'}
               className="relative flex items-center select-none touch-none w-full h-6 cursor-pointer"
               value={[componentData.hydraulicHeadMeters ?? 2.0]}
               min={0.5}
@@ -559,10 +579,10 @@ export const InspectorPropertiesTab: React.FC<InspectorPropertiesTabProps> = ({
                 })
               }
             >
-              <Slider.Track className="bg-void-900 relative grow rounded-full h-2 border border-white/10">
-                <Slider.Range className="absolute bg-sky-400 rounded-full h-full" />
+              <Slider.Track className="bg-void-900 relative grow rounded-full h-2 border border-control">
+                <Slider.Range className="absolute bg-sky-500 rounded-full h-full" />
               </Slider.Track>
-              <Slider.Thumb className="block w-5 h-5 bg-white rounded-full shadow-md focus:outline-none focus:ring-2 focus:ring-sky-400 transition-transform active:scale-125" />
+              <Slider.Thumb className="block w-5 h-5 bg-pure-white rounded-full border-2 border-sky-600 shadow-sm transition-transform active:scale-110" />
             </Slider.Root>
           </div>
         )}
@@ -574,7 +594,7 @@ export const InspectorPropertiesTab: React.FC<InspectorPropertiesTabProps> = ({
           componentData.type === 'distribution_panel') && (
           <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <span className="text-xs font-semibold text-slate-200">
+              <span className="text-xs font-semibold text-ink">
                 {isId ? 'Proteksi Saklar MCB:' : 'MCB Breaker Switch:'}
               </span>
               <button
@@ -585,18 +605,16 @@ export const InspectorPropertiesTab: React.FC<InspectorPropertiesTabProps> = ({
                     isMcbTripped: false,
                   })
                 }
-                className={`px-3 py-1 rounded-lg font-mono text-[10px] font-bold border transition-all active:scale-95 cursor-pointer ${
+                className={`min-h-[38px] px-3 py-1 rounded-lg font-mono text-[10px] font-bold border transition-colors active:scale-95 cursor-pointer ${
                   componentData.isMcbTripped
-                    ? 'bg-red-600 hover:bg-red-500 text-white border-red-400'
+                    ? 'bg-danger-600 hover:bg-danger-700 text-white border-danger-500'
                     : componentData.isMcbOn !== false
-                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/50'
-                    : 'bg-slate-800 text-slate-300 border-white/15'
+                    ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/45'
+                    : 'bg-void-850 text-slate-300 border-control hover:text-ink'
                 }`}
               >
                 {componentData.isMcbTripped
-                  ? isId
-                    ? 'Reset MCB (Trip)'
-                    : 'Reset MCB (Trip)'
+                  ? 'Reset MCB (Trip)'
                   : componentData.isMcbOn !== false
                   ? 'MCB: ON (Aktif)'
                   : 'MCB: OFF (Putus)'}
@@ -604,17 +622,17 @@ export const InspectorPropertiesTab: React.FC<InspectorPropertiesTabProps> = ({
             </div>
 
             {/* Step-Down DC Voltage Regulation */}
-            <div className="space-y-1.5 pt-2 border-t border-white/5">
+            <div className="space-y-1.5 pt-2 border-t border-ink/15">
               <div className="flex justify-between items-center text-[11px]">
                 <span className="text-slate-400 font-sans">
                   {isId ? 'Regulator Step-Down DC:' : 'DC Step-Down Regulator:'}
                 </span>
-                <span className="font-mono font-bold text-cyan-300">
+                <span className="font-mono tabular-nums font-bold text-cyan-400">
                   {componentData.stepDownVoltage == null
                     ? isId
                       ? 'Otomatis (Langsung)'
                       : 'Auto (Direct)'
-                    : `Maks ${componentData.stepDownVoltage} V`}
+                    : `${isId ? 'Maks' : 'Max'} ${componentData.stepDownVoltage} V`}
                 </span>
               </div>
               <div className="grid grid-cols-5 gap-1">
@@ -629,10 +647,10 @@ export const InspectorPropertiesTab: React.FC<InspectorPropertiesTabProps> = ({
                     key={opt.label}
                     type="button"
                     onClick={() => updateComponentData(nodeId, { stepDownVoltage: opt.val })}
-                    className={`py-1 rounded-lg font-mono text-[10px] font-bold border transition-all active:scale-95 cursor-pointer ${
+                    className={`min-h-[36px] py-1 rounded-lg font-mono text-[10px] font-bold border transition-colors active:scale-95 cursor-pointer ${
                       (componentData.stepDownVoltage ?? null) === opt.val
-                        ? 'bg-cyan-500/25 text-cyan-200 border-cyan-400/60'
-                        : 'bg-void-900 text-slate-400 border-white/10 hover:text-white'
+                        ? 'bg-electric-600 text-white border-electric-500'
+                        : 'bg-void-900 text-slate-400 border-control hover:text-ink hover:bg-void-850'
                     }`}
                   >
                     {opt.label}

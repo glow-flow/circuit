@@ -31,67 +31,51 @@ export const CloudOverlay: React.FC = () => {
       aria-live="polite"
       role="status"
     >
-      {/* Base Atmospheric Mist Veil */}
-      <div className="absolute inset-0 bg-gradient-to-b from-slate-100/95 via-white/98 to-slate-200/95 backdrop-blur-xl" />
+      {/* Base Atmospheric Mist Veil (stays bright daytime cloud sky regardless of UI theme) */}
+      <div className="absolute inset-0 bg-gradient-to-b from-[#E2E8F0] via-[#FFFFFF] to-[#CBD5E1]" />
 
-      {/* Left Sweeping Volumetric Cloud Bank (Multiple 50% border-radius divs + blur) */}
+      {/* Left Sweeping Volumetric Cloud Bank */}
       <div className="absolute inset-0 pointer-events-none animate-cloud-left">
-        <div
-          className="absolute -top-24 -left-24 w-[58vw] h-[58vh] rounded-[50%] bg-white blur-2xl opacity-95 shadow-[0_0_120px_rgba(255,255,255,1)]"
-        />
-        <div
-          className="absolute top-[12%] -left-16 w-[52vw] h-[54vh] rounded-[50%] bg-slate-100 blur-xl opacity-95"
-        />
-        <div
-          className="absolute bottom-[-15%] left-[-10%] w-[64vw] h-[58vh] rounded-[50%] bg-slate-200/95 blur-2xl"
-        />
-        <div
-          className="absolute top-[25%] left-[18%] w-[45vw] h-[45vh] rounded-[50%] bg-white blur-lg shadow-[inset_0_-24px_48px_rgba(148,163,184,0.35)]"
-        />
+        <div className="absolute -top-24 -left-24 w-[58vw] h-[58vh] rounded-[50%] bg-white blur-2xl opacity-95" />
+        <div className="absolute top-[12%] -left-16 w-[52vw] h-[54vh] rounded-[50%] bg-[#F1F5F9] blur-xl opacity-95" />
+        <div className="absolute bottom-[-15%] left-[-10%] w-[64vw] h-[58vh] rounded-[50%] bg-[#E2E8F0]/95 blur-2xl" />
+        <div className="absolute top-[25%] left-[18%] w-[45vw] h-[45vh] rounded-[50%] bg-white blur-lg" />
       </div>
 
-      {/* Right Sweeping Volumetric Cloud Bank (Multiple 50% border-radius divs + blur) */}
+      {/* Right Sweeping Volumetric Cloud Bank */}
       <div className="absolute inset-0 pointer-events-none animate-cloud-right">
-        <div
-          className="absolute -top-20 -right-24 w-[60vw] h-[58vh] rounded-[50%] bg-white blur-2xl opacity-95 shadow-[0_0_120px_rgba(255,255,255,1)]"
-        />
-        <div
-          className="absolute top-[18%] -right-12 w-[54vw] h-[52vh] rounded-[50%] bg-slate-100 blur-xl opacity-95"
-        />
-        <div
-          className="absolute -bottom-24 right-[-12%] w-[65vw] h-[60vh] rounded-[50%] bg-slate-200/95 blur-2xl"
-        />
-        <div
-          className="absolute top-[28%] right-[16%] w-[46vw] h-[46vh] rounded-[50%] bg-white blur-lg shadow-[inset_0_-24px_48px_rgba(148,163,184,0.35)]"
-        />
+        <div className="absolute -top-20 -right-24 w-[60vw] h-[58vh] rounded-[50%] bg-white blur-2xl opacity-95" />
+        <div className="absolute top-[18%] -right-12 w-[54vw] h-[52vh] rounded-[50%] bg-[#F1F5F9] blur-xl opacity-95" />
+        <div className="absolute -bottom-24 right-[-12%] w-[65vw] h-[60vh] rounded-[50%] bg-[#E2E8F0]/95 blur-2xl" />
+        <div className="absolute top-[28%] right-[16%] w-[46vw] h-[46vh] rounded-[50%] bg-white blur-lg" />
       </div>
 
       {/* Central Cumulus Core Puffs */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <div className="w-[70vw] h-[65vh] rounded-[50%] bg-white/95 blur-2xl" />
-        <div className="absolute w-[42vw] h-[42vh] rounded-[50%] bg-slate-100/90 blur-xl -translate-x-24 -translate-y-12" />
-        <div className="absolute w-[42vw] h-[42vh] rounded-[50%] bg-slate-200/80 blur-xl translate-x-24 translate-y-12" />
+        <div className="absolute w-[42vw] h-[42vh] rounded-[50%] bg-[#F1F5F9]/90 blur-xl -translate-x-24 -translate-y-12" />
+        <div className="absolute w-[42vw] h-[42vh] rounded-[50%] bg-[#E2E8F0]/80 blur-xl translate-x-24 translate-y-12" />
       </div>
 
-      {/* Center World Transition Pill Badge */}
-      <div className="relative z-10 flex flex-col items-center gap-3 px-7 py-5 rounded-3xl bg-slate-900/90 border border-slate-700/60 text-white shadow-[0_20px_60px_rgba(15,23,42,0.45)] backdrop-blur-md">
+      {/* Center World Transition Card */}
+      <div className="relative z-10 flex flex-col items-center gap-3 px-7 py-5 rounded-3xl bg-[#0F172A] border border-[#334155] text-[#F1F5F9] shadow-2xl">
         <div className="flex items-center gap-3">
           <div
             className={`p-2.5 rounded-2xl border ${
               isGoingOutside
-                ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-300'
-                : 'bg-cyan-500/20 border-cyan-400/40 text-cyan-300'
+                ? 'bg-[#064E3B] border-[#34D399]/50 text-[#6EE7B7]'
+                : 'bg-[#1E3A8A] border-[#38BDF8]/50 text-[#93C5FD]'
             }`}
           >
             {isGoingOutside ? (
-              <Trees className="w-6 h-6 animate-bounce" />
+              <Trees className="w-6 h-6" aria-hidden="true" />
             ) : (
-              <FlaskConical className="w-6 h-6 animate-pulse" />
+              <FlaskConical className="w-6 h-6" aria-hidden="true" />
             )}
           </div>
           <div className="flex flex-col">
-            <span className="text-[10px] font-mono uppercase tracking-widest text-slate-400 flex items-center gap-1">
-              <Cloud className="w-3 h-3 text-sky-300" />
+            <span className="text-[10px] font-mono uppercase tracking-widest text-[#94A3B8] flex items-center gap-1">
+              <Cloud className="w-3 h-3 text-[#38BDF8]" aria-hidden="true" />
               {isId ? 'Transisi Dunia' : 'World Transition'}
             </span>
             <span className="text-base sm:text-lg font-bold tracking-tight text-white">

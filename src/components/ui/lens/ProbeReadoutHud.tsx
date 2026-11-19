@@ -21,6 +21,7 @@ import {
   findHottestThermalNode,
 } from '../../../physics/physicsLensEngine';
 import { isOutdoorOnlyComponent } from '../../../types/circuit';
+import { getComponentDisplayName } from '../../../utils/nodeLocalization';
 
 /**
  * Formats branch currents into crisp human-readable mA or A units.
@@ -141,9 +142,9 @@ export const ProbeReadoutHud: React.FC<ProbeReadoutHudProps> = ({ isHidden = fal
     const hottestNode = hottest ? scopedNodes.find((n) => n.id === hottest.nodeId) : null;
     return {
       hottest,
-      hottestLabel: hottestNode?.data.label ?? null,
+      hottestLabel: hottestNode ? getComponentDisplayName(hottestNode.data, language) : null,
     };
-  }, [physicsLensMode, scopedNodes, simulation, theme]);
+  }, [language, physicsLensMode, scopedNodes, simulation, theme]);
 
   if (isHidden || physicsLensMode === 'normal') {
     return null;
@@ -152,21 +153,13 @@ export const ProbeReadoutHud: React.FC<ProbeReadoutHudProps> = ({ isHidden = fal
   // Anchor near top so bottom dock and main central circuit stay unobstructed on phones
   const cardAnchorClass =
     worldMode === 'outside'
-      ? 'top-[98px] left-1/2 -translate-x-1/2 w-[min(94vw,360px)] md:left-auto md:translate-x-0 md:top-[68px] md:right-3 md:w-[312px]'
+      ? 'top-[108px] left-1/2 -translate-x-1/2 w-[min(94vw,360px)] md:left-auto md:translate-x-0 md:top-[68px] md:right-3 md:w-[312px]'
       : 'top-2.5 left-1/2 -translate-x-1/2 w-[min(94vw,360px)] md:left-auto md:translate-x-0 md:top-3 md:right-3 md:w-[312px]';
 
-  const surfaceClass = isLight
-    ? 'bg-white/95 border-slate-300 text-slate-900 shadow-lg'
-    : 'bg-slate-950/95 border-white/15 text-slate-50 shadow-lg';
-
-  const mutedTextClass = isLight ? 'text-slate-600' : 'text-slate-300';
-  const subtleCellClass = isLight
-    ? 'bg-slate-100 border-slate-200 text-slate-900'
-    : 'bg-slate-900 border-white/10 text-slate-100';
-
-  const iconBtnClass = isLight
-    ? 'border-slate-300 bg-slate-100 text-slate-800 hover:bg-slate-200'
-    : 'border-white/15 bg-slate-900 text-slate-200 hover:bg-slate-800';
+  const surfaceClass = 'bg-void-900 border-control text-ink shadow-xl';
+  const mutedTextClass = 'text-slate-400';
+  const subtleCellClass = 'bg-void-950 border-ink/15 text-ink';
+  const iconBtnClass = 'border-control bg-void-950 text-slate-300 hover:bg-void-850 hover:text-ink';
 
   // THERMAL MODE COMPACT HUD BAR
   if (physicsLensMode === 'thermal') {
@@ -179,14 +172,14 @@ export const ProbeReadoutHud: React.FC<ProbeReadoutHudProps> = ({ isHidden = fal
       >
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-amber-400 text-slate-950 shrink-0">
-              <Flame className="w-3.5 h-3.5" />
+            <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-pure-amber text-pure-slate shrink-0">
+              <Flame className="w-3.5 h-3.5" aria-hidden="true" />
             </span>
             <div className="min-w-0">
-              <h2 className="text-[11px] font-bold leading-tight truncate">
+              <h2 className="text-[11px] font-bold leading-tight truncate text-ink">
                 {isId ? 'Termal FLIR (P = I²R)' : 'FLIR Thermal (P = I²R)'}
               </h2>
-              <p className={`text-[10px] leading-tight truncate ${mutedTextClass}`}>
+              <p className={`text-[10px] leading-tight truncate tabular-nums ${mutedTextClass}`}>
                 {thermalSummary?.hottest
                   ? isId
                     ? `Terpanas: ${thermalSummary.hottestLabel} (${thermalSummary.hottest.temperatureCelsius}°C)`
@@ -202,24 +195,24 @@ export const ProbeReadoutHud: React.FC<ProbeReadoutHudProps> = ({ isHidden = fal
             type="button"
             onClick={() => setPhysicsLensMode('normal')}
             aria-label={isId ? 'Tutup mode termal' : 'Exit thermal lens'}
-            className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl border cursor-pointer active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${iconBtnClass}`}
+            className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl border cursor-pointer active:scale-95 transition-colors ${iconBtnClass}`}
           >
-            <X className="w-4 h-4" />
+            <X className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
 
-        <div className="mt-1.5 grid grid-cols-4 gap-1 text-center text-[9px] font-mono font-bold">
-          <div className="rounded-md py-0.5 bg-slate-800 text-slate-100 border border-slate-600">
-            26° Dingin
+        <div className="mt-1.5 grid grid-cols-4 gap-1 text-center text-[9px] font-mono font-bold tabular-nums">
+          <div className="rounded-md py-0.5 bg-[#1E293B] text-[#F1F5F9] border border-[#475569]">
+            {isId ? '26° Dingin' : '26° Cool'}
           </div>
-          <div className="rounded-md py-0.5 bg-teal-900 text-teal-100 border border-teal-500/60">
-            45° Hangat
+          <div className="rounded-md py-0.5 bg-[#115E59] text-[#CCFBF1] border border-[#0D9488]">
+            {isId ? '45° Hangat' : '45° Warm'}
           </div>
-          <div className="rounded-md py-0.5 bg-amber-400 text-slate-950 border border-amber-500">
-            70° Panas
+          <div className="rounded-md py-0.5 bg-pure-amber text-pure-slate border border-[#B45309]">
+            {isId ? '70° Panas' : '70° Hot'}
           </div>
-          <div className="rounded-md py-0.5 bg-red-600 text-white border border-red-400">
-            95°+ Kritis
+          <div className="rounded-md py-0.5 bg-danger-600 text-white border border-[#991B1B]">
+            {isId ? '95°+ Kritis' : '95°+ Crit'}
           </div>
         </div>
       </section>
@@ -261,15 +254,11 @@ export const ProbeReadoutHud: React.FC<ProbeReadoutHudProps> = ({ isHidden = fal
       {/* Row 1: Compact Single-Line Header + Inline Actions */}
       <div className="flex items-center justify-between gap-1.5">
         <div className="flex items-center gap-2 min-w-0 flex-1">
-          <span
-            className={`inline-flex items-center justify-center w-6 h-6 rounded-lg shrink-0 ${
-              isLight ? 'bg-sky-700 text-white' : 'bg-cyan-400 text-slate-950'
-            }`}
-          >
-            <Crosshair className="w-3.5 h-3.5" />
+          <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-electric-600 text-white shrink-0">
+            <Crosshair className="w-3.5 h-3.5" aria-hidden="true" />
           </span>
           <div className="min-w-0">
-            <h2 className="text-[11px] font-bold leading-tight truncate">
+            <h2 className="text-[11px] font-bold leading-tight truncate text-ink">
               {primaryReading
                 ? primaryReading.label
                 : isId
@@ -304,15 +293,13 @@ export const ProbeReadoutHud: React.FC<ProbeReadoutHudProps> = ({ isHidden = fal
               data-testid="probe-compare-b-btn"
               onClick={() => setIsPickingProbeB(!isPickingProbeB)}
               title={isId ? 'Bandingkan dengan titik B (ΔV)' : 'Compare with Point B (ΔV)'}
-              className={`min-h-[44px] px-2 rounded-xl border text-[11px] font-bold flex items-center gap-1 cursor-pointer active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
+              className={`min-h-[44px] px-2 rounded-xl border text-[11px] font-bold flex items-center gap-1 cursor-pointer active:scale-95 transition-colors ${
                 isPickingProbeB
-                  ? 'bg-amber-400 text-slate-950 border-amber-500'
-                  : isLight
-                  ? 'bg-slate-100 hover:bg-slate-200 text-slate-900 border-slate-300'
-                  : 'bg-slate-900 hover:bg-slate-800 text-amber-300 border-amber-400/50'
+                  ? 'bg-pure-amber text-pure-slate border-[#B45309]'
+                  : 'bg-void-950 hover:bg-void-850 text-ink border-control'
               }`}
             >
-              <GitCompareArrows className="w-3.5 h-3.5 shrink-0" />
+              <GitCompareArrows className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
               <span>{isPickingProbeB ? (isId ? 'Batal' : 'Cancel') : 'ΔV'}</span>
             </button>
           )}
@@ -331,14 +318,14 @@ export const ProbeReadoutHud: React.FC<ProbeReadoutHudProps> = ({ isHidden = fal
                 ? 'Pilih cepat komponen'
                 : 'Quick-pick components'
             }
-            className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl border cursor-pointer active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${iconBtnClass}`}
+            className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl border cursor-pointer active:scale-95 transition-colors ${iconBtnClass}`}
           >
             {!primaryReading ? (
-              <ListFilter className="w-4 h-4" />
+              <ListFilter className="w-4 h-4" aria-hidden="true" />
             ) : showDetails ? (
-              <ChevronUp className="w-4 h-4" />
+              <ChevronUp className="w-4 h-4" aria-hidden="true" />
             ) : (
-              <ChevronDown className="w-4 h-4" />
+              <ChevronDown className="w-4 h-4" aria-hidden="true" />
             )}
           </button>
 
@@ -361,16 +348,16 @@ export const ProbeReadoutHud: React.FC<ProbeReadoutHudProps> = ({ isHidden = fal
                 ? 'Tutup mode probe'
                 : 'Close probe lens'
             }
-            className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl border cursor-pointer active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${iconBtnClass}`}
+            className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl border cursor-pointer active:scale-95 transition-colors ${iconBtnClass}`}
           >
-            <X className="w-4 h-4" />
+            <X className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
       </div>
 
       {/* Row 2: Slim 1-Row Live Telemetry Strip (Only when active target exists) */}
       {primaryReading && (
-        <div className={`mt-1.5 grid grid-cols-3 gap-1.5 rounded-xl border p-1.5 ${subtleCellClass}`}>
+        <div className={`mt-1.5 grid grid-cols-3 gap-1.5 rounded-xl border p-1.5 tabular-nums ${subtleCellClass}`}>
           <div className="min-w-0">
             <div className={`text-[9px] font-medium truncate ${mutedTextClass}`}>
               {hasComponentTerminals
@@ -381,7 +368,7 @@ export const ProbeReadoutHud: React.FC<ProbeReadoutHudProps> = ({ isHidden = fal
                 ? 'Potensial'
                 : 'Potential'}
             </div>
-            <div className="font-mono text-xs font-bold leading-tight truncate">
+            <div className="font-mono text-xs font-bold leading-tight truncate text-ink">
               {headlineVoltage.toFixed(2)}V
             </div>
             {hasComponentTerminals && (
@@ -396,7 +383,7 @@ export const ProbeReadoutHud: React.FC<ProbeReadoutHudProps> = ({ isHidden = fal
             <div className={`text-[9px] font-medium truncate ${mutedTextClass}`}>
               {isId ? 'Arus (I)' : 'Current'}
             </div>
-            <div className="font-mono text-xs font-bold leading-tight truncate">
+            <div className="font-mono text-xs font-bold leading-tight truncate text-ink">
               {formatCurrentDisplay(primaryReading.currentAmps)}
             </div>
             <div className={`font-mono text-[9px] truncate ${mutedTextClass}`}>
@@ -416,17 +403,15 @@ export const ProbeReadoutHud: React.FC<ProbeReadoutHudProps> = ({ isHidden = fal
             <div className={`text-[9px] font-medium truncate ${mutedTextClass}`}>
               {isId ? 'Daya (P)' : 'Power'}
             </div>
-            <div className="font-mono text-xs font-bold leading-tight truncate">
+            <div className="font-mono text-xs font-bold leading-tight truncate text-ink">
               {primaryReading.powerWatts.toFixed(2)}W
             </div>
             <div
               className={`font-mono text-[9px] truncate font-semibold ${
                 primaryReading.isShorted
-                  ? 'text-red-400'
+                  ? 'text-danger-400'
                   : isFaultState
-                  ? isLight
-                    ? 'text-amber-700'
-                    : 'text-amber-300'
+                  ? 'text-amber-400'
                   : mutedTextClass
               }`}
             >
@@ -442,13 +427,7 @@ export const ProbeReadoutHud: React.FC<ProbeReadoutHudProps> = ({ isHidden = fal
 
       {/* Slim Dual-Probe Result Bar */}
       {dualComparison && (
-        <div
-          className={`mt-1.5 rounded-xl border px-2 py-1 text-[10px] font-mono font-bold flex items-center justify-between gap-2 ${
-            isLight
-              ? 'bg-amber-50 border-amber-400 text-amber-950'
-              : 'bg-amber-950/85 border-amber-400/70 text-amber-100'
-          }`}
-        >
+        <div className="mt-1.5 rounded-xl border px-2 py-1 text-[10px] font-mono font-bold tabular-nums flex items-center justify-between gap-2 bg-amber-500/15 border-amber-500/60 text-ink">
           <span className="truncate">
             A ({dualComparison.pointA.potentialVolts.toFixed(1)}V) - B (
             {dualComparison.pointB.potentialVolts.toFixed(1)}V)
@@ -466,18 +445,14 @@ export const ProbeReadoutHud: React.FC<ProbeReadoutHudProps> = ({ isHidden = fal
           type="button"
           data-testid="probe-switch-toggle-btn"
           onClick={() => toggleSwitch(probedNode.id)}
-          className={`mt-1.5 w-full min-h-[44px] rounded-xl border px-3 py-1.5 text-[11px] font-bold flex items-center justify-between gap-2 cursor-pointer active:scale-[0.98] transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${
+          className={`mt-1.5 w-full min-h-[44px] rounded-xl border px-3 py-1.5 text-[11px] font-bold flex items-center justify-between gap-2 cursor-pointer active:scale-[0.98] transition-colors ${
             isProbedSwitchOpen
-              ? isLight
-                ? 'bg-amber-100 hover:bg-amber-200 border-amber-500 text-amber-950'
-                : 'bg-amber-950/80 hover:bg-amber-900/90 border-amber-400/70 text-amber-100'
-              : isLight
-              ? 'bg-emerald-100 hover:bg-emerald-200 border-emerald-600 text-emerald-950'
-              : 'bg-emerald-950/80 hover:bg-emerald-900/90 border-emerald-400/70 text-emerald-100'
+              ? 'bg-amber-500/15 hover:bg-amber-500/25 border-amber-500 text-ink'
+              : 'bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500 text-ink'
           }`}
         >
           <span className="flex items-center gap-1.5 truncate">
-            <Power className="w-3.5 h-3.5 shrink-0" />
+            <Power className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
             <span>
               {isProbedSwitchOpen
                 ? isId
@@ -506,18 +481,18 @@ export const ProbeReadoutHud: React.FC<ProbeReadoutHudProps> = ({ isHidden = fal
           role={isFaultState ? 'status' : undefined}
           className={`mt-1.5 rounded-xl border px-2 py-1 text-[10px] leading-snug flex items-center gap-1.5 ${
             primaryReading.isShorted
-              ? 'bg-red-950/90 border-red-400 text-red-100'
+              ? 'bg-danger-600 border-danger-700 text-white'
               : isFaultState
-              ? isLight
-                ? 'bg-amber-50 border-amber-400 text-amber-950'
-                : 'bg-amber-950/85 border-amber-400/70 text-amber-100'
+              ? 'bg-amber-500/15 border-amber-500/60 text-ink'
               : subtleCellClass
           }`}
         >
-          {isFaultState ? (
-            <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+          {primaryReading.isShorted ? (
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-white" aria-hidden="true" />
+          ) : isFaultState ? (
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-400" aria-hidden="true" />
           ) : (
-            <Info className={`w-3.5 h-3.5 shrink-0 ${isLight ? 'text-sky-700' : 'text-cyan-400'}`} />
+            <Info className="w-3.5 h-3.5 shrink-0 text-electric-400" aria-hidden="true" />
           )}
           <span className="line-clamp-2">
             {isId ? primaryReading.statusNoteId : primaryReading.statusNoteEn}
@@ -533,8 +508,8 @@ export const ProbeReadoutHud: React.FC<ProbeReadoutHudProps> = ({ isHidden = fal
               <div
                 className={`rounded-xl border px-2 py-1 flex items-center justify-between gap-2 ${subtleCellClass}`}
               >
-                <div className="flex items-center gap-1.5 text-[10px] font-mono shrink-0">
-                  <Activity className="w-3.5 h-3.5 text-cyan-500" />
+                <div className="flex items-center gap-1.5 text-[10px] font-mono shrink-0 text-ink">
+                  <Activity className="w-3.5 h-3.5 text-electric-400" aria-hidden="true" />
                   <span>{isId ? 'Jejak DC' : 'DC Trace'}</span>
                 </div>
                 <svg
@@ -556,8 +531,8 @@ export const ProbeReadoutHud: React.FC<ProbeReadoutHudProps> = ({ isHidden = fal
                       primaryReading.isShorted
                         ? '#EF4444'
                         : isLight
-                        ? '#0369A1'
-                        : '#22D3EE'
+                        ? '#1D4ED8'
+                        : '#38BDF8'
                     }
                     strokeWidth="2"
                     strokeLinecap="round"
@@ -580,7 +555,7 @@ export const ProbeReadoutHud: React.FC<ProbeReadoutHudProps> = ({ isHidden = fal
           )}
 
           {quickTargetNodes.length > 0 && (
-            <div className={`pt-1.5 border-t ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
+            <div className="pt-1.5 border-t border-ink/15">
               <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
                 {quickTargetNodes.map((node) => {
                   const isA = probeTargetA?.kind === 'node' && probeTargetA.id === node.id;
@@ -590,20 +565,16 @@ export const ProbeReadoutHud: React.FC<ProbeReadoutHudProps> = ({ isHidden = fal
                       key={`qp-${node.id}`}
                       type="button"
                       onClick={() => selectProbeTarget({ kind: 'node', id: node.id })}
-                      className={`min-h-[44px] px-2.5 rounded-xl border text-[11px] font-semibold whitespace-nowrap shrink-0 cursor-pointer active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${
+                      className={`min-h-[44px] px-2.5 rounded-xl border text-[11px] font-semibold whitespace-nowrap shrink-0 cursor-pointer active:scale-95 transition-colors ${
                         isA
-                          ? isLight
-                            ? 'bg-sky-700 text-white border-sky-800'
-                            : 'bg-cyan-400 text-slate-950 border-cyan-300 font-bold'
+                          ? 'bg-electric-600 text-white border-electric-700 font-bold'
                           : isB
-                          ? 'bg-amber-400 text-slate-950 border-amber-500 font-bold'
-                          : isLight
-                          ? 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'
-                          : 'bg-slate-900 hover:bg-slate-800 text-slate-200 border-white/15'
+                          ? 'bg-pure-amber text-pure-slate border-[#B45309] font-bold'
+                          : 'bg-void-950 hover:bg-void-850 text-ink border-control'
                       }`}
                     >
-                      {isA ? '[A] ' : isB ? '[B] ' : ''}
-                      {node.data.label}
+                      {isA ? 'A · ' : isB ? 'B · ' : ''}
+                      {getComponentDisplayName(node.data, language)}
                     </button>
                   );
                 })}

@@ -8,8 +8,8 @@ interface FormattedMathViewProps {
 }
 
 /**
- * High-performance, anti-slop mathematical formula renderer.
- * Formats physics equations deterministically without relying on bloated external libraries.
+ * Deterministic physics mathematical formula formatter and renderer.
+ * Formats physics equations deterministically without relying on heavy external libraries.
  *
  * Time Complexity: O(N) where N is formula length.
  */
@@ -39,10 +39,10 @@ export const FormattedMathView: React.FC<FormattedMathViewProps> = ({
     if (numUnitMatch) {
       const [, numPart, unitPart] = numUnitMatch;
       return (
-        <span key={index} className="inline-flex items-baseline">
+        <span key={index} className="inline-flex items-baseline tabular-nums">
           <span className="text-amber-300 font-bold font-mono">{numPart}</span>
           {unitPart && (
-            <span className="text-emerald-400/90 font-semibold font-mono ml-0.5">
+            <span className="text-emerald-400 font-semibold font-mono ml-0.5">
               {unitPart}
             </span>
           )}
@@ -65,7 +65,7 @@ export const FormattedMathView: React.FC<FormattedMathViewProps> = ({
       return (
         <span key={index} className="text-electric-300 font-semibold italic">
           {mainVar}
-          <sub className="not-italic text-[10px] text-electric-400/90 font-mono font-medium ml-0.5">
+          <sub className="not-italic text-[10px] text-electric-400 font-mono font-medium ml-0.5">
             {subVar}
           </sub>
         </span>
@@ -74,7 +74,7 @@ export const FormattedMathView: React.FC<FormattedMathViewProps> = ({
 
     // Default token
     return (
-      <span key={index} className="text-slate-200">
+      <span key={index} className="text-ink">
         {trimmed}
       </span>
     );
@@ -83,7 +83,7 @@ export const FormattedMathView: React.FC<FormattedMathViewProps> = ({
   if (variant === 'block') {
     return (
       <div
-        className={`px-3 py-2 rounded-lg bg-void-950/80 border border-white/10 font-mono text-xs overflow-x-auto no-scrollbar select-text tracking-wide ${className}`}
+        className={`px-3 py-2 rounded-lg bg-void-950 border border-control font-mono text-xs tabular-nums overflow-x-auto no-scrollbar select-text tracking-wide ${className}`}
       >
         {content}
       </div>
@@ -91,7 +91,7 @@ export const FormattedMathView: React.FC<FormattedMathViewProps> = ({
   }
 
   return (
-    <span className={`font-mono text-xs select-text tracking-wide ${className}`}>
+    <span className={`font-mono text-xs tabular-nums select-text tracking-wide ${className}`}>
       {content}
     </span>
   );

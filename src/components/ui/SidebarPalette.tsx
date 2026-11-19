@@ -137,7 +137,7 @@ export const SidebarPalette: React.FC<SidebarPaletteProps> = ({
       <div
         role="listbox"
         className={`flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 grid gap-2 content-start ${
-          isMobileDrawer ? 'grid-cols-3' : 'grid-cols-2'
+          isMobileDrawer ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-2'
         }`}
       >
         {visibleEntries.length === 0 ? (
@@ -153,6 +153,7 @@ export const SidebarPalette: React.FC<SidebarPaletteProps> = ({
               isSelected={entry.id === selectedEntry?.id}
               isDraggable={!isMobileDrawer}
               isMobileDrawer={isMobileDrawer}
+              quickPlaceLabel={isIndonesian ? `Tambah ${pickLabel(entry)} ke kanvas` : `Place ${pickLabel(entry)} on canvas`}
               onSelect={selectEntry}
               onPlace={handlePlace}
               onDragStart={handleDragStart}
@@ -167,6 +168,7 @@ export const SidebarPalette: React.FC<SidebarPaletteProps> = ({
         displayHint={selectedEntry ? pickHint(selectedEntry) : ''}
         placeLabel={t.placeBtn}
         dragHint={isMobileDrawer ? undefined : t.dragHint}
+        language={language}
         onPlace={handlePlace}
         isMobileDrawer={isMobileDrawer}
       />
@@ -185,29 +187,29 @@ export const SidebarPalette: React.FC<SidebarPaletteProps> = ({
   }
 
   const desktopPanelId =
-    typeof window !== 'undefined' && window.innerWidth < 768
+    typeof window !== 'undefined' && window.innerWidth < 1024
       ? undefined
       : 'tour-panel-komponen';
 
   return (
     <aside
       id={desktopPanelId}
-      className="hidden md:flex w-72 lg:w-80 bg-void-900 border-r border-white/10 flex-col h-full shrink-0 select-none"
+      className="hidden lg:flex lg:w-64 xl:w-72 bg-void-900 border-r border-ink/15 flex-col h-full shrink-0 select-none"
     >
       <div className="px-3.5 pt-3.5 pb-2">
-        <h2 className="text-sm font-bold text-slate-100 tracking-tight">{t.title}</h2>
+        <h2 className="text-sm font-bold text-ink tracking-tight">{t.title}</h2>
         <p className="text-[11px] text-slate-400 mt-0.5">{t.subtitleDesktop}</p>
       </div>
 
       {body}
 
       {/* Quick tips: hidden on short laptop screens so the tiles keep the space */}
-      <div className="hidden [@media(min-height:780px)]:block p-3 border-t border-white/10 bg-void-950/50 space-y-1.5">
+      <div className="hidden [@media(min-height:780px)]:block p-3 border-t border-ink/15 bg-void-950 space-y-1.5">
         <div className="flex items-start gap-2 text-[11px] text-slate-400">
-          <Info className="w-3.5 h-3.5 text-electric-400 shrink-0 mt-0.5" />
+          <Info className="w-3.5 h-3.5 text-electric-400 shrink-0 mt-0.5" aria-hidden="true" />
           <span>{t.tipConnect}</span>
         </div>
-        <div className="text-[11px] text-sky-300/90 pl-5 leading-tight">{t.tipWaypoint}</div>
+        <div className="text-[11px] text-sky-300 pl-5 leading-tight">{t.tipWaypoint}</div>
       </div>
     </aside>
   );

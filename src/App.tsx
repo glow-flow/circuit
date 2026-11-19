@@ -51,10 +51,11 @@ export const App: React.FC = () => {
   const theme = useCircuitStore((state) => state.theme);
   const physicsLensMode = useCircuitStore((state) => state.physicsLensMode);
 
-  // Synchronize document theme class for clean light mode / dark mode
+  // Synchronize document theme class & active UI language
   useEffect(() => {
     if (typeof document === 'undefined') return;
     const root = document.documentElement;
+    root.lang = language;
     if (theme === 'light') {
       root.classList.add('theme-light');
       root.classList.remove('dark');
@@ -62,7 +63,7 @@ export const App: React.FC = () => {
       root.classList.remove('theme-light');
       root.classList.add('dark');
     }
-  }, [theme]);
+  }, [theme, language]);
 
   const wireT = TRANSLATIONS[language].wire;
   const isId = language === 'id';
@@ -209,7 +210,11 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-[100dvh] min-h-[100dvh] w-full max-w-full bg-void-950 text-slate-100 overflow-hidden font-sans">
+    <div className="flex flex-col h-[100dvh] min-h-[100dvh] w-full max-w-full bg-void-950 text-ink overflow-hidden font-sans">
+      <a href="#tour-canvas-area" className="skip-link">
+        {isId ? 'Lompat ke kanvas' : 'Skip to canvas'}
+      </a>
+
       {/* Top Utility Header */}
       <Header
         onOpenWelcomeGuide={() => setIsWelcomeOpen(true)}
@@ -225,6 +230,7 @@ export const App: React.FC = () => {
         {/* Central Canvas: Lab Mode (CircuitCanvas) or Outdoor Sandbox (OutdoorSandbox) */}
         <main
           id="tour-canvas-area"
+          tabIndex={-1}
           className="flex-1 relative h-full w-full min-w-0 min-h-0"
         >
           {worldMode === 'outside' ? (
@@ -255,15 +261,15 @@ export const App: React.FC = () => {
           {/* Floating Bottom-Right Outdoor Power Plant -> Lab Battery Charging Pop-Up */}
           <OutdoorGridReadyPopup />
 
-          {/* Floating Quick-Edit & Disconnect Wires Bar on Mobile when a component is selected */}
+          {/* Floating Quick-Edit & Disconnect Wires Bar on Mobile & Tablet (< 1024px) */}
           {selectedNode && activeMobileSheet === 'none' && !isInteractiveCoachOpen && physicsLensMode !== 'probe' && (
-            <div className="md:hidden absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 max-w-[94vw]">
+            <div className="lg:hidden absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 max-w-[94vw]">
               <button
                 type="button"
                 onClick={() => openMobileSheet('inspector')}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-void-900 border border-white/20 hover:bg-void-800 text-slate-100 text-xs font-medium shadow-md active:scale-95 transition-transform truncate cursor-pointer"
+                className="flex items-center gap-1.5 min-h-[40px] px-3 py-1.5 rounded-full bg-void-900 border border-control hover:bg-void-850 text-ink text-xs font-medium shadow-md active:scale-95 transition-colors truncate cursor-pointer"
               >
-                <Sliders className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+                <Sliders className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden="true" />
                 <span className="truncate">
                   {isId ? 'Atur' : 'Edit'} {getComponentDisplayName(selectedNode.data, language)}
                 </span>
@@ -279,9 +285,9 @@ export const App: React.FC = () => {
                       disconnectNodeWires(selectedNode.id);
                     }
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-void-900 border border-red-500/40 hover:bg-red-950/40 text-red-300 text-xs font-medium shadow-md active:scale-95 transition-all shrink-0 cursor-pointer"
+                  className="flex items-center gap-1.5 min-h-[40px] px-3 py-1.5 rounded-full bg-void-900 border border-danger-500/60 hover:bg-danger-600 hover:text-white text-danger-400 text-xs font-semibold shadow-md active:scale-95 transition-colors shrink-0 cursor-pointer"
                 >
-                  <Scissors className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                  <Scissors className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                   <span>
                     {selectedNode.data.isMcbTripped
                       ? isId
@@ -300,22 +306,22 @@ export const App: React.FC = () => {
           {selectedEdgeId && activeMobileSheet === 'none' && physicsLensMode !== 'probe' && (
             <div
               id="tour-wire-actions"
-              className="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-void-900/95 backdrop-blur-md border border-white/15 shadow-[0_8px_30px_rgba(0,0,0,0.65)]"
+              className="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-void-900 border border-control shadow-xl"
             >
               <button
                 type="button"
                 onClick={() => splitEdgeAtMidpoint(selectedEdgeId)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-electric-500/20 hover:bg-electric-500/30 text-electric-400 text-xs font-bold border border-electric-500/40 active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+                className="flex items-center gap-1.5 min-h-[40px] px-3 py-1.5 rounded-full bg-electric-500/15 hover:bg-electric-500/25 text-electric-400 text-xs font-bold border border-electric-500/40 active:scale-95 transition-colors cursor-pointer whitespace-nowrap"
               >
-                <Pin className="w-3.5 h-3.5" />
+                <Pin className="w-3.5 h-3.5" aria-hidden="true" />
                 <span>{wireT.addBend}</span>
               </button>
               <button
                 type="button"
                 onClick={() => removeEdge(selectedEdgeId)}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-red-600 hover:bg-red-500 text-white text-xs font-bold shadow-[0_0_16px_rgba(239,68,68,0.6)] border border-red-300/60 active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+                className="flex items-center gap-1.5 min-h-[40px] px-3.5 py-1.5 rounded-full bg-danger-600 hover:bg-danger-700 text-white text-xs font-bold border border-danger-500 active:scale-95 transition-colors cursor-pointer whitespace-nowrap"
               >
-                <Scissors className="w-3.5 h-3.5" />
+                <Scissors className="w-3.5 h-3.5" aria-hidden="true" />
                 <span>{wireT.cutWire}</span>
               </button>
             </div>

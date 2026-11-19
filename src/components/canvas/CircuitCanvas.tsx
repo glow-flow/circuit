@@ -303,7 +303,7 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
         />
         <Controls
           position="bottom-left"
-          className="!mb-14 sm:!mb-0 !bg-void-900 !border !border-white/10 !rounded-lg !overflow-hidden [&>button]:!bg-void-900 [&>button]:!border-b [&>button]:!border-white/10 [&>button]:!text-slate-300 hover:[&>button]:!bg-void-800"
+          className="!mb-2 sm:!mb-0 !bg-void-900 !border !border-control !rounded-xl !overflow-hidden [&>button]:!bg-void-900 [&>button]:!border-b [&>button]:!border-ink/15 [&>button]:!text-ink [&>button>svg]:!fill-current hover:[&>button]:!bg-void-850"
           showInteractive={false}
         />
       </ReactFlow>

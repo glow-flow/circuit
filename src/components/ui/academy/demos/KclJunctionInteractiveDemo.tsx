@@ -82,22 +82,24 @@ export const KclJunctionInteractiveDemo: React.FC = () => {
       <div className="grid grid-cols-2 gap-2">
         <button
           type="button"
+          aria-pressed={topology === 'series'}
           onClick={() => setTopology('series')}
-          className={`min-h-[40px] rounded-xl border px-3 py-1.5 font-semibold text-xs transition-all active:scale-95 ${
+          className={`min-h-[44px] rounded-xl border px-3 py-1.5 font-semibold text-xs transition-colors active:scale-95 cursor-pointer ${
             topology === 'series'
-              ? 'bg-electric-500/20 border-electric-500/60 text-electric-200'
-              : 'bg-void-900 border-white/10 text-slate-400 hover:text-slate-200'
+              ? 'bg-electric-600 border-electric-700 text-white font-bold'
+              : 'bg-void-900 border-control text-ink hover:bg-void-850'
           }`}
         >
           {isId ? '1 Jalur (Seri)' : 'Single Loop (Series)'}
         </button>
         <button
           type="button"
+          aria-pressed={topology === 'parallel'}
           onClick={() => setTopology('parallel')}
-          className={`min-h-[40px] rounded-xl border px-3 py-1.5 font-semibold text-xs transition-all active:scale-95 ${
+          className={`min-h-[44px] rounded-xl border px-3 py-1.5 font-semibold text-xs transition-colors active:scale-95 cursor-pointer ${
             topology === 'parallel'
-              ? 'bg-emerald-500/20 border-emerald-500/60 text-emerald-200'
-              : 'bg-void-900 border-white/10 text-slate-400 hover:text-slate-200'
+              ? 'bg-emerald-600 border-emerald-700 text-white font-bold'
+              : 'bg-void-900 border-control text-ink hover:bg-void-850'
           }`}
         >
           {isId ? 'Cabang Ganda (Paralel)' : 'Branched (Parallel)'}
@@ -105,8 +107,13 @@ export const KclJunctionInteractiveDemo: React.FC = () => {
       </div>
 
       {/* Clickable SVG Diagram */}
-      <div className="rounded-xl bg-void-900 border border-white/10 p-2.5">
-        <svg viewBox="0 0 360 138" className="w-full h-auto max-h-40 select-none">
+      <div className="rounded-xl bg-[#0B0F14] border border-control p-2.5">
+        <svg
+          viewBox="0 0 360 138"
+          className="w-full h-auto max-h-40 select-none"
+          role="img"
+          aria-label={isId ? 'Diagram interaktif Seri dan Paralel' : 'Interactive Series and Parallel diagram'}
+        >
           {/* Source Battery */}
           <rect
             x="16"
@@ -149,7 +156,20 @@ export const KclJunctionInteractiveDemo: React.FC = () => {
                 strokeWidth="2.5"
               />
               {/* Bulb 1 clickable */}
-              <g onClick={handleToggleBulb1} className="cursor-pointer">
+              <g
+                onClick={handleToggleBulb1}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleToggleBulb1();
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                aria-pressed={bulb1Connected}
+                aria-label={isId ? 'Pasang atau lepas Lampu L1' : 'Toggle Bulb L1'}
+                className="cursor-pointer"
+              >
                 <circle
                   cx="148"
                   cy="50"
@@ -169,7 +189,20 @@ export const KclJunctionInteractiveDemo: React.FC = () => {
               </g>
 
               {/* Bulb 2 clickable */}
-              <g onClick={handleToggleBulb2} className="cursor-pointer">
+              <g
+                onClick={handleToggleBulb2}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleToggleBulb2();
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                aria-pressed={bulb2Connected}
+                aria-label={isId ? 'Pasang atau lepas Lampu L2' : 'Toggle Bulb L2'}
+                className="cursor-pointer"
+              >
                 <circle
                   cx="256"
                   cy="50"
@@ -200,7 +233,20 @@ export const KclJunctionInteractiveDemo: React.FC = () => {
 
               {/* Branch 1 */}
               <line x1="155" y1="46" x2="155" y2="98" stroke={i1Ma > 0 ? '#38bdf8' : '#334155'} strokeWidth="2" />
-              <g onClick={handleToggleBulb1} className="cursor-pointer">
+              <g
+                onClick={handleToggleBulb1}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleToggleBulb1();
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                aria-pressed={bulb1Connected}
+                aria-label={isId ? 'Pasang atau lepas Lampu L1' : 'Toggle Bulb L1'}
+                className="cursor-pointer"
+              >
                 <circle
                   cx="155"
                   cy="72"
@@ -221,7 +267,20 @@ export const KclJunctionInteractiveDemo: React.FC = () => {
 
               {/* Branch 2 */}
               <line x1="275" y1="46" x2="275" y2="98" stroke={i2Ma > 0 ? '#38bdf8' : '#334155'} strokeWidth="2" />
-              <g onClick={handleToggleBulb2} className="cursor-pointer">
+              <g
+                onClick={handleToggleBulb2}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleToggleBulb2();
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                aria-pressed={bulb2Connected}
+                aria-label={isId ? 'Pasang atau lepas Lampu L2' : 'Toggle Bulb L2'}
+                className="cursor-pointer"
+              >
                 <circle
                   cx="275"
                   cy="72"
@@ -242,9 +301,38 @@ export const KclJunctionInteractiveDemo: React.FC = () => {
             </>
           )}
         </svg>
-        <p className="text-[10px] text-center text-slate-400 mt-1">
-          {isId ? 'Ketuk ikon L1 atau L2 langsung pada diagram untuk lepas/pasang lampu.' : 'Tap L1 or L2 directly in the diagram to unscrew/reinstall.'}
-        </p>
+      </div>
+
+      {/* Accessible Lamp Toggle Controls */}
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          aria-pressed={bulb1Connected}
+          onClick={handleToggleBulb1}
+          className={`min-h-[44px] rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors active:scale-95 cursor-pointer ${
+            bulb1Connected
+              ? 'bg-void-900 border-emerald-500/50 text-emerald-400'
+              : 'bg-void-900 border-danger-500/50 text-danger-400'
+          }`}
+        >
+          {bulb1Connected
+            ? isId ? 'L1: Terpasang' : 'L1: Installed'
+            : isId ? 'L1: Dilepas' : 'L1: Detached'}
+        </button>
+        <button
+          type="button"
+          aria-pressed={bulb2Connected}
+          onClick={handleToggleBulb2}
+          className={`min-h-[44px] rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors active:scale-95 cursor-pointer ${
+            bulb2Connected
+              ? 'bg-void-900 border-emerald-500/50 text-emerald-400'
+              : 'bg-void-900 border-danger-500/50 text-danger-400'
+          }`}
+        >
+          {bulb2Connected
+            ? isId ? 'L2: Terpasang' : 'L2: Installed'
+            : isId ? 'L2: Dilepas' : 'L2: Detached'}
+        </button>
       </div>
 
       <MiniSliderControl

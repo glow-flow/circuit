@@ -50,7 +50,7 @@ export const JoulePowerInteractiveDemo: React.FC = () => {
       isChallengeMet={isWarmOptimal}
     >
       {/* Visual SVG Filament + Thermal Column */}
-      <div className="rounded-xl bg-void-900 border border-white/10 p-2.5">
+      <div className="rounded-xl bg-[#0B0F14] border border-control p-2.5">
         <svg
           viewBox="0 0 360 132"
           className="w-full h-auto max-h-40 select-none"

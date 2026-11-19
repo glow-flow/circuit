@@ -292,18 +292,18 @@ export const PhysicsCanvasOverlay: React.FC<PhysicsCanvasOverlayProps> = ({ worl
                   top: box.cy - box.height / 2 - 10,
                   transform: 'translate(-50%, -100%)',
                 }}
-                className={`flex items-center gap-1 px-2 py-0.5 rounded-full border shadow-md whitespace-nowrap font-mono text-[10px] font-bold ${
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-full border shadow-md whitespace-nowrap font-mono tabular-nums text-[10px] font-bold ${
                   isCritical
-                    ? 'bg-red-950/95 border-red-400 text-red-100'
+                    ? 'bg-danger-600 border-danger-500 text-white'
                     : isHot
-                    ? 'bg-amber-950/95 border-amber-400 text-amber-100'
-                    : 'bg-slate-950/95 border-teal-400/70 text-teal-100'
+                    ? 'bg-[#78350F] border-pure-amber text-white'
+                    : 'bg-[#134E4A] border-[#2DD4BF] text-white'
                 }`}
               >
                 {isCritical || isHot ? (
-                  <Flame className="w-3 h-3 text-amber-300 shrink-0" />
+                  <Flame className="w-3 h-3 text-pure-amber shrink-0" />
                 ) : (
-                  <Thermometer className="w-3 h-3 text-teal-300 shrink-0" />
+                  <Thermometer className="w-3 h-3 text-pure-cyan shrink-0" />
                 )}
                 <span>
                   {metrics.temperatureCelsius}°C
@@ -341,11 +341,7 @@ export const PhysicsCanvasOverlay: React.FC<PhysicsCanvasOverlayProps> = ({ worl
                   top: box.cy - box.height / 2 - 12,
                   transform: 'translate(-50%, -100%)',
                 }}
-                className={`px-1.5 py-0.5 rounded-md border font-mono text-[10px] font-bold shadow-sm whitespace-nowrap ${
-                  isLight
-                    ? 'bg-white/95 border-sky-600 text-slate-900'
-                    : 'bg-slate-950/95 border-cyan-400/60 text-cyan-200'
-                }`}
+                className="px-1.5 py-0.5 rounded-md border border-electric-500 bg-void-900 text-ink font-mono tabular-nums text-[10px] font-bold shadow-sm whitespace-nowrap"
               >
                 {v1.toFixed(1)}V
               </div>
@@ -361,7 +357,7 @@ export const PhysicsCanvasOverlay: React.FC<PhysicsCanvasOverlayProps> = ({ worl
               top: anchorA.cy - anchorA.height / 2 - probeFramePadA,
               transform: 'translate(-50%, -50%)',
             }}
-            className="w-6 h-6 rounded-full bg-cyan-400 text-slate-950 border-2 border-white font-mono text-[11px] font-black flex items-center justify-center shadow-md"
+            className="w-6 h-6 rounded-full bg-pure-cyan text-pure-slate border-2 border-pure-white font-mono text-[11px] font-black flex items-center justify-center shadow-md"
           >
             A
           </div>
@@ -376,7 +372,7 @@ export const PhysicsCanvasOverlay: React.FC<PhysicsCanvasOverlayProps> = ({ worl
               top: anchorB.cy - anchorB.height / 2 - probeFramePadB,
               transform: 'translate(-50%, -50%)',
             }}
-            className="w-6 h-6 rounded-full bg-amber-400 text-slate-950 border-2 border-white font-mono text-[11px] font-black flex items-center justify-center shadow-md"
+            className="w-6 h-6 rounded-full bg-pure-amber text-pure-slate border-2 border-pure-white font-mono text-[11px] font-black flex items-center justify-center shadow-md"
           >
             B
           </div>
@@ -391,11 +387,7 @@ export const PhysicsCanvasOverlay: React.FC<PhysicsCanvasOverlayProps> = ({ worl
               top: (anchorA.cy + anchorB.cy) / 2,
               transform: 'translate(-50%, -50%)',
             }}
-            className={`px-2.5 py-1 rounded-full border font-mono text-[11px] font-bold shadow-md whitespace-nowrap ${
-              isLight
-                ? 'bg-amber-50 border-amber-500 text-amber-950'
-                : 'bg-slate-950/95 border-amber-400/80 text-amber-200'
-            }`}
+            className="px-2.5 py-1 rounded-full border border-copper bg-void-900 text-copper-text font-mono tabular-nums text-[11px] font-bold shadow-md whitespace-nowrap"
           >
             ΔV = {dualComparison.voltageDiffVolts >= 0 ? '+' : ''}
             {dualComparison.voltageDiffVolts.toFixed(2)}V
@@ -411,11 +403,7 @@ export const PhysicsCanvasOverlay: React.FC<PhysicsCanvasOverlayProps> = ({ worl
               top: anchorHover.cy + anchorHover.height / 2 + 12,
               transform: 'translate(-50%, 0)',
             }}
-            className={`px-2 py-0.5 rounded-full border font-mono text-[10px] font-bold shadow-md whitespace-nowrap ${
-              isLight
-                ? 'bg-white border-sky-600 text-slate-900'
-                : 'bg-slate-950/95 border-sky-400/70 text-sky-100'
-            }`}
+            className="px-2 py-0.5 rounded-full border border-electric-500 bg-void-900 text-ink font-mono tabular-nums text-[10px] font-bold shadow-md whitespace-nowrap"
           >
             {hoverReading.potentialVolts.toFixed(2)}V ·{' '}
             {hoverReading.currentAmps < 1

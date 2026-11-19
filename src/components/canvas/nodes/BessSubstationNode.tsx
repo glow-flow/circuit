@@ -1,11 +1,11 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Handle, Position, NodeProps } from 'reactflow';
 import { BatteryCharging, Zap, Shield, RotateCcw, X, Info } from 'lucide-react';
 import { CircuitElementData } from '../../../types/circuit';
 import { useCircuitStore } from '../../../store/useCircuitStore';
 import { computeEffectiveBatteryVoltage } from '../../../physics/batterySoC';
-import { useModalKeyboardClose } from '../../../hooks/useModalKeyboardClose';
+import { useModalFocusTrap } from '../../../hooks/useModalKeyboardClose';
 import { usePendingPinHandleForNode } from '../../../hooks/useTapToConnectHandlers';
 
 /**
@@ -29,7 +29,10 @@ export const BessSubstationNode: React.FC<NodeProps<CircuitElementData>> = ({
   const updateComponentData = useCircuitStore((state) => state.updateComponentData);
 
   const [isInspectOpen, setIsInspectOpen] = useState(false);
-  useModalKeyboardClose(isInspectOpen, () => setIsInspectOpen(false));
+  const modalRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  const socInputId = useId();
+  useModalFocusTrap(isInspectOpen, modalRef, () => setIsInspectOpen(false));
   const pendingPinHandle = usePendingPinHandleForNode(id);
   const isId = language === 'id';
 
@@ -68,16 +71,12 @@ export const BessSubstationNode: React.FC<NodeProps<CircuitElementData>> = ({
     });
   }, [id, data.nominalCapacityWh, updateComponentData]);
 
-  // Telemetry gauge colors
-  const gaugeColor =
-    soc > 40
-      ? 'from-emerald-500 to-green-400'
-      : soc > 15
-      ? 'from-amber-500 to-yellow-400'
-      : 'from-rose-600 to-red-500';
+  // Telemetry gauge colors (fixed bright hex on dark PNG glass LCD)
+  const gaugeBgClass =
+    soc > 40 ? 'bg-[#10B981]' : soc > 15 ? 'bg-[#F59E0B]' : 'bg-[#F43F5E]';
 
   const textColor =
-    soc > 40 ? 'text-emerald-400' : soc > 15 ? 'text-amber-400' : 'text-rose-400';
+    soc > 40 ? 'text-[#6EE7B7]' : soc > 15 ? 'text-[#FCD34D]' : 'text-[#FCA5A5]';
 
   return (
     <div
@@ -90,6 +89,8 @@ export const BessSubstationNode: React.FC<NodeProps<CircuitElementData>> = ({
       <img
         src="/assets/bess-substation.png"
         alt="BESS Substation"
+        width={156}
+        height={116}
         draggable={false}
         className="w-full h-full object-contain pointer-events-none select-none z-10 relative drop-shadow-[0_8px_16px_rgba(0,0,0,0.6)]"
       />
@@ -102,24 +103,24 @@ export const BessSubstationNode: React.FC<NodeProps<CircuitElementData>> = ({
           setIsInspectOpen(true);
         }}
         title={isId ? 'Klik untuk telemetri BESS' : 'Click for BESS telemetry'}
-        className="nodrag absolute top-[18px] left-[32px] w-[92px] h-[52px] z-20 cursor-pointer rounded bg-slate-950/90 border border-emerald-500/35 p-1 flex flex-col justify-between overflow-hidden shadow-inner group hover:border-emerald-400 transition-colors"
+        className="nodrag absolute top-[18px] left-[32px] w-[92px] h-[52px] z-20 cursor-pointer rounded bg-[#0B0F14] border border-emerald-500/45 p-1 flex flex-col justify-between overflow-hidden shadow-inner group hover:border-emerald-400 transition-colors"
       >
         {/* Top Header: BESS Capacity & Mode Badge */}
         <div className="flex items-center justify-between">
-          <span className="text-[7.5px] font-mono font-bold tracking-tight text-slate-300">
+          <span className="text-[7.5px] font-mono font-bold tracking-tight text-[#CBD5E1]">
             BESS 1kWh
           </span>
           <span
             className={`text-[7px] font-mono font-black px-1 rounded-sm leading-tight flex items-center gap-0.5 ${
               isCharging
-                ? 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/40'
+                ? 'bg-[#064E3B] text-[#6EE7B7] border border-[#10B981]/50'
                 : isDischarging
-                ? 'bg-amber-500/25 text-amber-300 border border-amber-500/40'
-                : 'bg-slate-800 text-slate-400'
+                ? 'bg-[#78350F] text-[#FCD34D] border border-[#F59E0B]/50'
+                : 'bg-[#1E293B] text-[#94A3B8]'
             }`}
           >
-            {isCharging && <Zap className="w-2 h-2 text-emerald-400" />}
-            {isDischarging && <BatteryCharging className="w-2 h-2 text-amber-400" />}
+            {isCharging && <Zap className="w-2 h-2 text-[#34D399]" />}
+            {isDischarging && <BatteryCharging className="w-2 h-2 text-[#FBBF24]" />}
             {isCharging ? 'CHG' : isDischarging ? 'DIS' : 'IDLE'}
           </span>
         </div>
@@ -130,17 +131,17 @@ export const BessSubstationNode: React.FC<NodeProps<CircuitElementData>> = ({
             <span className={`text-[13px] font-mono font-black leading-none ${textColor}`}>
               {Math.round(soc)}
             </span>
-            <span className="text-[8px] font-mono text-slate-400 leading-none">%</span>
+            <span className="text-[8px] font-mono text-[#94A3B8] leading-none">%</span>
           </div>
-          <span className="text-[8px] font-mono font-medium text-slate-300">
+          <span className="text-[8px] font-mono font-medium text-[#E2E8F0]">
             {activePowerWatts > 0 ? `${activePowerWatts}W` : `${effectiveVoltage.toFixed(1)}V`}
           </span>
         </div>
 
         {/* Bottom: Progress Bar */}
-        <div className="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden border border-white/10">
+        <div className="w-full bg-[#0F172A] rounded-full h-1.5 overflow-hidden border border-white/15">
           <div
-            className={`h-full bg-gradient-to-r ${gaugeColor} transition-all duration-300`}
+            className={`h-full ${gaugeBgClass} transition-all duration-300`}
             style={{ width: `${soc}%` }}
           />
         </div>
@@ -154,10 +155,11 @@ export const BessSubstationNode: React.FC<NodeProps<CircuitElementData>> = ({
           e.stopPropagation();
           setIsInspectOpen(true);
         }}
-        className="nodrag absolute top-1 right-1 z-30 w-6 h-6 rounded-full bg-slate-900/90 border border-white/20 text-slate-300 hover:text-white flex items-center justify-center shadow hover:scale-110 active:scale-95 transition-transform cursor-pointer"
+        className="nodrag absolute top-1 right-1 z-30 w-6 h-6 rounded-full bg-void-950 border border-control text-emerald-400 hover:text-ink flex items-center justify-center shadow hover:scale-110 active:scale-95 transition-transform cursor-pointer"
         title={isId ? 'Detail BESS' : 'BESS Details'}
+        aria-label={isId ? 'Detail BESS' : 'BESS Details'}
       >
-        <Info className="w-3.5 h-3.5 text-emerald-400" />
+        <Info className="w-3.5 h-3.5" />
       </button>
 
       {/* Elevated High-Visibility Binding Post Terminals */}
@@ -166,8 +168,8 @@ export const BessSubstationNode: React.FC<NodeProps<CircuitElementData>> = ({
         position={Position.Bottom}
         id="pos"
         style={{ left: '40%', bottom: '20px', transform: 'translateX(-50%)' }}
-        className={`!w-6 !h-6 md:!w-5 md:!h-5 !bg-red-500 !border-2 !border-white !rounded-full shadow-[0_0_10px_rgba(239,68,68,0.85)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center ${
-          pendingPinHandle === 'pos' ? '!ring-4 !ring-emerald-300/95 !scale-125 animate-pulse' : ''
+        className={`!w-6 !h-6 md:!w-5 md:!h-5 !bg-red-500 !border-2 !border-white !rounded-full shadow-md hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center ${
+          pendingPinHandle === 'pos' ? '!ring-4 !ring-emerald-400 !scale-125' : ''
         }`}
         title={isId ? 'Kutub Positif BESS (+)' : 'BESS Positive (+)'}
       >
@@ -181,8 +183,8 @@ export const BessSubstationNode: React.FC<NodeProps<CircuitElementData>> = ({
         position={Position.Bottom}
         id="neg"
         style={{ left: '60%', bottom: '20px', transform: 'translateX(-50%)' }}
-        className={`!w-6 !h-6 md:!w-5 md:!h-5 !bg-sky-500 !border-2 !border-white !rounded-full shadow-[0_0_10px_rgba(56,189,248,0.85)] hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center ${
-          pendingPinHandle === 'neg' ? '!ring-4 !ring-emerald-300/95 !scale-125 animate-pulse' : ''
+        className={`!w-6 !h-6 md:!w-5 md:!h-5 !bg-sky-500 !border-2 !border-white !rounded-full shadow-md hover:!scale-125 transition-transform cursor-crosshair z-40 flex items-center justify-center ${
+          pendingPinHandle === 'neg' ? '!ring-4 !ring-emerald-400 !scale-125' : ''
         }`}
         title={isId ? 'Kutub Negatif BESS (-)' : 'BESS Negative (-)'}
       >
@@ -197,20 +199,24 @@ export const BessSubstationNode: React.FC<NodeProps<CircuitElementData>> = ({
         createPortal(
           <div
             onClick={() => setIsInspectOpen(false)}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm p-4 pointer-events-auto"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/75 p-4 pointer-events-auto"
           >
             <div
+              ref={modalRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={titleId}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-sm rounded-2xl bg-slate-900 border border-white/15 p-5 shadow-2xl text-white font-sans select-none"
+              className="w-full max-w-sm rounded-2xl bg-void-900 border border-control p-5 shadow-2xl text-ink font-sans select-none"
             >
               {/* Modal Header */}
-              <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <div className="flex items-center justify-between pb-3 border-b border-control">
                 <div className="flex items-center gap-2.5">
                   <div className="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/35 flex items-center justify-center">
                     <Shield className="w-5 h-5 text-emerald-400" />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-white leading-tight">
+                    <h3 id={titleId} className="text-base font-bold text-ink leading-tight">
                       {isId ? 'Gardu Baterai BESS' : 'BESS Battery Substation'}
                     </h3>
                     <p className="text-xs text-slate-400 font-mono">
@@ -221,8 +227,8 @@ export const BessSubstationNode: React.FC<NodeProps<CircuitElementData>> = ({
                 <button
                   type="button"
                   onClick={() => setIsInspectOpen(false)}
-                  className="w-8 h-8 rounded-lg bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center active:scale-95 transition-transform cursor-pointer"
-                  aria-label="Close"
+                  className="min-w-[44px] min-h-[44px] rounded-xl bg-void-950 border border-control text-slate-300 hover:text-ink flex items-center justify-center active:scale-95 transition-colors cursor-pointer"
+                  aria-label={isId ? 'Tutup' : 'Close'}
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -230,11 +236,11 @@ export const BessSubstationNode: React.FC<NodeProps<CircuitElementData>> = ({
 
               {/* Metrics Grid */}
               <div className="grid grid-cols-2 gap-2.5 my-4">
-                <div className="p-3 rounded-xl bg-slate-800/70 border border-white/5">
+                <div className="p-3 rounded-xl bg-void-950 border border-control">
                   <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
                     {isId ? 'Status Daya' : 'Power Mode'}
                   </span>
-                  <p className="text-sm font-bold mt-0.5 flex items-center gap-1.5">
+                  <p className="text-sm font-bold text-ink mt-0.5 flex items-center gap-1.5">
                     <span
                       className={`inline-block w-2 h-2 rounded-full ${
                         isCharging
@@ -258,7 +264,7 @@ export const BessSubstationNode: React.FC<NodeProps<CircuitElementData>> = ({
                   </p>
                 </div>
 
-                <div className="p-3 rounded-xl bg-slate-800/70 border border-white/5">
+                <div className="p-3 rounded-xl bg-void-950 border border-control">
                   <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
                     {isId ? 'Tegangan Efektif' : 'Effective Voltage'}
                   </span>
@@ -267,7 +273,7 @@ export const BessSubstationNode: React.FC<NodeProps<CircuitElementData>> = ({
                   </p>
                 </div>
 
-                <div className="p-3 rounded-xl bg-slate-800/70 border border-white/5">
+                <div className="p-3 rounded-xl bg-void-950 border border-control">
                   <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
                     {isId ? 'Energi Tersimpan' : 'Stored Energy'}
                   </span>
@@ -276,35 +282,36 @@ export const BessSubstationNode: React.FC<NodeProps<CircuitElementData>> = ({
                   </p>
                 </div>
 
-                <div className="p-3 rounded-xl bg-slate-800/70 border border-white/5">
+                <div className="p-3 rounded-xl bg-void-950 border border-control">
                   <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
                     {isId ? 'Daya Aktif' : 'Active Power'}
                   </span>
-                  <p className="text-sm font-bold font-mono text-amber-300 mt-0.5 tabular-nums">
+                  <p className="text-sm font-bold font-mono text-amber-400 mt-0.5 tabular-nums">
                     {activePowerWatts} W ({absCurrent.toFixed(2)} A)
                   </p>
                 </div>
               </div>
 
               {/* Interactive SoC Slider for Classroom Experimentation */}
-              <div className="space-y-2 mb-4 bg-slate-800/50 p-3 rounded-xl border border-white/5">
+              <div className="space-y-2 mb-4 bg-void-950 p-3 rounded-xl border border-control">
                 <div className="flex justify-between items-center text-xs">
-                  <span className="font-semibold text-slate-300">
+                  <label htmlFor={socInputId} className="font-semibold text-slate-200">
                     {isId ? 'Kapasitas Baterai (SoC):' : 'State of Charge (SoC):'}
-                  </span>
-                  <span className={`font-mono font-bold text-sm tabular-nums ${textColor}`}>
+                  </label>
+                  <span className="font-mono font-bold text-sm text-ink tabular-nums">
                     {Math.round(soc)}%
                   </span>
                 </div>
                 <input
+                  id={socInputId}
                   type="range"
                   min="0"
                   max="100"
                   value={Math.round(soc)}
                   onChange={handleSocSliderChange}
-                  className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                  className="w-full h-2 bg-void-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
                 />
-                <div className="flex justify-between text-[10px] font-mono text-slate-400">
+                <div className="flex justify-between text-[10px] font-mono text-slate-400 tabular-nums">
                   <span>0% ({isId ? 'Habis' : 'Empty'})</span>
                   <span>50%</span>
                   <span>100% ({isId ? 'Penuh' : 'Full'})</span>
@@ -316,7 +323,7 @@ export const BessSubstationNode: React.FC<NodeProps<CircuitElementData>> = ({
                 <button
                   type="button"
                   onClick={handleRechargeFull}
-                  className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition-transform cursor-pointer"
+                  className="flex-1 min-h-[44px] py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                   {isId ? 'Isi Ulang 100%' : 'Recharge to 100%'}
@@ -324,7 +331,7 @@ export const BessSubstationNode: React.FC<NodeProps<CircuitElementData>> = ({
                 <button
                   type="button"
                   onClick={() => setIsInspectOpen(false)}
-                  className="py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 text-xs font-semibold transition-transform cursor-pointer"
+                  className="min-h-[44px] py-2.5 px-4 rounded-xl bg-void-850 hover:bg-void-800 border border-control active:scale-95 text-ink text-xs font-semibold transition-colors cursor-pointer"
                 >
                   {isId ? 'Tutup' : 'Close'}
                 </button>

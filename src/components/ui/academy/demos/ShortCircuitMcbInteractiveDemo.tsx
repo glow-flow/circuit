@@ -54,8 +54,13 @@ export const ShortCircuitMcbInteractiveDemo: React.FC = () => {
       isChallengeMet={isCured}
     >
       {/* Interactive SVG Circuit */}
-      <div className="rounded-xl bg-void-900 border border-white/10 p-2.5">
-        <svg viewBox="0 0 360 140" className="w-full h-auto max-h-40 select-none">
+      <div className="rounded-xl bg-[#0B0F14] border border-control p-2.5">
+        <svg
+          viewBox="0 0 360 140"
+          className="w-full h-auto max-h-40 select-none"
+          role="img"
+          aria-label={isId ? 'Diagram korsleting dan proteksi MCB' : 'Short circuit and MCB breaker diagram'}
+        >
           {/* Main Rails */}
           <path d="M 64 42 L 295 42" fill="none" stroke="#38bdf8" strokeWidth="2.5" />
           <path d="M 64 106 L 295 106" fill="none" stroke="#64748b" strokeWidth="2.5" />
@@ -77,7 +82,20 @@ export const ShortCircuitMcbInteractiveDemo: React.FC = () => {
             {isTrippedByShort ? (isId ? 'ANJLOK!' : 'DROP!') : (isId ? 'STABIL' : 'STABLE')}
           </text>
           {/* Clickable MCB Switch */}
-          <g onClick={handleToggleMcb} className="cursor-pointer">
+          <g
+            onClick={handleToggleMcb}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleToggleMcb();
+              }
+            }}
+            role="button"
+            tabIndex={0}
+            aria-pressed={mcbClosed}
+            aria-label={isId ? 'Saklar MCB 10A' : 'MCB 10A breaker toggle'}
+            className="cursor-pointer"
+          >
             <rect
               x="92"
               y="22"
@@ -105,7 +123,20 @@ export const ShortCircuitMcbInteractiveDemo: React.FC = () => {
           </g>
 
           {/* Clickable Red Bypass Fault Wire */}
-          <g onClick={() => setHasBypassFault((v) => !v)} className="cursor-pointer">
+          <g
+            onClick={() => setHasBypassFault((v) => !v)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setHasBypassFault((v) => !v);
+              }
+            }}
+            role="button"
+            tabIndex={0}
+            aria-pressed={!hasBypassFault}
+            aria-label={isId ? 'Putus atau sambung kabel korslet' : 'Cut or reconnect bypass fault wire'}
+            className="cursor-pointer"
+          >
             {hasBypassFault ? (
               <>
                 <path
@@ -161,45 +192,56 @@ export const ShortCircuitMcbInteractiveDemo: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         <button
           type="button"
+          aria-pressed={!hasBypassFault}
           onClick={() => setHasBypassFault((v) => !v)}
-          className={`min-h-[42px] rounded-xl border px-3 py-1.5 flex items-center justify-center gap-1.5 font-semibold text-xs transition-all active:scale-95 ${
+          className={`min-h-[44px] rounded-xl border px-3 py-1.5 flex items-center justify-center gap-1.5 font-semibold text-xs transition-colors active:scale-95 cursor-pointer ${
             hasBypassFault
-              ? 'bg-rose-500/20 border-rose-500/60 text-rose-200'
-              : 'bg-emerald-500/15 border-emerald-500/40 text-emerald-200'
+              ? 'bg-danger-600 border-danger-700 text-white'
+              : 'bg-emerald-600 border-emerald-700 text-white'
           }`}
         >
-          <Scissors className="w-3.5 h-3.5" />
-          {hasBypassFault
-            ? isId ? 'Gunting Kawat Korslet' : 'Cut Short Wire'
-            : isId ? 'Kabel Korslet Bersih' : 'Fault Cleared'}
+          <Scissors className="w-3.5 h-3.5" aria-hidden="true" />
+          <span>
+            {hasBypassFault
+              ? isId ? 'Gunting Kawat Korslet' : 'Cut Short Wire'
+              : isId ? 'Kabel Korslet Bersih' : 'Fault Cleared'}
+          </span>
         </button>
 
         <button
           type="button"
+          aria-pressed={mcbClosed}
           onClick={handleToggleMcb}
-          className={`min-h-[42px] rounded-xl border px-3 py-1.5 flex items-center justify-center gap-1.5 font-semibold text-xs transition-all active:scale-95 ${
+          className={`min-h-[44px] rounded-xl border px-3 py-1.5 flex items-center justify-center gap-1.5 font-semibold text-xs transition-colors active:scale-95 cursor-pointer ${
             isTrippedByShort
-              ? 'bg-rose-500/20 border-rose-500/50 text-rose-200'
+              ? 'bg-danger-600 border-danger-700 text-white'
               : mcbClosed
-              ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-200'
-              : 'bg-electric-500/20 border-electric-500/50 text-electric-200'
+              ? 'bg-emerald-600 border-emerald-700 text-white'
+              : 'bg-electric-600 border-electric-700 text-white'
           }`}
         >
-          {isTrippedByShort ? <ShieldAlert className="w-3.5 h-3.5" /> : <Zap className="w-3.5 h-3.5" />}
-          {mcbClosed
-            ? isTrippedByShort
-              ? isId ? 'Reset MCB' : 'Reset MCB'
-              : isId ? 'MCB: ON (Aman)' : 'MCB: ON (Safe)'
-            : isId ? 'Aktifkan MCB' : 'Turn MCB ON'}
+          {isTrippedByShort ? (
+            <ShieldAlert className="w-3.5 h-3.5" aria-hidden="true" />
+          ) : (
+            <Zap className="w-3.5 h-3.5" aria-hidden="true" />
+          )}
+          <span>
+            {mcbClosed
+              ? isTrippedByShort
+                ? 'Reset MCB'
+                : isId ? 'MCB: ON (Aman)' : 'MCB: ON (Safe)'
+              : isId ? 'Aktifkan MCB' : 'Turn MCB ON'}
+          </span>
         </button>
 
         <button
           type="button"
+          aria-pressed={wireGauge === 'puil'}
           onClick={() => setWireGauge((g) => (g === 'puil' ? 'thin' : 'puil'))}
-          className={`min-h-[42px] rounded-xl border px-3 py-1.5 font-semibold text-xs transition-all active:scale-95 ${
+          className={`min-h-[44px] rounded-xl border px-3 py-1.5 font-semibold text-xs font-mono tabular-nums transition-colors active:scale-95 cursor-pointer ${
             wireGauge === 'puil'
-              ? 'bg-sky-500/15 border-sky-500/40 text-sky-200'
-              : 'bg-amber-500/15 border-amber-500/40 text-amber-200'
+              ? 'bg-void-900 border-electric-500/60 text-electric-400'
+              : 'bg-void-900 border-amber-500/60 text-amber-400'
           }`}
         >
           {wireGauge === 'puil'

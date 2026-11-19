@@ -496,12 +496,12 @@ export const WireEdge: React.FC<EdgeProps> = ({
           {/* Physics Lens Thermal or Probe Pin Badge takes priority when active */}
           {physicsLensMode === 'thermal' && lensVisual.thermalBadgeText ? (
             <div
-              className={`flex items-center gap-1 px-2 py-0.5 rounded-full border shadow-md whitespace-nowrap ${
+              className={`flex items-center gap-1 px-2 py-0.5 rounded-full border shadow-md whitespace-nowrap tabular-nums ${
                 lensVisual.thermal?.heatBand === 'critical'
-                  ? 'bg-red-950/95 border-red-400 text-red-100'
+                  ? 'bg-danger-950 border-danger-500 text-danger-200'
                   : lensVisual.thermal?.heatBand === 'hot'
-                  ? 'bg-amber-950/95 border-amber-400 text-amber-100'
-                  : 'bg-slate-950/95 border-teal-400/60 text-teal-200'
+                  ? 'bg-amber-950 border-amber-500 text-amber-200'
+                  : 'bg-void-950 border-teal-500/60 text-teal-300'
               }`}
             >
               <span className="text-[10px] font-mono font-bold">
@@ -512,35 +512,35 @@ export const WireEdge: React.FC<EdgeProps> = ({
             <div
               className={`flex items-center gap-1 px-2 py-0.5 rounded-full border shadow-md whitespace-nowrap font-mono text-[10px] font-bold ${
                 lensVisual.probeRole === 'A'
-                  ? 'bg-cyan-950/95 border-cyan-400 text-cyan-100'
-                  : 'bg-amber-950/95 border-amber-400 text-amber-100'
+                  ? 'bg-cyan-950 border-cyan-500 text-cyan-200'
+                  : 'bg-amber-950 border-amber-500 text-amber-200'
               }`}
             >
               <span>Probe {lensVisual.probeRole}</span>
             </div>
           ) : hasCurrent || isWireSelected || isHovered || isSelfLoop ? (
             <div
-              className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border shadow-lg backdrop-blur-md transition-all ${
+              className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border shadow-md transition-colors tabular-nums ${
                 isSelfLoop
-                  ? 'bg-red-950/95 border-red-500 text-red-200 ring-2 ring-red-500/30'
+                  ? 'bg-danger-950 border-danger-500 text-danger-200 ring-2 ring-danger-500/30'
                   : isWireSelected
-                  ? 'bg-void-950 border-amber-400 text-amber-300 ring-2 ring-amber-400/20'
+                  ? 'bg-void-950 border-amber-500 text-amber-300 ring-2 ring-amber-500/20'
                   : isBranchShortCircuit
-                  ? 'bg-red-950 border-red-500 text-red-300 animate-pulse'
+                  ? 'bg-danger-950 border-danger-500 text-danger-200'
                   : polarity === 'positive'
-                  ? 'bg-void-950/95 border-orange-400/50 text-orange-300'
-                  : 'bg-void-950/95 border-sky-400/50 text-sky-300'
+                  ? 'bg-void-950 border-orange-500/60 text-orange-300'
+                  : 'bg-void-950 border-sky-500/60 text-sky-300'
               }`}
             >
               <div
                 className={`w-1.5 h-1.5 rounded-full ${
                   isSelfLoop || isBranchShortCircuit
-                    ? 'bg-red-500 animate-ping'
+                    ? 'bg-danger-500'
                     : hasCurrent
                     ? polarity === 'positive'
                       ? 'bg-orange-400'
                       : 'bg-sky-400'
-                    : 'bg-slate-500'
+                    : 'bg-slate-400'
                 }`}
               />
               <span className="text-[10px] font-mono font-bold">
@@ -559,7 +559,7 @@ export const WireEdge: React.FC<EdgeProps> = ({
 
           {/* Expanded Tooltip on Click or Hover */}
           {physicsLensMode === 'normal' && (isWireSelected || isHovered) && (
-            <div className="mt-1 px-2 py-0.5 rounded-md bg-void-950/95 border border-white/15 text-[9px] font-sans text-slate-300 shadow-xl whitespace-nowrap">
+            <div className="mt-1 px-2 py-0.5 rounded-md bg-void-950 border border-control text-[9px] font-sans text-ink shadow-xl whitespace-nowrap">
               {polarity === 'positive' ? (
                 <span className="text-orange-400 font-semibold">
                   {isIndonesian ? '+ Jalur Positif' : '+ Positive Path'}
@@ -569,7 +569,7 @@ export const WireEdge: React.FC<EdgeProps> = ({
                   {isIndonesian ? '- Jalur Negatif' : '- Return Path'}
                 </span>
               ) : (
-                <span className="text-slate-400">
+                <span className="text-slate-300">
                   {isIndonesian ? 'Kabel Penghubung' : 'Conductor'}
                 </span>
               )}

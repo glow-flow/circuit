@@ -5,7 +5,6 @@ import {
   Pause,
   RotateCcw,
   Download,
-  X,
   Sliders,
   Zap,
   Gauge,
@@ -18,6 +17,8 @@ import {
   computeOscilloscopeSample,
   SignalPolarityState,
 } from '../../../physics/oscilloscopeTelemetry';
+import { useModalFocusTrap } from '../../../hooks/useModalKeyboardClose';
+import { LabModalHeader } from '../common/LabModalHeader';
 
 interface OscilloscopeModalProps {
   isOpen: boolean;
@@ -35,6 +36,9 @@ const MAX_HISTORY_POINTS = 60;
  * Time Complexity: O(H) where H is the fixed history buffer size (<= 60 points).
  */
 export const OscilloscopeModal: React.FC<OscilloscopeModalProps> = ({ isOpen, onClose }) => {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useModalFocusTrap(isOpen, dialogRef, onClose);
+
   const nodes = useCircuitStore((state) => state.nodes);
   const simulation = useCircuitStore((state) => state.simulation);
   const selectedNodeId = useCircuitStore((state) => state.selectedNodeId);
@@ -202,65 +206,56 @@ export const OscilloscopeModal: React.FC<OscilloscopeModalProps> = ({ isOpen, on
     document.body.removeChild(downloadAnchor);
   };
 
+  const headerRightSlot = (
+    <div className="flex items-center gap-2 shrink-0">
+      <span className="hidden xs:inline-flex items-center px-2 py-1 rounded-md text-[10px] font-mono font-semibold bg-void-900 border border-control text-electric-400 tabular-nums">
+        {sampleIntervalMs}ms
+      </span>
+      <button
+        type="button"
+        onClick={handleExportCsv}
+        disabled={history.length === 0}
+        className="min-h-[44px] px-3 py-1.5 rounded-xl text-xs font-semibold bg-void-900 hover:bg-void-850 disabled:bg-void-950 disabled:text-slate-400 text-ink border border-control flex items-center gap-1.5 transition-colors active:scale-95 cursor-pointer disabled:cursor-not-allowed"
+        title={isId ? 'Ekspor data CSV' : 'Export CSV data'}
+        aria-label={isId ? 'Ekspor data CSV' : 'Export CSV data'}
+      >
+        <Download className="w-4 h-4 text-electric-400" aria-hidden="true" />
+        <span className="hidden sm:inline">{isId ? 'Ekspor CSV' : 'Export CSV'}</span>
+      </button>
+    </div>
+  );
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-5"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/75 p-0 sm:p-5 overflow-y-auto min-h-[100dvh]"
       role="dialog"
       aria-modal="true"
-      aria-label={isId ? 'Oskiloskop & Analitik Listrik' : 'Live Oscilloscope & Analytics'}
+      aria-labelledby="oscilloscope-modal-title"
+      onClick={onClose}
     >
-      <div className="w-full max-w-3xl max-h-[92dvh] rounded-2xl bg-void-900 border border-white/15 shadow-2xl flex flex-col overflow-hidden animate-in fade-in duration-150">
-        {/* Header */}
-        <div className="px-4 sm:px-5 py-3.5 sm:py-4 border-b border-white/10 flex items-center justify-between gap-2 bg-void-850 shrink-0 select-none">
-          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-electric-500/15 border border-electric-500/30 flex items-center justify-center text-electric-400 shrink-0">
-              <Activity className="w-5 h-5" />
-            </div>
-            <div className="min-w-0">
-              <h2 className="text-sm sm:text-base font-bold text-slate-100 flex flex-wrap items-center gap-1.5 sm:gap-2">
-                <span className="truncate">
-                  {isId ? 'Oskiloskop & Analitik Listrik Real-Time' : 'Live Oscilloscope & Analytics'}
-                </span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-electric-500/10 text-electric-400 border border-electric-500/20 shrink-0">
-                  {sampleIntervalMs}ms
-                </span>
-              </h2>
-              <p className="text-xs text-slate-400 hidden sm:block">
-                {isId
-                  ? 'Pantau dinamika gelombang tegangan, arus, dan disipasi daya terintegrasi MNA'
-                  : 'Monitor real-time voltage, current, and dissipated power waveforms'}
-              </p>
-            </div>
-          </div>
+      <div
+        ref={dialogRef}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-3xl min-h-[100dvh] sm:min-h-0 sm:max-h-[92dvh] rounded-none sm:rounded-2xl bg-void-900 border-0 sm:border sm:border-control shadow-2xl flex flex-col overflow-hidden text-ink font-sans"
+      >
+        <LabModalHeader
+          titleId="oscilloscope-modal-title"
+          eyebrow={isId ? 'ANALITIK MNA · MULTI-KANAL' : 'MNA ANALYTICS · MULTI-CHANNEL'}
+          title={isId ? 'Oskiloskop & Analitik Listrik' : 'Live Oscilloscope & Analytics'}
+          subtitle={
+            isId
+              ? 'Pantau gelombang tegangan, arus, dan disipasi daya terintegrasi MNA.'
+              : 'Monitor live voltage, current, and dissipated power waveforms.'
+          }
+          rightSlot={headerRightSlot}
+          onClose={onClose}
+          closeLabel={isId ? 'Tutup Oskiloskop' : 'Close Oscilloscope'}
+        />
 
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={handleExportCsv}
-              disabled={history.length === 0}
-              className="min-h-[44px] px-3 py-1.5 rounded-xl text-xs font-semibold bg-void-900 hover:bg-white/5 disabled:opacity-40 text-slate-300 border border-white/10 flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
-              title={isId ? 'Ekspor data CSV' : 'Export CSV data'}
-            >
-              <Download className="w-4 h-4 text-electric-400" />
-              <span className="hidden sm:inline">{isId ? 'Ekspor CSV' : 'Export CSV'}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={onClose}
-              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-void-900 text-slate-400 hover:text-white border border-white/10 active:scale-95 transition-all cursor-pointer"
-              aria-label={isId ? 'Tutup' : 'Close'}
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Oscilloscope Control & Target Bar — Stacked on Mobile (360px Anti-Collision) */}
-        <div className="p-3.5 sm:p-4 border-b border-white/10 bg-void-950/60 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 shrink-0 select-none">
-          {/* Target Component Selector */}
+        {/* Control & Target Bar */}
+        <div className="p-3.5 sm:p-4 border-b border-ink/15 bg-void-950 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 shrink-0 select-none">
           <div className="flex items-center gap-2 min-w-0 flex-1">
-            <Sliders className="w-4 h-4 text-electric-400 shrink-0" />
+            <Sliders className="w-4 h-4 text-electric-400 shrink-0" aria-hidden="true" />
             <label
               htmlFor="oscilloscope-probe-select"
               className="text-xs font-semibold text-slate-300 shrink-0 whitespace-nowrap"
@@ -271,7 +266,7 @@ export const OscilloscopeModal: React.FC<OscilloscopeModalProps> = ({ isOpen, on
               id="oscilloscope-probe-select"
               value={probedNodeId ?? ''}
               onChange={(e) => setProbedNodeId(e.target.value || null)}
-              className="flex-1 min-w-0 w-full sm:max-w-xs min-h-[40px] px-3 py-1.5 rounded-xl bg-void-900 border border-white/10 text-xs text-slate-200 focus:outline-none focus:border-electric-400/50 cursor-pointer truncate"
+              className="flex-1 min-w-0 w-full sm:max-w-xs min-h-[44px] px-3 py-1.5 rounded-xl bg-void-900 border border-control text-xs text-ink cursor-pointer truncate"
             >
               <option value="">{isId ? 'Total Rangkaian (Global)' : 'Global Circuit Total'}</option>
               {nodes.map((node) => (
@@ -282,14 +277,15 @@ export const OscilloscopeModal: React.FC<OscilloscopeModalProps> = ({ isOpen, on
             </select>
           </div>
 
-          {/* Action buttons (Interval, Play/Pause, Clear) */}
           <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
-            {/* Interval selector */}
+            <label htmlFor="oscilloscope-interval-select" className="sr-only">
+              {isId ? 'Interval Sampel' : 'Sample Interval'}
+            </label>
             <select
-              aria-label={isId ? 'Interval Sampel' : 'Sample Interval'}
+              id="oscilloscope-interval-select"
               value={sampleIntervalMs}
               onChange={(e) => setSampleIntervalMs(Number(e.target.value))}
-              className="flex-1 sm:flex-initial min-w-0 min-h-[40px] px-2.5 py-1.5 rounded-xl bg-void-900 border border-white/10 text-xs text-slate-300 focus:outline-none focus:border-electric-400/50 cursor-pointer truncate"
+              className="flex-1 sm:flex-initial min-w-0 min-h-[44px] px-2.5 py-1.5 rounded-xl bg-void-900 border border-control text-xs text-ink cursor-pointer truncate tabular-nums"
             >
               <option value={100}>{isId ? '100 ms (Cepat)' : '100 ms (Fast)'}</option>
               <option value={250}>250 ms</option>
@@ -297,64 +293,62 @@ export const OscilloscopeModal: React.FC<OscilloscopeModalProps> = ({ isOpen, on
               <option value={1000}>{isId ? '1000 ms (1 dtk)' : '1000 ms (1s)'}</option>
             </select>
 
-            {/* Play / Pause Toggle */}
             <button
               type="button"
               onClick={() => setIsPaused(!isPaused)}
-              className={`min-h-[40px] sm:min-h-[44px] px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer shrink-0 ${
+              className={`min-h-[44px] px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors active:scale-95 cursor-pointer shrink-0 ${
                 isPaused
-                  ? 'bg-emerald-500 hover:bg-emerald-400 text-void-950 shadow-glow'
-                  : 'bg-amber-500 hover:bg-amber-400 text-void-950 shadow-glow'
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                  : 'bg-[#B45309] hover:bg-[#92400E] text-white'
               }`}
             >
-              {isPaused ? <Play className="w-4 h-4 fill-void-950" /> : <Pause className="w-4 h-4 fill-void-950" />}
+              {isPaused ? (
+                <Play className="w-4 h-4 fill-white" aria-hidden="true" />
+              ) : (
+                <Pause className="w-4 h-4 fill-white" aria-hidden="true" />
+              )}
               <span>{isPaused ? (isId ? 'Lanjutkan' : 'Resume') : isId ? 'Jeda' : 'Pause'}</span>
             </button>
 
-            {/* Clear History */}
             <button
               type="button"
               onClick={handleClearHistory}
               title={isId ? 'Bersihkan riwayat data' : 'Clear data buffer'}
               aria-label={isId ? 'Bersihkan riwayat data' : 'Clear data buffer'}
-              className="min-h-[40px] sm:min-h-[44px] min-w-[40px] sm:min-w-[44px] flex items-center justify-center rounded-xl bg-void-900 hover:bg-white/5 text-slate-400 hover:text-white border border-white/10 active:scale-95 transition-all cursor-pointer shrink-0"
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-void-900 hover:bg-void-850 text-slate-300 hover:text-ink border border-control active:scale-95 transition-colors cursor-pointer shrink-0"
             >
-              <RotateCcw className="w-4 h-4" />
+              <RotateCcw className="w-4 h-4" aria-hidden="true" />
             </button>
           </div>
         </div>
 
         {/* Main Telemetry Gauges Ribbon */}
-        <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-2.5 bg-void-950/40 border-b border-white/5 shrink-0 select-none">
-          {/* Voltage */}
-          <div className="p-3 rounded-xl bg-void-900/80 border border-sky-500/20">
+        <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-2.5 bg-void-950 border-b border-ink/15 shrink-0 select-none tabular-nums">
+          <div className="p-3 rounded-xl bg-void-900 border border-sky-500/35">
             <div className="flex items-center justify-between text-slate-400 text-[11px] font-sans">
               <span>{isId ? 'Tegangan (V)' : 'Voltage (V)'}</span>
-              <Zap className="w-3.5 h-3.5 text-sky-400" />
+              <Zap className="w-3.5 h-3.5 text-sky-400" aria-hidden="true" />
             </div>
             <div className="text-base sm:text-lg font-mono font-bold text-sky-300 mt-1">
               {latestPoint.voltage.toFixed(2)} <span className="text-xs text-sky-400 font-sans">V</span>
             </div>
           </div>
 
-          {/* Current */}
-          <div className="p-3 rounded-xl bg-void-900/80 border border-amber-500/20">
+          <div className="p-3 rounded-xl bg-void-900 border border-amber-500/35">
             <div className="flex items-center justify-between text-slate-400 text-[11px] font-sans gap-1">
               <span>{isId ? 'Kuat Arus (I)' : 'Current (I)'}</span>
               {latestPolarity !== 'idle' && (
                 <span
                   className={`text-[9px] font-mono px-1.5 py-0.5 rounded border ${
                     latestPolarity === 'charging'
-                      ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                      ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40'
                       : latestPolarity === 'reverse'
-                      ? 'bg-rose-500/15 text-rose-300 border-rose-500/30'
-                      : 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                      ? 'bg-danger-500/15 text-danger-300 border-danger-500/40'
+                      : 'bg-amber-500/15 text-amber-300 border-amber-500/40'
                   }`}
                 >
                   {latestPolarity === 'charging'
-                    ? isId
-                      ? 'Charging'
-                      : 'Charging'
+                    ? 'Charging'
                     : latestPolarity === 'supplying'
                     ? isId
                       ? 'Suplai'
@@ -368,7 +362,7 @@ export const OscilloscopeModal: React.FC<OscilloscopeModalProps> = ({ isOpen, on
                     : 'Forward'}
                 </span>
               )}
-              <Gauge className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <Gauge className="w-3.5 h-3.5 text-amber-400 shrink-0" aria-hidden="true" />
             </div>
             <div className="text-base sm:text-lg font-mono font-bold text-amber-300 mt-1">
               {latestPoint.current < 1
@@ -377,22 +371,20 @@ export const OscilloscopeModal: React.FC<OscilloscopeModalProps> = ({ isOpen, on
             </div>
           </div>
 
-          {/* Power */}
-          <div className="p-3 rounded-xl bg-void-900/80 border border-emerald-500/20">
+          <div className="p-3 rounded-xl bg-void-900 border border-emerald-500/35">
             <div className="flex items-center justify-between text-slate-400 text-[11px] font-sans">
               <span>{isId ? 'Daya Aktif (P)' : 'Active Power'}</span>
-              <Flame className="w-3.5 h-3.5 text-emerald-400" />
+              <Flame className="w-3.5 h-3.5 text-emerald-400" aria-hidden="true" />
             </div>
             <div className="text-base sm:text-lg font-mono font-bold text-emerald-300 mt-1">
               {latestPoint.power.toFixed(2)} <span className="text-xs text-emerald-400 font-sans">W</span>
             </div>
           </div>
 
-          {/* Energy */}
-          <div className="p-3 rounded-xl bg-void-900/80 border border-sky-500/20">
+          <div className="p-3 rounded-xl bg-void-900 border border-sky-500/35">
             <div className="flex items-center justify-between text-slate-400 text-[11px] font-sans">
               <span>{isId ? 'Energi Kumulatif' : 'Energy (Wh)'}</span>
-              <Activity className="w-3.5 h-3.5 text-sky-400" />
+              <Activity className="w-3.5 h-3.5 text-sky-400" aria-hidden="true" />
             </div>
             <div className="text-base sm:text-lg font-mono font-bold text-sky-300 mt-1">
               {latestPoint.energyWattHours < 1
@@ -402,65 +394,76 @@ export const OscilloscopeModal: React.FC<OscilloscopeModalProps> = ({ isOpen, on
           </div>
         </div>
 
-        {/* Vector SVG Oscilloscope Waveform Display */}
-        <div className="p-4 flex-1 flex flex-col justify-center bg-void-950 overflow-hidden relative">
-          {/* Signal Channel Filter Chips */}
-          <div className="absolute top-3 left-4 right-4 z-10 flex flex-wrap items-center gap-1.5 text-[10px] font-mono select-none">
+        {/* Waveform Filter Controls & Oscilloscope Viewport */}
+        <div className="p-4 flex-1 flex flex-col gap-3 bg-void-950 overflow-y-auto overscroll-contain">
+          {/* Channel Filter Chips */}
+          <div
+            role="group"
+            aria-label={isId ? 'Filter kanal sinyal' : 'Signal channel filter'}
+            className="flex flex-wrap items-center gap-1.5 text-[11px] font-mono select-none tabular-nums"
+          >
             <button
               type="button"
+              aria-pressed={activeSignal === 'all'}
               onClick={() => setActiveSignal('all')}
-              className={`px-2 py-0.5 rounded-full border transition-all cursor-pointer ${
+              className={`min-h-[36px] px-3 py-1 rounded-full border transition-colors cursor-pointer ${
                 activeSignal === 'all'
-                  ? 'bg-white/10 border-white text-white font-bold'
-                  : 'bg-void-900 border-white/10 text-slate-400'
+                  ? 'bg-electric-600 border-electric-500 text-white font-bold'
+                  : 'bg-void-900 border-control text-slate-300 hover:text-ink'
               }`}
             >
               {isId ? 'SEMUA' : 'ALL'}
             </button>
             <button
               type="button"
+              aria-pressed={activeSignal === 'voltage'}
               onClick={() => setActiveSignal('voltage')}
-              className={`px-2 py-0.5 rounded-full border transition-all cursor-pointer ${
+              className={`min-h-[36px] px-3 py-1 rounded-full border transition-colors cursor-pointer ${
                 activeSignal === 'voltage'
-                  ? 'bg-sky-500/20 border-sky-400 text-sky-300 font-bold'
-                  : 'bg-void-900 border-white/10 text-sky-400'
+                  ? 'bg-sky-600 border-sky-500 text-white font-bold'
+                  : 'bg-void-900 border-control text-sky-400 hover:border-sky-500/60'
               }`}
             >
               V ({isId ? 'Puncak' : 'Peak'} {maxV.toFixed(1)}V)
             </button>
             <button
               type="button"
+              aria-pressed={activeSignal === 'current'}
               onClick={() => setActiveSignal('current')}
-              className={`px-2 py-0.5 rounded-full border transition-all cursor-pointer ${
+              className={`min-h-[36px] px-3 py-1 rounded-full border transition-colors cursor-pointer ${
                 activeSignal === 'current'
-                  ? 'bg-amber-500/20 border-amber-400 text-amber-300 font-bold'
-                  : 'bg-void-900 border-white/10 text-amber-400'
+                  ? 'bg-[#B45309] border-amber-500 text-white font-bold'
+                  : 'bg-void-900 border-control text-amber-400 hover:border-amber-500/60'
               }`}
             >
               I ({isId ? 'Puncak' : 'Peak'} {maxI.toFixed(2)}A)
             </button>
             <button
               type="button"
+              aria-pressed={activeSignal === 'power'}
               onClick={() => setActiveSignal('power')}
-              className={`px-2 py-0.5 rounded-full border transition-all cursor-pointer ${
+              className={`min-h-[36px] px-3 py-1 rounded-full border transition-colors cursor-pointer ${
                 activeSignal === 'power'
-                  ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300 font-bold'
-                  : 'bg-void-900 border-white/10 text-emerald-400'
+                  ? 'bg-emerald-600 border-emerald-500 text-white font-bold'
+                  : 'bg-void-900 border-control text-emerald-400 hover:border-emerald-500/60'
               }`}
             >
               P ({isId ? 'Puncak' : 'Peak'} {maxP.toFixed(1)}W)
             </button>
           </div>
 
-          {/* SVG Waveform Screen */}
-          <div className="w-full h-56 sm:h-64 rounded-xl bg-void-950 border border-white/10 shadow-inner relative overflow-hidden flex items-center justify-center">
+          {/* Fixed dark oscilloscope screen ensures bright signal strokes stay legible in Light Mode */}
+          <div className="w-full h-56 sm:h-64 rounded-xl bg-[#0B0F14] border border-control relative overflow-hidden flex items-center justify-center shrink-0">
             {history.length < 2 ? (
-              <div className="text-center text-xs text-slate-500 font-mono">
+              <div className="text-center text-xs text-slate-400 font-mono">
                 {isId ? 'Menunggu sampel data berikutnya...' : 'Waiting for telemetry samples...'}
               </div>
             ) : (
-              <svg viewBox={`0 0 ${chartDimensions.width} ${chartDimensions.height}`} className="w-full h-full">
-                {/* Horizontal & Vertical Oscilloscope Grids */}
+              <svg
+                viewBox={`0 0 ${chartDimensions.width} ${chartDimensions.height}`}
+                className="w-full h-full"
+                aria-label={isId ? 'Grafik gelombang tegangan, arus, dan daya' : 'Voltage, current, and power waveforms'}
+              >
                 {[0.25, 0.5, 0.75].map((fraction) => {
                   const y = chartDimensions.padding + plotHeight * fraction;
                   return (
@@ -477,7 +480,6 @@ export const OscilloscopeModal: React.FC<OscilloscopeModalProps> = ({ isOpen, on
                   );
                 })}
 
-                {/* Base reference line (0) */}
                 <line
                   x1={chartDimensions.padding}
                   y1={chartDimensions.padding + plotHeight}
@@ -487,7 +489,6 @@ export const OscilloscopeModal: React.FC<OscilloscopeModalProps> = ({ isOpen, on
                   strokeWidth={1.5}
                 />
 
-                {/* Voltage Path (Cyan) */}
                 {(activeSignal === 'all' || activeSignal === 'voltage') && (
                   <path
                     d={voltagePath}
@@ -495,11 +496,9 @@ export const OscilloscopeModal: React.FC<OscilloscopeModalProps> = ({ isOpen, on
                     stroke="#38BDF8"
                     strokeWidth={2.5}
                     strokeLinecap="round"
-                    style={{ filter: 'drop-shadow(0 0 6px rgba(56, 189, 248, 0.7))' }}
                   />
                 )}
 
-                {/* Current Path (Amber) */}
                 {(activeSignal === 'all' || activeSignal === 'current') && (
                   <path
                     d={currentPath}
@@ -507,11 +506,9 @@ export const OscilloscopeModal: React.FC<OscilloscopeModalProps> = ({ isOpen, on
                     stroke="#F59E0B"
                     strokeWidth={2.5}
                     strokeLinecap="round"
-                    style={{ filter: 'drop-shadow(0 0 6px rgba(245, 158, 11, 0.7))' }}
                   />
                 )}
 
-                {/* Power Path (Emerald) */}
                 {(activeSignal === 'all' || activeSignal === 'power') && (
                   <path
                     d={powerPath}
@@ -519,7 +516,6 @@ export const OscilloscopeModal: React.FC<OscilloscopeModalProps> = ({ isOpen, on
                     stroke="#10B981"
                     strokeWidth={2.5}
                     strokeLinecap="round"
-                    style={{ filter: 'drop-shadow(0 0 6px rgba(16, 185, 129, 0.7))' }}
                   />
                 )}
               </svg>

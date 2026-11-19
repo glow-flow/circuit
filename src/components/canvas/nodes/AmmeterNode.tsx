@@ -42,7 +42,7 @@ export const AmmeterNode: React.FC<NodeProps<CircuitElementData>> = ({ id, selec
       <div
         className={`relative w-full h-full flex items-center justify-center rounded-2xl transition-transform duration-150 ${
           isShortCircuit
-            ? 'ring-2 ring-red-500 animate-pulse'
+            ? 'ring-2 ring-danger-500'
             : selected
             ? 'ring-2 ring-electric-400 ring-offset-2 ring-offset-void-950'
             : ''
@@ -59,17 +59,17 @@ export const AmmeterNode: React.FC<NodeProps<CircuitElementData>> = ({ id, selec
             className="w-full h-full object-contain pointer-events-none select-none drop-shadow-md"
           />
         ) : (
-          <div className="w-full h-full rounded-xl bg-void-900 border border-white/15" />
+          <div className="w-full h-full rounded-xl bg-void-900 border border-control" />
         )}
 
-        {/* Recessed LCD Screen Digital Overlay */}
-        <div className="absolute top-[14%] left-[15%] right-[15%] h-[36%] flex flex-col items-center justify-center pointer-events-none px-1">
-          <span className="text-[7px] font-mono font-semibold text-slate-400 uppercase tracking-widest leading-none mb-0.5">
+        {/* Fixed bright inks over dark photorealistic PNG LCD window (never invert in Light Mode) */}
+        <div className="absolute top-[14%] left-[15%] right-[15%] h-[36%] flex flex-col items-center justify-center pointer-events-none px-1 tabular-nums">
+          <span className="text-[7px] font-mono font-semibold text-[#94A3B8] uppercase tracking-widest leading-none mb-0.5">
             DC AMPERE
           </span>
           <div
             className={`text-[12px] font-mono font-bold tracking-tight leading-none ${
-              isShortCircuit ? 'text-red-400' : 'text-emerald-300'
+              isShortCircuit ? 'text-[#FCA5A5]' : 'text-[#6EE7B7]'
             }`}
           >
             {formattedCurrent}
@@ -100,28 +100,28 @@ export const AmmeterNode: React.FC<NodeProps<CircuitElementData>> = ({ id, selec
         <NodeInfoPopover placement="top" width={190}>
           <div className="mb-2 flex items-center justify-between gap-1.5">
             <div className="flex items-center gap-1.5 min-w-0">
-              <div className="p-1 rounded-md bg-void-950 text-emerald-400 border border-white/10">
-                <Zap className="w-3.5 h-3.5" />
+              <div className="p-1 rounded-md bg-void-950 text-emerald-400 border border-control">
+                <Zap className="w-3.5 h-3.5" aria-hidden="true" />
               </div>
-              <div className="truncate text-xs font-bold text-slate-100">
+              <div className="truncate text-xs font-bold text-ink">
                 {t.title}
               </div>
             </div>
             {isShortCircuit ? (
-              <span className="flex items-center gap-1 text-[9px] font-bold text-red-400 uppercase">
-                <ShieldAlert className="w-3 h-3" /> OVERLOAD
+              <span className="flex items-center gap-1 text-[9px] font-bold text-danger-400 uppercase">
+                <ShieldAlert className="w-3 h-3" aria-hidden="true" /> OVERLOAD
               </span>
             ) : (
-              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-void-950 border border-white/10 text-slate-300">
+              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-void-950 border border-control text-slate-300">
                 SERI
               </span>
             )}
           </div>
 
-          <div className="rounded-lg bg-void-950 p-2 border border-white/10 font-mono text-center mb-1.5">
+          <div className="rounded-lg bg-void-950 p-2 border border-control font-mono text-center mb-1.5 tabular-nums">
             <div
               className={`text-base font-bold ${
-                isShortCircuit ? 'text-red-400' : 'text-emerald-300'
+                isShortCircuit ? 'text-danger-400' : 'text-emerald-400'
               }`}
             >
               {formattedCurrent}

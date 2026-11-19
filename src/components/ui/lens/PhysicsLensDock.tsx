@@ -61,10 +61,8 @@ export const PhysicsLensDock: React.FC<PhysicsLensDockProps> = ({ isHidden = fal
   const probeTargetA = useCircuitStore((state) => state.probeTargetA);
   const worldMode = useCircuitStore((state) => state.worldMode);
   const language = useCircuitStore((state) => state.language);
-  const theme = useCircuitStore((state) => state.theme);
 
   const isId = language === 'id';
-  const isLight = theme === 'light';
 
   const handleGlobalEscape = useCallback(
     (event: KeyboardEvent) => {
@@ -112,12 +110,8 @@ export const PhysicsLensDock: React.FC<PhysicsLensDockProps> = ({ isHidden = fal
 
   const positionClass =
     worldMode === 'outside'
-      ? 'top-[54px] left-2 md:top-auto md:bottom-3 md:left-4'
+      ? 'bottom-[64px] left-1/2 -translate-x-1/2'
       : 'bottom-2.5 left-1/2 -translate-x-1/2';
-
-  const containerSurfaceClass = isLight
-    ? 'bg-white/95 border-slate-300 shadow-lg'
-    : 'bg-slate-950/95 border-white/15 shadow-lg';
 
   return (
     <nav
@@ -130,27 +124,21 @@ export const PhysicsLensDock: React.FC<PhysicsLensDockProps> = ({ isHidden = fal
       <div
         role="group"
         aria-label={isId ? 'Pilih mode lensa fisika' : 'Choose physics lens mode'}
-        className={`flex items-center gap-1 p-1 rounded-2xl border ${containerSurfaceClass}`}
+        className="flex items-center gap-1 p-1 rounded-2xl border bg-void-900 border-control shadow-xl"
       >
         {LENS_OPTIONS.map((option, idx) => {
           const isActive = physicsLensMode === option.id;
           const IconComponent = option.Icon;
 
-          let buttonClass = isLight
-            ? 'text-slate-700 hover:bg-slate-100 hover:text-slate-950'
-            : 'text-slate-200 hover:bg-slate-800 hover:text-white';
+          let buttonClass = 'text-slate-300 hover:bg-void-850 hover:text-ink';
 
           if (isActive) {
             if (option.id === 'thermal') {
-              buttonClass = 'bg-amber-400 text-slate-950 font-bold shadow-sm';
+              buttonClass = 'bg-pure-amber text-pure-slate font-bold shadow-sm';
             } else if (option.id === 'probe') {
-              buttonClass = isLight
-                ? 'bg-sky-700 text-white font-bold shadow-sm'
-                : 'bg-cyan-400 text-slate-950 font-bold shadow-sm';
+              buttonClass = 'bg-electric-600 text-white font-bold shadow-sm';
             } else {
-              buttonClass = isLight
-                ? 'bg-slate-900 text-white font-bold shadow-sm'
-                : 'bg-slate-100 text-slate-950 font-bold shadow-sm';
+              buttonClass = 'bg-ink text-void-950 font-bold shadow-sm';
             }
           }
 
@@ -165,9 +153,9 @@ export const PhysicsLensDock: React.FC<PhysicsLensDockProps> = ({ isHidden = fal
               aria-pressed={isActive}
               title={isId ? option.titleId : option.titleEn}
               onClick={() => setPhysicsLensMode(option.id)}
-              className={`min-h-[36px] md:min-h-[44px] px-2.5 sm:px-3.5 rounded-xl text-[11px] sm:text-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${buttonClass}`}
+              className={`min-h-[38px] md:min-h-[44px] px-2.5 sm:px-3.5 rounded-xl text-[11px] sm:text-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-colors whitespace-nowrap ${buttonClass}`}
             >
-              <IconComponent className="w-4 h-4 shrink-0" />
+              <IconComponent className="w-4 h-4 shrink-0" aria-hidden="true" />
               <span>{isId ? option.labelId : option.labelEn}</span>
             </button>
           );

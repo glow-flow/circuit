@@ -79,7 +79,7 @@ export const MascotAvatar: React.FC<MascotAvatarProps> = ({
   if (hasImageError) {
     return (
       <div
-        className={`${sizeClass} rounded-2xl bg-void-850 border border-electric-500/35 flex items-center justify-center text-electric-400 shrink-0 ${className}`}
+        className={`${sizeClass} rounded-2xl bg-void-850 border border-control flex items-center justify-center text-electric-400 shrink-0 ${className}`}
         aria-label={alt}
       >
         <Lightbulb className="w-1/2 h-1/2" aria-hidden="true" />
@@ -95,7 +95,7 @@ export const MascotAvatar: React.FC<MascotAvatarProps> = ({
       height={pixelSize}
       draggable={false}
       onError={() => setHasImageError(true)}
-      className={`${sizeClass} object-contain select-none shrink-0 drop-shadow-[0_4px_10px_rgba(0,0,0,0.45)] ${className}`}
+      className={`${sizeClass} object-contain select-none shrink-0 ${className}`}
     />
   );
 };
@@ -114,26 +114,26 @@ const ACCENT_SURFACE_MAP: Readonly<
   Record<NonNullable<MascotCoachBubbleProps['accent']>, { wrap: string; eyebrow: string }>
 > = {
   electric: {
-    wrap: 'bg-void-950/95 border-electric-500/30',
+    wrap: 'bg-void-950 border-electric-500/45',
     eyebrow: 'text-electric-400',
   },
   emerald: {
-    wrap: 'bg-emerald-950/35 border-emerald-500/35',
+    wrap: 'bg-void-950 border-emerald-500/45',
     eyebrow: 'text-emerald-400',
   },
   amber: {
-    wrap: 'bg-amber-950/35 border-amber-500/35',
-    eyebrow: 'text-amber-300',
+    wrap: 'bg-void-950 border-amber-500/50',
+    eyebrow: 'text-amber-400',
   },
   rose: {
-    wrap: 'bg-rose-950/35 border-rose-500/40',
-    eyebrow: 'text-rose-300',
+    wrap: 'bg-void-950 border-danger-500/50',
+    eyebrow: 'text-danger-400',
   },
 };
 
 /**
- * Shared Duolingo-style mascot speech-bubble coach strip (DRY helper across
- * Academy, Missions, Outdoor Grid popup, and 0V Short-Circuit explainer).
+ * Shared mascot speech-bubble coach strip used across Academy, Missions,
+ * Outdoor Grid popup, and Short-Circuit explainer.
  *
  * Time Complexity: O(1).
  */
@@ -152,16 +152,16 @@ export const MascotCoachBubble: React.FC<MascotCoachBubbleProps> = ({
     <div
       className={`flex items-center gap-3 p-2.5 sm:p-3 rounded-2xl border ${palette.wrap} ${className}`}
     >
-      <MascotAvatar mood={mood} size={size} alt="Watt Coach" />
+      <MascotAvatar mood={mood} size={size} alt="Watt" />
       <div className="min-w-0 flex-1">
         {eyebrow && (
           <div
-            className={`text-[10px] font-mono font-bold uppercase tracking-wider leading-tight mb-0.5 ${palette.eyebrow}`}
+            className={`text-[11px] font-mono font-bold leading-tight mb-0.5 ${palette.eyebrow}`}
           >
             {eyebrow}
           </div>
         )}
-        <p className="text-xs sm:text-[13px] font-medium text-slate-100 leading-snug">
+        <p className="text-xs sm:text-[13px] font-medium text-ink leading-snug">
           {message}
         </p>
       </div>

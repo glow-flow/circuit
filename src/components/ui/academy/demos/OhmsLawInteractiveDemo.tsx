@@ -59,7 +59,7 @@ export const OhmsLawInteractiveDemo: React.FC = () => {
       isChallengeMet={metrics.isOptimalRange}
     >
       {/* Interactive SVG Circuit Stage */}
-      <div className="rounded-xl bg-void-900 border border-white/10 p-2.5 overflow-hidden">
+      <div className="rounded-xl bg-[#0B0F14] border border-control p-2.5 overflow-hidden">
         <svg
           viewBox="0 0 360 150"
           className="w-full h-auto max-h-44 select-none"

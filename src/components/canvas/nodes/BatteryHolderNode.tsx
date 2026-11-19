@@ -181,11 +181,13 @@ export const BatteryHolderNode: React.FC<NodeProps<CircuitElementData>> = ({
         <img
           src="/assets/processed/battery-holder.png"
           alt={t.title}
+          width={140}
+          height={206}
           draggable={false}
           className="w-full h-full object-fill pointer-events-none select-none drop-shadow-md"
         />
 
-        {/* ================= LEFT CHAMBER (SLOT 1) ================= */}
+        {/* LEFT CHAMBER (SLOT 1) */}
         {hasSlot1 && (
           <div
             className="absolute bg-[#32353B] rounded-xs pointer-events-none"
@@ -198,24 +200,24 @@ export const BatteryHolderNode: React.FC<NodeProps<CircuitElementData>> = ({
           />
         )}
 
-        {/* Animated Bottom Spring for Slot 1 */}
         <SpringOverlay
           isCompressed={hasSlot1}
           anchorOrigin="bottom"
           className="absolute left-[15.5%] bottom-[13%] w-[28%] h-[17%] z-10"
         />
 
-        {/* Slot 1 AA Battery */}
         {hasSlot1 && (
           <img
             src="/assets/processed/battery-aa.png"
             alt="AA Cell 1 (1.5V)"
+            width={45}
+            height={131}
             draggable={false}
             className="absolute left-[13.5%] top-[13.5%] w-[32%] h-[63.5%] object-fill z-20 pointer-events-none drop-shadow-sm transition-all duration-300"
           />
         )}
 
-        {/* ================= RIGHT CHAMBER (SLOT 2) ================= */}
+        {/* RIGHT CHAMBER (SLOT 2) */}
         {hasSlot2 && (
           <div
             className="absolute bg-[#32353B] rounded-xs pointer-events-none"
@@ -228,27 +230,26 @@ export const BatteryHolderNode: React.FC<NodeProps<CircuitElementData>> = ({
           />
         )}
 
-        {/* Animated Top Spring for Slot 2 */}
         <SpringOverlay
           isCompressed={hasSlot2}
           anchorOrigin="top"
           className="absolute left-[56.5%] top-[13%] w-[28%] h-[17%] z-10"
         />
 
-        {/* Slot 2 AA Battery */}
         {hasSlot2 && (
           <img
             src="/assets/processed/battery-aa.png"
             alt="AA Cell 2 (1.5V)"
+            width={45}
+            height={131}
             draggable={false}
             className="absolute left-[54.5%] top-[23%] w-[32%] h-[63.5%] object-fill rotate-180 z-20 pointer-events-none drop-shadow-sm transition-all duration-300"
           />
         )}
 
-        {/* Dead Battery Indicator Badge */}
         {isDead && (
           <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-30 flex items-center justify-center">
-            <span className="bg-void-950/90 text-red-400 border border-red-500/40 text-[8px] font-mono font-bold px-1 py-0.5 rounded shadow">
+            <span className="bg-void-950 text-danger-300 border border-danger-500/60 text-[8px] font-mono font-bold px-1 py-0.5 rounded shadow">
               0V / DEAD
             </span>
           </div>
@@ -269,34 +270,32 @@ export const BatteryHolderNode: React.FC<NodeProps<CircuitElementData>> = ({
       {/* Detailed Telemetry & Controls: ONLY when selected */}
       {selected && (
         <NodeInfoPopover placement="right" width={220}>
-          {/* Header */}
           <div className="mb-2 flex items-center justify-between gap-1.5">
             <div className="flex items-center gap-1.5 min-w-0">
-              <div className="p-1 rounded-md bg-electric-500/10 text-electric-400 border border-electric-500/20">
-                <BatteryCharging className="w-3.5 h-3.5" />
+              <div className="p-1 rounded-md bg-electric-500/15 text-electric-400 border border-electric-500/35">
+                <BatteryCharging className="w-3.5 h-3.5" aria-hidden="true" />
               </div>
-              <div className="truncate text-xs font-bold text-slate-100">
+              <div className="truncate text-xs font-bold text-ink">
                 {t.title}
               </div>
             </div>
-            <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-slate-200">
+            <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-void-950 border border-control text-ink tabular-nums">
               {batteryCount}/2 AA
             </span>
           </div>
 
-          {/* SoC Progress Bar */}
           {hasBattery && (
-            <div className="mb-2 space-y-1">
+            <div className="mb-2 space-y-1 tabular-nums">
               <div className="flex justify-between items-center text-[10px] font-mono">
                 <span className="text-slate-400 font-sans text-[9px]">{isIndonesian ? 'Daya Tersimpan' : 'Charge'}</span>
-                <span className={`font-bold ${isDead ? 'text-red-400' : isSagActive ? 'text-amber-400' : charge < 50 ? 'text-yellow-400' : 'text-emerald-400'}`}>
+                <span className={`font-bold ${isDead ? 'text-danger-400' : isSagActive ? 'text-amber-400' : charge < 50 ? 'text-amber-400' : 'text-emerald-400'}`}>
                   {charge.toFixed(0)}%
                 </span>
               </div>
-              <div className="w-full h-1.5 rounded-full bg-void-950 border border-white/10 overflow-hidden relative">
+              <div className="w-full h-1.5 rounded-full bg-void-950 border border-control overflow-hidden relative">
                 <div
                   className={`h-full rounded-full transition-all duration-300 ${
-                    isDead ? 'bg-red-500/40' : isSagActive ? 'bg-red-500' : charge < 50 ? 'bg-amber-500' : 'bg-emerald-500'
+                    isDead ? 'bg-danger-500/50' : isSagActive ? 'bg-danger-500' : charge < 50 ? 'bg-amber-500' : 'bg-emerald-500'
                   }`}
                   style={{ width: `${charge}%` }}
                 />
@@ -304,46 +303,43 @@ export const BatteryHolderNode: React.FC<NodeProps<CircuitElementData>> = ({
             </div>
           )}
 
-          {/* Electrical Readout */}
-          <div className="rounded-lg bg-void-950 p-1.5 border border-white/10 font-mono text-xs space-y-1 mb-2">
+          <div className="rounded-lg bg-void-950 p-1.5 border border-control font-mono text-xs space-y-1 mb-2 tabular-nums">
             <div className="flex justify-between items-center">
               <span className="text-slate-400 text-[10px]">{t.outputVoltage}</span>
-              <span className={`font-semibold ${isDead ? 'text-red-400' : isSagActive ? 'text-amber-400' : 'text-slate-100'}`}>
+              <span className={`font-semibold ${isDead ? 'text-danger-400' : isSagActive ? 'text-amber-400' : 'text-ink'}`}>
                 {outputVoltage.toFixed(1)} V {hasBattery && '(Seri)'}
               </span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-slate-400 text-[10px]">{t.current}</span>
-              <span className={isShorted ? 'text-red-400 font-bold' : 'text-emerald-400 font-semibold'}>
+              <span className={isShorted ? 'text-danger-400 font-bold' : 'text-emerald-400 font-semibold'}>
                 {current < 1 ? `${(current * 1000).toFixed(0)} mA` : `${current.toFixed(2)} A`}
               </span>
             </div>
           </div>
 
-          {/* Quick Actions */}
           <div className="flex items-center gap-1.5 mb-1.5">
             <button
               type="button"
               onClick={handleInsertBattery}
               disabled={batteryCount >= 2}
-              className="flex-1 flex items-center justify-center gap-1 py-1 px-2 rounded-lg bg-electric-600 hover:bg-electric-500 disabled:opacity-40 text-white text-[10px] font-semibold transition-all active:scale-95 cursor-pointer"
+              className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg bg-electric-600 hover:bg-electric-700 disabled:bg-void-850 disabled:text-slate-400 text-white text-[10px] font-semibold transition-colors active:scale-95 cursor-pointer disabled:cursor-not-allowed"
             >
-              <Plus className="w-3 h-3" />
+              <Plus className="w-3 h-3" aria-hidden="true" />
               <span>{isIndonesian ? 'Pasang Sel' : 'Insert Cell'}</span>
             </button>
             <button
               type="button"
               onClick={handleEjectBattery}
               disabled={batteryCount <= 0}
-              className="flex-1 flex items-center justify-center gap-1 py-1 px-2 rounded-lg bg-void-800 hover:bg-void-700 disabled:opacity-40 text-slate-200 text-[10px] font-semibold border border-white/10 transition-all active:scale-95 cursor-pointer"
+              className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg bg-void-850 hover:bg-void-800 disabled:bg-void-950 disabled:text-slate-400 text-ink text-[10px] font-semibold border border-control transition-colors active:scale-95 cursor-pointer disabled:cursor-not-allowed"
             >
-              <Unplug className="w-3 h-3" />
+              <Unplug className="w-3 h-3" aria-hidden="true" />
               <span>{isIndonesian ? 'Lepas Sel' : 'Eject'}</span>
             </button>
           </div>
 
-          {/* Drag Hint */}
-          <div className="text-[9px] text-center text-slate-400 italic leading-tight">
+          <div className="text-[9px] text-center text-slate-400 leading-tight">
             {t.emptyHint}
           </div>
         </NodeInfoPopover>

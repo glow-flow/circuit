@@ -57,16 +57,16 @@ export const PresetThumbnail: React.FC<PresetThumbnailProps> = ({ presetId }) =>
   const parts = PRESET_PARTS_BY_ID[presetId] ?? DEFAULT_PARTS;
 
   return (
-    <div className="relative w-full h-full bg-void-950 rounded-xl px-3 py-2 flex items-center justify-around overflow-hidden border border-white/5">
+    <div className="relative w-full h-full bg-void-950 rounded-xl px-3 py-2 flex items-center justify-around overflow-hidden border border-ink/15">
       {/* Subtle horizontal copper bus trace behind hardware icons */}
       <div
-        className="absolute left-6 right-6 top-1/2 -translate-y-1/2 h-[2px] bg-slate-700/70 pointer-events-none"
+        className="absolute left-6 right-6 top-1/2 -translate-y-1/2 h-[2px] bg-slate-600/60 pointer-events-none"
         aria-hidden="true"
       />
       {parts.map((part, index) => (
         <div
           key={`${part.src}-${index}`}
-          className="relative z-10 w-10 h-10 sm:w-11 sm:h-11 rounded-lg bg-void-900/95 border border-white/10 p-1.5 flex items-center justify-center shadow-sm"
+          className="relative z-10 w-10 h-10 sm:w-11 sm:h-11 rounded-lg bg-void-900 border border-control p-1.5 flex items-center justify-center shadow-sm"
         >
           <img
             src={part.src}

@@ -37,7 +37,7 @@ export const LabModalHeader: React.FC<LabModalHeaderProps> = ({
   closeLabel = 'Tutup',
 }) => {
   return (
-    <header className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-white/10 bg-void-950 flex items-center justify-between gap-3 shrink-0">
+    <header className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-ink/15 bg-void-950 flex items-center justify-between gap-3 shrink-0">
       <div className="min-w-0 flex-1">
         {eyebrow && (
           <div className="text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
@@ -46,7 +46,7 @@ export const LabModalHeader: React.FC<LabModalHeaderProps> = ({
         )}
         <h2
           id={titleId}
-          className="text-base sm:text-lg font-bold tracking-tight text-white leading-[1.15] pb-0.5 truncate"
+          className="text-base sm:text-lg font-bold tracking-tight text-ink leading-[1.15] pb-0.5 truncate"
         >
           {title}
         </h2>
@@ -63,7 +63,7 @@ export const LabModalHeader: React.FC<LabModalHeaderProps> = ({
           type="button"
           onClick={onClose}
           aria-label={closeLabel}
-          className="min-w-[44px] min-h-[44px] w-11 h-11 rounded-xl bg-void-900 hover:bg-void-850 border border-white/10 text-slate-300 hover:text-white flex items-center justify-center transition-all active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-electric-400 cursor-pointer"
+          className="min-w-[44px] min-h-[44px] w-11 h-11 rounded-xl bg-void-900 hover:bg-void-850 border border-control text-slate-300 hover:text-ink flex items-center justify-center transition-colors active:scale-95 cursor-pointer"
         >
           <X className="w-4 h-4" aria-hidden="true" />
         </button>
