@@ -102,6 +102,53 @@ import { LkpdAssignmentPayload, LkpdMissionId } from '../lkpd/lkpdTypes';
 
 export type LkpdModalTab = 'packets' | 'student' | 'gradebook';
 
+export interface WorkspaceSnapshot {
+  nodes: Node<CircuitElementData>[];
+  edges: Edge[];
+  worldMode: WorldMode;
+}
+
+const MAX_UNDO_HISTORY = 20;
+
+function cloneWorkspaceSnapshot(
+  nodes: Node<CircuitElementData>[],
+  edges: Edge[],
+  worldMode: WorldMode
+): WorkspaceSnapshot {
+  return {
+    nodes: nodes.map((node) => ({
+      ...node,
+      position: { ...node.position },
+      data: {
+        ...node.data,
+        installedBulb:
+          node.data.installedBulb && typeof node.data.installedBulb === 'object'
+            ? { ...node.data.installedBulb }
+            : node.data.installedBulb,
+        cellCharges: node.data.cellCharges ? [...node.data.cellCharges] : undefined,
+      },
+    })),
+    edges: edges.map((edge) => ({
+      ...edge,
+      data: edge.data ? { ...edge.data } : undefined,
+    })),
+    worldMode,
+  };
+}
+
+function appendUndoSnapshot(
+  currentStack: WorkspaceSnapshot[],
+  nodes: Node<CircuitElementData>[],
+  edges: Edge[],
+  worldMode: WorldMode
+): { undoStack: WorkspaceSnapshot[]; canUndo: boolean } {
+  const nextStack = [
+    ...currentStack,
+    cloneWorkspaceSnapshot(nodes, edges, worldMode),
+  ].slice(-MAX_UNDO_HISTORY);
+  return { undoStack: nextStack, canUndo: nextStack.length > 0 };
+}
+
 interface CircuitState {
   nodes: Node<CircuitElementData>[];
   edges: Edge[];
@@ -186,7 +233,14 @@ interface CircuitState {
   dismissNotification: () => void;
   settleBulbAfterDrag: (bulbId: string) => void;
   detachBulbFromSocket: (bulbId: string) => void;
+  quickInstallBulbInSocket: (socketId: string, bulbType: BulbType) => boolean;
+  quickMountBulbWithSocket: (bulbId: string) => boolean;
   syncSnappedBulbPosition: (socketId: string, socketPosition: { x: number; y: number }) => void;
+
+  // Bounded Workspace Undo History (max 20 snapshots)
+  undoStack: WorkspaceSnapshot[];
+  canUndo: boolean;
+  undo: () => void;
 
   // React Flow Handlers & Camera Positioning
   reactFlowInstance: ReactFlowInstance | null;
@@ -724,6 +778,29 @@ function recalculateCircuit(
 export const useCircuitStore = create<CircuitState>((set, get) => ({
   nodes: [],
   edges: [],
+  undoStack: [],
+  canUndo: false,
+  undo: () => {
+    const { undoStack, language } = get();
+    if (undoStack.length === 0) return;
+
+    const previous = undoStack[undoStack.length - 1];
+    const nextStack = undoStack.slice(0, -1);
+    const { simulation, updatedNodes } = recalculateCircuit(previous.nodes, previous.edges);
+
+    set({
+      nodes: updatedNodes,
+      edges: previous.edges,
+      worldMode: previous.worldMode,
+      simulation,
+      undoStack: nextStack,
+      canUndo: nextStack.length > 0,
+      selectedNodeId: null,
+      selectedEdgeId: null,
+      pendingWireStart: null,
+    });
+    get().notify(language === 'id' ? 'Langkah terakhir dibatalkan.' : 'Last action undone.');
+  },
   selectedNodeId: null,
   selectedEdgeId: null,
   simulation: DEFAULT_SIMULATION,
@@ -1456,10 +1533,18 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       targetHandle: connection.targetHandle,
     };
 
-    const nextEdges = addEdge(customEdge, get().edges);
+    const prevState = get();
+    const undoUpdate = appendUndoSnapshot(
+      prevState.undoStack,
+      currentNodes,
+      prevState.edges,
+      prevState.worldMode
+    );
+    const nextEdges = addEdge(customEdge, prevState.edges);
     const { simulation, updatedNodes } = recalculateCircuit(currentNodes, nextEdges);
 
     set({
+      ...undoUpdate,
       edges: nextEdges,
       simulation,
       nodes: updatedNodes,
@@ -1676,10 +1761,18 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       data: defaultData,
     };
 
-    const nextNodes = [...get().nodes, newNode];
-    const { simulation, updatedNodes } = recalculateCircuit(nextNodes, get().edges);
+    const prevState = get();
+    const undoUpdate = appendUndoSnapshot(
+      prevState.undoStack,
+      prevState.nodes,
+      prevState.edges,
+      prevState.worldMode
+    );
+    const nextNodes = [...prevState.nodes, newNode];
+    const { simulation, updatedNodes } = recalculateCircuit(nextNodes, prevState.edges);
 
     set({
+      ...undoUpdate,
       nodes: updatedNodes,
       simulation,
       selectedNodeId: componentId,
@@ -1844,14 +1937,19 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
         }
         return node;
       });
+    const prevState = get();
+    const undoUpdate = targetNode
+      ? appendUndoSnapshot(prevState.undoStack, prevState.nodes, prevState.edges, prevState.worldMode)
+      : {};
     const { simulation, updatedNodes } = recalculateCircuit(nextNodes, nextEdges);
 
     set({
+      ...undoUpdate,
       nodes: updatedNodes,
       edges: nextEdges,
       simulation,
-      selectedNodeId: get().selectedNodeId === id ? null : get().selectedNodeId,
-      pendingWireStart: get().pendingWireStart?.nodeId === id ? null : get().pendingWireStart,
+      selectedNodeId: prevState.selectedNodeId === id ? null : prevState.selectedNodeId,
+      pendingWireStart: prevState.pendingWireStart?.nodeId === id ? null : prevState.pendingWireStart,
     });
   },
 
@@ -1944,10 +2042,18 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
           return n;
         });
 
-      const nextEdges = removeSnapEdges(get().edges, bulbId);
+      const prevState = get();
+      const undoUpdate = appendUndoSnapshot(
+        prevState.undoStack,
+        currentNodes,
+        prevState.edges,
+        prevState.worldMode
+      );
+      const nextEdges = removeSnapEdges(prevState.edges, bulbId);
       const { simulation, updatedNodes } = recalculateCircuit(nextNodes, nextEdges);
 
       set({
+        ...undoUpdate,
         nodes: updatedNodes,
         edges: nextEdges,
         simulation,
@@ -2042,10 +2148,18 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
 
       nextNodes.push(detachedBulbNode);
 
-      const nextEdges = removeSnapEdges(get().edges, bulbId);
+      const prevState = get();
+      const undoUpdate = appendUndoSnapshot(
+        prevState.undoStack,
+        currentNodes,
+        prevState.edges,
+        prevState.worldMode
+      );
+      const nextEdges = removeSnapEdges(prevState.edges, bulbId);
       const { simulation, updatedNodes } = recalculateCircuit(nextNodes, nextEdges);
 
       set({
+        ...undoUpdate,
         nodes: updatedNodes,
         edges: nextEdges,
         simulation,
@@ -2054,6 +2168,155 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     } catch (error) {
       console.warn('Failed to detach bulb from socket:', error);
     }
+  },
+
+  /**
+   * 1-tap beginner helper: installs a compatible bulb directly into an empty E27 or Pin socket.
+   * Respects strict physical base compatibility (screw -> 'socket', pin -> 'pin-socket').
+   * Time Complexity: O(N + M^3).
+   */
+  quickInstallBulbInSocket: (socketId: string, bulbType: BulbType): boolean => {
+    const prevState = get();
+    const isId = prevState.language === 'id';
+    const targetSocket = prevState.nodes.find(
+      (n) => n.id === socketId && (n.data.type === 'socket' || n.data.type === 'pin-socket')
+    );
+    if (!targetSocket || targetSocket.data.installedBulb) return false;
+
+    const isPinSocket = targetSocket.data.type === 'pin-socket';
+    if (isPinSocket && !canBulbFitPinSocket(bulbType)) {
+      get().notify(SOCKET_NOTICES.pinOnly[isId ? 'id' : 'en']);
+      return false;
+    }
+    if (!isPinSocket && !canBulbFitSocket(bulbType)) {
+      get().notify(SOCKET_NOTICES.screwOnly[isId ? 'id' : 'en']);
+      return false;
+    }
+
+    const spec = getBulbSpec(bulbType);
+    const bulbId = `bulb_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const undoUpdate = appendUndoSnapshot(
+      prevState.undoStack,
+      prevState.nodes,
+      prevState.edges,
+      prevState.worldMode
+    );
+
+    const nextNodes = prevState.nodes.map((n) =>
+      n.id === socketId
+        ? {
+            ...n,
+            data: {
+              ...n.data,
+              bulbId,
+              bulbType: spec.type,
+              resistance: spec.resistance,
+              isBlown: false,
+              installedBulb: {
+                id: bulbId,
+                bulbType: spec.type,
+                resistance: spec.resistance,
+                powerRating: spec.maxPower,
+                isBlown: false,
+                label: isId ? spec.label : spec.labelEn,
+              },
+            },
+          }
+        : n
+    );
+
+    const { simulation, updatedNodes } = recalculateCircuit(nextNodes, prevState.edges);
+    set({
+      ...undoUpdate,
+      nodes: updatedNodes,
+      simulation,
+      selectedNodeId: socketId,
+    });
+    get().notify(
+      isId
+        ? `${spec.label} terpasang di fiting.`
+        : `${spec.labelEn} installed in socket.`
+    );
+    return true;
+  },
+
+  /**
+   * 1-tap beginner helper: spawns the compatible E27 or Pin socket at a loose bulb's position
+   * and immediately mounts the bulb inside it so the user can wire it right away.
+   * Time Complexity: O(N + M^3).
+   */
+  quickMountBulbWithSocket: (bulbId: string): boolean => {
+    const prevState = get();
+    const isId = prevState.language === 'id';
+    const bulbNode = prevState.nodes.find((n) => n.id === bulbId && n.data.type === 'bulb');
+    if (!bulbNode) return false;
+
+    const bulbType: BulbType = bulbNode.data.bulbType ?? 'incandescent';
+    const spec = getBulbSpec(bulbType);
+    const isPinBase = spec.baseType === 'pin';
+    const socketType: ComponentType = isPinBase ? 'pin-socket' : 'socket';
+    const socketId = `${socketType}_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+
+    const undoUpdate = appendUndoSnapshot(
+      prevState.undoStack,
+      prevState.nodes,
+      prevState.edges,
+      prevState.worldMode
+    );
+
+    const mountedSocketNode: Node<CircuitElementData> = {
+      id: socketId,
+      type: socketType,
+      position: {
+        x: Math.round(bulbNode.position.x + 27),
+        y: Math.round(bulbNode.position.y + 68),
+      },
+      data: {
+        id: socketId,
+        type: socketType,
+        worldMode: bulbNode.data.worldMode ?? prevState.worldMode,
+        label: isPinBase
+          ? isId
+            ? 'Fiting Keramik Putih'
+            : 'Ceramic Pin Socket'
+          : isId
+          ? 'Fiting Lampu (Ulir)'
+          : 'Bulb Socket (Screw)',
+        bulbId,
+        bulbType: spec.type,
+        resistance: bulbNode.data.resistance ?? spec.resistance,
+        isBlown: Boolean(bulbNode.data.isBlown),
+        installedBulb: {
+          id: bulbId,
+          bulbType: spec.type,
+          resistance: bulbNode.data.resistance ?? spec.resistance,
+          powerRating: bulbNode.data.powerRating ?? spec.maxPower,
+          isBlown: Boolean(bulbNode.data.isBlown),
+          label: bulbNode.data.label ?? (isId ? spec.label : spec.labelEn),
+        },
+      },
+    };
+
+    const nextNodes = [
+      ...prevState.nodes.filter((n) => n.id !== bulbId),
+      mountedSocketNode,
+    ];
+    const nextEdges = removeSnapEdges(prevState.edges, bulbId);
+    const { simulation, updatedNodes } = recalculateCircuit(nextNodes, nextEdges);
+
+    set({
+      ...undoUpdate,
+      nodes: updatedNodes,
+      edges: nextEdges,
+      simulation,
+      selectedNodeId: socketId,
+    });
+    get().notify(
+      isId
+        ? `${spec.label} dipasang ke fiting. Hubungkan kabel ke kaki bawah fiting.`
+        : `${spec.labelEn} mounted in socket. Connect wires to the bottom pins.`
+    );
+    return true;
   },
 
   /**
@@ -2116,9 +2379,17 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
         return node;
       });
 
+    const prevState = get();
+    const undoUpdate = appendUndoSnapshot(
+      prevState.undoStack,
+      currentNodes,
+      prevState.edges,
+      prevState.worldMode
+    );
     const { simulation, updatedNodes } = recalculateCircuit(nextNodes, nextEdges);
 
     set({
+      ...undoUpdate,
       nodes: updatedNodes,
       edges: nextEdges,
       simulation,
@@ -2177,9 +2448,17 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       ejectedBatteryNode,
     ];
 
-    const { simulation, updatedNodes } = recalculateCircuit(nextNodes, get().edges);
+    const prevState = get();
+    const undoUpdate = appendUndoSnapshot(
+      prevState.undoStack,
+      currentNodes,
+      prevState.edges,
+      prevState.worldMode
+    );
+    const { simulation, updatedNodes } = recalculateCircuit(nextNodes, prevState.edges);
 
     set({
+      ...undoUpdate,
       nodes: updatedNodes,
       simulation,
       selectedNodeId: holderNodeId,
@@ -2269,14 +2548,22 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
    * @param edgeId Unique identifier of the edge to be removed
    */
   removeEdge: (edgeId: string) => {
-    const currentEdges = get().edges;
+    const prevState = get();
+    const currentEdges = prevState.edges;
     const nextEdges = currentEdges.filter((edge) => edge.id !== edgeId);
     if (nextEdges.length === currentEdges.length) return; // Edge not found
 
-    const nextSelectedEdgeId = get().selectedEdgeId === edgeId ? null : get().selectedEdgeId;
-    const { simulation, updatedNodes } = recalculateCircuit(get().nodes, nextEdges);
+    const undoUpdate = appendUndoSnapshot(
+      prevState.undoStack,
+      prevState.nodes,
+      currentEdges,
+      prevState.worldMode
+    );
+    const nextSelectedEdgeId = prevState.selectedEdgeId === edgeId ? null : prevState.selectedEdgeId;
+    const { simulation, updatedNodes } = recalculateCircuit(prevState.nodes, nextEdges);
 
     set({
+      ...undoUpdate,
       edges: nextEdges,
       simulation,
       nodes: updatedNodes,
@@ -2292,7 +2579,8 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
    * @param nodeId - Target component node ID whose wires should be removed
    */
   disconnectNodeWires: (nodeId: string) => {
-    const currentEdges = get().edges;
+    const prevState = get();
+    const currentEdges = prevState.edges;
     const nextEdges = currentEdges.filter(
       (edge) =>
         edge.data?.isSnapWire ||
@@ -2300,10 +2588,17 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     );
     if (nextEdges.length === currentEdges.length) return;
 
-    const { simulation, updatedNodes } = recalculateCircuit(get().nodes, nextEdges);
-    const isId = get().language === 'id';
+    const undoUpdate = appendUndoSnapshot(
+      prevState.undoStack,
+      prevState.nodes,
+      currentEdges,
+      prevState.worldMode
+    );
+    const { simulation, updatedNodes } = recalculateCircuit(prevState.nodes, nextEdges);
+    const isId = prevState.language === 'id';
 
     set({
+      ...undoUpdate,
       edges: nextEdges,
       simulation,
       nodes: updatedNodes,
@@ -2464,8 +2759,19 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   },
 
   clearCanvas: () => {
+    const prevState = get();
+    const undoUpdate =
+      prevState.nodes.length > 0 || prevState.edges.length > 0
+        ? appendUndoSnapshot(
+            prevState.undoStack,
+            prevState.nodes,
+            prevState.edges,
+            prevState.worldMode
+          )
+        : {};
     saveWorkspaceAutosave([], []);
     set({
+      ...undoUpdate,
       nodes: [],
       edges: [],
       selectedNodeId: null,
@@ -3165,8 +3471,19 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       presetEdges = ultimatePreset.edges;
     }
 
+    const prevState = get();
+    const undoUpdate =
+      prevState.nodes.length > 0
+        ? appendUndoSnapshot(
+            prevState.undoStack,
+            prevState.nodes,
+            prevState.edges,
+            prevState.worldMode
+          )
+        : {};
     const { simulation, updatedNodes } = recalculateCircuit(presetNodes, presetEdges);
     set({
+      ...undoUpdate,
       nodes: updatedNodes,
       edges: presetEdges,
       simulation,
@@ -3176,7 +3493,7 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       probeTargetB: null,
       hoveredProbeTarget: null,
       isPickingProbeB: false,
-      fitViewTrigger: get().fitViewTrigger + 1,
+      fitViewTrigger: prevState.fitViewTrigger + 1,
     });
   },
 

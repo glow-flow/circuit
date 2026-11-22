@@ -1,6 +1,6 @@
 import React from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
-import { Flame, RotateCcw, Snowflake, Unplug } from 'lucide-react';
+import { Flame, Plus, RotateCcw, Snowflake, Unplug } from 'lucide-react';
 import { CircuitElementData, InstalledBulbData } from '../../../types/circuit';
 import { useCircuitStore } from '../../../store/useCircuitStore';
 import {
@@ -12,6 +12,7 @@ import {
 import { BULB_NODE_SIZE, getInstalledBulbTopOffset } from '../../../utils/socketSnap';
 import { TRANSLATIONS } from '../../../i18n/translations';
 import { NodeInfoPopover } from './NodeInfoPopover';
+import { BulbGraphic, PinSocketGraphic } from '../../ui/common/LabComponentArt';
 
 /**
  * Calibrated size (px) for the ceramic bi-pin socket node.
@@ -35,18 +36,19 @@ export const HALOGEN_BULB_TOP_OFFSET = getInstalledBulbTopOffset('halogen');
 
 /**
  * Polygon clip-path tracing the front ceramic lip of the bi-pin socket.
- * Used on Layer 3 (zIndex: 30) so the front ceramic socket wall wraps in front of
- * the halogen bulb's lower contact pin plane, creating realistic physical insertion depth.
+ * Preserved for geometric calibration & unit test invariants.
  */
 export const PIN_SOCKET_FRONT_LIP_CLIP_PATH =
   'polygon(0% 4.5%, 15% 5.8%, 35% 6.8%, 50% 7.0%, 65% 6.8%, 85% 5.8%, 100% 4.5%, 100% 100%, 0% 100%)';
 
+const PIN_QUICK_BULBS: readonly { type: BulbType; labelId: string; labelEn: string }[] = [
+  { type: 'halogen', labelId: 'Halogen', labelEn: 'Halogen' },
+  { type: 'led_green', labelId: 'LED Hijau', labelEn: 'Green LED' },
+];
+
 /**
  * Formats electric current in milliamperes (mA) or amperes (A).
  * Time Complexity: O(1).
- *
- * @param amperes - Current value in Amperes
- * @returns Formatted human-readable current string
  */
 function formatCurrentAmperes(amperes: number): string {
   const absoluteAmperes = Math.abs(amperes);
@@ -59,9 +61,6 @@ function formatCurrentAmperes(amperes: number): string {
 /**
  * Formats dissipated electrical power in milliwatts (mW) or watts (W).
  * Time Complexity: O(1).
- *
- * @param watts - Power value in Watts
- * @returns Formatted human-readable power string
  */
 function formatPowerWatts(watts: number): string {
   const absoluteWatts = Math.abs(watts);
@@ -72,27 +71,9 @@ function formatPowerWatts(watts: number): string {
 
 /**
  * White Ceramic Bi-Pin Socket ("Fiting Keramik Bi-Pin") Node.
- *
- * Electrical Architecture:
- * - Only PinSocketNode has wire handles for halogen wiring (p1 and p2 at bottom copper tabs).
- * - When empty: acts as an OPEN CIRCUIT (resistance = Infinity / 1GΩ, 0 current).
- * - When Halogen bulb is inserted: conducts current through the halogen filament (R ≈ 1500Ω).
- *
- * 3-Layer Depth Sandwich Architecture:
- * - Layer 1 (zIndex: 10): White ceramic socket back & body (`/assets/socket-pin.png`).
- * - Layer 1.5 (zIndex: 15): Dark inner cavity shadow at the top insertion slot area.
- * - Layer 2 (zIndex: 20): Installed Halogen bulb (`/assets/bulb-halogen.png`) with pins penetrating down.
- * - Layer 3 (zIndex: 30): Front ceramic socket lip overlay with `clipPath` wrapping in front of bulb pins.
- * - Layer 4 (zIndex: 40): Electrical connection handles at bottom copper tabs.
- *
- * Photometrics & Optical Architecture:
- * - Multi-tier radial bloom glow rendered with zero rectangular clipping.
- * - Natural heat dissipation states (Cold, Warm, Hot, Overheat).
+ * Uses unified pure-SVG PinSocketGraphic and BulbGraphic in a 3-layer depth sandwich.
  *
  * Time Complexity: O(1) render & photometric calculation.
- *
- * @param props - React Flow NodeProps containing circuit element data and selection state
- * @returns React component representing the ceramic bi-pin socket and any installed halogen lamp
  */
 export const PinSocketNode: React.FC<NodeProps<CircuitElementData>> = ({
   id,
@@ -103,6 +84,7 @@ export const PinSocketNode: React.FC<NodeProps<CircuitElementData>> = ({
   const language = useCircuitStore((state) => state.language);
   const physicsLensMode = useCircuitStore((state) => state.physicsLensMode);
   const detachBulbFromSocket = useCircuitStore((state) => state.detachBulbFromSocket);
+  const quickInstallBulbInSocket = useCircuitStore((state) => state.quickInstallBulbInSocket);
   const updateComponentData = useCircuitStore((state) => state.updateComponentData);
 
   const isIndonesian = language === 'id';
@@ -158,22 +140,14 @@ export const PinSocketNode: React.FC<NodeProps<CircuitElementData>> = ({
   const { powerWatts, voltageDrop, brightness, heatLevel, isOverloaded } = photometrics;
   const effectiveIsBlown = isBlown || isOverloaded;
 
-  // Handle styling matching project design standards
   const handleClass =
-    '!bg-void-800 !border-2 !border-amber-400 !w-2.5 !h-2.5 !min-w-0 !min-h-0 !rounded-full transition-transform hover:scale-125';
+    '!bg-void-800 !border-2 !border-amber-400 !w-3 !h-3 !min-w-0 !min-h-0 !rounded-full transition-transform hover:scale-125';
   const handleStyle = (leftPercent: string): React.CSSProperties => ({
     left: leftPercent,
     bottom: -3,
     transform: 'translateX(-50%)',
     zIndex: 40,
   });
-
-  // Pure optical filter: NO drop-shadow on the image itself to prevent bounding box clipping
-  const bulbImageFilter = effectiveIsBlown
-    ? 'grayscale(100%) brightness(0.42) contrast(1.15)'
-    : brightness > 0.01
-    ? `brightness(${0.96 + brightness * 0.42}) saturate(${1.0 + brightness * 0.35})`
-    : 'saturate(0.45) brightness(0.76) contrast(1.04)';
 
   return (
     <div
@@ -184,51 +158,20 @@ export const PinSocketNode: React.FC<NodeProps<CircuitElementData>> = ({
         overflow: 'visible',
       }}
     >
-      {/* 
-        =======================================================================
-        3-LAYER DEPTH SANDWICH FOR CERAMIC BI-PIN SOCKET + HALOGEN BULB
-        -----------------------------------------------------------------------
-        Layer 1 (zIndex: 10): White ceramic socket back & body + inner cavity shadow
-        Layer 2 (zIndex: 20): Installed Halogen bulb penetrating down into slots
-        Layer 3 (zIndex: 30): Front ceramic socket lip overlay wrapping in front of bulb pins
-        Layer 4 (zIndex: 40): Bottom electrical handles on copper tabs
-        =======================================================================
-      */}
-
-      {/* LAYER 1 (zIndex: 10): Socket Back Rim & Ceramic Body Artwork */}
+      {/* LAYER 1 (zIndex: 10): Socket Back Rim & Insertion Slots */}
       <div
         className={`relative h-full w-full rounded-md outline outline-1 outline-offset-2 transition-[outline-color] duration-150 ${
           selected ? 'outline-cyan-300' : 'outline-transparent group-hover:outline-cyan-400/80'
         }`}
         style={{ zIndex: 10 }}
       >
-        <img
-          src="/assets/socket-pin.png"
-          alt={isIndonesian ? 'Fiting keramik bi-pin' : 'Ceramic bi-pin socket'}
-          width={PIN_SOCKET_NODE_SIZE.width}
-          height={PIN_SOCKET_NODE_SIZE.height}
-          draggable={false}
-          className="pointer-events-none block h-full w-full select-none object-contain"
+        <PinSocketGraphic
+          layer={installedSpec ? 'back' : 'full'}
+          className="block h-full w-full drop-shadow-sm"
         />
-
-        {/* LAYER 1.5 (zIndex: 15): Dark inner cavity shadow at the top insertion slot area */}
-        {installedSpec && (
-          <div
-            className="pointer-events-none absolute rounded-sm"
-            style={{
-              left: '18%',
-              top: '4%',
-              width: '64%',
-              height: '14%',
-              background:
-                'radial-gradient(ellipse at center, #090a0d 55%, rgba(9,10,13,0.92) 85%, transparent 100%)',
-              zIndex: 15,
-            }}
-          />
-        )}
       </div>
 
-      {/* NATURAL MULTI-TIER BORDERLESS BLOOM GLOW (zIndex: 14): Zero bounding box clipping */}
+      {/* NATURAL MULTI-TIER BORDERLESS BLOOM GLOW (zIndex: 14) */}
       {installedSpec && !effectiveIsBlown && brightness > 0.01 && (
         <div
           className="pointer-events-none absolute select-none"
@@ -244,7 +187,6 @@ export const PinSocketNode: React.FC<NodeProps<CircuitElementData>> = ({
             justifyContent: 'center',
           }}
         >
-          {/* Tier 3: Soft ambient atmospheric radiance (190px - 280px) */}
           <div
             className="absolute rounded-full transition-all duration-300"
             style={{
@@ -255,7 +197,6 @@ export const PinSocketNode: React.FC<NodeProps<CircuitElementData>> = ({
               filter: 'blur(22px)',
             }}
           />
-          {/* Tier 2: Glass envelope corona (75px - 120px) */}
           <div
             className="absolute rounded-full transition-all duration-300"
             style={{
@@ -266,7 +207,6 @@ export const PinSocketNode: React.FC<NodeProps<CircuitElementData>> = ({
               filter: 'blur(8px)',
             }}
           />
-          {/* Tier 1: Specular optical core / filament center (32px - 50px) */}
           <div
             className="absolute rounded-full transition-all duration-300"
             style={{
@@ -280,7 +220,7 @@ export const PinSocketNode: React.FC<NodeProps<CircuitElementData>> = ({
         </div>
       )}
 
-      {/* LAYER 2 (zIndex: 20): Installed Pin Bulb Artwork (Fixed size, pins penetrate down) */}
+      {/* LAYER 2 (zIndex: 20): Installed Pin Bulb Vector Artwork */}
       {installedSpec && (
         <div
           className={`absolute left-1/2 flex items-center justify-center select-none ${
@@ -294,17 +234,11 @@ export const PinSocketNode: React.FC<NodeProps<CircuitElementData>> = ({
             zIndex: 20,
           }}
         >
-          <img
-            src={installedSpec.image}
-            alt={isIndonesian ? installedSpec.label : installedSpec.labelEn}
-            width={BULB_NODE_SIZE.width}
-            height={BULB_NODE_SIZE.height}
-            draggable={false}
-            className="pointer-events-none relative h-full w-full select-none object-contain transition-all duration-300"
-            style={{
-              filter: bulbImageFilter,
-              opacity: effectiveIsBlown ? 0.55 : brightness > 0.01 ? 1 : 0.94,
-            }}
+          <BulbGraphic
+            bulbType={installedSpec.type}
+            brightness={brightness}
+            isBlown={effectiveIsBlown}
+            className="h-full w-full transition-all duration-300"
           />
 
           {effectiveIsBlown && (
@@ -313,32 +247,17 @@ export const PinSocketNode: React.FC<NodeProps<CircuitElementData>> = ({
         </div>
       )}
 
-      {/* LAYER 3 (zIndex: 30): Front Ceramic Lip Overlay (wraps in front of lower pin plane) */}
+      {/* LAYER 3 (zIndex: 30): Front Ceramic Body Overlay wrapping in front of lower pins */}
       {installedSpec && (
         <div
           className="pointer-events-none absolute inset-0 select-none"
           style={{ zIndex: 30 }}
         >
-          <img
-            src="/assets/socket-pin.png"
-            alt=""
-            aria-hidden="true"
-            width={PIN_SOCKET_NODE_SIZE.width}
-            height={PIN_SOCKET_NODE_SIZE.height}
-            draggable={false}
-            className="pointer-events-none block h-full w-full select-none object-contain"
-            style={{
-              clipPath: PIN_SOCKET_FRONT_LIP_CLIP_PATH,
-            }}
-          />
+          <PinSocketGraphic layer="front-lip" className="block h-full w-full" />
         </div>
       )}
 
-      {/* 
-        LAYER 4 (zIndex: 40): ELECTRICAL HANDLES
-        PinSocketNode possesses the wire connection handles directly on the bottom copper tabs.
-        For 5mm LED Indicator (`led_green`), p1 is Anode (+) and p2 is Cathode (-).
-      */}
+      {/* LAYER 4 (zIndex: 40): ELECTRICAL HANDLES */}
       <Handle
         type="source"
         position={Position.Bottom}
@@ -444,44 +363,63 @@ export const PinSocketNode: React.FC<NodeProps<CircuitElementData>> = ({
             </div>
           </div>
 
-          <p className="mt-1.5 text-[10px] leading-snug text-slate-400">
-            {installedSpec
-              ? isIndonesian
-                ? 'Tekan tombol "Lepas Lampu" untuk melepas lampu halogen dari fiting keramik.'
-                : 'Click "Detach Bulb" to remove the halogen bulb from the ceramic socket.'
-              : isIndonesian
-              ? 'Seret lampu halogen kapsul ke atas fiting ini untuk memasangnya.'
-              : 'Drag a halogen capsule bulb onto this socket to install it.'}
-          </p>
+          {!installedSpec ? (
+            <div className="mt-2 space-y-1.5">
+              <p className="text-[10px] leading-snug text-slate-400">
+                {isIndonesian
+                  ? 'Pasang lampu pin cepat (1 klik) atau seret lampu ke atas fiting:'
+                  : 'Quick-install a pin bulb (1 tap) or drag one onto this socket:'}
+              </p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {PIN_QUICK_BULBS.map((item) => (
+                  <button
+                    key={item.type}
+                    type="button"
+                    onClick={() => quickInstallBulbInSocket(id, item.type)}
+                    className="flex cursor-pointer items-center justify-center gap-1 rounded-lg bg-electric-600 hover:bg-electric-700 px-2 py-1.5 text-[10px] font-bold text-white transition-colors active:scale-95"
+                  >
+                    <Plus className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    <span className="truncate">{isIndonesian ? item.labelId : item.labelEn}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <>
+              <p className="mt-1.5 text-[10px] leading-snug text-slate-400">
+                {isIndonesian
+                  ? 'Tekan tombol "Lepas Lampu" untuk melepas lampu dari fiting keramik.'
+                  : 'Click "Detach Bulb" to remove the bulb from the ceramic socket.'}
+              </p>
 
-          {installedSpec && (
-            <div className="mt-2 flex gap-1.5">
-              {effectiveIsBlown && (
+              <div className="mt-2 flex gap-1.5">
+                {effectiveIsBlown && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (installedBulbObj) {
+                        updateComponentData(id, {
+                          installedBulb: { ...installedBulbObj, isBlown: false },
+                          isBlown: false,
+                        });
+                      } else {
+                        updateComponentData(id, { isBlown: false });
+                      }
+                    }}
+                    className="flex flex-1 cursor-pointer items-center justify-center gap-1 rounded-lg bg-danger-600 hover:bg-danger-700 px-2 py-1.5 text-[10px] font-bold text-white transition-colors active:scale-95"
+                  >
+                    <RotateCcw className="h-3 w-3" aria-hidden="true" /> {isIndonesian ? 'Reset' : 'Reset'}
+                  </button>
+                )}
                 <button
                   type="button"
-                  onClick={() => {
-                    if (installedBulbObj) {
-                      updateComponentData(id, {
-                        installedBulb: { ...installedBulbObj, isBlown: false },
-                        isBlown: false,
-                      });
-                    } else {
-                      updateComponentData(id, { isBlown: false });
-                    }
-                  }}
-                  className="flex flex-1 cursor-pointer items-center justify-center gap-1 rounded-lg bg-danger-600 hover:bg-danger-700 px-2 py-1.5 text-[10px] font-bold text-white transition-colors active:scale-95"
+                  onClick={() => detachBulbFromSocket(id)}
+                  className="flex flex-1 cursor-pointer items-center justify-center gap-1 rounded-lg bg-electric-600 hover:bg-electric-700 px-2 py-1.5 text-[10px] font-bold text-white transition-colors active:scale-95"
                 >
-                  <RotateCcw className="h-3 w-3" aria-hidden="true" /> {isIndonesian ? 'Reset' : 'Reset'}
+                  <Unplug className="h-3 w-3" aria-hidden="true" /> {isIndonesian ? 'Lepas Lampu' : 'Detach Bulb'}
                 </button>
-              )}
-              <button
-                type="button"
-                onClick={() => detachBulbFromSocket(id)}
-                className="flex flex-1 cursor-pointer items-center justify-center gap-1 rounded-lg bg-electric-600 hover:bg-electric-700 px-2 py-1.5 text-[10px] font-bold text-white transition-colors active:scale-95"
-              >
-                <Unplug className="h-3 w-3" aria-hidden="true" /> {isIndonesian ? 'Lepas Lampu' : 'Detach Bulb'}
-              </button>
-            </div>
+              </div>
+            </>
           )}
         </NodeInfoPopover>
       )}

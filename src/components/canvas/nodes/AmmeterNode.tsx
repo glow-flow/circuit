@@ -1,15 +1,16 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
 import { ShieldAlert, Zap } from 'lucide-react';
 import { CircuitElementData } from '../../../types/circuit';
 import { useCircuitStore } from '../../../store/useCircuitStore';
 import { TRANSLATIONS } from '../../../i18n/translations';
 import { NodeInfoPopover } from './NodeInfoPopover';
+import { AmmeterGraphic } from '../../ui/common/LabComponentArt';
 
 /**
  * Digital Ammeter Node (`type: 'ammeter'`).
- * Renders the physical `/assets/ammeter.png` benchtop instrument with live digital
- * series current readout overlaid on the recessed glass LCD screen and bottom binding posts.
+ * Renders the unified pure-SVG benchtop instrument with live series current LCD readout
+ * and emerald (IN) / slate (OUT) binding posts.
  *
  * Time Complexity: O(1) render.
  */
@@ -17,7 +18,6 @@ export const AmmeterNode: React.FC<NodeProps<CircuitElementData>> = ({ id, selec
   const simulation = useCircuitStore((state) => state.simulation);
   const language = useCircuitStore((state) => state.language);
   const t = TRANSLATIONS[language].nodes.ammeter;
-  const [hasImageError, setHasImageError] = useState(false);
 
   const current = simulation.branchCurrents[id] ?? 0;
   const isShortCircuit = simulation.shortCircuitBranches.includes(id);
@@ -48,33 +48,11 @@ export const AmmeterNode: React.FC<NodeProps<CircuitElementData>> = ({ id, selec
             : ''
         }`}
       >
-        {!hasImageError ? (
-          <img
-            src="/assets/ammeter.png"
-            alt={t.title}
-            width={96}
-            height={106}
-            draggable={false}
-            onError={() => setHasImageError(true)}
-            className="w-full h-full object-contain pointer-events-none select-none drop-shadow-md"
-          />
-        ) : (
-          <div className="w-full h-full rounded-xl bg-void-900 border border-control" />
-        )}
-
-        {/* Fixed bright inks over dark photorealistic PNG LCD window (never invert in Light Mode) */}
-        <div className="absolute top-[14%] left-[15%] right-[15%] h-[36%] flex flex-col items-center justify-center pointer-events-none px-1 tabular-nums">
-          <span className="text-[7px] font-mono font-semibold text-[#94A3B8] uppercase tracking-widest leading-none mb-0.5">
-            DC AMPERE
-          </span>
-          <div
-            className={`text-[12px] font-mono font-bold tracking-tight leading-none ${
-              isShortCircuit ? 'text-[#FCA5A5]' : 'text-[#6EE7B7]'
-            }`}
-          >
-            {formattedCurrent}
-          </div>
-        </div>
+        <AmmeterGraphic
+          displayValue={formattedCurrent}
+          isShortCircuit={isShortCircuit}
+          className="w-full h-full drop-shadow-md"
+        />
       </div>
 
       {/* Input Handle (Left Emerald Binding Post) */}

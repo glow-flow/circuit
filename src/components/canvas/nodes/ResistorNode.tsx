@@ -5,11 +5,12 @@ import { CircuitElementData } from '../../../types/circuit';
 import { useCircuitStore } from '../../../store/useCircuitStore';
 import { TRANSLATIONS } from '../../../i18n/translations';
 import { NodeInfoPopover } from './NodeInfoPopover';
+import { ResistorGraphic } from '../../ui/common/LabComponentArt';
 
 /**
  * Through-hole Axial Resistor Node (`type: 'resistor'`).
- * Clean, direct asset-first presentation (like SocketNode/BulbNode):
- * - Canvas shows the physical axial resistor and color bands directly.
+ * Clean vector-instrument presentation with dynamic IEC 60062 4-band color rings:
+ * - Canvas shows the ceramic axial resistor and real color bands directly.
  * - Left and right wire leads host electrical handles p1 and p2.
  * - Detailed telemetry (Ohm's Law, power dissipation) appears in NodeInfoPopover on select.
  *
@@ -46,7 +47,7 @@ export const ResistorNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data
         className="!bg-amber-600 !border-2 !border-white !w-3.5 !h-3.5 !-left-1.5 z-20 shadow-sm"
       />
 
-      {/* Main Artwork: Axial Resistor Graphic */}
+      {/* Main Artwork: Dynamic 4-Band IEC 60062 Axial Resistor Graphic */}
       <div
         className={`relative flex h-full w-full items-center justify-center rounded-lg outline outline-1 outline-offset-2 transition-all duration-150 ${
           selected
@@ -55,17 +56,10 @@ export const ResistorNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data
         }`}
         style={{ zIndex: 10 }}
       >
-        <img
-          src="/assets/processed/resistor.png"
-          alt="Axial Resistor"
-          width={136}
-          height={44}
-          draggable={false}
-          className="w-full h-full object-contain pointer-events-none select-none drop-shadow-sm"
-        />
+        <ResistorGraphic resistance={resistance} className="w-full h-full drop-shadow-sm" />
 
         {/* Value Label Pill */}
-        <span className="absolute -bottom-2.5 px-1.5 py-0.2 rounded bg-void-950 border border-control text-[9px] font-mono font-bold text-amber-300 pointer-events-none select-none tabular-nums">
+        <span className="absolute -bottom-3 px-1.5 py-0.5 rounded bg-void-950 border border-control text-[9px] font-mono font-bold text-amber-300 pointer-events-none select-none tabular-nums shadow-sm">
           {formattedResistance}
         </span>
       </div>

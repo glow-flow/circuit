@@ -5,11 +5,12 @@ import { CircuitElementData } from '../../../types/circuit';
 import { useCircuitStore } from '../../../store/useCircuitStore';
 import { computeEffectiveBatteryVoltage } from '../../../physics/batterySoC';
 import { NodeInfoPopover } from './NodeInfoPopover';
+import { Battery9VGraphic } from '../../ui/common/LabComponentArt';
 
 /**
  * 9V Alkaline Battery Node (`type: 'battery9v'`).
- * Clean, direct asset-first presentation (like BulbNode):
- * - Canvas shows the realistic 9V battery casing directly with top terminals.
+ * Clean, direct vector-instrument presentation:
+ * - Canvas shows the unified SVG 9V battery casing directly with top (+) and (-) snap terminals.
  * - Detailed telemetry, State of Charge (SoC), and controls appear inside NodeInfoPopover on select.
  *
  * Time Complexity: O(1) render.
@@ -67,37 +68,37 @@ export const Battery9VNode: React.FC<NodeProps<CircuitElementData>> = ({
     >
       {/* Top Positive (+) Handle aligned above Left Round Terminal */}
       <div
-        className="absolute -top-3 -translate-x-1/2 flex flex-col items-center z-20"
+        className="absolute -top-2 -translate-x-1/2 flex flex-col items-center z-20"
         style={{ left: '34%' }}
       >
+        <span className="mb-1 px-1 rounded bg-void-950/90 border border-red-500/40 text-[8px] font-mono font-bold text-red-400 pointer-events-none select-none leading-tight">
+          +
+        </span>
         <Handle
           type="source"
           position={Position.Top}
           id="pos"
           className="!relative !left-0 !top-0 !transform-none !bg-red-500 !border-2 !border-white !w-3.5 !h-3.5 shadow-sm"
         />
-        <span className="mt-0.5 text-[8px] font-mono font-bold text-red-400 pointer-events-none select-none">
-          +
-        </span>
       </div>
 
       {/* Top Negative (-) Handle aligned above Right Hexagonal Terminal */}
       <div
-        className="absolute -top-3 -translate-x-1/2 flex flex-col items-center z-20"
+        className="absolute -top-2 -translate-x-1/2 flex flex-col items-center z-20"
         style={{ left: '66%' }}
       >
+        <span className="mb-1 px-1 rounded bg-void-950/90 border border-control/60 text-[8px] font-mono font-bold text-slate-300 pointer-events-none select-none leading-tight">
+          -
+        </span>
         <Handle
           type="source"
           position={Position.Top}
           id="neg"
           className="!relative !left-0 !top-0 !transform-none !bg-slate-700 !border-2 !border-white !w-3.5 !h-3.5 shadow-sm"
         />
-        <span className="mt-0.5 text-[8px] font-mono font-bold text-slate-400 pointer-events-none select-none">
-          -
-        </span>
       </div>
 
-      {/* Main Artwork Frame: Crisp Direct Asset */}
+      {/* Main Artwork Frame: Unified Pure-SVG Hardware Instrument */}
       <div
         className={`relative flex h-full w-full items-center justify-center rounded-lg outline outline-1 outline-offset-2 transition-all duration-150 ${
           isShorted
@@ -108,16 +109,7 @@ export const Battery9VNode: React.FC<NodeProps<CircuitElementData>> = ({
         }`}
         style={{ zIndex: 10 }}
       >
-        <img
-          src="/assets/battery-9v.png"
-          alt={data.label || 'Baterai 9V'}
-          width={88}
-          height={124}
-          draggable={false}
-          className={`h-full w-full object-contain pointer-events-none select-none drop-shadow-md transition-opacity duration-300 ${
-            isDead ? 'opacity-40 grayscale' : 'opacity-95'
-          }`}
-        />
+        <Battery9VGraphic isDead={isDead} className="h-full w-full drop-shadow-md" />
 
         {/* Dead Battery Indicator Badge */}
         {isDead && (

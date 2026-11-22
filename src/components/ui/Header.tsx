@@ -24,6 +24,7 @@ import {
   ClipboardCheck,
   Menu,
   UserCheck,
+  Undo2,
 } from 'lucide-react';
 import { useCircuitStore } from '../../store/useCircuitStore';
 import { TRANSLATIONS } from '../../i18n/translations';
@@ -97,6 +98,8 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const simulation = useCircuitStore((state) => state.simulation);
   const clearCanvas = useCircuitStore((state) => state.clearCanvas);
+  const canUndo = useCircuitStore((state) => state.canUndo);
+  const undo = useCircuitStore((state) => state.undo);
   const loadPreset = useCircuitStore((state) => state.loadPreset);
   const runSimulation = useCircuitStore((state) => state.runSimulation);
   const notify = useCircuitStore((state) => state.notify);
@@ -537,11 +540,12 @@ export const Header: React.FC<HeaderProps> = ({
             id="tour-btn-save"
             type="button"
             onClick={() => setIsSaveModalOpen(true)}
-            className="hidden lg:flex items-center gap-1.5 min-h-[40px] px-2.5 py-1.5 rounded-xl bg-void-950 hover:bg-void-850 text-electric-400 border border-control text-xs font-semibold transition-colors active:scale-95 cursor-pointer"
+            aria-label={t.savePresetModalTitle}
+            className="hidden lg:flex items-center justify-center gap-1.5 min-w-[40px] min-h-[40px] px-2 2xl:px-2.5 py-1.5 rounded-xl bg-void-950 hover:bg-void-850 text-electric-400 border border-control text-xs font-semibold transition-colors active:scale-95 shrink-0 cursor-pointer"
             title={t.savePresetModalTitle}
           >
             <BookmarkPlus className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-            <span>{t.savePresetBtn}</span>
+            <span className="hidden 2xl:inline">{t.savePresetBtn}</span>
           </button>
 
           {/* Labeled Interactive Guide Button */}
@@ -551,10 +555,10 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={handleGuideClick}
             title={isId ? 'Buka Panduan & Contekan Guru' : 'Open Guide & Teacher Cards'}
             aria-label={isId ? 'Buka Panduan & Contekan Guru' : 'Open Guide & Teacher Cards'}
-            className="flex items-center justify-center gap-1 min-w-[40px] min-h-[40px] px-2 sm:px-2.5 py-1.5 rounded-xl bg-void-950 hover:bg-void-850 border border-control text-ink text-[11px] sm:text-xs font-bold transition-colors active:scale-95 shrink-0 cursor-pointer"
+            className="flex items-center justify-center gap-1 min-w-[40px] min-h-[40px] px-2 2xl:px-2.5 py-1.5 rounded-xl bg-void-950 hover:bg-void-850 border border-control text-ink text-[11px] sm:text-xs font-bold transition-colors active:scale-95 shrink-0 cursor-pointer"
           >
             <HelpCircle className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-electric-400 shrink-0" aria-hidden="true" />
-            <span className="hidden sm:inline">{isId ? 'Panduan' : 'Guide'}</span>
+            <span className="hidden sm:inline lg:hidden 2xl:inline">{isId ? 'Panduan' : 'Guide'}</span>
           </button>
 
           {/* Theme & Language Controls (Tablet >= 768px & Desktop >= 1024px) */}
@@ -604,17 +608,31 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           </div>
 
-          {/* Safe Reset Button (Compact icon on <640px phones to preserve breathing room) */}
+          {/* 1-Tap Undo Button (Tablet & Desktop; mobile gets a thumb-reachable floating pill) */}
+          <button
+            id="tour-btn-undo"
+            type="button"
+            disabled={!canUndo}
+            onClick={undo}
+            aria-label={isId ? 'Batalkan langkah terakhir (Ctrl+Z)' : 'Undo last action (Ctrl+Z)'}
+            title={isId ? 'Urungkan (Ctrl+Z)' : 'Undo (Ctrl+Z)'}
+            className="hidden sm:flex items-center justify-center gap-1 min-w-[40px] min-h-[40px] px-2 2xl:px-2.5 py-1.5 rounded-xl bg-void-950 hover:bg-void-850 disabled:opacity-40 disabled:cursor-not-allowed border border-control text-ink text-xs font-semibold transition-colors active:scale-95 shrink-0 cursor-pointer"
+          >
+            <Undo2 className="w-3.5 h-3.5 text-slate-300 shrink-0" aria-hidden="true" />
+            <span className="hidden 2xl:inline">{isId ? 'Urungkan' : 'Undo'}</span>
+          </button>
+
+          {/* Safe Reset Button */}
           <button
             id="tour-btn-reset"
             type="button"
             onClick={() => setIsResetDialogOpen(true)}
             aria-label={t.clearTitle || (isId ? 'Reset Rangkaian' : 'Reset Circuit')}
-            className="flex items-center justify-center gap-1 min-w-[40px] min-h-[40px] px-2 sm:px-2.5 py-1.5 rounded-xl bg-danger-950/60 hover:bg-danger-600 hover:text-white border border-danger-500/60 text-danger-300 text-[11px] sm:text-xs font-bold transition-colors active:scale-95 shrink-0 cursor-pointer"
+            className="flex items-center justify-center gap-1 min-w-[40px] min-h-[40px] px-2 2xl:px-2.5 py-1.5 rounded-xl bg-danger-950/60 hover:bg-danger-600 hover:text-white border border-danger-500/60 text-danger-300 text-[11px] sm:text-xs font-bold transition-colors active:scale-95 shrink-0 cursor-pointer"
             title={t.clearTitle}
           >
             <Trash2 className="w-4 h-4 sm:w-3.5 sm:h-3.5 shrink-0" aria-hidden="true" />
-            <span className="hidden sm:inline">{isId ? 'Reset' : 'Reset'}</span>
+            <span className="hidden sm:inline lg:hidden 2xl:inline">{isId ? 'Reset' : 'Reset'}</span>
           </button>
 
           {/* Compact Mobile & Tablet Menu Button (< 1024px) */}

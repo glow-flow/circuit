@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { PaletteEntry } from '../../../constants/componentCatalog';
 import { ComponentGlyph } from './ComponentGlyph';
+import { renderLabPalettePreview } from '../common/LabComponentArt';
 
 interface PaletteTileProps {
   entry: PaletteEntry;
@@ -16,10 +17,8 @@ interface PaletteTileProps {
 }
 
 /**
- * One hardware specimen plate in the component box: renders the physical hardware asset
- * (with textbook schematic symbol as resilient fallback), spec tag, and part name.
- * On mobile/tablet drawer: tap selects, tap again or tap sibling '+' button places on canvas.
- * On desktop: click selects; double-click or drag places.
+ * One hardware specimen plate in the component box: renders unified vector lab artwork
+ * (matching live canvas nodes 1-to-1) or outdoor hardware sprites, with spec tag and part name.
  *
  * Time Complexity: O(1) render.
  */
@@ -35,6 +34,7 @@ export const PaletteTile: React.FC<PaletteTileProps> = ({
   onDragStart,
 }) => {
   const [hasImageFailed, setHasImageFailed] = useState(false);
+  const labVectorPreview = renderLabPalettePreview(entry.type, entry.placement?.bulbType);
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -64,7 +64,11 @@ export const PaletteTile: React.FC<PaletteTileProps> = ({
         }`}
       >
         <div className="relative aspect-square rounded-lg bg-void-900 border border-ink/10 overflow-hidden flex items-center justify-center">
-          {entry.image && !hasImageFailed ? (
+          {labVectorPreview ? (
+            <div className="w-full h-full flex items-center justify-center transition-transform duration-200 group-hover:scale-105">
+              {labVectorPreview}
+            </div>
+          ) : entry.image && !hasImageFailed ? (
             <img
               src={entry.image}
               alt=""

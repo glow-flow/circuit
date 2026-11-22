@@ -1,21 +1,22 @@
 import React from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
-import { Flame, RotateCcw, Snowflake, Unplug } from 'lucide-react';
+import { Flame, Plus, RotateCcw, Snowflake, Unplug } from 'lucide-react';
 import { CircuitElementData } from '../../../types/circuit';
 import { useCircuitStore } from '../../../store/useCircuitStore';
 import {
+  BulbType,
   canBulbFitSocket,
   computeBulbPhotometrics,
   getBulbSpec,
 } from '../../../constants/bulbCatalog';
 import {
   BULB_NODE_SIZE,
-  SOCKET_FRONT_LIP_CLIP_PATH,
   SOCKET_NODE_SIZE,
   getInstalledBulbTopOffset,
 } from '../../../utils/socketSnap';
 import { TRANSLATIONS } from '../../../i18n/translations';
 import { NodeInfoPopover } from './NodeInfoPopover';
+import { BulbGraphic, E27SocketGraphic } from '../../ui/common/LabComponentArt';
 
 /**
  * Horizontal positions (percentage of socket node width) for the two bottom brass screw terminals.
@@ -23,6 +24,12 @@ import { NodeInfoPopover } from './NodeInfoPopover';
  * p2 = Negative / Terminal 2 (Right brass terminal)
  */
 const SOCKET_TERMINALS = { p1: '29%', p2: '71%' } as const;
+
+const E27_QUICK_BULBS: readonly { type: BulbType; labelId: string; labelEn: string }[] = [
+  { type: 'led_standard', labelId: 'LED', labelEn: 'LED' },
+  { type: 'incandescent', labelId: 'Pijar', labelEn: 'Incandescent' },
+  { type: 'cfl', labelId: 'Neon CFL', labelEn: 'CFL' },
+];
 
 /** Formats current in mA (< 1 A) or A. */
 function formatCurrent(amperes: number): string {
@@ -43,26 +50,18 @@ function formatPower(watts: number): string {
  * Bulb Socket ("Fiting Lampu") Node for screw-base (ulir) bulbs.
  *
  * Electrical Architecture:
- * - SocketNode possesses the ONLY 2 electrical handles (Positif & Negatif) at the bottom.
- * - When empty: acts as an OPEN CIRCUIT (resistance = Infinity, 0 current).
- * - When a bulb is snapped: conducts electrical current through the installed bulb.
- *
- * Visual Snapping Architecture:
- * - The installed bulb is rendered with `position: absolute` directly inside the socket node.
- * - Fixed width & height matching BULB_NODE_SIZE (88px x 104px) to PREVENT any collapsing or squishing.
- * - `zIndex: 20` (higher than the socket's `zIndex: 10`).
- * - `top: -72px` and `transform: translateX(-50%)` positions the metal screw thread neatly inside the socket mouth.
+ * - SocketNode possesses the ONLY 2 electrical handles (p1 & p2) at the bottom brass screws.
+ * - When empty: acts as an OPEN CIRCUIT (resistance = Infinity, 0 current) and offers 1-tap bulb installation.
+ * - When a bulb is mounted: conducts electrical current through the installed bulb.
  *
  * Time Complexity: O(1) render & photometric calculation.
- *
- * @param props - React Flow NodeProps containing component data and selection state
- * @returns React component representing the socket and any installed lamp
  */
 export const SocketNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, selected }) => {
   const simulation = useCircuitStore((state) => state.simulation);
   const language = useCircuitStore((state) => state.language);
   const physicsLensMode = useCircuitStore((state) => state.physicsLensMode);
   const detachBulbFromSocket = useCircuitStore((state) => state.detachBulbFromSocket);
+  const quickInstallBulbInSocket = useCircuitStore((state) => state.quickInstallBulbInSocket);
   const updateComponentData = useCircuitStore((state) => state.updateComponentData);
 
   const isIndonesian = language === 'id';
@@ -75,11 +74,11 @@ export const SocketNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, 
     ? (installedBulb as import('../../../types/circuit').InstalledBulbData)
     : null;
 
-  const installedBulbType: import('../../../constants/bulbCatalog').BulbType | undefined =
+  const installedBulbType: BulbType | undefined =
     installedBulbObj
       ? installedBulbObj.bulbType
       : typeof installedBulb === 'string'
-      ? (installedBulb as import('../../../constants/bulbCatalog').BulbType)
+      ? (installedBulb as BulbType)
       : undefined;
 
   // Strictly enforce screw-base requirement: only bulbs designed for E27 sockets can mount
@@ -104,20 +103,13 @@ export const SocketNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, 
   const effectiveIsBlown = isBlown || isOverloaded;
 
   const handleClass =
-    '!bg-void-800 !border-2 !border-amber-400 !w-2.5 !h-2.5 !min-w-0 !min-h-0 !rounded-full transition-transform hover:scale-125';
+    '!bg-void-800 !border-2 !border-amber-400 !w-3 !h-3 !min-w-0 !min-h-0 !rounded-full transition-transform hover:scale-125';
   const handleStyle = (leftPercent: string): React.CSSProperties => ({
     left: leftPercent,
     bottom: -3,
     transform: 'translateX(-50%)',
     zIndex: 40,
   });
-
-  // Pure optical appearance on the PNG: NO drop-shadow on the image itself to prevent bounding box clipping!
-  const bulbImageFilter = effectiveIsBlown
-    ? 'grayscale(100%) brightness(0.42) contrast(1.15)'
-    : brightness > 0.01
-    ? `brightness(${0.96 + brightness * 0.42}) saturate(${1.0 + brightness * 0.35})`
-    : 'saturate(0.45) brightness(0.76) contrast(1.04)';
 
   const bulbTopOffset = getInstalledBulbTopOffset(installedSpec?.type);
 
@@ -130,47 +122,18 @@ export const SocketNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, 
         overflow: 'visible',
       }}
     >
-      {/* 
-        =======================================================================
-        3-LAYER DEPTH SANDWICH FOR REALISTIC E27 SOCKET + BULB ASSEMBLY
-        -----------------------------------------------------------------------
-        Layer 1 (zIndex: 10): Full Socket Back Rim & Body + Inner Cavity Shadow (zIndex: 15)
-        Layer 2 (zIndex: 20): Installed Bulb (full 92x112 size, never collapses)
-        Layer 3 (zIndex: 30): Clipped Front Lip of Socket wrapping IN FRONT of the bulb's threads
-        =======================================================================
-      */}
-
-      {/* LAYER 1 (zIndex: 10): Socket Back Rim & Base Artwork */}
+      {/* LAYER 1 (zIndex: 10): Socket Back Rim & Recessed Cavity */}
       <div
         className={`relative h-full w-full rounded-lg outline outline-1 outline-offset-2 transition-[outline-color] duration-150 ${
           selected ? 'outline-cyan-300' : 'outline-transparent group-hover:outline-cyan-400/80'
         }`}
         style={{ zIndex: 10 }}
       >
-        <img
-          src="/assets/socket.png"
-          alt={isIndonesian ? 'Fiting lampu ulir' : 'Screw bulb socket'}
-          width={SOCKET_NODE_SIZE.width}
-          height={SOCKET_NODE_SIZE.height}
-          draggable={false}
-          className="pointer-events-none block h-full w-full select-none object-contain"
+        <E27SocketGraphic
+          layer={installedSpec ? 'back' : 'full'}
+          hasBulb={Boolean(installedSpec)}
+          className="block h-full w-full drop-shadow-sm"
         />
-
-        {/* LAYER 1.5 (zIndex: 15): Dark inner cavity occlusion so empty copper threads don't peek around the bulb neck */}
-        {installedSpec && (
-          <div
-            className="pointer-events-none absolute rounded-full"
-            style={{
-              left: '10%',
-              top: '5%',
-              width: '80%',
-              height: '18%',
-              background:
-                'radial-gradient(ellipse at center, #090a0d 55%, rgba(9,10,13,0.92) 80%, transparent 100%)',
-              zIndex: 15,
-            }}
-          />
-        )}
       </div>
 
       {/* NATURAL MULTI-TIER GLOW (zIndex: 14): Zero rectangular boundary clipping */}
@@ -225,7 +188,7 @@ export const SocketNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, 
         </div>
       )}
 
-      {/* LAYER 2 (zIndex: 20): Installed Bulb Artwork (Fixed 92x112 size, never shrinks or collapses) */}
+      {/* LAYER 2 (zIndex: 20): Installed Bulb Vector Artwork */}
       {installedSpec && (
         <div
           className={`absolute left-1/2 flex items-center justify-center select-none ${
@@ -239,35 +202,11 @@ export const SocketNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, 
             zIndex: 20,
           }}
         >
-          <img
-            src={installedSpec.image}
-            alt={isIndonesian ? installedSpec.label : installedSpec.labelEn}
-            width={installedSpec.imageRotated ? 106 : BULB_NODE_SIZE.width}
-            height={installedSpec.imageRotated ? 76 : BULB_NODE_SIZE.height}
-            draggable={false}
-            className={`pointer-events-none select-none object-contain transition-all duration-300 ${
-              installedSpec.imageRotated
-                ? 'absolute left-1/2 top-1/2 h-[76px] w-[106px] max-w-none -translate-x-1/2 -translate-y-1/2 rotate-90'
-                : 'relative h-full w-full'
-            }`}
-            style={{
-              filter: bulbImageFilter,
-              opacity: effectiveIsBlown ? 0.55 : brightness > 0.01 ? 1 : 0.94,
-              clipPath: installedSpec.imageRotated ? undefined : 'inset(0 0 6% 0)',
-            }}
-          />
-
-          {/* Subtle ambient occlusion shadow on the screw thread where it enters the socket mouth */}
-          <div
-            className="pointer-events-none absolute"
-            style={{
-              left: '31%',
-              width: '38%',
-              bottom: '6%',
-              height: '18%',
-              background:
-                'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.38) 55%, rgba(0,0,0,0.75) 100%)',
-            }}
+          <BulbGraphic
+            bulbType={installedSpec.type}
+            brightness={brightness}
+            isBlown={effectiveIsBlown}
+            className="h-full w-full transition-all duration-300"
           />
 
           {effectiveIsBlown && (
@@ -276,32 +215,17 @@ export const SocketNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, 
         </div>
       )}
 
-      {/* LAYER 3 (zIndex: 30): Socket Front Lip Overlay (occludes lower bulb screw threads inside the socket) */}
+      {/* LAYER 3 (zIndex: 30): Socket Front Collar Overlay (wraps in front of bulb screw threads) */}
       {installedSpec && (
         <div
           className="pointer-events-none absolute inset-0 select-none"
           style={{ zIndex: 30 }}
         >
-          <img
-            src="/assets/socket.png"
-            alt=""
-            aria-hidden="true"
-            width={SOCKET_NODE_SIZE.width}
-            height={SOCKET_NODE_SIZE.height}
-            draggable={false}
-            className="pointer-events-none block h-full w-full select-none object-contain"
-            style={{
-              clipPath: SOCKET_FRONT_LIP_CLIP_PATH,
-            }}
-          />
+          <E27SocketGraphic layer="front-lip" hasBulb={true} className="block h-full w-full" />
         </div>
       )}
 
-      {/* 
-        ELECTRICAL HANDLES (zIndex: 40): 
-        Only the SocketNode has wire connection handles, located at the bottom brass screws.
-        For LED bulbs (semiconductor diodes), p1 is Anode (+) and p2 is Cathode (-).
-      */}
+      {/* ELECTRICAL HANDLES (zIndex: 40) */}
       <Handle
         type="source"
         position={Position.Bottom}
@@ -405,44 +329,62 @@ export const SocketNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data, 
             </div>
           </div>
 
-          <p className="mt-1.5 text-[10px] leading-snug text-slate-400">
-            {installedSpec
-              ? isIndonesian
-                ? 'Tekan tombol "Lepas" untuk melepas lampu dari fiting.'
-                : 'Click "Unscrew" to detach the bulb back into canvas.'
-              : isIndonesian
-              ? 'Seret lampu ulir ke atas fiting ini untuk memasangnya.'
-              : 'Drag a screw-base bulb onto this socket to install it.'}
-          </p>
-
-          {installedSpec && (
-            <div className="mt-2 flex gap-1.5">
-              {effectiveIsBlown && (
+          {!installedSpec ? (
+            <div className="mt-2 space-y-1.5">
+              <p className="text-[10px] leading-snug text-slate-400">
+                {isIndonesian
+                  ? 'Pasang lampu ulir cepat (1 klik) atau seret lampu ke atas fiting:'
+                  : 'Quick-install a screw bulb (1 tap) or drag one onto this socket:'}
+              </p>
+              <div className="grid grid-cols-3 gap-1">
+                {E27_QUICK_BULBS.map((item) => (
+                  <button
+                    key={item.type}
+                    type="button"
+                    onClick={() => quickInstallBulbInSocket(id, item.type)}
+                    className="flex cursor-pointer items-center justify-center gap-0.5 rounded-lg bg-electric-600 hover:bg-electric-700 px-1.5 py-1.5 text-[10px] font-bold text-white transition-colors active:scale-95"
+                  >
+                    <Plus className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    <span className="truncate">{isIndonesian ? item.labelId : item.labelEn}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <>
+              <p className="mt-1.5 text-[10px] leading-snug text-slate-400">
+                {isIndonesian
+                  ? 'Tekan tombol "Lepas Lampu" untuk melepas lampu dari fiting.'
+                  : 'Click "Unscrew Bulb" to detach the bulb back onto the canvas.'}
+              </p>
+              <div className="mt-2 flex gap-1.5">
+                {effectiveIsBlown && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (installedBulbObj) {
+                        updateComponentData(id, {
+                          installedBulb: { ...installedBulbObj, isBlown: false },
+                          isBlown: false,
+                        });
+                      } else {
+                        updateComponentData(id, { isBlown: false });
+                      }
+                    }}
+                    className="flex flex-1 cursor-pointer items-center justify-center gap-1 rounded-lg bg-danger-600 hover:bg-danger-700 px-2 py-1.5 text-[10px] font-bold text-white transition-colors active:scale-95"
+                  >
+                    <RotateCcw className="h-3 w-3" aria-hidden="true" /> {isIndonesian ? 'Reset' : 'Reset'}
+                  </button>
+                )}
                 <button
                   type="button"
-                  onClick={() => {
-                    if (installedBulbObj) {
-                      updateComponentData(id, {
-                        installedBulb: { ...installedBulbObj, isBlown: false },
-                        isBlown: false,
-                      });
-                    } else {
-                      updateComponentData(id, { isBlown: false });
-                    }
-                  }}
-                  className="flex flex-1 cursor-pointer items-center justify-center gap-1 rounded-lg bg-danger-600 hover:bg-danger-700 px-2 py-1.5 text-[10px] font-bold text-white transition-colors active:scale-95"
+                  onClick={() => detachBulbFromSocket(id)}
+                  className="flex flex-1 cursor-pointer items-center justify-center gap-1 rounded-lg bg-electric-600 hover:bg-electric-700 px-2 py-1.5 text-[10px] font-bold text-white transition-colors active:scale-95"
                 >
-                  <RotateCcw className="h-3 w-3" aria-hidden="true" /> {isIndonesian ? 'Reset' : 'Reset'}
+                  <Unplug className="h-3 w-3" aria-hidden="true" /> {isIndonesian ? 'Lepas Lampu' : 'Unscrew Bulb'}
                 </button>
-              )}
-              <button
-                type="button"
-                onClick={() => detachBulbFromSocket(id)}
-                className="flex flex-1 cursor-pointer items-center justify-center gap-1 rounded-lg bg-electric-600 hover:bg-electric-700 px-2 py-1.5 text-[10px] font-bold text-white transition-colors active:scale-95"
-              >
-                <Unplug className="h-3 w-3" aria-hidden="true" /> {isIndonesian ? 'Lepas Lampu' : 'Unscrew Bulb'}
-              </button>
-            </div>
+              </div>
+            </>
           )}
         </NodeInfoPopover>
       )}

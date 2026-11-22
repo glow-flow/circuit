@@ -1,15 +1,16 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
 import { Gauge } from 'lucide-react';
 import { CircuitElementData } from '../../../types/circuit';
 import { useCircuitStore } from '../../../store/useCircuitStore';
 import { TRANSLATIONS } from '../../../i18n/translations';
 import { NodeInfoPopover } from './NodeInfoPopover';
+import { VoltmeterGraphic } from '../../ui/common/LabComponentArt';
 
 /**
  * Digital Voltmeter Node (`type: 'voltmeter'`).
- * Renders the physical `/assets/voltmeter.png` benchtop instrument with live digital
- * LCD readout overlaid on the recessed glass screen and bottom binding post terminals.
+ * Renders the unified pure-SVG benchtop instrument with live digital LCD readout
+ * and crimson (+) / slate (-) binding post terminals.
  *
  * Time Complexity: O(1) render.
  */
@@ -18,7 +19,6 @@ export const VoltmeterNode: React.FC<NodeProps<CircuitElementData>> = ({ id, sel
   const edges = useCircuitStore((state) => state.edges);
   const language = useCircuitStore((state) => state.language);
   const t = TRANSLATIONS[language].nodes.voltmeter;
-  const [hasImageError, setHasImageError] = useState(false);
 
   const wireP1 = edges.find(
     (e) =>
@@ -63,30 +63,7 @@ export const VoltmeterNode: React.FC<NodeProps<CircuitElementData>> = ({ id, sel
             : ''
         }`}
       >
-        {!hasImageError ? (
-          <img
-            src="/assets/voltmeter.png"
-            alt={t.title}
-            width={96}
-            height={112}
-            draggable={false}
-            onError={() => setHasImageError(true)}
-            className="w-full h-full object-contain pointer-events-none select-none drop-shadow-md"
-          />
-        ) : (
-          <div className="w-full h-full rounded-xl bg-void-900 border border-control" />
-        )}
-
-        {/* Fixed bright inks over dark photorealistic PNG LCD window (never invert in Light Mode) */}
-        <div className="absolute top-[13%] left-[13%] right-[13%] h-[40%] flex flex-col items-center justify-center pointer-events-none px-1 tabular-nums">
-          <span className="text-[7px] font-mono font-semibold text-[#94A3B8] uppercase tracking-widest leading-none mb-0.5">
-            DC VOLT
-          </span>
-          <div className="text-[13px] font-mono font-bold text-[#7DD3FC] tracking-tight leading-none">
-            {displayVoltage}
-            <span className="text-[9px] text-[#38BDF8] ml-0.5">V</span>
-          </div>
-        </div>
+        <VoltmeterGraphic displayValue={displayVoltage} className="w-full h-full drop-shadow-md" />
       </div>
 
       {/* Probe 1 (+) Handle aligned over Left Red Binding Post */}

@@ -4,6 +4,7 @@ import {
   Sliders,
   Scissors,
   Pin,
+  Undo2,
 } from 'lucide-react';
 import { Header } from './components/ui/Header';
 import { SidebarPalette } from './components/ui/SidebarPalette';
@@ -52,6 +53,8 @@ export const App: React.FC = () => {
   const disconnectNodeWires = useCircuitStore((state) => state.disconnectNodeWires);
   const disconnectAndResetMcb = useCircuitStore((state) => state.disconnectAndResetMcb);
   const splitEdgeAtMidpoint = useCircuitStore((state) => state.splitEdgeAtMidpoint);
+  const canUndo = useCircuitStore((state) => state.canUndo);
+  const undo = useCircuitStore((state) => state.undo);
   const language = useCircuitStore((state) => state.language);
   const worldMode = useCircuitStore((state) => state.worldMode);
   const theme = useCircuitStore((state) => state.theme);
@@ -260,6 +263,35 @@ export const App: React.FC = () => {
     }
   }, [applyHashDeepLink, loadPreset, isId]);
 
+  // Global Ctrl+Z / Cmd+Z keyboard shortcut for instant workspace undo
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleUndoKeyDown = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey) return;
+      if (e.key.toLowerCase() !== 'z') return;
+
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      const storeState = useCircuitStore.getState();
+      if (storeState.activeModal !== null || !storeState.canUndo) return;
+
+      e.preventDefault();
+      storeState.undo();
+    };
+
+    window.addEventListener('keydown', handleUndoKeyDown);
+    return () => window.removeEventListener('keydown', handleUndoKeyDown);
+  }, []);
+
   // Register mobile bottom-sheet controller so driver.js can open/close drawers during the tour
   useEffect(() => {
     registerTourMobileSheetController((nextSheet) => {
@@ -359,6 +391,21 @@ export const App: React.FC = () => {
           <PhysicsLensDock
             isHidden={activeMobileSheet !== 'none' || isInteractiveCoachOpen}
           />
+
+          {/* Mobile (< 640px) Thumb-Reachable 1-Tap Undo Pill, clear of zoom Controls & Lensa chip */}
+          {canUndo && activeMobileSheet === 'none' && !isInteractiveCoachOpen && (
+            <button
+              type="button"
+              onClick={undo}
+              aria-label={isId ? 'Batalkan langkah terakhir' : 'Undo last action'}
+              className={`sm:hidden absolute ${
+                worldMode === 'outside' ? 'bottom-[64px] left-3' : 'bottom-3 left-14'
+              } z-30 flex items-center gap-1.5 min-h-[44px] px-3 rounded-xl bg-void-900 hover:bg-void-850 border border-control text-ink text-xs font-bold shadow-lg active:scale-95 transition-colors cursor-pointer`}
+            >
+              <Undo2 className="w-4 h-4 text-electric-400 shrink-0" aria-hidden="true" />
+              <span>{isId ? 'Urungkan' : 'Undo'}</span>
+            </button>
+          )}
 
           {/* Floating Bottom-Right Short-Circuit 0V Battery Pop-Up & Visual Explainer */}
           <ShortCircuitZeroVoltPopup />

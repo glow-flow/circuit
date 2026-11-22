@@ -6,11 +6,12 @@ import { useCircuitStore } from '../../../store/useCircuitStore';
 import { TRANSLATIONS } from '../../../i18n/translations';
 import { computeEffectiveBatteryVoltage } from '../../../physics/batterySoC';
 import { NodeInfoPopover } from './NodeInfoPopover';
+import { BatteryAAGraphic } from '../../ui/common/LabComponentArt';
 
 /**
  * Individual 1.5V AA Battery Node.
- * Clean, direct asset-first presentation (like BulbNode):
- * - Canvas shows the realistic AA battery cell directly with top (+) and bottom (-) terminals.
+ * Clean, direct vector-instrument presentation:
+ * - Canvas shows the unified SVG AA battery cell directly with top (+) and bottom (-) terminals.
  * - Detailed telemetry, State of Charge (SoC), and controls appear inside NodeInfoPopover on select.
  *
  * Time Complexity: O(1) render.
@@ -59,11 +60,11 @@ export const BatteryNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data,
         id="pos"
         className="!bg-red-500 !border-2 !border-white !w-3.5 !h-3.5 !-top-1.5 z-20 shadow-sm"
       />
-      <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-[9px] font-mono font-bold text-red-400 pointer-events-none select-none">
+      <div className="absolute -top-6 left-1/2 -translate-x-1/2 px-1 rounded bg-void-950/90 border border-red-500/40 text-[9px] font-mono font-bold text-red-400 pointer-events-none select-none leading-tight">
         +
       </div>
 
-      {/* Main Artwork Frame: Crisp Direct Asset */}
+      {/* Main Artwork Frame: Unified Pure-SVG Hardware Instrument */}
       <div
         className={`relative flex h-full w-full items-center justify-center rounded-lg outline outline-1 outline-offset-2 transition-all duration-150 ${
           isShorted
@@ -74,16 +75,7 @@ export const BatteryNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data,
         }`}
         style={{ zIndex: 10 }}
       >
-        <img
-          src="/assets/processed/battery-aa.png"
-          alt="1.5V AA Battery"
-          width={48}
-          height={136}
-          draggable={false}
-          className={`h-full w-full object-contain pointer-events-none select-none drop-shadow-md transition-opacity duration-300 ${
-            isDead ? 'opacity-40 grayscale' : 'opacity-95'
-          }`}
-        />
+        <BatteryAAGraphic isDead={isDead} className="h-full w-full drop-shadow-md" />
 
         {/* Dead Battery Indicator Badge */}
         {isDead && (
@@ -105,7 +97,7 @@ export const BatteryNode: React.FC<NodeProps<CircuitElementData>> = ({ id, data,
       </div>
 
       {/* Negative Terminal Handle (-) at Bottom */}
-      <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[9px] font-mono font-bold text-slate-400 pointer-events-none select-none">
+      <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 px-1 rounded bg-void-950/90 border border-control/60 text-[9px] font-mono font-bold text-slate-300 pointer-events-none select-none leading-tight">
         -
       </div>
       <Handle

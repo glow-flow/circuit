@@ -10,47 +10,12 @@ import {
 import { useCircuitStore } from '../../../store/useCircuitStore';
 import { TRANSLATIONS } from '../../../i18n/translations';
 import { NodeInfoPopover } from './NodeInfoPopover';
-
-/**
- * SVG Metallic Coil Spring Overlay for Battery Holder Chambers.
- * Animates with `transform: scaleY(0.6)` when a battery is inserted into the slot.
- */
-const SpringOverlay: React.FC<{
-  isCompressed: boolean;
-  anchorOrigin: 'top' | 'bottom';
-  className?: string;
-}> = ({ isCompressed, anchorOrigin, className = '' }) => (
-  <svg
-    viewBox="0 0 40 36"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    className={`pointer-events-none transition-transform duration-300 ease-out ${className}`}
-    style={{
-      transform: isCompressed ? 'scaleY(0.6)' : 'scaleY(1)',
-      transformOrigin: anchorOrigin === 'bottom' ? 'center bottom' : 'center top',
-    }}
-  >
-    <path
-      d="M5 3H35L7 10L33 17L9 24L31 31L12 34H28"
-      stroke="#E2E8F0"
-      strokeWidth="3.2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M5 3H35L7 10L33 17L9 24L31 31L12 34H28"
-      stroke="#94A3B8"
-      strokeWidth="1.4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
+import { BatteryHolderGraphic } from '../../ui/common/LabComponentArt';
 
 /**
  * Dual AA Battery Holder Node (`type: 'battery-holder'`).
- * Clean, direct asset-first presentation (like SocketNode/BulbNode):
- * - Canvas shows the physical dual-slot holder directly with spring contacts and installed cells.
+ * Clean matte bakelite vector-instrument chassis:
+ * - Canvas shows the dual-slot lab holder directly with brass busbars, springs, and installed cells.
  * - Detailed telemetry, cell count controls, and SoC appear inside NodeInfoPopover on select.
  *
  * Time Complexity: O(1) render.
@@ -69,8 +34,6 @@ export const BatteryHolderNode: React.FC<NodeProps<CircuitElementData>> = ({
 
   const batteryCount = Math.min(2, Math.max(0, data.batteryCount ?? (data.hasBattery ? 2 : 0)));
   const hasBattery = batteryCount > 0;
-  const hasSlot1 = batteryCount >= 1;
-  const hasSlot2 = batteryCount >= 2;
 
   const charge = Math.max(0, Math.min(100, data.currentCharge ?? 100));
   const computedTelemetry = computeSeriesHolderTelemetry(
@@ -160,11 +123,12 @@ export const BatteryHolderNode: React.FC<NodeProps<CircuitElementData>> = ({
         id="pos"
         className="!bg-red-500 !border-2 !border-white !w-3.5 !h-3.5 !-top-1.5 z-30 shadow-sm"
       />
-      <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-[9px] font-mono font-bold text-red-400 pointer-events-none select-none whitespace-nowrap">
-        + ({outputVoltage.toFixed(1)}V)
+      {/* Offset voltage & polarity pill positioned clear of the top red handle */}
+      <div className="absolute -top-3.5 left-[calc(50%+14px)] px-1.5 py-0.5 rounded-md bg-void-950/95 border border-red-500/45 text-[9px] font-mono font-bold text-red-400 pointer-events-none select-none whitespace-nowrap shadow-sm tabular-nums z-20">
+        + {outputVoltage.toFixed(1)}V
       </div>
 
-      {/* Main Artwork Frame: Crisp Direct Asset */}
+      {/* Main Artwork Frame: Unified Pure-SVG Bakelite Battery Holder */}
       <div
         className={`relative flex h-full w-full items-center justify-center rounded-xl outline outline-1 outline-offset-2 transition-all duration-150 ${
           isShorted
@@ -177,75 +141,11 @@ export const BatteryHolderNode: React.FC<NodeProps<CircuitElementData>> = ({
         }`}
         style={{ zIndex: 10 }}
       >
-        {/* Base Battery Holder Chassis (tightly cropped 491x733) */}
-        <img
-          src="/assets/processed/battery-holder.png"
-          alt={t.title}
-          width={140}
-          height={206}
-          draggable={false}
-          className="w-full h-full object-fill pointer-events-none select-none drop-shadow-md"
+        <BatteryHolderGraphic
+          batteryCount={batteryCount}
+          isDead={isDead}
+          className="w-full h-full drop-shadow-md"
         />
-
-        {/* LEFT CHAMBER (SLOT 1) */}
-        {hasSlot1 && (
-          <div
-            className="absolute bg-[#32353B] rounded-xs pointer-events-none"
-            style={{
-              left: '14%',
-              top: '68%',
-              width: '31%',
-              height: '19%',
-            }}
-          />
-        )}
-
-        <SpringOverlay
-          isCompressed={hasSlot1}
-          anchorOrigin="bottom"
-          className="absolute left-[15.5%] bottom-[13%] w-[28%] h-[17%] z-10"
-        />
-
-        {hasSlot1 && (
-          <img
-            src="/assets/processed/battery-aa.png"
-            alt="AA Cell 1 (1.5V)"
-            width={45}
-            height={131}
-            draggable={false}
-            className="absolute left-[13.5%] top-[13.5%] w-[32%] h-[63.5%] object-fill z-20 pointer-events-none drop-shadow-sm transition-all duration-300"
-          />
-        )}
-
-        {/* RIGHT CHAMBER (SLOT 2) */}
-        {hasSlot2 && (
-          <div
-            className="absolute bg-[#32353B] rounded-xs pointer-events-none"
-            style={{
-              left: '55%',
-              top: '13%',
-              width: '31%',
-              height: '19%',
-            }}
-          />
-        )}
-
-        <SpringOverlay
-          isCompressed={hasSlot2}
-          anchorOrigin="top"
-          className="absolute left-[56.5%] top-[13%] w-[28%] h-[17%] z-10"
-        />
-
-        {hasSlot2 && (
-          <img
-            src="/assets/processed/battery-aa.png"
-            alt="AA Cell 2 (1.5V)"
-            width={45}
-            height={131}
-            draggable={false}
-            className="absolute left-[54.5%] top-[23%] w-[32%] h-[63.5%] object-fill rotate-180 z-20 pointer-events-none drop-shadow-sm transition-all duration-300"
-          />
-        )}
 
         {isDead && (
           <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-30 flex items-center justify-center">
@@ -257,7 +157,7 @@ export const BatteryHolderNode: React.FC<NodeProps<CircuitElementData>> = ({
       </div>
 
       {/* Negative Terminal Handle (-) at Bottom Lead */}
-      <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[9px] font-mono font-bold text-slate-400 pointer-events-none select-none">
+      <div className="absolute -bottom-3.5 left-[calc(50%+14px)] px-1.5 py-0.5 rounded-md bg-void-950/95 border border-control/60 text-[9px] font-mono font-bold text-slate-300 pointer-events-none select-none leading-tight shadow-sm z-20">
         -
       </div>
       <Handle
