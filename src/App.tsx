@@ -21,7 +21,7 @@ import { ShortCircuitZeroVoltPopup } from './components/ui/diagnostics/ShortCirc
 import { OutdoorGridReadyPopup } from './components/ui/diagnostics/OutdoorGridReadyPopup';
 import { useCircuitStore } from './store/useCircuitStore';
 import { TRANSLATIONS } from './i18n/translations';
-import { hasSeenTutorial } from './utils/presetStorage';
+import { hasSeenTutorial, markTutorialAsSeen } from './utils/presetStorage';
 import {
   loadWorkspaceAutosaveWithValidation,
   setupPageExitPersistence,
@@ -79,7 +79,8 @@ export const App: React.FC = () => {
 
   const [activeMobileSheet, setActiveMobileSheet] = useState<MobileSheetType>('none');
   const [bottomSheetSnap, setBottomSheetSnap] = useState<BottomSheetSnapState>('closed');
-  const [isWelcomeOpen, setIsWelcomeOpen] = useState<boolean>(() => !hasSeenTutorial());
+  const [isWelcomeOpen, setIsWelcomeOpen] = useState<boolean>(false);
+  const [showStarterHint, setShowStarterHint] = useState<boolean>(() => !hasSeenTutorial());
   const [isMobileHubOpen, setIsMobileHubOpen] = useState<boolean>(false);
   const [isInteractiveCoachOpen, setIsInteractiveCoachOpen] = useState<boolean>(false);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState<boolean>(false);
@@ -291,6 +292,8 @@ export const App: React.FC = () => {
       {/* Top Utility Header */}
       <Header
         onOpenWelcomeGuide={() => setIsWelcomeOpen(true)}
+        onOpenMobileHub={() => setIsMobileHubOpen(true)}
+        isMobileHubOpen={isMobileHubOpen}
         isSaveModalOpen={isSaveModalOpen}
         onSaveModalOpenChange={setIsSaveModalOpen}
       />
@@ -315,6 +318,32 @@ export const App: React.FC = () => {
             <CircuitCanvas />
           )}
           <OutdoorGenerationMiniHud />
+
+          {/* Non-blocking 1-line starter hint for first-time visitors */}
+          {showStarterHint &&
+            !selectedNode &&
+            !selectedEdgeId &&
+            activeMobileSheet === 'none' &&
+            !isInteractiveCoachOpen &&
+            worldMode === 'lab' && (
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 max-w-[94vw] flex items-center gap-2 px-3 py-1.5 rounded-xl bg-void-900 border border-control shadow-lg text-xs text-ink">
+                <span className=" whitespace-nowrap">
+                  {isId
+                    ? 'Ketuk saklar atau + Alat untuk merangkai.'
+                    : 'Tap the switch or + Parts to build.'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    markTutorialAsSeen();
+                    setShowStarterHint(false);
+                  }}
+                  className="min-h-[34px] px-2.5 py-1 rounded-lg bg-electric-600 hover:bg-electric-500 text-white text-[11px] font-bold shrink-0 cursor-pointer"
+                >
+                  {isId ? 'Oke' : 'Got it'}
+                </button>
+              </div>
+            )}
 
           {/* Interactive Hands-On Practice Coach Banner */}
           <InteractiveTutorialBanner
@@ -450,12 +479,10 @@ export const App: React.FC = () => {
         )}
       </div>
 
-      {/* Option A Mobile Bottom Navigation Dock (5 Labeled Tabs with Subtitles) */}
+      {/* Clean 4-Tab Mobile Bottom Navigation */}
       <MobileBottomNav
         activeMobileSheet={activeMobileSheet}
-        isMobileHubOpen={isMobileHubOpen}
         onOpenMobileSheet={openMobileSheet}
-        onOpenMobileHub={() => setIsMobileHubOpen(true)}
       />
 
       {/* Mobile Hub Navigation Drawer ("Menu Lab & Alat Praktikum") */}

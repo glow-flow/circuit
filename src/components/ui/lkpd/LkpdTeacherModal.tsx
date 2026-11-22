@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { BookOpenCheck, ClipboardCheck, FileSpreadsheet } from 'lucide-react';
+import { BookOpenCheck, FileSpreadsheet, GraduationCap } from 'lucide-react';
 import { LkpdModalTab, useCircuitStore } from '../../../store/useCircuitStore';
 import { useModalFocusTrap } from '../../../hooks/useModalKeyboardClose';
 import { decodeSubmissionInput } from '../../../lkpd/lkpdCodec';
@@ -23,6 +23,11 @@ export interface LkpdTeacherModalProps {
   onClose: () => void;
 }
 
+/**
+ * Unified Praktikum & Mode Guru modal.
+ * Merges the 5 Lab Missions and 5 Kurikulum Merdeka LKPD packets into one entry point:
+ * students land straight on the 5 tasks, while teachers toggle `Mode Guru` in the header.
+ */
 export const LkpdTeacherModal: React.FC<LkpdTeacherModalProps> = ({ isOpen, onClose }) => {
   const dialogRef = useRef<HTMLDivElement>(null);
   useModalFocusTrap(isOpen, dialogRef, onClose);
@@ -33,6 +38,7 @@ export const LkpdTeacherModal: React.FC<LkpdTeacherModalProps> = ({ isOpen, onCl
   const worldMode = useCircuitStore((state) => state.worldMode);
   const language = useCircuitStore((state) => state.language);
   const loadPreset = useCircuitStore((state) => state.loadPreset);
+  const setActiveModal = useCircuitStore((state) => state.setActiveModal);
   const notify = useCircuitStore((state) => state.notify);
 
   const activeLkpdAssignment = useCircuitStore((state) => state.activeLkpdAssignment);
@@ -58,7 +64,6 @@ export const LkpdTeacherModal: React.FC<LkpdTeacherModalProps> = ({ isOpen, onCl
     setSelectedMissionId(lkpdPreferredMissionId);
   }, [isOpen, lkpdPreferredTab, lkpdPreferredMissionId]);
 
-  // Auto-import student submission when teacher opens a #lkpd-sub= link directly.
   useEffect(() => {
     if (!isOpen || !pendingLkpdSubmissionToken) return;
     const decoded = decodeSubmissionInput(pendingLkpdSubmissionToken);
@@ -73,8 +78,8 @@ export const LkpdTeacherModal: React.FC<LkpdTeacherModalProps> = ({ isOpen, onCl
       setActiveTab('gradebook');
       notify(
         isId
-          ? `Bukti kumpul ${decoded.record.studentName} (${decoded.record.lkpdCode}: ${decoded.record.score}/100) ditambahkan ke rekap.`
-          : `Imported ${decoded.record.studentName} (${decoded.record.lkpdCode}: ${decoded.record.score}/100) into gradebook.`
+          ? `Bukti nilai ${decoded.record.studentName} (${decoded.record.lkpdCode}: ${decoded.record.score}/100) ditambahkan ke rekap.`
+          : `Imported ${decoded.record.studentName} (${decoded.record.lkpdCode}: ${decoded.record.score}/100).`
       );
     } else {
       setActiveTab('gradebook');
@@ -83,6 +88,12 @@ export const LkpdTeacherModal: React.FC<LkpdTeacherModalProps> = ({ isOpen, onCl
   }, [isOpen, pendingLkpdSubmissionToken, consumePendingLkpdSubmissionToken, notify, isId]);
 
   if (!isOpen) return null;
+
+  const isTeacherMode = activeTab === 'packets' || activeTab === 'gradebook';
+
+  const handleToggleTeacherMode = () => {
+    setActiveTab((prev) => (prev === 'student' ? 'packets' : 'student'));
+  };
 
   const handleImportRecords = (incoming: LkpdSubmissionRecord[]) => {
     let resultCounts = { addedCount: 0, updatedCount: 0 };
@@ -126,6 +137,22 @@ export const LkpdTeacherModal: React.FC<LkpdTeacherModalProps> = ({ isOpen, onCl
     onClose();
   };
 
+  const teacherToggleSlot = (
+    <button
+      type="button"
+      aria-pressed={isTeacherMode}
+      onClick={handleToggleTeacherMode}
+      className={`min-h-[44px] px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-colors active:scale-95 cursor-pointer shrink-0 ${
+        isTeacherMode
+          ? 'bg-electric-600 text-white border-electric-700'
+          : 'bg-void-900 hover:bg-void-850 border-control text-ink'
+      }`}
+    >
+      <GraduationCap className="w-4 h-4 shrink-0" aria-hidden="true" />
+      <span>{isTeacherMode ? (isId ? 'Mode Siswa' : 'Student View') : isId ? 'Mode Guru' : 'Teacher Mode'}</span>
+    </button>
+  );
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-scrim/75 p-0 sm:p-4 font-sans"
@@ -141,87 +168,75 @@ export const LkpdTeacherModal: React.FC<LkpdTeacherModalProps> = ({ isOpen, onCl
       >
         <LabModalHeader
           titleId="lkpd-teacher-modal-title"
-          eyebrow={isId ? 'KURIKULUM MERDEKA · FASE D' : 'KURIKULUM MERDEKA · GRADE 9'}
-          title={isId ? 'LKPD & Mode Guru' : 'LKPD & Teacher Mode'}
-          subtitle={
-            isId
-              ? '5 paket lembar kerja praktikum, nilai otomatis MNA, dan rekap kelas tanpa server'
-              : '5 lab worksheets, live MNA auto-grading, and zero-backend class gradebook'
+          eyebrow={
+            isTeacherMode
+              ? isId
+                ? 'KURIKULUM MERDEKA'
+                : 'GRADE 9 SCIENCE'
+              : isId
+              ? '5 TUGAS PRAKTIKUM'
+              : '5 LAB TASKS'
           }
+          title={
+            isTeacherMode
+              ? isId
+                ? 'Mode Guru'
+                : 'Teacher Hub'
+              : isId
+              ? 'Praktikum'
+              : 'Lab Tasks'
+          }
+          rightSlot={teacherToggleSlot}
           onClose={onClose}
-          closeLabel={isId ? 'Tutup dialog LKPD dan Mode Guru' : 'Close LKPD and Teacher Mode'}
+          closeLabel={isId ? 'Tutup dialog praktikum' : 'Close lab tasks'}
         />
 
-        {/* 3-Tab Navigation Bar */}
-        <div
-          role="tablist"
-          aria-label={isId ? 'Bagian LKPD dan Mode Guru' : 'LKPD and Teacher Mode sections'}
-          className="px-3 sm:px-5 py-2 bg-void-950 border-b border-ink/15 flex items-center gap-2 overflow-x-auto shrink-0"
-        >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'packets'}
-            onClick={() => setActiveTab('packets')}
-            className={`min-h-[44px] px-3.5 py-2 rounded-xl border text-xs font-semibold flex items-center gap-2 whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
-              activeTab === 'packets'
-                ? 'bg-electric-600 text-white border-electric-700 font-bold'
-                : 'bg-void-900 border-control text-ink hover:bg-void-850'
-            }`}
+        {/* Teacher-only 2-Tab Subbar (Side-by-side grid, zero clipping on 360px) */}
+        {isTeacherMode && (
+          <div
+            role="tablist"
+            aria-label={isId ? 'Alat Mode Guru' : 'Teacher Mode tools'}
+            className="px-3 sm:px-5 py-2 bg-void-950 border-b border-ink/15 grid grid-cols-2 gap-2 shrink-0"
           >
-            <BookOpenCheck className="w-4 h-4 shrink-0" aria-hidden="true" />
-            <span>{isId ? '5 Paket LKPD' : '5 LKPD Packets'}</span>
-          </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'packets'}
+              onClick={() => setActiveTab('packets')}
+              className={`min-h-[44px] px-2.5 py-2 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${
+                activeTab === 'packets'
+                  ? 'bg-electric-600 text-white border-electric-700 font-bold'
+                  : 'bg-void-900 border-control text-ink hover:bg-void-850'
+              }`}
+            >
+              <BookOpenCheck className="w-4 h-4 shrink-0" aria-hidden="true" />
+              <span>{isId ? 'Bagikan LKPD' : 'Share LKPD'}</span>
+            </button>
 
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'student'}
-            onClick={() => setActiveTab('student')}
-            className={`min-h-[44px] px-3.5 py-2 rounded-xl border text-xs font-semibold flex items-center gap-2 whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
-              activeTab === 'student'
-                ? 'bg-electric-600 text-white border-electric-700 font-bold'
-                : 'bg-void-900 border-control text-ink hover:bg-void-850'
-            }`}
-          >
-            <ClipboardCheck className="w-4 h-4 shrink-0" aria-hidden="true" />
-            <span>{isId ? 'Kumpul Siswa' : 'Student Submit'}</span>
-          </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'gradebook'}
+              onClick={() => setActiveTab('gradebook')}
+              className={`min-h-[44px] px-2.5 py-2 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer ${
+                activeTab === 'gradebook'
+                  ? 'bg-electric-600 text-white border-electric-700 font-bold'
+                  : 'bg-void-900 border-control text-ink hover:bg-void-850'
+              }`}
+            >
+              <FileSpreadsheet className="w-4 h-4 shrink-0" aria-hidden="true" />
+              <span>
+                {isId ? 'Rekap Nilai' : 'Gradebook'}
+                {gradebookRecords.length > 0 && (
+                  <span className="ml-1 font-mono tabular-nums">({gradebookRecords.length})</span>
+                )}
+              </span>
+            </button>
+          </div>
+        )}
 
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'gradebook'}
-            onClick={() => setActiveTab('gradebook')}
-            className={`min-h-[44px] px-3.5 py-2 rounded-xl border text-xs font-semibold flex items-center gap-2 whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
-              activeTab === 'gradebook'
-                ? 'bg-electric-600 text-white border-electric-700 font-bold'
-                : 'bg-void-900 border-control text-ink hover:bg-void-850'
-            }`}
-          >
-            <FileSpreadsheet className="w-4 h-4 shrink-0" aria-hidden="true" />
-            <span>
-              {isId ? 'Rekap Guru' : 'Gradebook'}
-              {gradebookRecords.length > 0 && (
-                <span className="ml-1.5 font-mono tabular-nums">({gradebookRecords.length})</span>
-              )}
-            </span>
-          </button>
-        </div>
-
-        {/* Scrollable Active Tab Content */}
-        <div role="tabpanel" className="flex-1 overflow-y-auto p-4 sm:p-5 bg-void-950">
-          {activeTab === 'packets' && (
-            <LkpdPacketsTab
-              selectedMissionId={selectedMissionId}
-              onSelectMissionId={setSelectedMissionId}
-              onStartStudentWorkflow={handleStartStudentWorkflow}
-              onLoadStarterToCanvas={handleLoadStarterWithAssignment}
-              onNotify={notify}
-              isId={isId}
-            />
-          )}
-
+        {/* Scrollable Active Content */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 bg-void-950">
           {activeTab === 'student' && (
             <LkpdStudentSubmitTab
               selectedMissionId={selectedMissionId}
@@ -234,6 +249,18 @@ export const LkpdTeacherModal: React.FC<LkpdTeacherModalProps> = ({ isOpen, onCl
               worldMode={worldMode}
               onCloseToCanvas={onClose}
               onLoadStarterToCanvas={(starter) => handleLoadStarterWithAssignment(starter)}
+              onOpenTroubleshooting={() => setActiveModal('troubleshooting')}
+              onNotify={notify}
+              isId={isId}
+            />
+          )}
+
+          {activeTab === 'packets' && (
+            <LkpdPacketsTab
+              selectedMissionId={selectedMissionId}
+              onSelectMissionId={setSelectedMissionId}
+              onStartStudentWorkflow={handleStartStudentWorkflow}
+              onLoadStarterToCanvas={handleLoadStarterWithAssignment}
               onNotify={notify}
               isId={isId}
             />

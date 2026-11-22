@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import ReactFlow, {
   Background,
   Controls,
@@ -9,6 +9,7 @@ import ReactFlow, {
   ConnectionMode,
   Edge,
   Node,
+  useNodesInitialized,
 } from 'reactflow';
 import { useCircuitStore } from '../../store/useCircuitStore';
 import { CircuitElementData, isOutdoorOnlyComponent } from '../../types/circuit';
@@ -71,15 +72,65 @@ const CircuitCanvasInner: React.FC<CircuitCanvasInnerProps> = ({ reactFlowWrappe
   }, [edges, labNodes]);
 
   const [reactFlowInstance, setReactFlowInstance] = React.useState<ReactFlowInstance | null>(null);
+  const nodesInitialized = useNodesInitialized({ includeHiddenNodes: false });
+  const hasFittedInitialRef = useRef(false);
+  const lastOrientationRef = useRef<'portrait' | 'landscape' | null>(null);
 
-  // Automatically frame the circuit whenever a built-in or custom preset is loaded
+  const frameCircuitInViewport = useCallback(
+    (duration = 260) => {
+      if (!reactFlowInstance || labNodes.length === 0) return;
+      const width =
+        reactFlowWrapper.current?.clientWidth ||
+        (typeof window !== 'undefined' ? window.innerWidth : 1024);
+      const isNarrowMobile = width < 640;
+
+      reactFlowInstance.fitView({
+        padding: isNarrowMobile ? 0.16 : 0.22,
+        minZoom: 0.12,
+        maxZoom: isNarrowMobile ? 0.92 : 1.15,
+        duration,
+      });
+    },
+    [reactFlowInstance, labNodes.length, reactFlowWrapper]
+  );
+
+  // Frame circuit reliably once ReactFlow finishes measuring custom node dimensions or preset changes.
   useEffect(() => {
-    if (!reactFlowInstance || fitViewTrigger === 0) return;
-    const timer = window.setTimeout(() => {
-      reactFlowInstance.fitView({ padding: 0.24, minZoom: 0.12, duration: 400 });
-    }, 60);
-    return () => window.clearTimeout(timer);
-  }, [fitViewTrigger, reactFlowInstance]);
+    if (!reactFlowInstance || !nodesInitialized || labNodes.length === 0) return;
+    const isInitialFit = !hasFittedInitialRef.current;
+    hasFittedInitialRef.current = true;
+
+    const rafId = window.requestAnimationFrame(() => {
+      frameCircuitInViewport(isInitialFit ? 0 : 280);
+    });
+    const settleTimer = window.setTimeout(() => {
+      frameCircuitInViewport(isInitialFit ? 180 : 240);
+    }, 220);
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+      window.clearTimeout(settleTimer);
+    };
+  }, [fitViewTrigger, nodesInitialized, reactFlowInstance, labNodes.length, frameCircuitInViewport]);
+
+  // Reframe automatically if a phone rotates between portrait and landscape.
+  useEffect(() => {
+    const wrapperEl = reactFlowWrapper.current;
+    if (!wrapperEl || typeof ResizeObserver === 'undefined') return;
+
+    const observer = new ResizeObserver((entries) => {
+      const rect = entries[0]?.contentRect;
+      if (!rect || rect.width === 0 || rect.height === 0) return;
+      const nextOrientation = rect.width < rect.height ? 'portrait' : 'landscape';
+      if (lastOrientationRef.current && lastOrientationRef.current !== nextOrientation) {
+        frameCircuitInViewport(200);
+      }
+      lastOrientationRef.current = nextOrientation;
+    });
+
+    observer.observe(wrapperEl);
+    return () => observer.disconnect();
+  }, [reactFlowWrapper, frameCircuitInViewport]);
 
   const nodeTypes = useMemo(
     () => ({

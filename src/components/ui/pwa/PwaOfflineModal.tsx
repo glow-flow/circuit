@@ -154,29 +154,28 @@ export const PwaOfflineModal: React.FC<PwaOfflineModalProps> = ({ isOpen, onClos
       >
         <LabModalHeader
           titleId="pwa-offline-modal-title"
-          eyebrow={isId ? 'APLIKASI LURING (PWA)' : 'OFFLINE APP (PWA)'}
-          title={isId ? 'Mode Offline & Pasang' : 'Offline Mode & Install'}
+          title={isId ? 'Pasang & Mode Offline' : 'Install & Offline Mode'}
           subtitle={
             isId
-              ? 'Jalankan praktikum fisika listrik tanpa koneksi internet di ruang kelas'
-              : 'Run classroom circuit experiments without an internet connection'
+              ? 'Gunakan Circuit Sandbox di kelas tanpa kuota internet'
+              : 'Use Circuit Sandbox in class without an internet connection'
           }
           onClose={onClose}
           closeLabel={isId ? 'Tutup dialog mode offline' : 'Close offline mode dialog'}
         />
 
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
-          {/* Primary Instrument Readout: Live Network & Verified CacheStorage Status */}
+          {/* Plain-Language Connection & Offline Readiness Strip */}
           <section
-            aria-label={isId ? 'Status jaringan dan memori offline' : 'Network and offline cache status'}
-            className="rounded-xl bg-void-950 border border-control p-4 space-y-4"
+            aria-label={isId ? 'Status koneksi dan kesiapan tanpa internet' : 'Connection and offline readiness'}
+            className="rounded-xl bg-void-950 border border-control p-4 space-y-3.5"
           >
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* Network Status Readout */}
+              {/* Network Status */}
               <div className="rounded-xl bg-void-900 border border-ink/15 p-3.5 space-y-1.5 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[11px] font-mono font-semibold text-slate-400">
-                    {isId ? 'STATUS JARINGAN' : 'NETWORK STATUS'}
+                  <span className="text-xs font-semibold text-slate-400">
+                    {isId ? 'Koneksi Internet' : 'Internet Connection'}
                   </span>
                   {isOnline ? (
                     <Wifi className="w-4 h-4 text-emerald-400 shrink-0" aria-hidden="true" />
@@ -186,38 +185,38 @@ export const PwaOfflineModal: React.FC<PwaOfflineModalProps> = ({ isOpen, onClos
                 </div>
 
                 <div
-                  className={`text-sm font-bold font-mono ${
+                  className={`text-sm font-bold ${
                     isOnline ? 'text-emerald-400' : 'text-amber-400'
                   }`}
                 >
                   {isOnline
                     ? isId
-                      ? 'TERHUBUNG (ONLINE)'
-                      : 'CONNECTED (ONLINE)'
+                      ? 'Terhubung (Online)'
+                      : 'Connected (Online)'
                     : isId
-                    ? 'TANPA INTERNET (OFFLINE)'
-                    : 'NO INTERNET (OFFLINE)'}
+                    ? 'Sedang Tanpa Internet'
+                    : 'Currently Offline'}
                 </div>
 
                 <p className="text-xs text-slate-300 leading-relaxed">
                   {isOnline
                     ? isId
-                      ? 'Koneksi aktif. Berkas aplikasi dapat disinkronkan ke memori perangkat.'
-                      : 'Connection active. App assets can sync to local device storage.'
+                      ? 'Aplikasi otomatis menyimpan berkas agar nanti tetap bisa dibuka tanpa sinyal.'
+                      : 'The app saves files automatically so you can open it later without signal.'
                     : isId
-                    ? 'Mode luring aktif. Simulasi fisika dan penyimpanan lokal tetap berfungsi.'
-                    : 'Offline mode active. Physics simulation and local saves continue working.'}
+                    ? 'Kamu tetap bisa merangkai dan menyimpan praktikum seperti biasa.'
+                    : 'You can keep building and saving circuits normally.'}
                 </p>
               </div>
 
-              {/* Verified CacheStorage & Service Worker Readout (Loading / Ready / Empty / Error) */}
+              {/* Offline Readiness (Loading / Ready / Empty / Error) */}
               <div
                 className="rounded-xl bg-void-900 border border-ink/15 p-3.5 space-y-1.5 min-w-0"
                 aria-live="polite"
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[11px] font-mono font-semibold text-slate-400">
-                    {isId ? 'MEMORI OFFLINE LOKAL' : 'LOCAL OFFLINE CACHE'}
+                  <span className="text-xs font-semibold text-slate-400">
+                    {isId ? 'Kesiapan Tanpa Internet' : 'Offline Readiness'}
                   </span>
                   {isChecking ? (
                     <Loader2
@@ -235,82 +234,79 @@ export const PwaOfflineModal: React.FC<PwaOfflineModalProps> = ({ isOpen, onClos
 
                 {isChecking ? (
                   <>
-                    <div className="text-sm font-bold font-mono text-electric-400">
-                      {isId ? 'MEMERIKSA CACHE...' : 'CHECKING CACHE...'}
+                    <div className="text-sm font-bold text-electric-400">
+                      {isId ? 'Memeriksa kesiapan...' : 'Checking readiness...'}
                     </div>
                     <p className="text-xs text-slate-300 leading-relaxed">
                       {isId
-                        ? 'Membaca daftar berkas yang tersimpan di penyimpanan browser.'
-                        : 'Reading stored offline files from browser cache storage.'}
+                        ? 'Mengecek apakah berkas aplikasi sudah tersimpan di perangkat ini.'
+                        : 'Checking whether app files are saved on this device.'}
                     </p>
                   </>
                 ) : hasError ? (
                   <>
-                    <div className="text-sm font-bold font-mono text-red-400">
-                      {isId ? 'GAGAL MEMUAT CACHE' : 'CACHE CHECK FAILED'}
+                    <div className="text-sm font-bold text-red-400">
+                      {isId ? 'Gagal Memeriksa' : 'Check Failed'}
                     </div>
                     <p className="text-xs text-slate-300 leading-relaxed break-words">
                       {swErrorMessage ||
                         cacheErrorMessage ||
                         (isId
-                          ? 'Layanan offline mengalami kendala pada browser ini.'
-                          : 'Offline service encountered an error in this browser.')}
+                          ? 'Penyimpanan offline mengalami kendala pada browser ini.'
+                          : 'Offline storage encountered an error in this browser.')}
                     </p>
                   </>
                 ) : swStatus === 'unsupported' || cacheStatus === 'unsupported' ? (
                   <>
-                    <div className="text-sm font-bold font-mono text-amber-400">
-                      {isId ? 'BROWSER BELUM MENDUKUNG' : 'BROWSER UNSUPPORTED'}
+                    <div className="text-sm font-bold text-amber-400">
+                      {isId ? 'Browser Belum Mendukung' : 'Not Supported'}
                     </div>
                     <p className="text-xs text-slate-300 leading-relaxed">
                       {isId
-                        ? 'Gunakan Chrome, Edge, atau Safari versi terbaru pada koneksi HTTPS.'
-                        : 'Use a modern Chrome, Edge, or Safari browser over HTTPS.'}
+                        ? 'Buka di Chrome, Edge, atau Safari versi terbaru untuk mode offline.'
+                        : 'Open in modern Chrome, Edge, or Safari for offline support.'}
                     </p>
                   </>
                 ) : cacheStatus === 'ready' ? (
                   <>
-                    <div className="text-sm font-bold font-mono tabular-nums text-emerald-400">
-                      {isId
-                        ? `${cachedAssetCount} BERKAS TERSIMPAN`
-                        : `${cachedAssetCount} FILES CACHED`}
+                    <div className="text-sm font-bold text-emerald-400">
+                      {isId ? 'Siap Dipakai Tanpa Internet' : 'Ready for Offline Use'}
                     </div>
                     <p className="text-xs text-slate-300 leading-relaxed">
-                      {fontAssetCount > 0
-                        ? isId
-                          ? `Siap dipakai tanpa internet (+${fontAssetCount} berkas huruf).`
-                          : `Ready for offline use (+${fontAssetCount} font files).`
-                        : isId
-                        ? 'Berkas inti aplikasi tersimpan dan siap dipakai dalam mode pesawat.'
-                        : 'Core app files are stored and ready for airplane mode.'}
+                      {isId
+                        ? 'Semua simulasi, contoh, dan tugas praktikum sudah tersimpan di perangkat.'
+                        : 'All simulations, presets, and lab tasks are saved on this device.'}
                     </p>
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] font-mono tabular-nums text-slate-400">
-                      {cacheVersion && <span>Build {cacheVersion}</span>}
                       <span>
-                        {isId ? 'Diperiksa ' : 'Checked '}
-                        {formatCheckedTime(lastCheckedAtIso, isId)}
+                        {cachedAssetCount} {isId ? 'berkas tersimpan' : 'files saved'}
+                        {fontAssetCount > 0 ? ` (+${fontAssetCount} font)` : ''}
+                      </span>
+                      {cacheVersion && <span>· {cacheVersion}</span>}
+                      <span>
+                        · {formatCheckedTime(lastCheckedAtIso, isId)}
                       </span>
                     </div>
                   </>
                 ) : (
                   <>
-                    <div className="text-sm font-bold font-mono text-amber-400">
+                    <div className="text-sm font-bold text-amber-400">
                       {swStatus === 'dev-disabled'
                         ? isId
-                          ? 'MODE PENGEMBANGAN'
-                          : 'DEVELOPMENT MODE'
+                          ? 'Mode Uji Lokal'
+                          : 'Local Dev Mode'
                         : isId
-                        ? 'BELUM TERSIMPAN'
-                        : 'NOT CACHED YET'}
+                        ? 'Belum Tersimpan'
+                        : 'Not Saved Yet'}
                     </div>
                     <p className="text-xs text-slate-300 leading-relaxed">
                       {swStatus === 'dev-disabled'
                         ? isId
-                          ? 'Service Worker aktif otomatis pada build produksi (npm run build).'
-                          : 'Service Worker activates automatically on production builds.'
+                          ? 'Penyimpanan offline aktif otomatis pada versi publikasi web.'
+                          : 'Offline caching activates automatically on production builds.'
                         : isId
-                        ? 'Cache lokal masih kosong. Tekan tombol periksa atau muat ulang saat online.'
-                        : 'Local cache is empty. Verify cache or reload once while online.'}
+                        ? 'Muat ulang halaman sekali saat ada internet agar siap dipakai offline.'
+                        : 'Reload once while online so files are saved for offline use.'}
                     </p>
                   </>
                 )}

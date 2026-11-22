@@ -734,7 +734,7 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   activeModal: null,
   setActiveModal: (modal) => set({ activeModal: modal }),
   activeLkpdAssignment: null,
-  lkpdPreferredTab: 'packets',
+  lkpdPreferredTab: 'student',
   lkpdPreferredMissionId: 'parallel-3-bulbs',
   pendingLkpdSubmissionToken: null,
   setActiveLkpdAssignment: (assignment) => set({ activeLkpdAssignment: assignment }),

@@ -11,7 +11,6 @@ import {
   Trees,
   FlaskConical,
   LayoutGrid,
-  Trophy,
   Activity,
   Share2,
   Sun,
@@ -23,6 +22,8 @@ import {
   SlidersHorizontal,
   Download,
   ClipboardCheck,
+  Menu,
+  UserCheck,
 } from 'lucide-react';
 import { useCircuitStore } from '../../store/useCircuitStore';
 import { TRANSLATIONS } from '../../i18n/translations';
@@ -36,9 +37,6 @@ const CreditsModal = React.lazy(() =>
 );
 const PresetGalleryModal = React.lazy(() =>
   import('./presets/PresetGalleryModal').then((m) => ({ default: m.PresetGalleryModal }))
-);
-const MissionModal = React.lazy(() =>
-  import('./missions/MissionModal').then((m) => ({ default: m.MissionModal }))
 );
 const AcademyModal = React.lazy(() =>
   import('./academy/AcademyModal').then((m) => ({ default: m.AcademyModal }))
@@ -80,25 +78,20 @@ const LkpdTeacherModal = React.lazy(() =>
 export interface HeaderProps {
   /** Opens the Teacher & Student Quick-Start Guide / Interactive Practice modal. */
   onOpenWelcomeGuide?: () => void;
+  /** Opens the compact Mobile & Tablet Menu & Settings sheet (< 1024px). */
+  onOpenMobileHub?: () => void;
+  /** Whether the Mobile & Tablet Menu sheet is open. */
+  isMobileHubOpen?: boolean;
   /** Controlled state for the Save Custom Circuit modal (accessible from Header & Mobile Menu). */
   isSaveModalOpen?: boolean;
   /** Setter for the Save Custom Circuit modal state. */
   onSaveModalOpenChange?: (isOpen: boolean) => void;
 }
 
-/**
- * Top Application Header (`Header.tsx`).
- *
- * Implements a crisp 3-zone Hardware-Instrument toolbar across all breakpoints:
- * - Mobile (< 768px): Brand Logo, compact World Switcher, Guide, and Safe Reset.
- * - Tablet (768px - 1023px): Adds App Title, Theme Toggle (`#tour-btn-theme`), and Language Switcher.
- * - Desktop (>= 1024px): Adds Akademi, Contoh (`#tour-dropdown-contoh`), accessible `Alat Lab` menu
- *   (Misi, Lab Korsleting, Microgrid, Tutor, Scope, Bagikan QR), and Simpan (`#tour-btn-save`).
- *
- * Time Complexity: O(1) render.
- */
 export const Header: React.FC<HeaderProps> = ({
   onOpenWelcomeGuide,
+  onOpenMobileHub,
+  isMobileHubOpen = false,
   isSaveModalOpen: externalSaveModalOpen,
   onSaveModalOpenChange,
 }) => {
@@ -117,6 +110,7 @@ export const Header: React.FC<HeaderProps> = ({
   const triggerWorldTransition = useCircuitStore((state) => state.triggerWorldTransition);
   const activeModal = useCircuitStore((state) => state.activeModal);
   const setActiveModal = useCircuitStore((state) => state.setActiveModal);
+  const openLkpdModal = useCircuitStore((state) => state.openLkpdModal);
   const theme = useCircuitStore((state) => state.theme);
   const toggleTheme = useCircuitStore((state) => state.toggleTheme);
 
@@ -256,23 +250,28 @@ export const Header: React.FC<HeaderProps> = ({
             </p>
           </div>
 
-          {/* Desktop Navigation (Akademi, Contoh, Alat Lab dropdown) */}
+          {/* Desktop Navigation (Tugas, Contoh, Akademi, Alat Lain) */}
           <nav
             aria-label={isId ? 'Navigasi Modul Utama' : 'Primary Module Navigation'}
             className="hidden lg:flex items-center gap-1.5 pl-1"
           >
             <button
               type="button"
-              onClick={() => setActiveModal('academy')}
+              onClick={() => openLkpdModal({ tab: 'student' })}
               className={`flex items-center gap-1.5 min-h-[40px] px-2.5 py-1.5 rounded-xl border text-xs font-semibold transition-colors active:scale-95 cursor-pointer ${
-                activeModal === 'academy'
-                  ? 'bg-emerald-600 text-white border-emerald-500'
-                  : 'bg-emerald-950/35 hover:bg-emerald-950/55 text-emerald-300 border-emerald-500/45'
+                activeModal === 'lkpd' || activeModal === 'missions'
+                  ? 'bg-electric-600 text-white border-electric-500'
+                  : 'bg-void-950 hover:bg-void-850 text-ink border-control'
               }`}
-              title={isId ? 'Akademi Kelistrikan & Kurikulum' : 'Electrical Academy & Curriculum'}
+              title={isId ? '5 Tugas Praktikum & LKPD' : '5 Lab Tasks & LKPD'}
             >
-              <GraduationCap className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-              <span>{isId ? 'Akademi' : 'Academy'}</span>
+              <ClipboardCheck
+                className={`w-3.5 h-3.5 shrink-0 ${
+                  activeModal === 'lkpd' || activeModal === 'missions' ? 'text-white' : 'text-amber-400'
+                }`}
+                aria-hidden="true"
+              />
+              <span>{isId ? 'Tugas' : 'Labs'}</span>
             </button>
 
             <button
@@ -288,14 +287,33 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <LayoutGrid
                 className={`w-3.5 h-3.5 shrink-0 ${
-                  activeModal === 'gallery' ? 'text-white' : 'text-amber-400'
+                  activeModal === 'gallery' ? 'text-white' : 'text-emerald-400'
                 }`}
                 aria-hidden="true"
               />
-              <span>{isId ? 'Contoh (5)' : 'Presets (5)'}</span>
+              <span>{isId ? 'Contoh' : 'Presets'}</span>
             </button>
 
-            {/* Accessible Dropdown Menu for Secondary Instruments & Labs */}
+            <button
+              type="button"
+              onClick={() => setActiveModal('academy')}
+              className={`flex items-center gap-1.5 min-h-[40px] px-2.5 py-1.5 rounded-xl border text-xs font-semibold transition-colors active:scale-95 cursor-pointer ${
+                activeModal === 'academy'
+                  ? 'bg-emerald-600 text-white border-emerald-500'
+                  : 'bg-void-950 hover:bg-void-850 text-ink border-control'
+              }`}
+              title={isId ? 'Akademi Kelistrikan & Kurikulum' : 'Electrical Academy & Curriculum'}
+            >
+              <GraduationCap
+                className={`w-3.5 h-3.5 shrink-0 ${
+                  activeModal === 'academy' ? 'text-white' : 'text-emerald-400'
+                }`}
+                aria-hidden="true"
+              />
+              <span>{isId ? 'Akademi' : 'Academy'}</span>
+            </button>
+
+            {/* Lean Dropdown Menu for Secondary Instruments & Teacher Tools */}
             <div ref={toolsMenuContainerRef} className="relative">
               <button
                 ref={toolsMenuButtonRef}
@@ -325,38 +343,24 @@ export const Header: React.FC<HeaderProps> = ({
                   id="lab-tools-menu"
                   role="menu"
                   aria-label={isId ? 'Menu Alat Laboratorium' : 'Laboratory Tools Menu'}
-                  className="absolute left-0 top-full mt-2 w-64 rounded-2xl bg-void-900 border border-control shadow-2xl p-1.5 z-50 space-y-1"
+                  className="absolute left-0 top-full mt-2 w-60 rounded-2xl bg-void-900 border border-control shadow-2xl p-1.5 z-50 space-y-1"
                 >
                   <button
                     type="button"
                     role="menuitem"
-                    onClick={() => handleOpenToolModal('missions')}
+                    onClick={() => {
+                      setIsToolsMenuOpen(false);
+                      openLkpdModal({ tab: 'packets' });
+                    }}
                     className="w-full min-h-[44px] px-3 py-2 rounded-xl flex items-center gap-2.5 text-left hover:bg-void-850 text-ink transition-colors cursor-pointer"
                   >
-                    <Trophy className="w-4 h-4 text-amber-400 shrink-0" aria-hidden="true" />
+                    <UserCheck className="w-4 h-4 text-amber-400 shrink-0" aria-hidden="true" />
                     <div className="min-w-0">
                       <div className="text-xs font-bold truncate">
-                        {isId ? 'Misi Praktikum' : 'Lab Missions'}
+                        {isId ? 'Mode Guru & LKPD' : 'Teacher Mode & LKPD'}
                       </div>
                       <div className="text-[10px] text-slate-400 truncate">
-                        {isId ? 'Tantangan terstruktur dinilai otomatis' : 'Auto-graded circuit tasks'}
-                      </div>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => handleOpenToolModal('lkpd')}
-                    className="w-full min-h-[44px] px-3 py-2 rounded-xl flex items-center gap-2.5 text-left hover:bg-void-850 text-ink transition-colors cursor-pointer"
-                  >
-                    <ClipboardCheck className="w-4 h-4 text-amber-400 shrink-0" aria-hidden="true" />
-                    <div className="min-w-0">
-                      <div className="text-xs font-bold truncate">
-                        {isId ? 'LKPD & Mode Guru' : 'LKPD & Teacher Mode'}
-                      </div>
-                      <div className="text-[10px] text-slate-400 truncate">
-                        {isId ? '5 paket LKPD, kode kumpul & CSV' : '5 LKPD packets, submit & CSV'}
+                        {isId ? 'Bagikan QR, cetak A4 & rekap CSV' : 'Share QR, print A4 & CSV grades'}
                       </div>
                     </div>
                   </button>
@@ -373,7 +377,7 @@ export const Header: React.FC<HeaderProps> = ({
                         {isId ? 'Oskiloskop Live' : 'Live Oscilloscope'}
                       </div>
                       <div className="text-[10px] text-slate-400 truncate">
-                        {isId ? 'Grafik V, I, P waktu nyata' : 'Real-time V, I, P waveforms'}
+                        {isId ? 'Grafik gelombang V, I, P' : 'Real-time V, I, P waveforms'}
                       </div>
                     </div>
                   </button>
@@ -387,10 +391,10 @@ export const Header: React.FC<HeaderProps> = ({
                     <Cpu className="w-4 h-4 text-electric-400 shrink-0" aria-hidden="true" />
                     <div className="min-w-0">
                       <div className="text-xs font-bold truncate">
-                        {isId ? 'Tutor Fisika KCL/KVL' : 'Physics Tutor'}
+                        {isId ? 'Tutor Langkah Rumus' : 'Formula Step Tutor'}
                       </div>
                       <div className="text-[10px] text-slate-400 truncate">
-                        {isId ? 'Langkah hitungan & bukti hukum Ohm' : 'Step-by-step circuit derivations'}
+                        {isId ? 'Hitungan Hukum Ohm & Kirchhoff' : 'Step-by-step circuit math'}
                       </div>
                     </div>
                   </button>
@@ -404,30 +408,32 @@ export const Header: React.FC<HeaderProps> = ({
                     <Wrench className="w-4 h-4 text-slate-300 shrink-0" aria-hidden="true" />
                     <div className="min-w-0">
                       <div className="text-xs font-bold truncate">
-                        {isId ? 'Lab Korsleting & Fault' : 'Troubleshooting & Fault Lab'}
+                        {isId ? 'Latihan Perbaikan' : 'Fault Repair Lab'}
                       </div>
                       <div className="text-[10px] text-slate-400 truncate">
-                        {isId ? '6 studi kasus perbaikan rangkaian' : '6 hands-on fault repair cases'}
+                        {isId ? '6 kasus cari gangguan kabel' : '6 fault diagnosis cases'}
                       </div>
                     </div>
                   </button>
 
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => handleOpenToolModal('renewable')}
-                    className="w-full min-h-[44px] px-3 py-2 rounded-xl flex items-center gap-2.5 text-left hover:bg-void-850 text-ink transition-colors cursor-pointer"
-                  >
-                    <Sun className="w-4 h-4 text-emerald-400 shrink-0" aria-hidden="true" />
-                    <div className="min-w-0">
-                      <div className="text-xs font-bold truncate">
-                        {isId ? 'Digital Twin Microgrid EBT' : 'Renewable Microgrid Twin'}
+                  {worldMode === 'outside' && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => handleOpenToolModal('renewable')}
+                      className="w-full min-h-[44px] px-3 py-2 rounded-xl flex items-center gap-2.5 text-left hover:bg-void-850 text-ink transition-colors cursor-pointer"
+                    >
+                      <Sun className="w-4 h-4 text-emerald-400 shrink-0" aria-hidden="true" />
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold truncate">
+                          {isId ? 'Panel Microgrid EBT' : 'Renewable Microgrid'}
+                        </div>
+                        <div className="text-[10px] text-slate-400 truncate">
+                          {isId ? 'Daya surya, angin & baterai' : 'Solar, wind & BESS balance'}
+                        </div>
                       </div>
-                      <div className="text-[10px] text-slate-400 truncate">
-                        {isId ? 'Simulasi daya surya, angin & BESS' : 'Solar, wind & BESS balance'}
-                      </div>
-                    </div>
-                  </button>
+                    </button>
+                  )}
 
                   <div className="h-px bg-ink/15 my-1" role="separator" />
 
@@ -440,10 +446,10 @@ export const Header: React.FC<HeaderProps> = ({
                     <Share2 className="w-4 h-4 text-electric-400 shrink-0" aria-hidden="true" />
                     <div className="min-w-0">
                       <div className="text-xs font-bold truncate">
-                        {isId ? 'Bagikan Link, QR & JSON' : 'Share Link, QR & JSON'}
+                        {isId ? 'Bagikan & QR' : 'Share & QR'}
                       </div>
                       <div className="text-[10px] text-slate-400 truncate">
-                        {isId ? 'Kirim karya ke siswa atau guru' : 'Export circuit for classroom'}
+                        {isId ? 'Tautan, QR & berkas .circuit' : 'Link, QR & .circuit file'}
                       </div>
                     </div>
                   </button>
@@ -457,10 +463,10 @@ export const Header: React.FC<HeaderProps> = ({
                     <Download className="w-4 h-4 text-emerald-400 shrink-0" aria-hidden="true" />
                     <div className="min-w-0">
                       <div className="text-xs font-bold truncate">
-                        {isId ? 'Mode Offline & Pasang' : 'Offline Mode & Install'}
+                        {isId ? 'Pasang & Mode Offline' : 'Install & Offline Mode'}
                       </div>
                       <div className="text-[10px] text-slate-400 truncate">
-                        {isId ? 'Cek cache luring & pasang PWA' : 'Check offline cache & install PWA'}
+                        {isId ? 'Pasang ke perangkat tanpa kuota' : 'Install for offline classroom'}
                       </div>
                     </div>
                   </button>
@@ -598,18 +604,36 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           </div>
 
-          {/* Labeled Safe Reset Button */}
+          {/* Safe Reset Button (Compact icon on <640px phones to preserve breathing room) */}
           <button
             id="tour-btn-reset"
             type="button"
             onClick={() => setIsResetDialogOpen(true)}
             aria-label={t.clearTitle || (isId ? 'Reset Rangkaian' : 'Reset Circuit')}
-            className="flex items-center justify-center gap-1 min-h-[40px] px-2 sm:px-2.5 py-1.5 rounded-xl bg-danger-950/60 hover:bg-danger-600 hover:text-white border border-danger-500/60 text-danger-300 text-[11px] sm:text-xs font-bold transition-colors active:scale-95 shrink-0 cursor-pointer"
+            className="flex items-center justify-center gap-1 min-w-[40px] min-h-[40px] px-2 sm:px-2.5 py-1.5 rounded-xl bg-danger-950/60 hover:bg-danger-600 hover:text-white border border-danger-500/60 text-danger-300 text-[11px] sm:text-xs font-bold transition-colors active:scale-95 shrink-0 cursor-pointer"
             title={t.clearTitle}
           >
-            <Trash2 className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-            <span>{isId ? 'Reset' : 'Reset'}</span>
+            <Trash2 className="w-4 h-4 sm:w-3.5 sm:h-3.5 shrink-0" aria-hidden="true" />
+            <span className="hidden sm:inline">{isId ? 'Reset' : 'Reset'}</span>
           </button>
+
+          {/* Compact Mobile & Tablet Menu Button (< 1024px) */}
+          {onOpenMobileHub && (
+            <button
+              id="tour-btn-menu"
+              type="button"
+              onClick={onOpenMobileHub}
+              aria-label={isId ? 'Buka menu dan pengaturan' : 'Open menu and settings'}
+              aria-expanded={isMobileHubOpen}
+              className={`lg:hidden flex items-center justify-center min-w-[40px] min-h-[40px] rounded-xl border transition-colors active:scale-95 shrink-0 cursor-pointer ${
+                isMobileHubOpen
+                  ? 'bg-electric-600 text-white border-electric-700'
+                  : 'bg-void-950 hover:bg-void-850 border-control text-ink'
+              }`}
+            >
+              <Menu className="w-4 h-4" aria-hidden="true" />
+            </button>
+          )}
         </div>
       </header>
 
@@ -649,8 +673,8 @@ export const Header: React.FC<HeaderProps> = ({
           <PresetGalleryModal isOpen={true} onClose={() => setActiveModal(null)} />
         )}
 
-        {activeModal === 'missions' && (
-          <MissionModal isOpen={true} onClose={() => setActiveModal(null)} />
+        {(activeModal === 'missions' || activeModal === 'lkpd') && (
+          <LkpdTeacherModal isOpen={true} onClose={() => setActiveModal(null)} />
         )}
 
         {activeModal === 'oscilloscope' && (
@@ -663,10 +687,6 @@ export const Header: React.FC<HeaderProps> = ({
 
         {activeModal === 'pwa' && (
           <PwaOfflineModal isOpen={true} onClose={() => setActiveModal(null)} />
-        )}
-
-        {activeModal === 'lkpd' && (
-          <LkpdTeacherModal isOpen={true} onClose={() => setActiveModal(null)} />
         )}
 
         {isCreditsModalOpen && (
