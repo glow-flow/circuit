@@ -28,7 +28,7 @@ export const Toast: React.FC = () => {
     <div
       role="alert"
       aria-live="assertive"
-      className="pointer-events-none fixed inset-x-0 top-16 md:top-auto md:bottom-8 z-[70] flex justify-center px-4 animate-in fade-in slide-in-from-top-2 md:slide-in-from-bottom-2 duration-200"
+      className="pointer-events-none fixed inset-x-0 top-16 z-[70] flex justify-center px-4 animate-in fade-in slide-in-from-top-2 duration-200"
     >
       <div className="node-info-pop pointer-events-auto flex max-w-sm items-center gap-2.5 rounded-2xl border border-copper bg-void-900 px-3.5 py-2.5 text-xs font-medium text-ink shadow-2xl">
         <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400" aria-hidden="true" />

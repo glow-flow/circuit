@@ -8,7 +8,6 @@ import {
 } from 'lucide-react';
 import { useCircuitStore } from '../../../store/useCircuitStore';
 import { evaluateOutdoorGridReadiness } from '../../../physics/outdoorGridReadinessAdvisor';
-import { MascotAvatar } from '../common/MascotAvatar';
 import { useModalFocusTrap } from '../../../hooks/useModalKeyboardClose';
 import { LabModalHeader } from '../common/LabModalHeader';
 
@@ -73,46 +72,36 @@ export const OutdoorGridReadyPopup: React.FC = () => {
           role="status"
           aria-live="polite"
           onPointerDown={(e) => e.stopPropagation()}
-          className="absolute bottom-[128px] right-3 lg:bottom-5 lg:right-5 z-30 w-[min(90vw,312px)] pointer-events-auto"
+          className="absolute bottom-[114px] left-2 right-2 md:bottom-auto md:top-[58px] md:left-1/2 md:right-auto md:-translate-x-1/2 z-30 md:w-auto md:max-w-[94%] pointer-events-auto"
         >
-          <div className="relative rounded-2xl bg-void-900 border-2 border-emerald-500 shadow-2xl p-3 text-ink">
-            {/* Close Button */}
-            <button
-              type="button"
-              onClick={() => setIsDismissed(true)}
-              aria-label={isId ? 'Tutup notifikasi pembangkit siap' : 'Dismiss power ready popup'}
-              className="absolute top-2 right-2 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg bg-void-950 hover:bg-void-850 text-slate-300 hover:text-ink border border-control active:scale-95 transition-colors cursor-pointer"
-            >
-              <X className="w-3.5 h-3.5" aria-hidden="true" />
-            </button>
-
-            <div className="flex items-start gap-2.5 pr-8">
-              <div className="shrink-0 -mt-1">
-                <MascotAvatar mood="celebrate" size="sm" alt="Watt Celebrates" />
-              </div>
-
-              <div className="min-w-0 flex-1 space-y-1">
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-600 text-[9px] font-mono font-bold text-white uppercase tracking-wider">
-                  <Zap className="w-2.5 h-2.5" aria-hidden="true" />
+          <div className="rounded-2xl bg-void-900/95 backdrop-blur-md border border-emerald-500/80 shadow-xl px-2.5 py-2 md:py-1.5 text-ink flex flex-col md:flex-row md:items-center gap-2">
+            <div className="flex items-center justify-between gap-2 min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-600 text-[9px] font-mono font-bold text-white uppercase tracking-wider shrink-0">
+                  <Zap className="w-2.5 h-2.5 shrink-0" aria-hidden="true" />
                   {advisory.popupBadge}
                 </span>
-
-                <p className="text-xs font-bold text-ink leading-snug">
-                  {advisory.popupTitle}
-                </p>
-
-                <p className="text-[11px] text-slate-300 leading-snug">
-                  {advisory.popupSubtitle}
-                </p>
+                <span className="text-[11px] font-bold text-ink truncate">
+                  {isId ? 'Siap salur ke Lab' : 'Ready for Lab'}
+                </span>
               </div>
+
+              <button
+                type="button"
+                onClick={() => setIsDismissed(true)}
+                aria-label={isId ? 'Tutup notifikasi pembangkit siap' : 'Dismiss power ready popup'}
+                className="md:hidden min-w-[34px] min-h-[34px] flex items-center justify-center rounded-lg bg-void-950 hover:bg-void-850 text-slate-300 hover:text-ink border border-control active:scale-95 transition-colors cursor-pointer shrink-0"
+              >
+                <X className="w-3.5 h-3.5" aria-hidden="true" />
+              </button>
             </div>
 
-            {/* Action Row */}
-            <div className="mt-2.5 flex items-center gap-1.5">
+            {/* Compact Action Row */}
+            <div className="flex items-center gap-1.5 shrink-0">
               <button
                 type="button"
                 onClick={handleChannelToLab}
-                className="flex-1 min-h-[38px] px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center justify-center gap-1.5 active:scale-95 transition-colors cursor-pointer shadow-sm"
+                className="flex-1 md:flex-none min-h-[38px] md:min-h-[34px] px-2.5 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center justify-center gap-1.5 active:scale-95 transition-colors cursor-pointer shadow-sm whitespace-nowrap"
               >
                 <BatteryCharging className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                 <span className="truncate">{advisory.ctaLabel}</span>
@@ -121,9 +110,18 @@ export const OutdoorGridReadyPopup: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsFlowModalOpen(true)}
-                className="min-h-[38px] px-2.5 py-1.5 rounded-xl bg-void-950 hover:bg-void-850 border border-control text-ink font-semibold text-[11px] active:scale-95 transition-colors cursor-pointer shrink-0"
+                className="min-h-[38px] md:min-h-[34px] px-2.5 py-1 rounded-xl bg-void-950 hover:bg-void-850 border border-control text-ink font-semibold text-[11px] active:scale-95 transition-colors cursor-pointer shrink-0 whitespace-nowrap"
               >
                 {isId ? 'Alur?' : 'How?'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsDismissed(true)}
+                aria-label={isId ? 'Tutup notifikasi pembangkit siap' : 'Dismiss power ready popup'}
+                className="hidden md:flex min-w-[34px] min-h-[34px] items-center justify-center rounded-lg bg-void-950 hover:bg-void-850 text-slate-300 hover:text-ink border border-control active:scale-95 transition-colors cursor-pointer shrink-0"
+              >
+                <X className="w-3.5 h-3.5" aria-hidden="true" />
               </button>
             </div>
           </div>

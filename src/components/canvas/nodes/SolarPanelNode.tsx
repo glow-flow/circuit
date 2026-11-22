@@ -92,16 +92,147 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
       }`}
       style={{ height: '156px' }}
     >
-      {/* Top Floating Control & Weather Pill */}
-      <div
-        className={`nodrag mb-1 w-full px-2 py-1.5 rounded-xl border shadow-lg flex flex-col gap-1 z-30 ${
-          isShorted
-            ? 'bg-danger-950 border-danger-500 text-danger-200'
-            : 'bg-void-950 border-control text-ink'
-        }`}
-      >
-        <div className="flex items-center justify-between gap-1 text-[10px] font-mono">
-          <span className="flex items-center gap-1 font-bold text-ink truncate">
+      {/* Top Floating Control & Status Pill: Compact when unselected, full controls when selected */}
+      {selected ? (
+        <div
+          className={`nodrag mb-1.5 w-[168px] px-2.5 py-2 rounded-xl border shadow-xl flex flex-col gap-1.5 z-30 ${
+            isShorted
+              ? 'bg-danger-950 border-danger-500 text-danger-200'
+              : 'bg-void-950/95 border-control text-ink'
+          }`}
+        >
+          <div className="flex items-center justify-between gap-1 text-[10px] font-mono">
+            <span className="flex items-center gap-1 font-bold text-ink truncate">
+              {isShorted ? (
+                <AlertTriangle className="w-3 h-3 text-danger-400 shrink-0" aria-hidden="true" />
+              ) : isSunny ? (
+                <Sun className="w-3 h-3 text-amber-400 shrink-0" aria-hidden="true" />
+              ) : !isDark ? (
+                <CloudSun className="w-3 h-3 text-sky-400 shrink-0" aria-hidden="true" />
+              ) : (
+                <Moon className="w-3 h-3 text-slate-400 shrink-0" aria-hidden="true" />
+              )}
+              <span className="truncate">{t.title}</span>
+            </span>
+            <span
+              className={`font-bold shrink-0 tabular-nums ${
+                isSunny
+                  ? 'text-amber-400'
+                  : !isDark
+                  ? 'text-electric-400'
+                  : 'text-slate-400'
+              }`}
+            >
+              {nominalVoltage.toFixed(1)}V
+              {current > 0.001 ? ` · ${powerWatts}W` : ''}
+            </span>
+          </div>
+
+          {/* Weather Presets (Terik 12V, Mendung 5V, Gelap 0V) */}
+          <div className="grid grid-cols-3 gap-1">
+            <button
+              type="button"
+              aria-pressed={sunlight >= 90}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={() => applyWeatherPreset(12.0, 100)}
+              className={`px-1 py-1 rounded-lg text-[9px] font-mono font-bold border transition-colors active:scale-95 cursor-pointer flex items-center justify-center gap-0.5 ${
+                sunlight >= 90
+                  ? 'bg-[#B45309] text-white border-amber-500'
+                  : 'bg-void-900 text-slate-300 border-control hover:text-ink'
+              }`}
+            >
+              <Sun className="w-2.5 h-2.5 shrink-0" aria-hidden="true" />
+              <span>12V</span>
+            </button>
+            <button
+              type="button"
+              aria-pressed={sunlight >= 30 && sunlight < 90}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={() => applyWeatherPreset(5.0, 42)}
+              className={`px-1 py-1 rounded-lg text-[9px] font-mono font-bold border transition-colors active:scale-95 cursor-pointer flex items-center justify-center gap-0.5 ${
+                sunlight >= 30 && sunlight < 90
+                  ? 'bg-electric-600 text-white border-electric-500'
+                  : 'bg-void-900 text-slate-300 border-control hover:text-ink'
+              }`}
+            >
+              <CloudSun className="w-2.5 h-2.5 shrink-0" aria-hidden="true" />
+              <span>5V</span>
+            </button>
+            <button
+              type="button"
+              aria-pressed={sunlight < 30}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={() => applyWeatherPreset(0.0, 0)}
+              className={`px-1 py-1 rounded-lg text-[9px] font-mono font-bold border transition-colors active:scale-95 cursor-pointer flex items-center justify-center gap-0.5 ${
+                sunlight < 30
+                  ? 'bg-slate-600 text-white border-control'
+                  : 'bg-void-900 text-slate-300 border-control hover:text-ink'
+              }`}
+            >
+              <Moon className="w-2.5 h-2.5 shrink-0" aria-hidden="true" />
+              <span>0V</span>
+            </button>
+          </div>
+
+          <input
+            type="range"
+            min="0"
+            max="100"
+            step="1"
+            value={baseSunlight}
+            onChange={handleSunlightChange}
+            onPointerDown={(e) => e.stopPropagation()}
+            className="w-full h-2 bg-void-900 rounded-lg cursor-pointer accent-amber-500"
+            aria-label={isId ? 'Intensitas Cahaya Panel Surya' : 'Solar Irradiance'}
+          />
+
+          {isOutdoor && (
+            <div className="flex items-center justify-between px-1.5 py-0.5 rounded bg-void-900 border border-control text-[8.5px] font-mono text-slate-300">
+              <span className="font-semibold text-amber-400">
+                {sunTimeOfDay === 'morning'
+                  ? isId ? 'Pagi (35°)' : 'Morning (35°)'
+                  : sunTimeOfDay === 'noon'
+                  ? isId ? 'Siang (75°)' : 'Noon (75°)'
+                  : isId ? 'Sore (35°)' : 'Afternoon (35°)'}
+              </span>
+              <span className="text-slate-400">
+                {data.isShaded
+                  ? isId
+                    ? 'Bayangan 15%'
+                    : 'Shaded 15%'
+                  : isId
+                  ? 'Terik Penuh'
+                  : 'Full Sun'}
+              </span>
+            </div>
+          )}
+
+          {data.isBlockingDiodeActive && (
+            <div className="px-1.5 py-0.5 rounded bg-emerald-950 border border-emerald-500/60 text-[8.5px] font-mono font-bold text-emerald-300 text-center flex items-center justify-center gap-1">
+              <ShieldCheck className="w-2.5 h-2.5 text-emerald-400 shrink-0" aria-hidden="true" />
+              <span>{isId ? 'Dioda Anti-Balik' : 'Blocking Diode'}</span>
+            </div>
+          )}
+
+          {data.isShaded && (
+            <div
+              id="solar-shadow-warning"
+              className="px-1.5 py-0.5 rounded bg-amber-950 border border-amber-500/70 text-[8.5px] font-mono font-bold text-amber-300 text-center flex items-center justify-center gap-1 shadow-sm"
+            >
+              <AlertTriangle className="w-2.5 h-2.5 text-amber-400 shrink-0" aria-hidden="true" />
+              <span>{isId ? 'Bayangan Tebing (15%)' : 'Cliff Shadow (15%)'}</span>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="mb-1.5 flex flex-col items-center gap-1 z-30 pointer-events-auto">
+          <div
+            className={`px-2.5 py-1 rounded-full border shadow-md flex items-center gap-1.5 text-[10px] font-mono font-bold whitespace-nowrap tabular-nums ${
+              isShorted
+                ? 'bg-danger-950 border-danger-500 text-danger-200'
+                : 'bg-void-950/95 border-control text-ink'
+            }`}
+          >
             {isShorted ? (
               <AlertTriangle className="w-3 h-3 text-danger-400 shrink-0" aria-hidden="true" />
             ) : isSunny ? (
@@ -111,122 +242,24 @@ export const SolarPanelNode: React.FC<NodeProps<CircuitElementData>> = ({
             ) : (
               <Moon className="w-3 h-3 text-slate-400 shrink-0" aria-hidden="true" />
             )}
-            <span className="truncate">{t.title}</span>
-          </span>
-          <span
-            className={`font-bold shrink-0 tabular-nums ${
-              isSunny
-                ? 'text-amber-400'
-                : !isDark
-                ? 'text-electric-400'
-                : 'text-slate-400'
-            }`}
-          >
-            {nominalVoltage.toFixed(1)}V
-            {current > 0.001 ? ` · ${powerWatts}W` : ''}
-          </span>
+            <span>{isId ? 'Surya' : 'Solar'}</span>
+            <span className={isSunny ? 'text-amber-400' : !isDark ? 'text-electric-400' : 'text-slate-400'}>
+              {nominalVoltage.toFixed(1)}V
+            </span>
+            {current > 0.001 && <span className="text-emerald-400">· {powerWatts}W</span>}
+          </div>
+
+          {data.isShaded && (
+            <div
+              id="solar-shadow-warning"
+              className="px-2 py-0.5 rounded-full bg-amber-950/95 border border-amber-500/70 text-[8.5px] font-mono font-bold text-amber-300 flex items-center gap-1 whitespace-nowrap shadow-sm"
+            >
+              <AlertTriangle className="w-2.5 h-2.5 text-amber-400 shrink-0" aria-hidden="true" />
+              <span>{isId ? 'Bayangan 15%' : 'Shaded 15%'}</span>
+            </div>
+          )}
         </div>
-
-        {/* Weather Presets (Terik 12V, Mendung 5V, Gelap 0V) */}
-        <div className="grid grid-cols-3 gap-1">
-          <button
-            type="button"
-            aria-pressed={sunlight >= 90}
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={() => applyWeatherPreset(12.0, 100)}
-            className={`px-1 py-0.5 rounded text-[9px] font-mono font-bold border transition-colors active:scale-95 cursor-pointer flex items-center justify-center gap-0.5 ${
-              sunlight >= 90
-                ? 'bg-[#B45309] text-white border-amber-500'
-                : 'bg-void-900 text-slate-300 border-control hover:text-ink'
-            }`}
-          >
-            <Sun className="w-2.5 h-2.5 shrink-0" aria-hidden="true" />
-            <span>12V</span>
-          </button>
-          <button
-            type="button"
-            aria-pressed={sunlight >= 30 && sunlight < 90}
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={() => applyWeatherPreset(5.0, 42)}
-            className={`px-1 py-0.5 rounded text-[9px] font-mono font-bold border transition-colors active:scale-95 cursor-pointer flex items-center justify-center gap-0.5 ${
-              sunlight >= 30 && sunlight < 90
-                ? 'bg-electric-600 text-white border-electric-500'
-                : 'bg-void-900 text-slate-300 border-control hover:text-ink'
-            }`}
-          >
-            <CloudSun className="w-2.5 h-2.5 shrink-0" aria-hidden="true" />
-            <span>5V</span>
-          </button>
-          <button
-            type="button"
-            aria-pressed={sunlight < 30}
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={() => applyWeatherPreset(0.0, 0)}
-            className={`px-1 py-0.5 rounded text-[9px] font-mono font-bold border transition-colors active:scale-95 cursor-pointer flex items-center justify-center gap-0.5 ${
-              sunlight < 30
-                ? 'bg-slate-600 text-white border-control'
-                : 'bg-void-900 text-slate-300 border-control hover:text-ink'
-            }`}
-          >
-            <Moon className="w-2.5 h-2.5 shrink-0" aria-hidden="true" />
-            <span>0V</span>
-          </button>
-        </div>
-
-        <input
-          type="range"
-          min="0"
-          max="100"
-          step="1"
-          value={baseSunlight}
-          onChange={handleSunlightChange}
-          onPointerDown={(e) => e.stopPropagation()}
-          className="w-full h-2 bg-void-900 rounded-lg cursor-pointer accent-amber-500"
-          aria-label={isId ? 'Intensitas Cahaya Panel Surya' : 'Solar Irradiance'}
-        />
-
-        {isOutdoor && (
-          <div className="flex items-center justify-between px-1.5 py-0.5 rounded bg-void-900 border border-control text-[8.5px] font-mono text-slate-300">
-            <span className="font-semibold text-amber-400">
-              {sunTimeOfDay === 'morning'
-                ? isId ? 'Pagi (35°)' : 'Morning (35°)'
-                : sunTimeOfDay === 'noon'
-                ? isId ? 'Siang (75°)' : 'Noon (75°)'
-                : isId ? 'Sore (35°)' : 'Afternoon (35°)'}
-            </span>
-            <span className="text-slate-400">
-              {data.isShaded
-                ? isId
-                  ? 'Bayangan 15%'
-                  : 'Shaded 15%'
-                : isId
-                ? 'Terik Penuh'
-                : 'Full Sun'}
-            </span>
-          </div>
-        )}
-
-        {data.isBlockingDiodeActive && (
-          <div className="px-1.5 py-0.5 rounded bg-emerald-950 border border-emerald-500/60 text-[8px] font-mono font-bold text-emerald-300 text-center flex items-center justify-center gap-1">
-            <ShieldCheck className="w-2.5 h-2.5 text-emerald-400 shrink-0" aria-hidden="true" />
-            <span>{isId ? 'Dioda Penahan Arus Balik' : 'Blocking Diode Active'}</span>
-          </div>
-        )}
-
-        {data.isShaded && (
-          <div
-            id="solar-shadow-warning"
-            className="px-1.5 py-0.5 rounded bg-amber-950 border border-amber-500/70 text-[8px] font-mono font-bold text-amber-300 text-center flex items-center justify-center gap-1 shadow-sm"
-          >
-            <AlertTriangle className="w-2.5 h-2.5 text-amber-400 shrink-0" aria-hidden="true" />
-            <span className="truncate">
-              {isId
-                ? 'Terhalang Bayangan Tebing - Daya 15%'
-                : 'Cliff Shadow - Power 15%'}
-            </span>
-          </div>
-        )}
-      </div>
+      )}
 
       {/* Physical Photovoltaic Panel + Ground Support Stand */}
       <div className="relative w-[136px] h-[82px] flex flex-col items-center justify-end pb-1 overflow-visible shrink-0">

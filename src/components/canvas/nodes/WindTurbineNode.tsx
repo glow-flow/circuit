@@ -67,77 +67,102 @@ export const WindTurbineNode: React.FC<NodeProps<CircuitElementData>> = memo(
         }`}
         style={{ height: '260px' }}
       >
-        {/* Top Floating Control & Voltage Pill */}
-        <div className="nodrag mb-1 w-full px-2 py-1.5 rounded-xl bg-void-950 border border-control shadow-lg text-ink flex flex-col gap-1 z-30">
-          <div className="flex items-center justify-between text-[10px] font-mono">
-            <span className="flex items-center gap-1 font-bold text-electric-400 truncate">
+        {/* Top Floating Control & Status Pill: Compact when unselected, full controls when selected */}
+        {selected ? (
+          <div className="nodrag mb-1.5 w-[176px] px-2.5 py-2 rounded-xl bg-void-950/95 border border-control shadow-xl text-ink flex flex-col gap-1.5 z-30">
+            <div className="flex items-center justify-between gap-1 text-[10px] font-mono">
+              <span className="flex items-center gap-1 font-bold text-electric-400 whitespace-nowrap">
+                <Wind className="w-3 h-3 text-electric-400 shrink-0" aria-hidden="true" />
+                <span>{isId ? 'Turbin Angin' : 'Wind Turbine'}</span>
+              </span>
+              <span className="flex items-center gap-0.5 font-bold text-amber-400 shrink-0 tabular-nums whitespace-nowrap">
+                <Zap className="w-2.5 h-2.5 text-amber-400" aria-hidden="true" />
+                {outputVoltage.toFixed(1)}V
+                {powerWatts > 0.01 ? ` · ${powerWatts.toFixed(1)}W` : ''}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                value={baseSpeed}
+                onChange={handleSpeedChange}
+                onPointerDown={(e) => e.stopPropagation()}
+                className="w-full h-2 bg-void-900 rounded-lg cursor-pointer accent-electric-500"
+                aria-label={isId ? 'Kecepatan Putaran Turbin Angin' : 'Wind Turbine Speed'}
+              />
+              <span className="text-[9px] font-mono font-bold text-electric-300 w-7 text-right shrink-0 tabular-nums">
+                {baseSpeed}%
+              </span>
+            </div>
+
+            {elevationBonus > 0 && (
+              <div
+                id="turbine-elevation-bonus"
+                className="px-1.5 py-0.5 rounded bg-cyan-950 border border-cyan-500/60 text-[8.5px] font-mono font-bold text-cyan-200 text-center flex items-center justify-center gap-1 whitespace-nowrap shadow-sm"
+              >
+                <Mountain className="w-2.5 h-2.5 text-cyan-400 shrink-0" aria-hidden="true" />
+                <span>
+                  {isId ? `Bukit +${elevationBonus}% RPM` : `Hilltop +${elevationBonus}% RPM`}
+                </span>
+              </div>
+            )}
+            {elevationBonus < 0 && (
+              <div
+                id="turbine-elevation-penalty"
+                className="px-1.5 py-0.5 rounded bg-void-900 border border-amber-500/50 text-[8.5px] font-mono font-bold text-amber-300 text-center flex items-center justify-center gap-1 whitespace-nowrap shadow-sm"
+              >
+                <TrendingDown className="w-2.5 h-2.5 text-amber-400 shrink-0" aria-hidden="true" />
+                <span>
+                  {isId ? `Lembah ${elevationBonus}% RPM` : `Valley ${elevationBonus}% RPM`}
+                </span>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between gap-1 text-[8.5px] font-mono text-slate-400 pt-1 border-t border-ink/15 whitespace-nowrap">
+              <span className="text-electric-400">AC→DC AVR</span>
+              {data.isBlockingDiodeActive ? (
+                <span className="text-emerald-400 font-bold flex items-center gap-0.5">
+                  <ShieldCheck className="w-2.5 h-2.5 text-emerald-400 shrink-0" aria-hidden="true" />
+                  {isId ? 'Anti-Balik' : 'Diode ON'}
+                </span>
+              ) : (
+                <span>Schottky</span>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="mb-1.5 flex flex-col items-center gap-1 z-30 pointer-events-auto">
+            <div className="px-2.5 py-1 rounded-full bg-void-950/95 border border-control shadow-md flex items-center gap-1.5 text-[10px] font-mono font-bold text-ink whitespace-nowrap tabular-nums">
               <Wind className="w-3 h-3 text-electric-400 shrink-0" aria-hidden="true" />
-              <span>{isId ? 'Turbin' : 'Turbine'}</span>
-            </span>
-            <span className="flex items-center gap-1 font-bold text-amber-400 shrink-0 tabular-nums">
-              <Zap className="w-2.5 h-2.5 text-amber-400" aria-hidden="true" />
-              {outputVoltage.toFixed(1)}V
-              {powerWatts > 0.01 ? ` · ${powerWatts.toFixed(1)}W` : ''}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <input
-              type="range"
-              min="0"
-              max="100"
-              step="1"
-              value={baseSpeed}
-              onChange={handleSpeedChange}
-              onPointerDown={(e) => e.stopPropagation()}
-              className="w-full h-2 bg-void-900 rounded-lg cursor-pointer accent-electric-500"
-              aria-label={isId ? 'Kecepatan Putaran Turbin Angin' : 'Wind Turbine Speed'}
-            />
-            <span className="text-[9px] font-mono font-bold text-electric-300 w-7 text-right shrink-0 tabular-nums">
-              {baseSpeed}%
-            </span>
-          </div>
-
-          {/* Orographic Wind Shear Elevation Badge */}
-          {elevationBonus > 0 && (
-            <div
-              id="turbine-elevation-bonus"
-              className="px-1.5 py-0.5 rounded bg-cyan-950 border border-cyan-500/60 text-[8px] font-mono font-bold text-cyan-200 text-center flex items-center justify-center gap-1 shadow-sm"
-            >
-              <Mountain className="w-2.5 h-2.5 text-cyan-400 shrink-0" aria-hidden="true" />
-              <span className="truncate">
-                {isId
-                  ? `Puncak Bukit +${elevationBonus}% RPM & Daya`
-                  : `Hilltop +${elevationBonus}% RPM & Power`}
-              </span>
+              <span>{isId ? 'Turbin' : 'Wind'}</span>
+              <span className="text-amber-400">{outputVoltage.toFixed(1)}V</span>
+              {powerWatts > 0.01 && <span className="text-emerald-400">· {powerWatts.toFixed(1)}W</span>}
             </div>
-          )}
-          {elevationBonus < 0 && (
-            <div
-              id="turbine-elevation-penalty"
-              className="px-1.5 py-0.5 rounded bg-void-900 border border-amber-500/50 text-[8px] font-mono font-bold text-amber-300 text-center flex items-center justify-center gap-1 shadow-sm"
-            >
-              <TrendingDown className="w-2.5 h-2.5 text-amber-400 shrink-0" aria-hidden="true" />
-              <span className="truncate">
-                {isId
-                  ? `Lembah ${elevationBonus}% RPM & Daya`
-                  : `Valley ${elevationBonus}% RPM & Power`}
-              </span>
-            </div>
-          )}
 
-          <div className="flex items-center justify-between text-[8px] font-mono text-slate-400 pt-0.5 border-t border-ink/15">
-            <span className="text-electric-400">AC→DC Rectifier</span>
-            {data.isBlockingDiodeActive ? (
-              <span className="text-emerald-400 font-bold flex items-center gap-0.5">
-                <ShieldCheck className="w-2.5 h-2.5 text-emerald-400 shrink-0" aria-hidden="true" />
-                {isId ? 'Anti-Arus Balik' : 'Diode Active'}
-              </span>
-            ) : (
-              <span>Schottky Diode</span>
+            {elevationBonus > 0 && (
+              <div
+                id="turbine-elevation-bonus"
+                className="px-2 py-0.5 rounded-full bg-cyan-950/95 border border-cyan-500/60 text-[8.5px] font-mono font-bold text-cyan-200 flex items-center gap-1 whitespace-nowrap shadow-sm"
+              >
+                <Mountain className="w-2.5 h-2.5 text-cyan-400 shrink-0" aria-hidden="true" />
+                <span>{isId ? `Bukit +${elevationBonus}%` : `Hill +${elevationBonus}%`}</span>
+              </div>
+            )}
+            {elevationBonus < 0 && (
+              <div
+                id="turbine-elevation-penalty"
+                className="px-2 py-0.5 rounded-full bg-void-950/95 border border-amber-500/50 text-[8.5px] font-mono font-bold text-amber-300 flex items-center gap-1 whitespace-nowrap shadow-sm"
+              >
+                <TrendingDown className="w-2.5 h-2.5 text-amber-400 shrink-0" aria-hidden="true" />
+                <span>{isId ? `Lembah ${elevationBonus}%` : `Valley ${elevationBonus}%`}</span>
+              </div>
             )}
           </div>
-        </div>
+        )}
 
         {/* Physical Wind Turbine Assembly: Mast Base Anchored at Bottom-0 */}
         <div className="relative w-[144px] h-[184px] flex items-end justify-center overflow-visible shrink-0">

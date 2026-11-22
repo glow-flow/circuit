@@ -226,11 +226,11 @@ const OutdoorSandboxInner: React.FC<OutdoorSandboxProps> = ({
           label: isId ? 'Siang (75° Zenith)' : 'Noon (75° Zenith)',
           sublabel: isId ? 'Radiasi surya maksimal 100%' : 'Peak 100% solar irradiance',
           coreClass:
-            'w-16 h-16 bg-gradient-to-tr from-yellow-300 via-amber-200 to-white shadow-[0_0_50px_rgba(253,224,71,0.95)]',
-          glowClass: 'w-40 h-40 bg-yellow-400/25 blur-2xl',
-          rayGradient: 'from-amber-200/40 via-yellow-300/10 to-transparent',
+            'w-16 h-16 bg-gradient-to-tr from-[#FACC15] via-[#FEF08A] to-[#FFFFFF] shadow-[0_0_50px_rgba(253,224,71,0.95)]',
+          glowClass: 'w-40 h-40 bg-[#FACC15]/25 blur-2xl',
+          rayGradient: 'from-[#FEF08A]/40 via-[#FDE047]/10 to-transparent',
           badgeClass:
-            'bg-[#0F172A]/90 border-amber-400/70 text-[#FEF08A]',
+            'bg-[#0F172A]/90 border-[#FBBF24]/70 text-[#FEF08A]',
           nextTime: 'afternoon' as const,
         };
       case 'afternoon':
@@ -242,11 +242,11 @@ const OutdoorSandboxInner: React.FC<OutdoorSandboxProps> = ({
           label: isId ? 'Sore (35° Barat)' : 'Afternoon (35° West)',
           sublabel: isId ? 'Bayangan tebing jatuh ke timur' : 'Cliff shadows cast eastward',
           coreClass:
-            'w-14 h-14 bg-gradient-to-tr from-orange-500 via-amber-400 to-yellow-200 shadow-[0_0_45px_rgba(249,115,22,0.9)]',
-          glowClass: 'w-36 h-36 bg-orange-500/30 blur-2xl',
-          rayGradient: 'from-orange-400/35 via-amber-500/10 to-transparent',
+            'w-14 h-14 bg-gradient-to-tr from-[#EA580C] via-[#F59E0B] to-[#FEF08A] shadow-[0_0_45px_rgba(249,115,22,0.9)]',
+          glowClass: 'w-36 h-36 bg-[#F97316]/30 blur-2xl',
+          rayGradient: 'from-[#FB923C]/35 via-[#F59E0B]/10 to-transparent',
           badgeClass:
-            'bg-[#0F172A]/90 border-orange-400/70 text-[#FED7AA]',
+            'bg-[#0F172A]/90 border-[#FB923C]/70 text-[#FED7AA]',
           nextTime: 'morning' as const,
         };
       case 'morning':
@@ -259,11 +259,11 @@ const OutdoorSandboxInner: React.FC<OutdoorSandboxProps> = ({
           label: isId ? 'Pagi (35° Timur)' : 'Morning (35° East)',
           sublabel: isId ? 'Bayangan tebing jatuh ke barat' : 'Cliff shadows cast westward',
           coreClass:
-            'w-14 h-14 bg-gradient-to-tr from-amber-400 via-yellow-300 to-orange-100 shadow-[0_0_45px_rgba(245,158,11,0.9)]',
-          glowClass: 'w-36 h-36 bg-amber-400/30 blur-2xl',
-          rayGradient: 'from-amber-300/35 via-yellow-400/10 to-transparent',
+            'w-14 h-14 bg-gradient-to-tr from-[#F59E0B] via-[#FDE047] to-[#FEF9C3] shadow-[0_0_45px_rgba(245,158,11,0.9)]',
+          glowClass: 'w-36 h-36 bg-[#FBBF24]/30 blur-2xl',
+          rayGradient: 'from-[#FCD34D]/35 via-[#FACC15]/10 to-transparent',
           badgeClass:
-            'bg-[#0F172A]/90 border-amber-400/70 text-[#FDE68A]',
+            'bg-[#0F172A]/90 border-[#FBBF24]/70 text-[#FDE68A]',
           nextTime: 'noon' as const,
         };
     }
@@ -921,18 +921,18 @@ const OutdoorSandboxInner: React.FC<OutdoorSandboxProps> = ({
           {/* ====================================================================
               LAYER 0.2 (z-[2]): Dynamic Atmospheric Sky Lighting based on time of day
              ==================================================================== */}
-          {/* Morning Dawn: warm amber-orange sunrise tint and eastern horizon flare */}
+          {/* Morning Dawn: fresh crisp sunrise glow without muddy haze */}
           <div
             className={`absolute inset-0 pointer-events-none z-[2] transition-opacity duration-700 ease-in-out ${
               sunTimeOfDay === 'morning' ? 'opacity-100' : 'opacity-0'
             }`}
           >
-            <div className="absolute inset-0 bg-gradient-to-b from-amber-950/30 via-orange-500/15 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-b from-sky-900/20 via-amber-400/10 to-transparent" />
             <div
               className="absolute inset-0"
               style={{
                 background:
-                  'radial-gradient(circle at 7% 18%, rgba(251, 191, 36, 0.4) 0%, rgba(245, 158, 11, 0.15) 35%, transparent 70%)',
+                  'radial-gradient(circle at 12% 18%, rgba(253, 224, 71, 0.36) 0%, rgba(251, 191, 36, 0.14) 34%, transparent 68%)',
               }}
             />
           </div>
@@ -1311,10 +1311,34 @@ const OutdoorSandboxInner: React.FC<OutdoorSandboxProps> = ({
         </div>
       )}
 
+      {/* Non-blocking empty-world guidance chip when Alam EBT has no generators yet */}
+      {!isTutorialActive && outdoorNodes.length === 0 && !isToolbarCollapsed && terrainBrush === 'cursor' && (
+        <div
+          onPointerDown={(e) => e.stopPropagation()}
+          className="absolute top-[64px] sm:top-[60px] left-1/2 -translate-x-1/2 z-30 max-w-[92vw] pointer-events-auto"
+        >
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-void-900/95 backdrop-blur-md border border-emerald-500/50 shadow-lg text-ink">
+            <span className="text-[11px] font-medium leading-snug">
+              {isId
+                ? 'Alam masih kosong. Pasang paket pembangkit instan:'
+                : 'No outdoor generators yet. Spawn a starter grid:'}
+            </span>
+            <button
+              type="button"
+              onClick={handleSpawnOutdoorPowerStation}
+              className="min-h-[34px] px-2.5 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold flex items-center gap-1 shrink-0 active:scale-95 transition-colors cursor-pointer"
+            >
+              <Zap className="w-3 h-3 shrink-0" aria-hidden="true" />
+              <span>{isId ? 'Pasang PLTS' : 'Spawn Grid'}</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {!isTutorialActive && (
         <div
           onPointerDown={(e) => e.stopPropagation()}
-          className={`absolute top-2 left-2 right-2 sm:left-1/2 sm:-translate-x-1/2 sm:w-auto z-40 flex items-center justify-center pointer-events-none transition-all duration-300 ${
+          className={`absolute top-2 left-2 right-2 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-auto z-40 flex items-center justify-center pointer-events-none transition-all duration-300 ${
             isToolbarCollapsed
               ? 'opacity-0 -translate-y-4 pointer-events-none scale-95'
               : 'opacity-100 pointer-events-auto translate-y-0 scale-100'
@@ -1322,15 +1346,15 @@ const OutdoorSandboxInner: React.FC<OutdoorSandboxProps> = ({
         >
           <div
             id="tour-outdoor-brushes"
-            className="w-full sm:w-auto flex flex-col gap-1.5 px-2 py-1 rounded-2xl bg-void-900/90 backdrop-blur-md border border-control shadow-xl"
+            className="w-full sm:w-auto max-w-full flex flex-col gap-1.5 px-1.5 sm:px-2 py-1 rounded-2xl bg-void-900/92 backdrop-blur-md border border-control shadow-xl overflow-hidden"
           >
-            {/* Single-Row Dock: [Rangkai | Tanah/Air] + [Waktu Surya] + [PLTS 12V] + [Hide] */}
-            <div className="flex items-center justify-between gap-1 sm:gap-1.5">
+            {/* Single-Row Dock: zero horizontal overflow at 360px phone width */}
+            <div className="flex items-center justify-between gap-1 sm:gap-1.5 min-w-0">
               <div className="flex items-center gap-0.5 bg-void-950 p-0.5 rounded-xl border border-ink/15 shrink-0">
                 <button
                   type="button"
                   onClick={() => setTerrainBrush('cursor')}
-                  className={`flex items-center gap-1 min-h-[44px] sm:min-h-[36px] px-2.5 py-1 rounded-lg text-xs sm:text-[11px] font-bold transition-colors active:scale-95 cursor-pointer ${
+                  className={`flex items-center gap-1 min-h-[40px] sm:min-h-[36px] px-1.5 sm:px-2.5 py-1 rounded-lg text-[10.5px] sm:text-[11px] font-bold transition-colors active:scale-95 cursor-pointer whitespace-nowrap ${
                     terrainBrush === 'cursor'
                       ? 'bg-electric-600 text-white shadow-sm'
                       : 'text-slate-300 hover:text-ink'
@@ -1349,14 +1373,15 @@ const OutdoorSandboxInner: React.FC<OutdoorSandboxProps> = ({
                       setTerrainBrush('cursor');
                     }
                   }}
-                  className={`flex items-center gap-1 min-h-[44px] sm:min-h-[36px] px-2.5 py-1 rounded-lg text-xs sm:text-[11px] font-bold transition-colors active:scale-95 cursor-pointer ${
+                  className={`flex items-center gap-1 min-h-[40px] sm:min-h-[36px] px-1.5 sm:px-2.5 py-1 rounded-lg text-[10.5px] sm:text-[11px] font-bold transition-colors active:scale-95 cursor-pointer whitespace-nowrap ${
                     terrainBrush !== 'cursor'
                       ? 'bg-[#B45309] text-white shadow-sm'
                       : 'text-slate-300 hover:text-ink'
                   }`}
                 >
                   <Layers className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                  <span>{isId ? 'Tanah/Air' : 'Terrain'}</span>
+                  <span className="sm:hidden">{isId ? 'Medan' : 'Map'}</span>
+                  <span className="hidden sm:inline">{isId ? 'Tanah/Air' : 'Terrain'}</span>
                 </button>
               </div>
 
@@ -1370,7 +1395,7 @@ const OutdoorSandboxInner: React.FC<OutdoorSandboxProps> = ({
                     ? `Waktu Surya: ${sunConfig.label} (Ketuk untuk ganti Pagi/Siang/Sore)`
                     : `Sun Time: ${sunConfig.label} (Tap to cycle Morning/Noon/Afternoon)`
                 }
-                className="flex items-center justify-center gap-1 min-h-[44px] sm:min-h-[36px] px-2.5 py-1 rounded-xl text-xs sm:text-[11px] font-semibold bg-void-950 hover:bg-void-850 border border-control text-ink transition-colors active:scale-95 cursor-pointer shrink-0"
+                className="flex items-center justify-center gap-1 min-h-[40px] sm:min-h-[36px] px-1.5 sm:px-2.5 py-1 rounded-xl text-[10.5px] sm:text-[11px] font-semibold bg-void-950 hover:bg-void-850 border border-control text-ink transition-colors active:scale-95 cursor-pointer shrink-0 whitespace-nowrap"
               >
                 {sunTimeOfDay === 'morning' ? (
                   <Sunrise className="w-3.5 h-3.5 text-amber-400 shrink-0" aria-hidden="true" />
@@ -1404,10 +1429,11 @@ const OutdoorSandboxInner: React.FC<OutdoorSandboxProps> = ({
                       ? 'Pasang Otomatis Pembangkit Listrik Alam (Panel Surya 12V + Turbin Angin + Menara SUTET)'
                       : 'Auto-Spawn 12V Outdoor Power Station (Solar + Wind + SUTET Tower)'
                   }
-                  className="flex items-center gap-1 min-h-[44px] sm:min-h-[36px] px-2.5 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 border border-emerald-700 text-white text-xs sm:text-[11px] font-bold shadow-sm active:scale-95 transition-colors cursor-pointer shrink-0"
+                  className="flex items-center gap-1 min-h-[40px] sm:min-h-[36px] px-1.5 sm:px-2.5 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 border border-emerald-700 text-white text-[10.5px] sm:text-[11px] font-bold shadow-sm active:scale-95 transition-colors cursor-pointer shrink-0 whitespace-nowrap"
                 >
                   <Zap className="w-3.5 h-3.5 text-white shrink-0" aria-hidden="true" />
-                  <span>{isId ? 'PLTS 12V' : '12V Grid'}</span>
+                  <span className="sm:hidden">{isId ? 'PLTS' : 'Grid'}</span>
+                  <span className="hidden sm:inline">{isId ? 'PLTS 12V' : '12V Grid'}</span>
                 </button>
 
                 <button
@@ -1415,34 +1441,40 @@ const OutdoorSandboxInner: React.FC<OutdoorSandboxProps> = ({
                   onClick={() => setIsToolbarCollapsed(true)}
                   aria-label={isId ? 'Sembunyikan Panel Alat Alam' : 'Hide Outdoor Panel'}
                   title={isId ? 'Sembunyikan Panel' : 'Hide Panel'}
-                  className="min-w-[44px] min-h-[44px] sm:min-w-[36px] sm:min-h-[36px] flex items-center justify-center rounded-xl bg-void-950 hover:bg-void-850 border border-control text-slate-300 hover:text-ink active:scale-95 transition-colors cursor-pointer shrink-0"
+                  className="min-w-[34px] min-h-[40px] sm:min-w-[36px] sm:min-h-[36px] flex items-center justify-center rounded-xl bg-void-950 hover:bg-void-850 border border-control text-slate-300 hover:text-ink active:scale-95 transition-colors cursor-pointer shrink-0"
                 >
                   <EyeOff className="w-4 h-4" aria-hidden="true" />
                 </button>
               </div>
             </div>
 
-            {/* Contextual Row 2: Shown ONLY when actively editing terrain brushes */}
+            {/* Contextual Row 2: Clean 5-column equal grid when actively editing terrain (zero overflow at 360px) */}
             {terrainBrush !== 'cursor' && (
-              <div className="flex items-center justify-between gap-1 pt-1 overflow-x-auto no-scrollbar border-t border-ink/15">
+              <div className="grid grid-cols-5 gap-1 pt-1 border-t border-ink/15">
                 {brushButtons
                   .filter((b) => b.id !== 'cursor')
                   .map((btn) => {
                     const isActive = terrainBrush === btn.id;
+                    const compactLabel =
+                      btn.id === 'WATER_SPRING'
+                        ? isId
+                          ? 'Hulu'
+                          : 'Spring'
+                        : btn.label;
                     return (
                       <button
                         key={btn.id}
                         type="button"
                         onClick={() => setTerrainBrush(btn.id)}
                         title={btn.fullLabel}
-                        className={`flex-1 flex items-center justify-center gap-1 min-h-[44px] sm:min-h-[36px] px-2 py-1 rounded-lg text-xs sm:text-[11px] font-semibold border transition-colors active:scale-95 cursor-pointer shrink-0 ${
+                        className={`flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 min-h-[44px] sm:min-h-[36px] px-1 sm:px-2 py-1 rounded-lg text-[10px] sm:text-[11px] font-semibold border transition-colors active:scale-95 cursor-pointer whitespace-nowrap ${
                           isActive
                             ? btn.activeClass
                             : 'bg-void-950 hover:bg-void-850 border-control text-ink'
                         }`}
                       >
                         {btn.renderIcon(isActive)}
-                        <span>+{btn.label}</span>
+                        <span>{compactLabel}</span>
                       </button>
                     );
                   })}
@@ -1451,7 +1483,7 @@ const OutdoorSandboxInner: React.FC<OutdoorSandboxProps> = ({
                   type="button"
                   onClick={resetOutdoorTerrain}
                   title={isId ? 'Reset Medan Alam' : 'Reset Terrain'}
-                  className="flex items-center justify-center gap-1 min-h-[44px] sm:min-h-[36px] px-2.5 py-1 rounded-lg text-xs sm:text-[11px] font-semibold bg-void-950 hover:bg-void-850 border border-control text-ink active:scale-95 transition-colors cursor-pointer shrink-0"
+                  className="flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 min-h-[44px] sm:min-h-[36px] px-1 sm:px-2 py-1 rounded-lg text-[10px] sm:text-[11px] font-semibold bg-void-950 hover:bg-void-850 border border-control text-ink active:scale-95 transition-colors cursor-pointer whitespace-nowrap"
                 >
                   <RotateCcw className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                   <span>{isId ? 'Reset' : 'Reset'}</span>
@@ -1470,19 +1502,19 @@ const OutdoorSandboxInner: React.FC<OutdoorSandboxProps> = ({
         <div
           id="tour-outdoor-camera"
           onPointerDown={(e) => e.stopPropagation()}
-          className="absolute bottom-1.5 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 px-2 py-1 rounded-full bg-void-900 border border-control shadow-xl text-ink pointer-events-auto max-w-[95vw]"
+          className="absolute bottom-1.5 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 px-2 py-1 rounded-full bg-void-900/95 backdrop-blur-md border border-control shadow-xl text-ink pointer-events-auto max-w-[95vw]"
         >
           <button
             type="button"
             onClick={() => scrollWorldBy(-280)}
             aria-label={isId ? 'Geser Kamera ke Kiri' : 'Pan Camera Left'}
-            className="min-w-[44px] min-h-[44px] sm:min-w-[36px] sm:min-h-[36px] flex items-center justify-center rounded-full bg-void-950 hover:bg-void-850 text-ink border border-control active:scale-95 cursor-pointer shrink-0"
+            className="min-w-[40px] min-h-[40px] sm:min-w-[36px] sm:min-h-[36px] flex items-center justify-center rounded-full bg-void-950 hover:bg-void-850 text-ink border border-control active:scale-95 cursor-pointer shrink-0"
             title={isId ? 'Geser Kamera ke Kiri' : 'Pan Camera Left'}
           >
             <ChevronLeft className="w-4 h-4" aria-hidden="true" />
           </button>
 
-          <div className="relative flex items-center gap-1.5 min-w-[110px] sm:min-w-[190px]">
+          <div className="relative flex items-center gap-1.5 min-w-[92px] sm:min-w-[190px]">
             <Compass className="w-3.5 h-3.5 text-emerald-400 shrink-0" aria-hidden="true" />
             <div className="relative w-full flex items-center">
               <input
@@ -1529,7 +1561,7 @@ const OutdoorSandboxInner: React.FC<OutdoorSandboxProps> = ({
             type="button"
             onClick={() => scrollWorldBy(280)}
             aria-label={isId ? 'Geser Kamera ke Kanan (Sungai)' : 'Pan Camera Right (River)'}
-            className="min-w-[44px] min-h-[44px] sm:min-w-[36px] sm:min-h-[36px] flex items-center justify-center rounded-full bg-void-950 hover:bg-void-850 text-ink border border-control active:scale-95 cursor-pointer shrink-0"
+            className="min-w-[40px] min-h-[40px] sm:min-w-[36px] sm:min-h-[36px] flex items-center justify-center rounded-full bg-void-950 hover:bg-void-850 text-ink border border-control active:scale-95 cursor-pointer shrink-0"
             title={isId ? 'Geser Kamera ke Kanan (Sungai)' : 'Pan Camera Right (River)'}
           >
             <ChevronRight className="w-4 h-4" aria-hidden="true" />
@@ -1550,7 +1582,7 @@ const OutdoorSandboxInner: React.FC<OutdoorSandboxProps> = ({
                   });
                 }
               }}
-              className={`min-h-[44px] sm:min-h-[36px] px-2.5 py-1 rounded-full text-xs sm:text-[11px] font-bold border flex items-center gap-1 active:scale-95 transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+              className={`min-h-[40px] sm:min-h-[36px] px-2.5 py-1 rounded-full text-[11px] font-bold border flex items-center gap-1 active:scale-95 transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
                 offscreenJump.isTower
                   ? 'bg-[#B45309] border-[#92400E] text-white hover:bg-[#92400E]'
                   : 'bg-electric-600 border-electric-700 text-white hover:bg-electric-700'

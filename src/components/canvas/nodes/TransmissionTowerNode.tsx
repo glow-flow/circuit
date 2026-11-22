@@ -111,14 +111,14 @@ const OutdoorTowerView: React.FC<NodeProps<CircuitElementData>> = memo(({ id, da
     >
       {/* Top Floating Status & Telemetry Pill (Above Pylon) */}
       <div
-        className={`mb-1 px-2.5 py-1 rounded-xl text-[10px] font-mono font-bold tracking-tight shadow-md border transition-colors duration-200 z-30 pointer-events-auto cursor-grab active:cursor-grabbing ${
+        className={`mb-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono font-bold tracking-tight shadow-md border transition-colors duration-200 z-30 pointer-events-auto cursor-grab active:cursor-grabbing ${
           isGridConnected
             ? isLineOverheated
-              ? 'bg-red-950 text-red-200 border-red-500/80'
+              ? 'bg-red-950/95 text-red-200 border-red-500/80'
               : isStepUp
-              ? 'bg-cyan-950 text-cyan-200 border-cyan-500/70'
-              : 'bg-emerald-950 text-emerald-200 border-emerald-500/60'
-            : 'bg-void-950 text-ink border-control'
+              ? 'bg-cyan-950/95 text-cyan-200 border-cyan-500/70'
+              : 'bg-emerald-950/95 text-emerald-200 border-emerald-500/60'
+            : 'bg-void-950/95 text-ink border-control'
         }`}
       >
         <div className="flex items-center gap-1 whitespace-nowrap">
@@ -132,10 +132,8 @@ const OutdoorTowerView: React.FC<NodeProps<CircuitElementData>> = memo(({ id, da
               <Zap className={`w-3 h-3 shrink-0 ${isLineOverheated ? 'text-red-400' : isStepUp ? 'text-cyan-400' : 'text-emerald-400'}`} />
               <span className="tabular-nums">
                 {isStepUp
-                  ? `240V Step-Up (Bus ${busVoltage.toFixed(1)}V)`
-                  : isId
-                  ? `12V Langsung (Bus ${busVoltage.toFixed(1)}V)`
-                  : `12V Direct (Bus ${busVoltage.toFixed(1)}V)`}
+                  ? `240V Step-Up · ${busVoltage.toFixed(1)}V`
+                  : `12V · ${busVoltage.toFixed(1)}V`}
                 {currentAmperes > 0.001 ? ` · ${currentDisplay}` : ''}
               </span>
             </>
@@ -143,7 +141,7 @@ const OutdoorTowerView: React.FC<NodeProps<CircuitElementData>> = memo(({ id, da
             <>
               <Radio className="w-3 h-3 text-cyan-400 shrink-0" />
               <span>
-                {isId ? 'Siap Salur ke Lab (Cas Baterai)' : 'Ready for Lab (Battery Charge)'}
+                {isId ? 'SUTET · Siap ke Lab' : 'SUTET · Ready for Lab'}
               </span>
             </>
           )}
