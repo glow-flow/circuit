@@ -2,7 +2,9 @@ import React, { useRef } from 'react';
 import {
   Activity,
   BookmarkPlus,
+  ClipboardCheck,
   Cpu,
+  Download,
   Globe,
   HelpCircle,
   Moon,
@@ -29,8 +31,8 @@ export interface MobileHubModalProps {
  * Reorganized Mobile & Tablet Feature Hub & Settings Drawer (`MobileHubModal.tsx`).
  *
  * Provides quick access on mobile/tablet (< 1024px) to:
- * 1. Evaluasi, Alat Ukur & Diagnostik (Misi, Oskiloskop, Tutor, Korsleting, Microgrid).
- * 2. Simpan, Bagikan QR, Tema Terang/Gelap, Bahasa ID/EN, Panduan Guru, Muat Lampu Dasar.
+ * 1. Evaluasi, Alat Ukur & Diagnostik (Misi, LKPD Mode Guru, Oskiloskop, Tutor, Korsleting, Microgrid).
+ * 2. Simpan, Bagikan QR, Tema Terang/Gelap, Bahasa ID/EN, Panduan Guru, Muat Lampu Dasar, Mode Offline.
  *
  * Time Complexity: O(1) render.
  */
@@ -61,6 +63,8 @@ export const MobileHubModal: React.FC<MobileHubModalProps> = ({
       | 'renewable'
       | 'tutor'
       | 'share'
+      | 'pwa'
+      | 'lkpd'
   ) => {
     onClose();
     setActiveModal(modalType);
@@ -205,6 +209,31 @@ export const MobileHubModal: React.FC<MobileHubModalProps> = ({
                     {isId ? 'Cari penyebab lampu mati/korslet' : 'Find & repair circuit faults'}
                   </div>
                 </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleLaunchModal('lkpd')}
+                className="col-span-2 text-left p-3 min-h-[60px] rounded-xl bg-void-900 hover:bg-void-850 border border-amber-500/45 transition-colors active:scale-95 cursor-pointer flex items-center justify-between gap-3"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-500/40 flex items-center justify-center shrink-0">
+                    <ClipboardCheck className="w-4 h-4 text-amber-400" aria-hidden="true" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-bold text-ink truncate">
+                      {isId ? 'LKPD & Mode Guru (5 Paket)' : 'LKPD & Teacher Mode (5 Packets)'}
+                    </div>
+                    <div className="text-[11px] text-slate-400 truncate">
+                      {isId
+                        ? 'Lembar kerja Kurikulum Merdeka, kode kumpul & rekap CSV'
+                        : 'Kurikulum Merdeka worksheets, submit codes & CSV gradebook'}
+                    </div>
+                  </div>
+                </div>
+                <span className="text-[10px] font-mono text-amber-400 font-semibold shrink-0">
+                  LKPD
+                </span>
               </button>
 
               <button
@@ -355,6 +384,31 @@ export const MobileHubModal: React.FC<MobileHubModalProps> = ({
                     {isId ? 'Kembali ke contoh awal' : 'Restore default circuit'}
                   </div>
                 </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleLaunchModal('pwa')}
+                className="col-span-2 flex items-center justify-between gap-3 p-3 min-h-[56px] rounded-xl bg-void-900 hover:bg-void-850 border border-electric-500/45 text-left transition-colors active:scale-95 cursor-pointer"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-electric-500/15 border border-electric-500/40 flex items-center justify-center shrink-0">
+                    <Download className="w-4 h-4 text-electric-400" aria-hidden="true" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-bold text-ink truncate">
+                      {isId ? 'Mode Offline & Pasang Aplikasi' : 'Offline Mode & Install App'}
+                    </div>
+                    <div className="text-[11px] text-slate-400 truncate">
+                      {isId
+                        ? 'Cek cache tanpa internet dan pasang ke layar utama'
+                        : 'Verify offline cache and install to home screen'}
+                    </div>
+                  </div>
+                </div>
+                <span className="text-[10px] font-mono text-electric-400 font-semibold shrink-0">
+                  PWA
+                </span>
               </button>
             </div>
           </div>

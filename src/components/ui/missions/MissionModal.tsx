@@ -4,6 +4,7 @@ import {
   Circle,
   ChevronDown,
   ChevronUp,
+  ClipboardCheck,
   HelpCircle,
   Play,
   Wrench,
@@ -11,6 +12,7 @@ import {
 import confetti from 'canvas-confetti';
 import { useCircuitStore } from '../../../store/useCircuitStore';
 import { MISSION_CATALOG } from '../../../missions/missionCatalog';
+import { isLkpdMissionId } from '../../../lkpd/lkpdCatalog';
 import { MissionDefinition, MissionValidationResult } from '../../../types/missions';
 import { LabModalHeader } from '../common/LabModalHeader';
 import { MascotCoachBubble, MascotMood } from '../common/MascotAvatar';
@@ -95,6 +97,7 @@ export const MissionModal: React.FC<MissionModalProps> = ({ isOpen, onClose }) =
   const edges = useCircuitStore((state) => state.edges);
   const simulation = useCircuitStore((state) => state.simulation);
   const loadPreset = useCircuitStore((state) => state.loadPreset);
+  const openLkpdModal = useCircuitStore((state) => state.openLkpdModal);
   const language = useCircuitStore((state) => state.language);
 
   const isId = language === 'id';
@@ -335,6 +338,22 @@ export const MissionModal: React.FC<MissionModalProps> = ({ isOpen, onClose }) =
               <Wrench className="w-4 h-4 text-electric-400" aria-hidden="true" />
               <span>{isId ? 'Lanjut Rangkai di Kanvas' : 'Build on Canvas'}</span>
             </button>
+
+            {isLkpdMissionId(activeMission.id) && (
+              <button
+                type="button"
+                onClick={() =>
+                  openLkpdModal({
+                    tab: 'student',
+                    missionId: activeMission.id as Parameters<typeof openLkpdModal>[0] extends { missionId?: infer M } ? M : never,
+                  })
+                }
+                className="flex-1 min-h-[46px] px-4 py-2.5 rounded-xl bg-void-900 hover:bg-void-850 border border-amber-500/50 text-amber-400 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-colors active:scale-95 cursor-pointer"
+              >
+                <ClipboardCheck className="w-4 h-4 shrink-0" aria-hidden="true" />
+                <span>{isId ? 'Buka LKPD & Kumpul' : 'Open LKPD & Submit'}</span>
+              </button>
+            )}
           </div>
 
           {/* 1-Tap Collapsible Steps & Hint Drawer */}

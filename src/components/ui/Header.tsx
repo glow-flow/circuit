@@ -21,6 +21,8 @@ import {
   Cpu,
   ChevronDown,
   SlidersHorizontal,
+  Download,
+  ClipboardCheck,
 } from 'lucide-react';
 import { useCircuitStore } from '../../store/useCircuitStore';
 import { TRANSLATIONS } from '../../i18n/translations';
@@ -62,6 +64,16 @@ const OscilloscopeModal = React.lazy(() =>
 const CircuitShareModal = React.lazy(() =>
   import('./workspace/CircuitShareModal').then((m) => ({
     default: m.CircuitShareModal,
+  }))
+);
+const PwaOfflineModal = React.lazy(() =>
+  import('./pwa/PwaOfflineModal').then((m) => ({
+    default: m.PwaOfflineModal,
+  }))
+);
+const LkpdTeacherModal = React.lazy(() =>
+  import('./lkpd/LkpdTeacherModal').then((m) => ({
+    default: m.LkpdTeacherModal,
   }))
 );
 
@@ -185,6 +197,8 @@ export const Header: React.FC<HeaderProps> = ({
       | 'tutor'
       | 'oscilloscope'
       | 'share'
+      | 'pwa'
+      | 'lkpd'
   ) => {
     setIsToolsMenuOpen(false);
     setActiveModal(modal);
@@ -196,7 +210,9 @@ export const Header: React.FC<HeaderProps> = ({
     activeModal === 'renewable' ||
     activeModal === 'tutor' ||
     activeModal === 'oscilloscope' ||
-    activeModal === 'share';
+    activeModal === 'share' ||
+    activeModal === 'pwa' ||
+    activeModal === 'lkpd';
 
   return (
     <>
@@ -331,6 +347,23 @@ export const Header: React.FC<HeaderProps> = ({
                   <button
                     type="button"
                     role="menuitem"
+                    onClick={() => handleOpenToolModal('lkpd')}
+                    className="w-full min-h-[44px] px-3 py-2 rounded-xl flex items-center gap-2.5 text-left hover:bg-void-850 text-ink transition-colors cursor-pointer"
+                  >
+                    <ClipboardCheck className="w-4 h-4 text-amber-400 shrink-0" aria-hidden="true" />
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold truncate">
+                        {isId ? 'LKPD & Mode Guru' : 'LKPD & Teacher Mode'}
+                      </div>
+                      <div className="text-[10px] text-slate-400 truncate">
+                        {isId ? '5 paket LKPD, kode kumpul & CSV' : '5 LKPD packets, submit & CSV'}
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    role="menuitem"
                     onClick={() => handleOpenToolModal('oscilloscope')}
                     className="w-full min-h-[44px] px-3 py-2 rounded-xl flex items-center gap-2.5 text-left hover:bg-void-850 text-ink transition-colors cursor-pointer"
                   >
@@ -411,6 +444,23 @@ export const Header: React.FC<HeaderProps> = ({
                       </div>
                       <div className="text-[10px] text-slate-400 truncate">
                         {isId ? 'Kirim karya ke siswa atau guru' : 'Export circuit for classroom'}
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => handleOpenToolModal('pwa')}
+                    className="w-full min-h-[44px] px-3 py-2 rounded-xl flex items-center gap-2.5 text-left hover:bg-void-850 text-ink transition-colors cursor-pointer"
+                  >
+                    <Download className="w-4 h-4 text-emerald-400 shrink-0" aria-hidden="true" />
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold truncate">
+                        {isId ? 'Mode Offline & Pasang' : 'Offline Mode & Install'}
+                      </div>
+                      <div className="text-[10px] text-slate-400 truncate">
+                        {isId ? 'Cek cache luring & pasang PWA' : 'Check offline cache & install PWA'}
                       </div>
                     </div>
                   </button>
@@ -609,6 +659,14 @@ export const Header: React.FC<HeaderProps> = ({
 
         {activeModal === 'share' && (
           <CircuitShareModal isOpen={true} onClose={() => setActiveModal(null)} />
+        )}
+
+        {activeModal === 'pwa' && (
+          <PwaOfflineModal isOpen={true} onClose={() => setActiveModal(null)} />
+        )}
+
+        {activeModal === 'lkpd' && (
+          <LkpdTeacherModal isOpen={true} onClose={() => setActiveModal(null)} />
         )}
 
         {isCreditsModalOpen && (

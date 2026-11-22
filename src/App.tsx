@@ -33,6 +33,12 @@ import { getComponentDisplayName } from './utils/nodeLocalization';
 import { OutdoorGenerationMiniHud } from './components/ui/telemetry/OutdoorGenerationMiniHud';
 import { PhysicsLensDock } from './components/ui/lens/PhysicsLensDock';
 import { ProbeReadoutHud } from './components/ui/lens/ProbeReadoutHud';
+import { OfflineStatusBanner } from './components/ui/pwa/OfflineStatusBanner';
+import {
+  decodeLkpdAssignmentHash,
+  extractSubmissionTokenFromHash,
+} from './lkpd/lkpdCodec';
+import { MISSION_CATALOG } from './missions/missionCatalog';
 
 type MobileSheetType = TourMobileSheetState;
 
@@ -51,17 +57,20 @@ export const App: React.FC = () => {
   const theme = useCircuitStore((state) => state.theme);
   const physicsLensMode = useCircuitStore((state) => state.physicsLensMode);
 
-  // Synchronize document theme class & active UI language
+  // Synchronize document theme class, PWA status bar theme-color & active UI language
   useEffect(() => {
     if (typeof document === 'undefined') return;
     const root = document.documentElement;
     root.lang = language;
+    const themeColorMeta = document.getElementById('app-theme-color');
     if (theme === 'light') {
       root.classList.add('theme-light');
       root.classList.remove('dark');
+      themeColorMeta?.setAttribute('content', '#F5F7FA');
     } else {
       root.classList.remove('theme-light');
       root.classList.add('dark');
+      themeColorMeta?.setAttribute('content', '#0B0F14');
     }
   }, [theme, language]);
 
@@ -128,13 +137,50 @@ export const App: React.FC = () => {
   // Workspace initialization: runs strictly ONCE on initial application mount
   const isWorkspaceInitializedRef = useRef(false);
 
-  useEffect(() => {
-    if (isWorkspaceInitializedRef.current) return;
-    isWorkspaceInitializedRef.current = true;
+  const applyHashDeepLink = React.useCallback(
+    (rawHash: string): boolean => {
+      if (!rawHash || typeof window === 'undefined') return false;
 
-    // 1. Check for shared circuit URL hash (#circuit=...)
-    if (typeof window !== 'undefined' && window.location.hash) {
-      const decodedResult = decodeShareableUrlHash(window.location.hash);
+      const lkpdSubmissionToken = extractSubmissionTokenFromHash(rawHash);
+      if (lkpdSubmissionToken) {
+        setIsWelcomeOpen(false);
+        useCircuitStore.getState().openLkpdModal({
+          tab: 'gradebook',
+          submissionToken: lkpdSubmissionToken,
+        });
+        window.history.replaceState(null, '', window.location.pathname);
+        return false;
+      }
+
+      const lkpdAssignment = decodeLkpdAssignmentHash(rawHash);
+      if (lkpdAssignment) {
+        setIsWelcomeOpen(false);
+        if (lkpdAssignment.isValid) {
+          const { payload } = lkpdAssignment;
+          const mission = MISSION_CATALOG.find((m) => m.id === payload.missionId);
+          if (mission?.starterCircuitName) {
+            loadPreset(mission.starterCircuitName as Parameters<typeof loadPreset>[0]);
+          } else if (useCircuitStore.getState().nodes.length === 0) {
+            loadPreset('simple-lamp');
+          }
+          useCircuitStore.getState().setActiveLkpdAssignment(payload);
+          useCircuitStore.getState().openLkpdModal({
+            tab: 'student',
+            missionId: payload.missionId,
+          });
+          useCircuitStore.getState().notify(
+            isId
+              ? `Tugas ${payload.lkpdCode}${payload.className ? ` (${payload.className})` : ''} berhasil dibuka.`
+              : `Assignment ${payload.lkpdCode}${payload.className ? ` (${payload.className})` : ''} opened.`
+          );
+        } else {
+          useCircuitStore.getState().notify(lkpdAssignment.errorMessage);
+        }
+        window.history.replaceState(null, '', window.location.pathname);
+        return true;
+      }
+
+      const decodedResult = decodeShareableUrlHash(rawHash);
       if (decodedResult && decodedResult.isValid) {
         const { payload } = decodedResult;
         useCircuitStore.getState().loadCustomCircuit(
@@ -149,6 +195,33 @@ export const App: React.FC = () => {
             : `Circuit "${payload.metadata.circuitTitle}" loaded from shared link!`
         );
         window.history.replaceState(null, '', window.location.pathname);
+        return true;
+      }
+
+      return false;
+    },
+    [loadPreset, isId]
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleHashChange = () => {
+      if (window.location.hash) {
+        applyHashDeepLink(window.location.hash);
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [applyHashDeepLink]);
+
+  useEffect(() => {
+    if (isWorkspaceInitializedRef.current) return;
+    isWorkspaceInitializedRef.current = true;
+
+    // 1. Check for URL hash deep links (#lkpd=..., #lkpd-sub=..., #circuit=...)
+    if (typeof window !== 'undefined' && window.location.hash) {
+      const handledWorkspaceLoad = applyHashDeepLink(window.location.hash);
+      if (handledWorkspaceLoad) {
         return;
       }
     }
@@ -184,7 +257,7 @@ export const App: React.FC = () => {
     if (useCircuitStore.getState().nodes.length === 0) {
       loadPreset('simple-lamp');
     }
-  }, [loadPreset, isId]);
+  }, [applyHashDeepLink, loadPreset, isId]);
 
   // Register mobile bottom-sheet controller so driver.js can open/close drawers during the tour
   useEffect(() => {
@@ -221,6 +294,9 @@ export const App: React.FC = () => {
         isSaveModalOpen={isSaveModalOpen}
         onSaveModalOpenChange={setIsSaveModalOpen}
       />
+
+      {/* Live Offline / Service Worker Update Banner */}
+      <OfflineStatusBanner />
 
       {/* Main Workspace Layout */}
       <div className="flex flex-1 min-h-0 relative w-full overflow-hidden">

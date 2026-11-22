@@ -98,6 +98,9 @@ import { getLabCanvasSpawnPosition } from '../utils/canvasSpawnPosition';
 import { computeTransmissionTelemetry } from '../physics/transmissionPhysics';
 import { PhysicsLensMode, ProbeTarget } from '../physics/physicsLensEngine';
 import { PendingWireStart, isEdgeAlreadyConnectingPins } from '../utils/canvasWireAssist';
+import { LkpdAssignmentPayload, LkpdMissionId } from '../lkpd/lkpdTypes';
+
+export type LkpdModalTab = 'packets' | 'student' | 'gradebook';
 
 interface CircuitState {
   nodes: Node<CircuitElementData>[];
@@ -109,8 +112,19 @@ interface CircuitState {
   language: AppLanguage;
   customPresets: CustomCircuitPreset[];
   fitViewTrigger: number;
-  activeModal: 'gallery' | 'missions' | 'oscilloscope' | 'share' | 'academy' | 'troubleshooting' | 'renewable' | 'tutor' | null;
-  setActiveModal: (modal: 'gallery' | 'missions' | 'oscilloscope' | 'share' | 'academy' | 'troubleshooting' | 'renewable' | 'tutor' | null) => void;
+  activeModal: 'gallery' | 'missions' | 'oscilloscope' | 'share' | 'academy' | 'troubleshooting' | 'renewable' | 'tutor' | 'pwa' | 'lkpd' | null;
+  setActiveModal: (modal: 'gallery' | 'missions' | 'oscilloscope' | 'share' | 'academy' | 'troubleshooting' | 'renewable' | 'tutor' | 'pwa' | 'lkpd' | null) => void;
+  activeLkpdAssignment: LkpdAssignmentPayload | null;
+  lkpdPreferredTab: LkpdModalTab;
+  lkpdPreferredMissionId: LkpdMissionId;
+  pendingLkpdSubmissionToken: string | null;
+  setActiveLkpdAssignment: (assignment: LkpdAssignmentPayload | null) => void;
+  openLkpdModal: (options?: {
+    tab?: LkpdModalTab;
+    missionId?: LkpdMissionId;
+    submissionToken?: string | null;
+  }) => void;
+  consumePendingLkpdSubmissionToken: () => void;
   theme: 'dark' | 'light';
   setTheme: (theme: 'dark' | 'light') => void;
   toggleTheme: () => void;
@@ -719,6 +733,22 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   fitViewTrigger: 0,
   activeModal: null,
   setActiveModal: (modal) => set({ activeModal: modal }),
+  activeLkpdAssignment: null,
+  lkpdPreferredTab: 'packets',
+  lkpdPreferredMissionId: 'parallel-3-bulbs',
+  pendingLkpdSubmissionToken: null,
+  setActiveLkpdAssignment: (assignment) => set({ activeLkpdAssignment: assignment }),
+  openLkpdModal: (options) =>
+    set((state) => ({
+      activeModal: 'lkpd',
+      lkpdPreferredTab: options?.tab ?? state.lkpdPreferredTab,
+      lkpdPreferredMissionId: options?.missionId ?? state.lkpdPreferredMissionId,
+      pendingLkpdSubmissionToken:
+        options?.submissionToken !== undefined
+          ? options.submissionToken
+          : state.pendingLkpdSubmissionToken,
+    })),
+  consumePendingLkpdSubmissionToken: () => set({ pendingLkpdSubmissionToken: null }),
   theme: (typeof window !== 'undefined' && (localStorage.getItem('circuit_theme') as 'dark' | 'light')) || 'dark',
   setTheme: (theme: 'dark' | 'light') => {
     if (typeof window !== 'undefined') {
